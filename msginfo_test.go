@@ -18,11 +18,11 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	jsch "github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go"
 )
 
 func TestParseJSMsgMetadata(t *testing.T) {
-	i, err := jsch.ParseJSMsgMetadata(&nats.Msg{Reply: "$JS.ACK.ORDERS.NEW.1.2.3"})
+	i, err := jsm.ParseJSMsgMetadata(&nats.Msg{Reply: "$JS.ACK.ORDERS.NEW.1.2.3"})
 	checkErr(t, err, "msg parse failed")
 
 	if i.Stream() != "ORDERS" {

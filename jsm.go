@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package jsch provides client helpers for managing and interacting with NATS JetStreamcd .
+// Package jsm provides client helpers for managing and interacting with NATS JetStream
 package jsm
 
 import (

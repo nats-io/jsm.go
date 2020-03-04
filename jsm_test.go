@@ -21,7 +21,7 @@ import (
 	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 
-	jsch "github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go"
 )
 
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn) {
@@ -55,7 +55,7 @@ func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn) {
 		t.Fatalf("client start failed: %s", err)
 	}
 
-	jsch.SetConnection(nc)
+	jsm.SetConnection(nc)
 
 	return s, nc
 }
@@ -73,25 +73,25 @@ func TestJetStreamEnabled(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	if !jsch.IsJetStreamEnabled() {
+	if !jsm.IsJetStreamEnabled() {
 		t.Fatalf("expected JS to be enabled")
 	}
 }
 
 func TestIsErrorResponse(t *testing.T) {
-	if jsch.IsErrorResponse(&nats.Msg{Data: []byte("+OK")}) {
+	if jsm.IsErrorResponse(&nats.Msg{Data: []byte("+OK")}) {
 		t.Fatalf("OK is Error")
 	}
 
-	if !jsch.IsErrorResponse(&nats.Msg{Data: []byte("-ERR 'error'")}) {
+	if !jsm.IsErrorResponse(&nats.Msg{Data: []byte("-ERR 'error'")}) {
 		t.Fatalf("ERR is not Error")
 	}
 }
 
 func TestParseErrorResponse(t *testing.T) {
-	checkErr(t, jsch.ParseErrorResponse(&nats.Msg{Data: []byte("+OK")}), "expected nil got error")
+	checkErr(t, jsm.ParseErrorResponse(&nats.Msg{Data: []byte("+OK")}), "expected nil got error")
 
-	err := jsch.ParseErrorResponse(&nats.Msg{Data: []byte("-ERR 'test error")})
+	err := jsm.ParseErrorResponse(&nats.Msg{Data: []byte("-ERR 'test error")})
 	if err == nil {
 		t.Fatalf("expected an error got nil")
 	}
@@ -102,11 +102,11 @@ func TestParseErrorResponse(t *testing.T) {
 }
 
 func TestIsOKResponse(t *testing.T) {
-	if !jsch.IsOKResponse(&nats.Msg{Data: []byte("+OK")}) {
+	if !jsm.IsOKResponse(&nats.Msg{Data: []byte("+OK")}) {
 		t.Fatalf("OK is Error")
 	}
 
-	if jsch.IsOKResponse(&nats.Msg{Data: []byte("-ERR error")}) {
+	if jsm.IsOKResponse(&nats.Msg{Data: []byte("-ERR error")}) {
 		t.Fatalf("ERR is not Error")
 	}
 }
@@ -116,16 +116,16 @@ func TestIsKnownStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	known, err := jsch.IsKnownStream("ORDERS")
+	known, err := jsm.IsKnownStream("ORDERS")
 	checkErr(t, err, "known lookup failed")
 	if known {
 		t.Fatalf("ORDERS should not be known")
 	}
 
-	stream, err := jsch.NewStreamFromDefault("ORDERS", jsch.DefaultStream, jsch.MemoryStorage())
+	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
-	known, err = jsch.IsKnownStream("ORDERS")
+	known, err = jsm.IsKnownStream("ORDERS")
 	checkErr(t, err, "known lookup failed")
 	if !known {
 		t.Fatalf("ORDERS should be known")
@@ -142,19 +142,19 @@ func TestIsKnownConsumer(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStreamFromDefault("ORDERS", jsch.DefaultStream, jsch.MemoryStorage())
+	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
-	known, err := jsch.IsKnownConsumer("ORDERS", "NEW")
+	known, err := jsm.IsKnownConsumer("ORDERS", "NEW")
 	checkErr(t, err, "known lookup failed")
 	if known {
 		t.Fatalf("NEW should not exist")
 	}
 
-	_, err = stream.NewConsumerFromDefault(jsch.DefaultConsumer, jsch.DurableName("NEW"))
+	_, err = stream.NewConsumerFromDefault(jsm.DefaultConsumer, jsm.DurableName("NEW"))
 	checkErr(t, err, "create failed")
 
-	known, err = jsch.IsKnownConsumer("ORDERS", "NEW")
+	known, err = jsm.IsKnownConsumer("ORDERS", "NEW")
 	checkErr(t, err, "known lookup failed")
 
 	if !known {
@@ -167,10 +167,10 @@ func TestJetStreamAccountInfo(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	_, err := jsch.NewStreamFromDefault("ORDERS", jsch.DefaultStream, jsch.MemoryStorage())
+	_, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
-	info, err := jsch.JetStreamAccountInfo()
+	info, err := jsm.JetStreamAccountInfo()
 	checkErr(t, err, "info fetch failed")
 
 	if info.Streams != 1 {
@@ -183,17 +183,17 @@ func TestStreamNames(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	names, err := jsch.StreamNames()
+	names, err := jsm.StreamNames()
 	checkErr(t, err, "lookup failed")
 
 	if len(names) > 0 {
 		t.Fatalf("expected 0 streams got: %v", names)
 	}
 
-	_, err = jsch.NewStreamFromDefault("ORDERS", jsch.DefaultStream, jsch.MemoryStorage())
+	_, err = jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
-	names, err = jsch.StreamNames()
+	names, err = jsm.StreamNames()
 	checkErr(t, err, "lookup failed")
 
 	if len(names) != 1 || names[0] != "ORDERS" {
@@ -206,21 +206,21 @@ func TestConsumerNames(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	_, err := jsch.ConsumerNames("ORDERS")
+	_, err := jsm.ConsumerNames("ORDERS")
 	if err == nil {
 		t.Fatalf("expected err")
 	}
 
-	stream, err := jsch.NewStreamFromDefault("ORDERS", jsch.DefaultStream, jsch.MemoryStorage())
+	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
-	_, err = jsch.ConsumerNames("ORDERS")
+	_, err = jsm.ConsumerNames("ORDERS")
 	checkErr(t, err, "lookup failed")
 
-	_, err = stream.NewConsumerFromDefault(jsch.DefaultConsumer, jsch.DurableName("NEW"))
+	_, err = stream.NewConsumerFromDefault(jsm.DefaultConsumer, jsm.DurableName("NEW"))
 	checkErr(t, err, "create failed")
 
-	names, err := jsch.ConsumerNames("ORDERS")
+	names, err := jsm.ConsumerNames("ORDERS")
 	checkErr(t, err, "lookup failed")
 
 	if len(names) != 1 || names[0] != "NEW" {
@@ -233,14 +233,14 @@ func TestEachStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	orders, err := jsch.NewStreamFromDefault("ORDERS", jsch.DefaultStream, jsch.MemoryStorage())
+	orders, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
-	_, err = jsch.NewStreamFromDefault("ARCHIVE", orders.Configuration(), jsch.Subjects("OTHER"))
+	_, err = jsm.NewStreamFromDefault("ARCHIVE", orders.Configuration(), jsm.Subjects("OTHER"))
 	checkErr(t, err, "create failed")
 
 	seen := []string{}
-	jsch.EachStream(func(s *jsch.Stream) {
+	jsm.EachStream(func(s *jsm.Stream) {
 		seen = append(seen, s.Name())
 	})
 
@@ -257,17 +257,17 @@ func TestIsKnownStreamTemplate(t *testing.T) {
 	srv, _ := startJSServer(t)
 	defer srv.Shutdown()
 
-	exists, err := jsch.IsKnownStreamTemplate("orders_templ")
+	exists, err := jsm.IsKnownStreamTemplate("orders_templ")
 	checkErr(t, err, "is known failed")
 
 	if exists {
 		t.Fatalf("found orders_templ when it shouldnt have")
 	}
 
-	_, err = jsch.NewStreamTemplate("orders_templ", 1, jsch.DefaultStream, jsch.Subjects("ORDERS.*"))
+	_, err = jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.Subjects("ORDERS.*"))
 	checkErr(t, err, "new stream template failed")
 
-	exists, err = jsch.IsKnownStreamTemplate("orders_templ")
+	exists, err = jsm.IsKnownStreamTemplate("orders_templ")
 	checkErr(t, err, "is known failed")
 
 	if !exists {

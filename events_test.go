@@ -19,18 +19,18 @@ import (
 
 	"github.com/nats-io/nats-server/v2/server"
 
-	jsch "github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go"
 )
 
 func TestSchemaForEvent(t *testing.T) {
-	s, err := jsch.SchemaTokenForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	s, err := jsm.SchemaTokenForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
 	checkErr(t, err, "schema extract failed")
 
 	if s != "io.nats.jetstream.metric.v1.consumer_ack" {
 		t.Fatalf("expected io.nats.jetstream.metric.v1.consumer_ack got %s", s)
 	}
 
-	s, err = jsch.SchemaTokenForEvent([]byte(`{}`))
+	s, err = jsm.SchemaTokenForEvent([]byte(`{}`))
 	checkErr(t, err, "schema extract failed")
 
 	if s != "io.nats.unknown_event" {
@@ -39,7 +39,7 @@ func TestSchemaForEvent(t *testing.T) {
 }
 
 func TestParseEvent(t *testing.T) {
-	s, e, err := jsch.ParseEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	s, e, err := jsm.ParseEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
 	checkErr(t, err, "schema parse failed")
 
 	if s != "io.nats.jetstream.metric.v1.consumer_ack" {
@@ -53,9 +53,9 @@ func TestParseEvent(t *testing.T) {
 }
 
 func TestSchemaURLForToken(t *testing.T) {
-	jsch.SchemasRepo = "https://nats.io/schemas"
+	jsm.SchemasRepo = "https://nats.io/schemas"
 
-	a, u, err := jsch.SchemaURLForToken("io.nats.jetstream.metric.v1.consumer_ack")
+	a, u, err := jsm.SchemaURLForToken("io.nats.jetstream.metric.v1.consumer_ack")
 	checkErr(t, err, "parse failed")
 
 	if a != "https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json" {
@@ -66,16 +66,16 @@ func TestSchemaURLForToken(t *testing.T) {
 		t.Fatalf("invalid url: %v", u.String())
 	}
 
-	_, _, err = jsch.SchemaURLForToken("jetstream.metric.v1.consumer_ack")
+	_, _, err = jsm.SchemaURLForToken("jetstream.metric.v1.consumer_ack")
 	if err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestSchemaURLForEvent(t *testing.T) {
-	jsch.SchemasRepo = "https://nats.io/schemas"
+	jsm.SchemasRepo = "https://nats.io/schemas"
 
-	a, u, err := jsch.SchemaURLForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	a, u, err := jsm.SchemaURLForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
 	checkErr(t, err, "parse failed")
 
 	if a != "https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json" {

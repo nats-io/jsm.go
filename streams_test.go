@@ -19,7 +19,7 @@ import (
 
 	"github.com/nats-io/nats-server/v2/server"
 
-	jsch "github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go"
 )
 
 func TestNewStreamFromDefault(t *testing.T) {
@@ -27,7 +27,7 @@ func TestNewStreamFromDefault(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStreamFromDefault("q1", jsch.DefaultWorkQueue, jsch.MemoryStorage(), jsch.MaxAge(time.Hour))
+	stream, err := jsm.NewStreamFromDefault("q1", jsm.DefaultWorkQueue, jsm.MemoryStorage(), jsm.MaxAge(time.Hour))
 	checkErr(t, err, "create failed")
 
 	stream.Reset()
@@ -49,19 +49,19 @@ func TestLoadOrNewStreamFromDefault(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	names, err := jsch.StreamNames()
+	names, err := jsm.StreamNames()
 	checkErr(t, err, "ls failed")
 	if len(names) != 0 {
 		t.Fatalf("expected no streams")
 	}
 
-	stream, err := jsch.LoadOrNewStreamFromDefault("q1", jsch.DefaultWorkQueue, jsch.MemoryStorage(), jsch.MaxAge(time.Hour))
+	stream, err := jsm.LoadOrNewStreamFromDefault("q1", jsm.DefaultWorkQueue, jsm.MemoryStorage(), jsm.MaxAge(time.Hour))
 	checkErr(t, err, "create failed")
 
-	_, err = jsch.LoadOrNewStreamFromDefault("q1", stream.Configuration())
+	_, err = jsm.LoadOrNewStreamFromDefault("q1", stream.Configuration())
 	checkErr(t, err, "load failed")
 
-	names, err = jsch.StreamNames()
+	names, err = jsm.StreamNames()
 	checkErr(t, err, "ls failed")
 
 	if len(names) != 1 || names[0] != "q1" {
@@ -74,7 +74,7 @@ func TestNewStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage())
+	stream, err := jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
 	if stream.Name() != "q1" {
@@ -95,13 +95,13 @@ func TestLoadOrNewStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	names, err := jsch.StreamNames()
+	names, err := jsm.StreamNames()
 	checkErr(t, err, "ls failed")
 	if len(names) != 0 {
 		t.Fatalf("expected no streams")
 	}
 
-	stream, err := jsch.LoadOrNewStream("q1", jsch.FileStorage())
+	stream, err := jsm.LoadOrNewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
 	if stream.Name() != "q1" {
@@ -116,7 +116,7 @@ func TestLoadOrNewStream(t *testing.T) {
 		t.Fatalf("expected stream retention got %s", stream.Retention().String())
 	}
 
-	stream, err = jsch.LoadOrNewStream("q1", jsch.FileStorage())
+	stream, err = jsm.LoadOrNewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
 	if stream.Name() != "q1" {
@@ -129,21 +129,21 @@ func TestLoadStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	names, err := jsch.StreamNames()
+	names, err := jsm.StreamNames()
 	checkErr(t, err, "ls failed")
 	if len(names) != 0 {
 		t.Fatalf("expected no streams")
 	}
 
-	_, err = jsch.LoadStream("q1")
+	_, err = jsm.LoadStream("q1")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
-	_, err = jsch.NewStream("q1", jsch.FileStorage())
+	_, err = jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
-	stream, err := jsch.LoadStream("q1")
+	stream, err := jsm.LoadStream("q1")
 	checkErr(t, err, "load failed")
 
 	if stream.Name() != "q1" {
@@ -160,7 +160,7 @@ func TestStream_Reset(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	orig, err := jsch.NewStream("q1", jsch.FileStorage())
+	orig, err := jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
 	// make original inconsistent
@@ -168,7 +168,7 @@ func TestStream_Reset(t *testing.T) {
 	checkErr(t, err, "delete failed")
 
 	// create a new one in its place
-	_, err = jsch.NewStream("q1", jsch.MemoryStorage())
+	_, err = jsm.NewStream("q1", jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
 	// reload
@@ -186,10 +186,10 @@ func TestStream_LoadConsumer(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage())
+	stream, err := jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
-	_, err = stream.NewConsumer(jsch.DurableName("c1"))
+	_, err = stream.NewConsumer(jsm.DurableName("c1"))
 	checkErr(t, err, "create failed")
 
 	consumer, err := stream.LoadConsumer("c1")
@@ -205,10 +205,10 @@ func TestStream_NewConsumerFromDefault(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage())
+	stream, err := jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
-	consumer, err := stream.NewConsumerFromDefault(jsch.SampledDefaultConsumer, jsch.DurableName("q1"))
+	consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DurableName("q1"))
 	checkErr(t, err, "create failed")
 	consumer.Reset()
 	if !consumer.IsSampled() {
@@ -221,13 +221,13 @@ func TestStream_LoadOrNewConsumerFromDefault(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage())
+	stream, err := jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
-	_, err = stream.LoadOrNewConsumerFromDefault("q1", jsch.SampledDefaultConsumer, jsch.DurableName("q1"))
+	_, err = stream.LoadOrNewConsumerFromDefault("q1", jsm.SampledDefaultConsumer, jsm.DurableName("q1"))
 	checkErr(t, err, "create failed")
 
-	consumer, err := stream.LoadOrNewConsumerFromDefault("q1", jsch.SampledDefaultConsumer, jsch.DurableName("q1"))
+	consumer, err := stream.LoadOrNewConsumerFromDefault("q1", jsm.SampledDefaultConsumer, jsm.DurableName("q1"))
 	checkErr(t, err, "load failed")
 	if !consumer.IsSampled() {
 		t.Fatalf("expected a sampled consumer")
@@ -239,7 +239,7 @@ func TestStream_UpdateConfiguration(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage(), jsch.Subjects("ORDERS.new"))
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("ORDERS.new"))
 	checkErr(t, err, "create failed")
 
 	if stream.Configuration().Subjects[0] != "ORDERS.new" {
@@ -260,7 +260,7 @@ func TestStream_UpdateConfiguration(t *testing.T) {
 		t.Fatalf("expected [ORDERS.*], got %v", stream.Configuration().Subjects)
 	}
 
-	err = stream.UpdateConfiguration(stream.Configuration(), jsch.Subjects("ARCHIVE.*"))
+	err = stream.UpdateConfiguration(stream.Configuration(), jsm.Subjects("ARCHIVE.*"))
 	checkErr(t, err, "update failed")
 
 	if len(stream.Configuration().Subjects) != 1 {
@@ -277,13 +277,13 @@ func TestStream_ConsumerNames(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage())
+	stream, err := jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
-	_, err = stream.NewConsumer(jsch.DurableName("c1"))
+	_, err = stream.NewConsumer(jsm.DurableName("c1"))
 	checkErr(t, err, "create failed")
 
-	_, err = stream.NewConsumer(jsch.DurableName("c2"))
+	_, err = stream.NewConsumer(jsm.DurableName("c2"))
 	checkErr(t, err, "create failed")
 
 	names, err := stream.ConsumerNames()
@@ -299,7 +299,7 @@ func TestStream_Information(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage())
+	stream, err := jsm.NewStream("q1", jsm.FileStorage())
 	checkErr(t, err, "create failed")
 
 	info, err := stream.Information()
@@ -315,7 +315,7 @@ func TestStream_Statistics(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage(), jsch.Subjects("test"))
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
 	stats, err := stream.State()
@@ -338,13 +338,13 @@ func TestStream_Delete(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage(), jsch.Subjects("test"))
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
 	err = stream.Delete()
 	checkErr(t, err, "delete failed")
 
-	names, err := jsch.StreamNames()
+	names, err := jsm.StreamNames()
 	checkErr(t, err, "names failed")
 
 	if len(names) != 0 {
@@ -357,7 +357,7 @@ func TestStream_Purge(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage(), jsch.Subjects("test"))
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
 	nc.Publish(stream.Subjects()[0], []byte("message 1"))
@@ -383,7 +383,7 @@ func TestStream_LoadMessage(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage(), jsch.Subjects("test"))
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
 	nc.Publish(stream.Subjects()[0], []byte("message 1"))
@@ -406,7 +406,7 @@ func TestStream_DeleteMessage(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsch.NewStream("q1", jsch.FileStorage(), jsch.Subjects("test"))
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
 	nc.Publish(stream.Subjects()[0], []byte("message 1"))
@@ -425,7 +425,7 @@ func TestStream_DeleteMessage(t *testing.T) {
 
 func TestFileStorage(t *testing.T) {
 	cfg := server.StreamConfig{Storage: -1}
-	err := jsch.FileStorage()(&cfg)
+	err := jsm.FileStorage()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Storage != server.FileStorage {
 		t.Fatalf("expected FileStorage")
@@ -434,7 +434,7 @@ func TestFileStorage(t *testing.T) {
 
 func TestInterestRetention(t *testing.T) {
 	cfg := server.StreamConfig{Retention: -1}
-	err := jsch.InterestRetention()(&cfg)
+	err := jsm.InterestRetention()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Retention != server.InterestPolicy {
 		t.Fatalf("expected InterestPolicy")
@@ -443,7 +443,7 @@ func TestInterestRetention(t *testing.T) {
 
 func TestMaxAge(t *testing.T) {
 	cfg := server.StreamConfig{MaxAge: -1}
-	err := jsch.MaxAge(time.Hour)(&cfg)
+	err := jsm.MaxAge(time.Hour)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxAge != time.Hour {
 		t.Fatalf("expected 1 hour")
@@ -452,7 +452,7 @@ func TestMaxAge(t *testing.T) {
 
 func TestMaxBytes(t *testing.T) {
 	cfg := server.StreamConfig{MaxBytes: -1}
-	err := jsch.MaxBytes(1024)(&cfg)
+	err := jsm.MaxBytes(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxBytes != 1024 {
 		t.Fatalf("expected 1024")
@@ -461,7 +461,7 @@ func TestMaxBytes(t *testing.T) {
 
 func TestMaxMessageSize(t *testing.T) {
 	cfg := server.StreamConfig{MaxMsgSize: -1}
-	err := jsch.MaxMessageSize(1024)(&cfg)
+	err := jsm.MaxMessageSize(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxMsgSize != 1024 {
 		t.Fatalf("expected 1024")
@@ -470,7 +470,7 @@ func TestMaxMessageSize(t *testing.T) {
 
 func TestMaxMessages(t *testing.T) {
 	cfg := server.StreamConfig{MaxMsgs: -1}
-	err := jsch.MaxMessages(1024)(&cfg)
+	err := jsm.MaxMessages(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxMsgs != 1024 {
 		t.Fatalf("expected 1024")
@@ -479,7 +479,7 @@ func TestMaxMessages(t *testing.T) {
 
 func TestMaxObservables(t *testing.T) {
 	cfg := server.StreamConfig{MaxConsumers: -1}
-	err := jsch.MaxConsumers(1024)(&cfg)
+	err := jsm.MaxConsumers(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxConsumers != 1024 {
 		t.Fatalf("expected 1024")
@@ -488,7 +488,7 @@ func TestMaxObservables(t *testing.T) {
 
 func TestMemoryStorage(t *testing.T) {
 	cfg := server.StreamConfig{Storage: -1}
-	err := jsch.MemoryStorage()(&cfg)
+	err := jsm.MemoryStorage()(&cfg)
 	checkErr(t, err, "memory storage failed")
 	if cfg.Storage != server.MemoryStorage {
 		t.Fatalf("expected MemoryStorage")
@@ -497,7 +497,7 @@ func TestMemoryStorage(t *testing.T) {
 
 func TestNoAck(t *testing.T) {
 	cfg := server.StreamConfig{NoAck: false}
-	err := jsch.NoAck()(&cfg)
+	err := jsm.NoAck()(&cfg)
 	checkErr(t, err, "failed")
 	if !cfg.NoAck {
 		t.Fatalf("expected NoAck")
@@ -506,7 +506,7 @@ func TestNoAck(t *testing.T) {
 
 func TestReplicas(t *testing.T) {
 	cfg := server.StreamConfig{Replicas: -1}
-	err := jsch.Replicas(1024)(&cfg)
+	err := jsm.Replicas(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Replicas != 1024 {
 		t.Fatalf("expected 1024")
@@ -515,7 +515,7 @@ func TestReplicas(t *testing.T) {
 
 func TestLimitsRetention(t *testing.T) {
 	cfg := server.StreamConfig{Retention: -1}
-	err := jsch.LimitsRetention()(&cfg)
+	err := jsm.LimitsRetention()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Retention != server.LimitsPolicy {
 		t.Fatalf("expected LimitsPolicy")
@@ -524,7 +524,7 @@ func TestLimitsRetention(t *testing.T) {
 
 func TestSubjects(t *testing.T) {
 	cfg := server.StreamConfig{Subjects: []string{}}
-	err := jsch.Subjects("one", "two")(&cfg)
+	err := jsm.Subjects("one", "two")(&cfg)
 	checkErr(t, err, "failed")
 	if len(cfg.Subjects) != 2 || cfg.Subjects[0] != "one" || cfg.Subjects[1] != "two" {
 		t.Fatalf("expected [one, two] got %v", cfg.Subjects)
@@ -533,7 +533,7 @@ func TestSubjects(t *testing.T) {
 
 func TestWorkQueueRetention(t *testing.T) {
 	cfg := server.StreamConfig{Retention: -1}
-	err := jsch.WorkQueueRetention()(&cfg)
+	err := jsm.WorkQueueRetention()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Retention != server.WorkQueuePolicy {
 		t.Fatalf("expected WorkQueuePolicy")

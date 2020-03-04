@@ -1,27 +1,33 @@
 ## Overview
 
-This is a helper library for managing and interacting with JetStream.
+This is a library for managing and interacting with JetStream.
 
-This library provides API access to all the abilities of the `nats` CLI utility.
+This library provides API access to all the JetStream related abilities of the `nats` CLI utility.
+
+**NOTE** For general access to JetStream no special libraries are needed, the standard language specific NATS client can be used. These are optional helpers.
+
+## Stability
+
+This package is under development, while JetStream is in Preview we make no promises about the API stability of this package.
 
 ## Setup
 
-As some parts of this library will go into the core NATS client and others not we are not sure how it will get a NATS connection, for now we did a basic - but ugly - thing just to delay answering that.
+The library can use an existing NATS connection or handle the connection for you:
 
 ```go
 nc, _ := nats.Connect("localhost:4222", nats.UserCredentials("user.creds"))
-jsch.SetConnection(nc)
+jsm.SetConnection(nc)
 ```
 
 or
 
 ```go
-err := jsch.Connect("localhost:4222", nats.UserCredentials("user.creds"))
+err := jsm.Connect("localhost:4222", nats.UserCredentials("user.creds"))
 ```
 
 This will then use the NATS Connection you supply for all future interaction with JetStream.
 
-If you want access to this connection you can use `jsch.Connection()`
+If you want access to this connection you can use `jsm.Connection()`
 
 ## Streams
 ### Creating Streams
@@ -29,25 +35,25 @@ If you want access to this connection you can use `jsch.Connection()`
 Before anything you have to create a stream, the basic pattern is:
 
 ```go
-stream, err := jsch.NewStream("ORDERS", jsch.Subjects("ORDERS.*"), jsch.MaxAge(24*365*time.Hour), jsch.FileStorage())
+stream, err := jsm.NewStream("ORDERS", jsm.Subjects("ORDERS.*"), jsm.MaxAge(24*365*time.Hour), jsm.FileStorage())
 ```
 
 This can get quite verbose so you might have a template configuration of your own choosing to create many similar Streams.
 
 ```go
-template, _ := jsch.NewStreamConfiguration(jsch.DefaultStream, jsch.MaxAge(24 * 365 * time.Hour), jsch.FileStorage())
+template, _ := jsm.NewStreamConfiguration(jsm.DefaultStream, jsm.MaxAge(24 * 365 * time.Hour), jsm.FileStorage())
 
-orders, _ := jsch.NewStreamFromDefault("ORDERS", template, jsch.Subjects("ORDERS.*"))
-archive, _ := jsch.NewStreamFromDefault("ARCHIVE", template, jsch.Subjects("ARCHIVE"), jsch.MaxAge(5*template.MaxAge))
+orders, _ := jsm.NewStreamFromDefault("ORDERS", template, jsm.Subjects("ORDERS.*"))
+archive, _ := jsm.NewStreamFromDefault("ARCHIVE", template, jsm.Subjects("ARCHIVE"), jsm.MaxAge(5*template.MaxAge))
 ```
 
-The `jsch.NewStream` uses `jsch.DefaultStream` as starting defaults.  We also have `jsch.DefaultWorkQueue` to help you with a sane starting point.
+The `jsm.NewStream` uses `jsm.DefaultStream` as starting defaults.  We also have `jsm.DefaultWorkQueue` to help you with a sane starting point.
 
 You can even copy Stream configurations this way (not content, just configuration), this creates `STAGING` using `ORDERS` config with a different set of subjects:
 
 ```go
-orders, err := jsch.NewStream("ORDERS", jsch.Subjects("ORDERS.*"), jsch.MaxAge(24*365*time.Hour), jsch.FileStorage())
-staging, err := jsch.NewStreamFromDefault("STAGING", orders.Configuration(), jsch.Subjects("STAGINGORDERS.*"))
+orders, err := jsm.NewStream("ORDERS", jsm.Subjects("ORDERS.*"), jsm.MaxAge(24*365*time.Hour), jsm.FileStorage())
+staging, err := jsm.NewStreamFromDefault("STAGING", orders.Configuration(), jsm.Subjects("STAGINGORDERS.*"))
 ```
 
 ### Loading references to existing streams
@@ -55,13 +61,13 @@ staging, err := jsch.NewStreamFromDefault("STAGING", orders.Configuration(), jsc
 Once a Stream exist you can load it later:
 
 ```go
-orders, err := jsch.LoadStream("ORDERS")
+orders, err := jsm.LoadStream("ORDERS")
 ```
 
 This will fail if the stream does not exist, create and load can be combined:
 
 ```go
-orders, err := jsch.LoadOrNewFromDefault("ORDERS", template, jsch.Subjects("ORDERS.*"))
+orders, err := jsm.LoadOrNewFromDefault("ORDERS", template, jsm.Subjects("ORDERS.*"))
 ```
 
 This will create the Stream if it doesn't exist, else load the existing one - though no effort is made to ensure the loaded one matches the desired configuration in that case.
@@ -83,7 +89,7 @@ There are a number of other functions allowing you to purge messages, read indiv
 Above you saw that once you have a handle to a stream you can create and load consumers, you can access the consumer directly though, lets create one:
 
 ```go
-consumer, err := jsch.NewConsumer("ORDERS", "NEW", jsch.FilterSubject("ORDERS.received"), jsch.SampleFrequency("100"))
+consumer, err := jsm.NewConsumer("ORDERS", "NEW", jsm.FilterSubject("ORDERS.received"), jsm.SampleFrequency("100"))
 ```
 
 Like with Streams we have `NewConsumerFromDefault`, `LoadOrNewConsumer` and `LoadOrNewConsumerFromDefault` and we supply 2 default default configurations to help you `DefaultConsumer` and `SampledDefaultConsumer`.
@@ -118,7 +124,7 @@ When consuming these messages they have metadata attached that you can parse:
 
 ```go
 msg, _ := consumer.NextMsg()
-meta, _ := jsch.ParseJSMsgMetadata(msg)
+meta, _ := jsm.ParseJSMsgMetadata(msg)
 ```
 
 At this point you have access to `meta.Stream`, `meta.Consumer` for the names and `meta.StreamSequence`, `meta.ConsumerSequence` to determine which exact message and `meta.Delivered` for how many times it was redelivered.

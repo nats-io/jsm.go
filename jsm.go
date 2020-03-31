@@ -35,6 +35,9 @@ func Connect(servers string, opts ...nats.Option) (err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	// needed so that interest drops are observed by JetStream to stop
+	opts = append(opts, nats.UseOldRequestStyle())
+
 	nc, err = nats.Connect(servers, opts...)
 
 	return err
@@ -48,10 +51,12 @@ func SetTimeout(t time.Duration) {
 	timeout = t
 }
 
-// SetConnection sets the connection used to perform requests
+// SetConnection sets the connection used to perform requests. Will force using old style requests.
 func SetConnection(c *nats.Conn) {
 	mu.Lock()
 	defer mu.Unlock()
+
+	c.Opts.UseOldRequestStyle = true
 
 	nc = c
 }
@@ -241,7 +246,7 @@ func EachStreamTemplate(cb func(*StreamTemplate)) (err error) {
 
 // Flush flushes the underlying NATS connection
 func Flush() error {
-	nc := nconn()
+	nc := Connection()
 
 	if nc == nil {
 		return fmt.Errorf("nats connection is not set, use SetConnection()")
@@ -252,10 +257,6 @@ func Flush() error {
 
 // Connection is the active NATS connection being used
 func Connection() *nats.Conn {
-	return nconn()
-}
-
-func nconn() *nats.Conn {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -263,7 +264,7 @@ func nconn() *nats.Conn {
 }
 
 func nrequest(subj string, data []byte, timeout time.Duration) (*nats.Msg, error) {
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}

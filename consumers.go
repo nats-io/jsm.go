@@ -366,7 +366,7 @@ func (c *Consumer) Subscribe(h func(*nats.Msg)) (sub *nats.Subscription, err err
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
 	}
 
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}
@@ -380,7 +380,7 @@ func (c *Consumer) ChanSubscribe(ch chan *nats.Msg) (sub *nats.Subscription, err
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
 	}
 
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}
@@ -394,7 +394,7 @@ func (c *Consumer) ChanQueueSubscribe(group string, ch chan *nats.Msg) (sub *nat
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
 	}
 
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}
@@ -408,7 +408,7 @@ func (c *Consumer) SubscribeSync() (sub *nats.Subscription, err error) {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
 	}
 
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}
@@ -422,7 +422,7 @@ func (c *Consumer) QueueSubscribe(queue string, h func(*nats.Msg)) (sub *nats.Su
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
 	}
 
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}
@@ -436,7 +436,7 @@ func (c *Consumer) QueueSubscribeSync(queue string) (sub *nats.Subscription, err
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
 	}
 
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}
@@ -450,7 +450,7 @@ func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
 	}
 
-	nc := nconn()
+	nc := Connection()
 	if nc == nil {
 		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
 	}

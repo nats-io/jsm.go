@@ -394,73 +394,83 @@ func TestConsumer_IsSampled(t *testing.T) {
 	}
 }
 
+func testConsumerConfig() *jsm.ConsumerConfig {
+	return &jsm.ConsumerConfig{ConsumerConfig: server.ConsumerConfig{
+		AckWait:      0,
+		AckPolicy:    -1,
+		MaxDeliver:   -1,
+		ReplayPolicy: -1,
+		StreamSeq:    0,
+		StartTime:    time.Now(),
+	}}
+}
 func TestAckWait(t *testing.T) {
-	cfg := server.ConsumerConfig{AckWait: 0}
-	jsm.AckWait(time.Hour)(&cfg)
+	cfg := testConsumerConfig()
+	jsm.AckWait(time.Hour)(cfg)
 	if cfg.AckWait != time.Hour {
 		t.Fatalf("expected 1 hour got %v", cfg.AckWait)
 	}
 }
 
 func TestAcknowledgeAll(t *testing.T) {
-	cfg := server.ConsumerConfig{AckPolicy: -1}
-	jsm.AcknowledgeAll()(&cfg)
+	cfg := testConsumerConfig()
+	jsm.AcknowledgeAll()(cfg)
 	if cfg.AckPolicy != server.AckAll {
 		t.Fatalf("expected AckAll got %s", cfg.AckPolicy.String())
 	}
 }
 
 func TestAcknowledgeExplicit(t *testing.T) {
-	cfg := server.ConsumerConfig{AckPolicy: -1}
-	jsm.AcknowledgeExplicit()(&cfg)
+	cfg := testConsumerConfig()
+	jsm.AcknowledgeExplicit()(cfg)
 	if cfg.AckPolicy != server.AckExplicit {
 		t.Fatalf("expected AckExplicit got %s", cfg.AckPolicy.String())
 	}
 }
 
 func TestAcknowledgeNone(t *testing.T) {
-	cfg := server.ConsumerConfig{AckPolicy: -1}
-	jsm.AcknowledgeNone()(&cfg)
+	cfg := testConsumerConfig()
+	jsm.AcknowledgeNone()(cfg)
 	if cfg.AckPolicy != server.AckNone {
 		t.Fatalf("expected AckNone got %s", cfg.AckPolicy.String())
 	}
 }
 
 func TestDeliverAllAvailable(t *testing.T) {
-	cfg := server.ConsumerConfig{DeliverAll: false}
-	jsm.DeliverAllAvailable()(&cfg)
+	cfg := testConsumerConfig()
+	jsm.DeliverAllAvailable()(cfg)
 	if !cfg.DeliverAll {
 		t.Fatal("expected DeliverAll")
 	}
 }
 
 func TestDeliverySubject(t *testing.T) {
-	cfg := server.ConsumerConfig{Delivery: ""}
-	jsm.DeliverySubject("out")(&cfg)
+	cfg := testConsumerConfig()
+	jsm.DeliverySubject("out")(cfg)
 	if cfg.Delivery != "out" {
 		t.Fatalf("expected 'out' got %q", cfg.Delivery)
 	}
 }
 
 func TestDurableName(t *testing.T) {
-	cfg := server.ConsumerConfig{Durable: ""}
-	jsm.DurableName("test")(&cfg)
+	cfg := testConsumerConfig()
+	jsm.DurableName("test")(cfg)
 	if cfg.Durable != "test" {
 		t.Fatalf("expected 'test' got %q", cfg.Durable)
 	}
 }
 
 func TestFilterStreamBySubject(t *testing.T) {
-	cfg := server.ConsumerConfig{FilterSubject: ""}
-	jsm.FilterStreamBySubject("test")(&cfg)
+	cfg := testConsumerConfig()
+	jsm.FilterStreamBySubject("test")(cfg)
 	if cfg.FilterSubject != "test" {
 		t.Fatalf("expected 'test' got %q", cfg.FilterSubject)
 	}
 }
 
 func TestMaxDeliveryAttempts(t *testing.T) {
-	cfg := server.ConsumerConfig{MaxDeliver: -1}
-	jsm.MaxDeliveryAttempts(10)(&cfg)
+	cfg := testConsumerConfig()
+	jsm.MaxDeliveryAttempts(10)(cfg)
 	if cfg.MaxDeliver != 10 {
 		t.Fatalf("expected 10 got %q", cfg.MaxDeliver)
 	}
@@ -472,40 +482,40 @@ func TestMaxDeliveryAttempts(t *testing.T) {
 }
 
 func TestReplayAsReceived(t *testing.T) {
-	cfg := server.ConsumerConfig{ReplayPolicy: -1}
-	jsm.ReplayAsReceived()(&cfg)
+	cfg := testConsumerConfig()
+	jsm.ReplayAsReceived()(cfg)
 	if cfg.ReplayPolicy != server.ReplayOriginal {
 		t.Fatalf("expected ReplayOriginal got %s", cfg.ReplayPolicy.String())
 	}
 }
 
 func TestReplayInstantly(t *testing.T) {
-	cfg := server.ConsumerConfig{ReplayPolicy: -1}
-	jsm.ReplayInstantly()(&cfg)
+	cfg := testConsumerConfig()
+	jsm.ReplayInstantly()(cfg)
 	if cfg.ReplayPolicy != server.ReplayInstant {
 		t.Fatalf("expected ReplayInstant got %s", cfg.ReplayPolicy.String())
 	}
 }
 
 func TestSamplePercent(t *testing.T) {
-	cfg := server.ConsumerConfig{SampleFrequency: ""}
-	err := jsm.SamplePercent(200)(&cfg)
+	cfg := testConsumerConfig()
+	err := jsm.SamplePercent(200)(cfg)
 	if err == nil {
 		t.Fatal("impossible percent didnt error")
 	}
 
-	err = jsm.SamplePercent(-1)(&cfg)
+	err = jsm.SamplePercent(-1)(cfg)
 	if err == nil {
 		t.Fatal("impossible percent didnt error")
 	}
 
-	err = jsm.SamplePercent(0)(&cfg)
+	err = jsm.SamplePercent(0)(cfg)
 	checkErr(t, err, "good percent errored")
 	if cfg.SampleFrequency != "" {
 		t.Fatal("expected empty string")
 	}
 
-	err = jsm.SamplePercent(20)(&cfg)
+	err = jsm.SamplePercent(20)(cfg)
 	checkErr(t, err, "good percent errored")
 	if cfg.SampleFrequency != "20%" {
 		t.Fatal("expected 20 pct string")
@@ -513,33 +523,33 @@ func TestSamplePercent(t *testing.T) {
 }
 
 func TestStartAtSequence(t *testing.T) {
-	cfg := server.ConsumerConfig{StreamSeq: 0}
-	jsm.StartAtSequence(1024)(&cfg)
+	cfg := testConsumerConfig()
+	jsm.StartAtSequence(1024)(cfg)
 	if cfg.StreamSeq != 1024 {
 		t.Fatal("expected 1024")
 	}
 }
 
 func TestStartAtTime(t *testing.T) {
-	cfg := server.ConsumerConfig{StartTime: time.Now()}
+	cfg := testConsumerConfig()
 	s := time.Now().Add(-1 * time.Hour)
-	jsm.StartAtTime(s)(&cfg)
+	jsm.StartAtTime(s)(cfg)
 	if cfg.StartTime.Unix() != s.Unix() {
 		t.Fatal("expected 1 hour delta")
 	}
 }
 
 func TestStartAtTimeDelta(t *testing.T) {
-	cfg := server.ConsumerConfig{StartTime: time.Now()}
-	jsm.StartAtTimeDelta(time.Hour)(&cfg)
+	cfg := testConsumerConfig()
+	jsm.StartAtTimeDelta(time.Hour)(cfg)
 	if cfg.StartTime.Unix() < time.Now().Add(-1*time.Hour-time.Second).Unix() || cfg.StartTime.Unix() > time.Now().Add(-1*time.Hour+time.Second).Unix() {
 		t.Fatal("expected ~ 1 hour delta")
 	}
 }
 
 func TestStartWithLastReceived(t *testing.T) {
-	cfg := server.ConsumerConfig{DeliverLast: false}
-	jsm.StartWithLastReceived()(&cfg)
+	cfg := testConsumerConfig()
+	jsm.StartWithLastReceived()(cfg)
 	if !cfg.DeliverLast {
 		t.Fatal("expected DeliverLast")
 	}

@@ -15,6 +15,7 @@
 package jsm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -31,6 +32,7 @@ var nc *nats.Conn
 var mu sync.Mutex
 
 // Connect connects to NATS and configures it to use the connection in future interactions with JetStream
+// Deprecated: Use Request Options to supply the connection
 func Connect(servers string, opts ...nats.Option) (err error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -44,6 +46,7 @@ func Connect(servers string, opts ...nats.Option) (err error) {
 }
 
 // SetTimeout sets the timeout for requests to JetStream
+// Deprecated: Use Request Options to supply the timeout
 func SetTimeout(t time.Duration) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -52,6 +55,7 @@ func SetTimeout(t time.Duration) {
 }
 
 // SetConnection sets the connection used to perform requests. Will force using old style requests.
+// Deprecated: Use Request Options to supply the connection
 func SetConnection(c *nats.Conn) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -62,8 +66,13 @@ func SetConnection(c *nats.Conn) {
 }
 
 // IsJetStreamEnabled determines if JetStream is enabled for the current account
-func IsJetStreamEnabled() bool {
-	_, err := nrequest(server.JetStreamEnabled, nil, timeout)
+func IsJetStreamEnabled(opts ...RequestOption) bool {
+	ropts, err := newreqoptions(opts...)
+	if err != nil {
+		return false
+	}
+
+	_, err = request(server.JetStreamEnabled, nil, ropts)
 	return err == nil
 }
 
@@ -87,8 +96,8 @@ func IsOKResponse(m *nats.Msg) bool {
 }
 
 // IsKnownStream determines if a Stream is known
-func IsKnownStream(stream string) (bool, error) {
-	streams, err := StreamNames()
+func IsKnownStream(stream string, opts ...RequestOption) (bool, error) {
+	streams, err := StreamNames(opts...)
 	if err != nil {
 		return false, err
 	}
@@ -103,8 +112,8 @@ func IsKnownStream(stream string) (bool, error) {
 }
 
 // IsKnownStreamTemplate determines if a StreamTemplate is known
-func IsKnownStreamTemplate(template string) (bool, error) {
-	templates, err := StreamTemplateNames()
+func IsKnownStreamTemplate(template string, opts ...RequestOption) (bool, error) {
+	templates, err := StreamTemplateNames(opts...)
 	if err != nil {
 		return false, err
 	}
@@ -119,8 +128,8 @@ func IsKnownStreamTemplate(template string) (bool, error) {
 }
 
 // IsKnownConsumer determines if a Consumer is known for a specific Stream
-func IsKnownConsumer(stream string, consumer string) (bool, error) {
-	consumers, err := ConsumerNames(stream)
+func IsKnownConsumer(stream string, consumer string, opts ...RequestOption) (bool, error) {
+	consumers, err := ConsumerNames(stream, opts...)
 	if err != nil {
 		return false, err
 	}
@@ -135,8 +144,13 @@ func IsKnownConsumer(stream string, consumer string) (bool, error) {
 }
 
 // JetStreamAccountInfo retrieves information about the current account limits and more
-func JetStreamAccountInfo() (info server.JetStreamAccountStats, err error) {
-	response, err := nrequest(server.JetStreamInfo, nil, timeout)
+func JetStreamAccountInfo(opts ...RequestOption) (info server.JetStreamAccountStats, err error) {
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return server.JetStreamAccountStats{}, err
+	}
+
+	response, err := request(server.JetStreamInfo, nil, conn)
 	if err != nil {
 		return info, err
 	}
@@ -150,10 +164,15 @@ func JetStreamAccountInfo() (info server.JetStreamAccountStats, err error) {
 }
 
 // StreamNames is a sorted list of all known Streams
-func StreamNames() (streams []string, err error) {
+func StreamNames(opts ...RequestOption) (streams []string, err error) {
 	streams = []string{}
 
-	response, err := nrequest(server.JetStreamListStreams, nil, timeout)
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := request(server.JetStreamListStreams, nil, conn)
 	if err != nil {
 		return streams, err
 	}
@@ -169,10 +188,15 @@ func StreamNames() (streams []string, err error) {
 }
 
 // StreamTemplateNames is a sorted list of all known StreamTemplates
-func StreamTemplateNames() (templates []string, err error) {
+func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) {
 	templates = []string{}
 
-	response, err := nrequest(server.JetStreamListTemplates, nil, timeout)
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := request(server.JetStreamListTemplates, nil, conn)
 	if err != nil {
 		return templates, err
 	}
@@ -188,10 +212,15 @@ func StreamTemplateNames() (templates []string, err error) {
 }
 
 // ConsumerNames is a sorted list of all known Consumers within a Stream
-func ConsumerNames(stream string) (consumers []string, err error) {
+func ConsumerNames(stream string, opts ...RequestOption) (consumers []string, err error) {
 	consumers = []string{}
 
-	response, err := nrequest(fmt.Sprintf(server.JetStreamConsumersT, stream), nil, timeout)
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := request(fmt.Sprintf(server.JetStreamConsumersT, stream), nil, conn)
 	if err != nil {
 		return consumers, err
 	}
@@ -207,14 +236,14 @@ func ConsumerNames(stream string) (consumers []string, err error) {
 }
 
 // EachStream iterates over all known Streams
-func EachStream(cb func(*Stream)) (err error) {
+func EachStream(cb func(*Stream), opts ...RequestOption) (err error) {
 	names, err := StreamNames()
 	if err != nil {
 		return err
 	}
 
 	for _, s := range names {
-		stream, err := LoadStream(s)
+		stream, err := LoadStream(s, opts...)
 		if err != nil {
 			return err
 		}
@@ -226,14 +255,14 @@ func EachStream(cb func(*Stream)) (err error) {
 }
 
 // EachStreamTemplate iterates over all known Stream Templates
-func EachStreamTemplate(cb func(*StreamTemplate)) (err error) {
-	names, err := StreamTemplateNames()
+func EachStreamTemplate(cb func(*StreamTemplate), opts ...RequestOption) (err error) {
+	names, err := StreamTemplateNames(opts...)
 	if err != nil {
 		return err
 	}
 
 	for _, t := range names {
-		template, err := LoadStreamTemplate(t)
+		template, err := LoadStreamTemplate(t, opts...)
 		if err != nil {
 			return err
 		}
@@ -245,6 +274,7 @@ func EachStreamTemplate(cb func(*StreamTemplate)) (err error) {
 }
 
 // Flush flushes the underlying NATS connection
+// Deprecated: Use Request Options to supply the connection
 func Flush() error {
 	nc := Connection()
 
@@ -256,6 +286,7 @@ func Flush() error {
 }
 
 // Connection is the active NATS connection being used
+// Deprecated: Use Request Options to supply the connection
 func Connection() *nats.Conn {
 	mu.Lock()
 	defer mu.Unlock()
@@ -263,13 +294,22 @@ func Connection() *nats.Conn {
 	return nc
 }
 
-func nrequest(subj string, data []byte, timeout time.Duration) (*nats.Msg, error) {
-	nc := Connection()
-	if nc == nil {
-		return nil, fmt.Errorf("nats connection is not set, use SetConnection()")
+func request(subj string, data []byte, opts *reqoptions) (res *nats.Msg, err error) {
+	if opts == nil || opts.nc == nil {
+		return nil, fmt.Errorf("nats connection is not set")
 	}
 
-	res, err := nc.Request(subj, data, timeout)
+	var ctx context.Context
+	var cancel func()
+
+	if opts.ctx == nil {
+		ctx, cancel = context.WithTimeout(context.Background(), opts.timeout)
+		defer cancel()
+	} else {
+		ctx = opts.ctx
+	}
+
+	res, err = opts.nc.RequestWithContext(ctx, subj, data)
 	if err != nil {
 		return nil, err
 	}

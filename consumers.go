@@ -507,6 +507,10 @@ func NextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestO
 
 	select {
 	case <-ctx.Done():
+		if len(q) > 0 {
+			return q, nil
+		}
+
 		return q, ctx.Err()
 	case <-done:
 		return q, nil

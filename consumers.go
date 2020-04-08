@@ -487,7 +487,7 @@ func NextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestO
 	done := make(chan struct{})
 	ib := nats.NewInbox()
 
-	sub, err := nc.Subscribe(ib, func(m *nats.Msg) {
+	sub, err := ropts.nc.Subscribe(ib, func(m *nats.Msg) {
 		q <- m
 		if len(q) == cap(q) {
 			done <- struct{}{}
@@ -500,7 +500,7 @@ func NextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestO
 	defer close(q)
 	defer sub.Unsubscribe()
 
-	err = nc.PublishRequest(ns, ib, []byte(strconv.Itoa(msgCount)))
+	err = ropts.nc.PublishRequest(ns, ib, []byte(strconv.Itoa(msgCount)))
 	if err != nil {
 		return nil, err
 	}

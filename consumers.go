@@ -14,6 +14,7 @@
 package jsm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -463,22 +464,55 @@ func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (
 }
 
 // NextMsgs retrieves the next n messages
-func NextMsgs(stream string, consumer string, n int, opts ...RequestOption) (m *nats.Msg, err error) {
+func NextMsgs(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs []*nats.Msg, err error) {
 	ropts, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := NextSubject(stream, consumer)
+	q := make(chan *nats.Msg, msgCount)
+	ib := nats.NewInbox()
+
+	sub, err := nc.ChanSubscribe(ib, q)
+	if err != nil {
+		return nil, err
+	}
+	defer sub.Unsubscribe()
+
+	ctx := ropts.ctx
+	var cancel func()
+
+	if ctx == nil {
+		ctx, cancel = context.WithTimeout(context.Background(), ropts.timeout)
+		defer cancel()
+	}
+
+	ns, err := NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err
 	}
 
-	return request(s, []byte(strconv.Itoa(n)), ropts)
+	err = nc.PublishRequest(ns, ib, []byte(strconv.Itoa(msgCount)))
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		select {
+		case m := <-q:
+			msgs = append(msgs, m)
+
+			if len(msgs) == msgCount {
+				return msgs, nil
+			}
+		case <-ctx.Done():
+			return msgs, ctx.Err()
+		}
+	}
 }
 
 // NextMsgs retrieves the next n messages
-func (c *Consumer) NextMsgs(n int, opts ...RequestOption) (m *nats.Msg, err error) {
+func (c *Consumer) NextMsgs(n int, opts ...RequestOption) (m []*nats.Msg, err error) {
 	if !c.IsPullMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not pull-based", c.stream, c.name)
 	}
@@ -488,7 +522,12 @@ func (c *Consumer) NextMsgs(n int, opts ...RequestOption) (m *nats.Msg, err erro
 
 // NextMsg retrieves the next message
 func (c *Consumer) NextMsg(opts ...RequestOption) (m *nats.Msg, err error) {
-	return NextMsgs(c.stream, c.name, 1, append(c.cfg.ropts, opts...)...)
+	msgs, err := NextMsgs(c.stream, c.name, 1, append(c.cfg.ropts, opts...)...)
+	if err != nil {
+		return nil, err
+	}
+
+	return msgs[0], nil
 }
 
 // State returns the Consumer state

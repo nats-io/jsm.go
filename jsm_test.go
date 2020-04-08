@@ -14,6 +14,7 @@
 package jsm_test
 
 import (
+	"context"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -73,7 +74,7 @@ func TestJetStreamEnabled(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	if !jsm.IsJetStreamEnabled() {
+	if !jsm.IsJetStreamEnabled(jsm.WithContext(context.Background())) {
 		t.Fatalf("expected JS to be enabled")
 	}
 }

@@ -27,7 +27,7 @@ func TestNewStreamFromDefault(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsm.NewStreamFromDefault("q1", jsm.DefaultWorkQueue, jsm.MemoryStorage(), jsm.MaxAge(time.Hour))
+	stream, err := jsm.NewStreamFromDefault("q1", jsm.DefaultWorkQueue, jsm.StreamConnection(jsm.WithConnection(nc)), jsm.MemoryStorage(), jsm.MaxAge(time.Hour))
 	checkErr(t, err, "create failed")
 
 	stream.Reset()
@@ -424,7 +424,11 @@ func TestStream_DeleteMessage(t *testing.T) {
 }
 
 func TestFileStorage(t *testing.T) {
-	cfg := server.StreamConfig{Storage: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			Storage: -1,
+		},
+	}
 	err := jsm.FileStorage()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Storage != server.FileStorage {
@@ -433,7 +437,11 @@ func TestFileStorage(t *testing.T) {
 }
 
 func TestInterestRetention(t *testing.T) {
-	cfg := server.StreamConfig{Retention: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			Retention: -1,
+		},
+	}
 	err := jsm.InterestRetention()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Retention != server.InterestPolicy {
@@ -442,7 +450,11 @@ func TestInterestRetention(t *testing.T) {
 }
 
 func TestMaxAge(t *testing.T) {
-	cfg := server.StreamConfig{MaxAge: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			MaxAge: -1,
+		},
+	}
 	err := jsm.MaxAge(time.Hour)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxAge != time.Hour {
@@ -451,7 +463,11 @@ func TestMaxAge(t *testing.T) {
 }
 
 func TestMaxBytes(t *testing.T) {
-	cfg := server.StreamConfig{MaxBytes: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			MaxBytes: -1,
+		},
+	}
 	err := jsm.MaxBytes(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxBytes != 1024 {
@@ -460,7 +476,11 @@ func TestMaxBytes(t *testing.T) {
 }
 
 func TestMaxMessageSize(t *testing.T) {
-	cfg := server.StreamConfig{MaxMsgSize: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			MaxMsgSize: -1,
+		},
+	}
 	err := jsm.MaxMessageSize(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxMsgSize != 1024 {
@@ -469,7 +489,11 @@ func TestMaxMessageSize(t *testing.T) {
 }
 
 func TestMaxMessages(t *testing.T) {
-	cfg := server.StreamConfig{MaxMsgs: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			MaxMsgs: -1,
+		},
+	}
 	err := jsm.MaxMessages(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxMsgs != 1024 {
@@ -478,7 +502,11 @@ func TestMaxMessages(t *testing.T) {
 }
 
 func TestMaxObservables(t *testing.T) {
-	cfg := server.StreamConfig{MaxConsumers: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			MaxConsumers: -1,
+		},
+	}
 	err := jsm.MaxConsumers(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxConsumers != 1024 {
@@ -487,7 +515,11 @@ func TestMaxObservables(t *testing.T) {
 }
 
 func TestMemoryStorage(t *testing.T) {
-	cfg := server.StreamConfig{Storage: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			Storage: -1,
+		},
+	}
 	err := jsm.MemoryStorage()(&cfg)
 	checkErr(t, err, "memory storage failed")
 	if cfg.Storage != server.MemoryStorage {
@@ -496,7 +528,11 @@ func TestMemoryStorage(t *testing.T) {
 }
 
 func TestNoAck(t *testing.T) {
-	cfg := server.StreamConfig{NoAck: false}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			NoAck: false,
+		},
+	}
 	err := jsm.NoAck()(&cfg)
 	checkErr(t, err, "failed")
 	if !cfg.NoAck {
@@ -505,7 +541,11 @@ func TestNoAck(t *testing.T) {
 }
 
 func TestReplicas(t *testing.T) {
-	cfg := server.StreamConfig{Replicas: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			Replicas: -1,
+		},
+	}
 	err := jsm.Replicas(1024)(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Replicas != 1024 {
@@ -514,7 +554,11 @@ func TestReplicas(t *testing.T) {
 }
 
 func TestLimitsRetention(t *testing.T) {
-	cfg := server.StreamConfig{Retention: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			Retention: -1,
+		},
+	}
 	err := jsm.LimitsRetention()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Retention != server.LimitsPolicy {
@@ -523,7 +567,11 @@ func TestLimitsRetention(t *testing.T) {
 }
 
 func TestSubjects(t *testing.T) {
-	cfg := server.StreamConfig{Subjects: []string{}}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			Subjects: []string{},
+		},
+	}
 	err := jsm.Subjects("one", "two")(&cfg)
 	checkErr(t, err, "failed")
 	if len(cfg.Subjects) != 2 || cfg.Subjects[0] != "one" || cfg.Subjects[1] != "two" {
@@ -532,7 +580,11 @@ func TestSubjects(t *testing.T) {
 }
 
 func TestWorkQueueRetention(t *testing.T) {
-	cfg := server.StreamConfig{Retention: -1}
+	cfg := jsm.StreamConfig{
+		StreamConfig: server.StreamConfig{
+			Retention: -1,
+		},
+	}
 	err := jsm.WorkQueueRetention()(&cfg)
 	checkErr(t, err, "failed")
 	if cfg.Retention != server.WorkQueuePolicy {

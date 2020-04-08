@@ -21,8 +21,15 @@ import (
 )
 
 type StreamTemplate struct {
-	cfg     server.StreamTemplateConfig
+	cfg     StreamTemplateConfig
 	streams []string
+}
+
+type StreamTemplateConfig struct {
+	server.StreamTemplateConfig
+
+	conn  *reqoptions
+	ropts []RequestOption
 }
 
 // NewStreamTemplate creates a new template
@@ -34,7 +41,7 @@ func NewStreamTemplate(name string, maxStreams uint32, config server.StreamConfi
 
 	tc := server.StreamTemplateConfig{
 		Name:       name,
-		Config:     &cfg,
+		Config:     &cfg.StreamConfig,
 		MaxStreams: maxStreams,
 	}
 
@@ -43,12 +50,12 @@ func NewStreamTemplate(name string, maxStreams uint32, config server.StreamConfi
 		return nil, err
 	}
 
-	_, err = nrequest(fmt.Sprintf(server.JetStreamCreateTemplateT, name), jreq, timeout)
+	_, err = request(fmt.Sprintf(server.JetStreamCreateTemplateT, name), jreq, cfg.conn)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadStreamTemplate(name)
+	return LoadStreamTemplate(name, cfg.ropts...)
 }
 
 // LoadOrNewStreamTemplate loads an existing template, else creates a new one based on config
@@ -62,8 +69,20 @@ func LoadOrNewStreamTemplate(name string, maxStreams uint32, config server.Strea
 }
 
 // LoadStreamTemplate loads a given stream template from JetStream
-func LoadStreamTemplate(name string) (template *StreamTemplate, err error) {
-	template = &StreamTemplate{cfg: server.StreamTemplateConfig{Name: name}}
+func LoadStreamTemplate(name string, opts ...RequestOption) (template *StreamTemplate, err error) {
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	template = &StreamTemplate{
+		cfg: StreamTemplateConfig{
+			StreamTemplateConfig: server.StreamTemplateConfig{Name: name},
+			conn:                 conn,
+			ropts:                opts,
+		},
+	}
+
 	err = loadConfigForStreamTemplate(template)
 	if err != nil {
 		return nil, err
@@ -73,7 +92,7 @@ func LoadStreamTemplate(name string) (template *StreamTemplate, err error) {
 }
 
 func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
-	response, err := nrequest(fmt.Sprintf(server.JetStreamTemplateInfoT, template.Name()), nil, timeout)
+	response, err := request(fmt.Sprintf(server.JetStreamTemplateInfoT, template.Name()), nil, template.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -84,7 +103,7 @@ func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
 		return err
 	}
 
-	template.cfg = *info.Config
+	template.cfg.StreamTemplateConfig = *info.Config
 	template.streams = info.Streams
 
 	return nil
@@ -92,7 +111,7 @@ func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
 
 // Delete deletes the StreamTemplate, after this the StreamTemplate object should be disposed
 func (t *StreamTemplate) Delete() error {
-	_, err := nrequest(fmt.Sprintf(server.JetStreamDeleteTemplateT, t.Name()), nil, timeout)
+	_, err := request(fmt.Sprintf(server.JetStreamDeleteTemplateT, t.Name()), nil, t.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -105,8 +124,22 @@ func (t *StreamTemplate) Reset() error {
 	return loadConfigForStreamTemplate(t)
 }
 
-func (t *StreamTemplate) Configuration() server.StreamTemplateConfig { return t.cfg }
-func (t *StreamTemplate) StreamConfiguration() server.StreamConfig   { return *t.cfg.Config }
-func (t *StreamTemplate) Name() string                               { return t.cfg.Name }
-func (t *StreamTemplate) MaxStreams() uint32                         { return t.cfg.MaxStreams }
-func (t *StreamTemplate) Streams() []string                          { return t.streams }
+func (t *StreamTemplate) Configuration() server.StreamTemplateConfig {
+	return t.cfg.StreamTemplateConfig
+}
+
+func (t *StreamTemplate) StreamConfiguration() server.StreamConfig {
+	return *t.cfg.Config
+}
+
+func (t *StreamTemplate) Name() string {
+	return t.cfg.Name
+}
+
+func (t *StreamTemplate) MaxStreams() uint32 {
+	return t.cfg.MaxStreams
+}
+
+func (t *StreamTemplate) Streams() []string {
+	return t.streams
+}

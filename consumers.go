@@ -463,21 +463,17 @@ func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (
 	return c.cfg.conn.nc.QueueSubscribeSyncWithChan(c.DeliverySubject(), queue, ch)
 }
 
-// NextMsgs retrieves the next n messages
-func NextMsgs(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs []*nats.Msg, err error) {
+// NextMsgsChan returns a channel of messages that will be closed after timeout or msgCount is reached
+func NextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs <-chan *nats.Msg, err error) {
 	ropts, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	q := make(chan *nats.Msg, msgCount)
-	ib := nats.NewInbox()
-
-	sub, err := nc.ChanSubscribe(ib, q)
+	ns, err := NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err
 	}
-	defer sub.Unsubscribe()
 
 	ctx := ropts.ctx
 	var cancel func()
@@ -487,28 +483,48 @@ func NextMsgs(stream string, consumer string, msgCount int, opts ...RequestOptio
 		defer cancel()
 	}
 
-	ns, err := NextSubject(stream, consumer)
+	q := make(chan *nats.Msg, msgCount)
+	done := make(chan struct{})
+	ib := nats.NewInbox()
+
+	sub, err := nc.Subscribe(ib, func(m *nats.Msg) {
+		q <- m
+		if len(q) == cap(q) {
+			done <- struct{}{}
+		}
+	})
 	if err != nil {
 		return nil, err
 	}
+
+	defer close(q)
+	defer sub.Unsubscribe()
 
 	err = nc.PublishRequest(ns, ib, []byte(strconv.Itoa(msgCount)))
 	if err != nil {
 		return nil, err
 	}
 
-	for {
-		select {
-		case m := <-q:
-			msgs = append(msgs, m)
-
-			if len(msgs) == msgCount {
-				return msgs, nil
-			}
-		case <-ctx.Done():
-			return msgs, ctx.Err()
-		}
+	select {
+	case <-ctx.Done():
+		return q, ctx.Err()
+	case <-done:
+		return q, nil
 	}
+}
+
+// NextMsgs retrieves the next n messages
+func NextMsgs(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs []*nats.Msg, err error) {
+	q, err := NextMsgsChan(stream, consumer, msgCount, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	for msg := range q {
+		msgs = append(msgs, msg)
+	}
+
+	return msgs, nil
 }
 
 // NextMsgs retrieves the next n messages

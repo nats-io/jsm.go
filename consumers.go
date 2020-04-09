@@ -475,8 +475,8 @@ func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (
 	return c.cfg.conn.nc.QueueSubscribeSyncWithChan(c.DeliverySubject(), queue, ch)
 }
 
-// NextMsgsChan returns a channel of messages that will be closed after timeout or msgCount is reached
-func NextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs <-chan *nats.Msg, err error) {
+// nextMsgsChan returns a channel of messages that will be closed after timeout or msgCount is reached
+func nextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs <-chan *nats.Msg, err error) {
 	ropts, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
@@ -529,9 +529,9 @@ func NextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestO
 	}
 }
 
-// NextMsgs retrieves the next n messages
-func NextMsgs(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs []*nats.Msg, err error) {
-	q, err := NextMsgsChan(stream, consumer, msgCount, opts...)
+// nextMsgs retrieves the next n messages
+func nextMsgs(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs []*nats.Msg, err error) {
+	q, err := nextMsgsChan(stream, consumer, msgCount, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -543,18 +543,9 @@ func NextMsgs(stream string, consumer string, msgCount int, opts ...RequestOptio
 	return msgs, nil
 }
 
-// NextMsgs retrieves the next n messages
-func (c *Consumer) NextMsgs(n int, opts ...RequestOption) (m []*nats.Msg, err error) {
-	if !c.IsPullMode() {
-		return nil, fmt.Errorf("consumer %s > %s is not pull-based", c.stream, c.name)
-	}
-
-	return NextMsgs(c.stream, c.name, n, append(c.cfg.ropts, opts...)...)
-}
-
 // NextMsg retrieves the next message
 func (c *Consumer) NextMsg(opts ...RequestOption) (m *nats.Msg, err error) {
-	msgs, err := NextMsgs(c.stream, c.name, 1, append(c.cfg.ropts, opts...)...)
+	msgs, err := nextMsgs(c.stream, c.name, 1, append(c.cfg.ropts, opts...)...)
 	if err != nil {
 		return nil, err
 	}

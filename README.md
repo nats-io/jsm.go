@@ -101,9 +101,6 @@ For Pull-based Consumers we have:
 ```go
 // 1 message
 msg, err := consumer.NextMsg()
-
-// 10 messages
-msgs, err := consumer.NextMsgs(10)
 ```
 
 When consuming these messages they have metadata attached that you can parse:

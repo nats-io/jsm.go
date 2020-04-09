@@ -78,26 +78,6 @@ func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
 	checkPolicy(c, 0, time.Time{}, true, false)
 }
 
-func TestNextMsgs(t *testing.T) {
-	srv, nc, _ := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
-
-	consumer, err := jsm.NewConsumer("ORDERS", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
-	checkErr(t, err, "create failed")
-
-	for i := 0; i <= 100; i++ {
-		nc.Publish("ORDERS.new", []byte(fmt.Sprintf("%d", i)))
-	}
-
-	msgs, err := consumer.NextMsgs(100, jsm.WithTimeout(500*time.Millisecond))
-	checkErr(t, err, "NextMsgs failed")
-
-	if len(msgs) != 100 {
-		t.Fatalf("expected 100 got %d", len(msgs))
-	}
-}
-
 func TestNextMsg(t *testing.T) {
 	srv, nc, stream := setupConsumerTest(t)
 	defer srv.Shutdown()

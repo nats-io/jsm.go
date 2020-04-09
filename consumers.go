@@ -232,6 +232,7 @@ func DurableName(s string) ConsumerOption {
 
 func StartAtSequence(s uint64) ConsumerOption {
 	return func(o *ConsumerConfig) error {
+		resetDeliverPolicy(o)
 		o.ConsumerConfig.StreamSeq = s
 		return nil
 	}
@@ -239,6 +240,7 @@ func StartAtSequence(s uint64) ConsumerOption {
 
 func StartAtTime(t time.Time) ConsumerOption {
 	return func(o *ConsumerConfig) error {
+		resetDeliverPolicy(o)
 		o.ConsumerConfig.StartTime = t
 		return nil
 	}
@@ -246,6 +248,7 @@ func StartAtTime(t time.Time) ConsumerOption {
 
 func DeliverAllAvailable() ConsumerOption {
 	return func(o *ConsumerConfig) error {
+		resetDeliverPolicy(o)
 		o.ConsumerConfig.DeliverAll = true
 		return nil
 	}
@@ -253,6 +256,7 @@ func DeliverAllAvailable() ConsumerOption {
 
 func StartWithLastReceived() ConsumerOption {
 	return func(o *ConsumerConfig) error {
+		resetDeliverPolicy(o)
 		o.ConsumerConfig.DeliverLast = true
 		return nil
 	}
@@ -260,9 +264,17 @@ func StartWithLastReceived() ConsumerOption {
 
 func StartAtTimeDelta(d time.Duration) ConsumerOption {
 	return func(o *ConsumerConfig) error {
+		resetDeliverPolicy(o)
 		o.ConsumerConfig.StartTime = time.Now().Add(-1 * d)
 		return nil
 	}
+}
+
+func resetDeliverPolicy(o *ConsumerConfig) {
+	o.ConsumerConfig.StreamSeq = 0
+	o.ConsumerConfig.StartTime = time.Time{}
+	o.ConsumerConfig.DeliverLast = false
+	o.ConsumerConfig.DeliverAll = false
 }
 
 func AcknowledgeNone() ConsumerOption {

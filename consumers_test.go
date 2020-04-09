@@ -38,6 +38,46 @@ func setupConsumerTest(t *testing.T) (*server.Server, *nats.Conn, *jsm.Stream) {
 
 }
 
+func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
+	c, err := jsm.NewConsumerConfiguration(jsm.DefaultConsumer)
+	checkErr(t, err, "create failed")
+
+	checkPolicy := func(c *jsm.ConsumerConfig, sseq uint64, stime time.Time, dlast, dall bool) {
+		t.Helper()
+
+		if c.StreamSeq != sseq {
+			t.Fatalf("StreamSeq expected %d got %d", sseq, c.StreamSeq)
+		}
+
+		if c.StartTime != stime {
+			t.Fatalf("StartTime expected %v got %v", stime, c.StartTime)
+		}
+
+		if c.DeliverLast != dlast {
+			t.Fatalf("DeliverLast expected %v got %v", dlast, c.DeliverLast)
+		}
+
+		if c.DeliverAll != dall {
+			t.Fatalf("DeliverAll expected %v got %v", dall, c.DeliverAll)
+		}
+	}
+
+	checkPolicy(c, 0, time.Time{}, false, true)
+
+	jsm.StartAtSequence(10)(c)
+	checkPolicy(c, 10, time.Time{}, false, false)
+
+	now := time.Now()
+	jsm.StartAtTime(now)(c)
+	checkPolicy(c, 0, now, false, false)
+
+	jsm.DeliverAllAvailable()(c)
+	checkPolicy(c, 0, time.Time{}, false, true)
+
+	jsm.StartWithLastReceived()(c)
+	checkPolicy(c, 0, time.Time{}, true, false)
+}
+
 func TestNextMsgs(t *testing.T) {
 	srv, nc, _ := setupConsumerTest(t)
 	defer srv.Shutdown()

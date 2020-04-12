@@ -475,7 +475,7 @@ func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (
 	return c.cfg.conn.nc.QueueSubscribeSyncWithChan(c.DeliverySubject(), queue, ch)
 }
 
-func NextMsg(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs *nats.Msg, err error) {
+func NextMsg(stream string, consumer string, opts ...RequestOption) (msgs *nats.Msg, err error) {
 	ropts, err := newreqoptions(opts...)
 	if err != nil {
 		if err != nil {
@@ -493,7 +493,7 @@ func NextMsg(stream string, consumer string, msgCount int, opts ...RequestOption
 
 // NextMsg retrieves the next message
 func (c *Consumer) NextMsg(opts ...RequestOption) (m *nats.Msg, err error) {
-	return NextMsg(c.stream, c.name, 1, append(c.cfg.ropts, opts...)...)
+	return NextMsg(c.stream, c.name, append(c.cfg.ropts, opts...)...)
 }
 
 // State returns the Consumer state

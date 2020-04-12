@@ -14,7 +14,6 @@
 package jsm
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -476,91 +475,25 @@ func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (
 	return c.cfg.conn.nc.QueueSubscribeSyncWithChan(c.DeliverySubject(), queue, ch)
 }
 
-// NextMsgsChan returns a channel of messages that will be closed after timeout or msgCount is reached
-func NextMsgsChan(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs <-chan *nats.Msg, err error) {
+func nextMsg(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs *nats.Msg, err error) {
 	ropts, err := newreqoptions(opts...)
 	if err != nil {
-		return nil, err
-	}
-
-	ns, err := NextSubject(stream, consumer)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := ropts.ctx
-	var cancel func()
-
-	if ctx == nil {
-		ctx, cancel = context.WithTimeout(context.Background(), ropts.timeout)
-		defer cancel()
-	}
-
-	q := make(chan *nats.Msg, msgCount)
-	done := make(chan struct{})
-	ib := nats.NewInbox()
-
-	sub, err := ropts.nc.Subscribe(ib, func(m *nats.Msg) {
-		q <- m
-		if len(q) == cap(q) {
-			done <- struct{}{}
+		if err != nil {
+			return nil, err
 		}
-	})
+	}
+
+	s, err := NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err
 	}
 
-	defer close(q)
-	defer sub.Unsubscribe()
-
-	err = ropts.nc.PublishRequest(ns, ib, []byte(strconv.Itoa(msgCount)))
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case <-ctx.Done():
-		if len(q) > 0 {
-			return q, nil
-		}
-
-		return q, ctx.Err()
-	case <-done:
-		return q, nil
-	}
-}
-
-// NextMsgs retrieves the next n messages
-func NextMsgs(stream string, consumer string, msgCount int, opts ...RequestOption) (msgs []*nats.Msg, err error) {
-	q, err := NextMsgsChan(stream, consumer, msgCount, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	for msg := range q {
-		msgs = append(msgs, msg)
-	}
-
-	return msgs, nil
-}
-
-// NextMsgs retrieves the next n messages
-func (c *Consumer) NextMsgs(n int, opts ...RequestOption) (m []*nats.Msg, err error) {
-	if !c.IsPullMode() {
-		return nil, fmt.Errorf("consumer %s > %s is not pull-based", c.stream, c.name)
-	}
-
-	return NextMsgs(c.stream, c.name, n, append(c.cfg.ropts, opts...)...)
+	return request(s, []byte(strconv.Itoa(1)), ropts)
 }
 
 // NextMsg retrieves the next message
 func (c *Consumer) NextMsg(opts ...RequestOption) (m *nats.Msg, err error) {
-	msgs, err := NextMsgs(c.stream, c.name, 1, append(c.cfg.ropts, opts...)...)
-	if err != nil {
-		return nil, err
-	}
-
-	return msgs[0], nil
+	return nextMsg(c.stream, c.name, 1, append(c.cfg.ropts, opts...)...)
 }
 
 // State returns the Consumer state

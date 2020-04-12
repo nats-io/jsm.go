@@ -14,6 +14,7 @@
 package api
 
 import (
+	"strings"
 	"time"
 )
 
@@ -57,17 +58,12 @@ type StreamInfo struct {
 
 type RetentionPolicy string
 
+func (p RetentionPolicy) String() string { return strings.Title(string(p)) }
+
 const (
 	LimitsPolicy    RetentionPolicy = "limits"
 	InterestPolicy  RetentionPolicy = "interest"
 	WorkQueuePolicy RetentionPolicy = "workqueue"
-)
-
-type StorageType string
-
-const (
-	MemoryStorage StorageType = "memory"
-	FileStorage   StorageType = "file"
 )
 
 type StreamState struct {

@@ -10,7 +10,7 @@ func TestNewStreamTemplate(t *testing.T) {
 	srv, _ := startJSServer(t)
 	defer srv.Shutdown()
 
-	_, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.Subjects("ORDERS.*"))
+	_, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.FileStorage(), jsm.Subjects("ORDERS.*"))
 	checkErr(t, err, "new stream template failed")
 
 	templ, err := jsm.LoadStreamTemplate("orders_templ")
@@ -25,10 +25,10 @@ func TestNewOrLoadStreamTemplate(t *testing.T) {
 	srv, _ := startJSServer(t)
 	defer srv.Shutdown()
 
-	first, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.Subjects("ORDERS.*"))
+	first, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.FileStorage(), jsm.Subjects("ORDERS.*"))
 	checkErr(t, err, "new stream template failed")
 
-	second, err := jsm.LoadOrNewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.Subjects("ORDERS.*"))
+	second, err := jsm.LoadOrNewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.FileStorage(), jsm.Subjects("ORDERS.*"))
 	checkErr(t, err, "load or new stream template failed")
 
 	if first.Name() != second.Name() {
@@ -40,7 +40,7 @@ func TestStreamTemplate_Delete(t *testing.T) {
 	srv, _ := startJSServer(t)
 	defer srv.Shutdown()
 
-	templ, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.Subjects("ORDERS.*"))
+	templ, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.FileStorage(), jsm.Subjects("ORDERS.*"))
 	checkErr(t, err, "new stream template failed")
 
 	names, err := jsm.StreamTemplateNames()
@@ -64,7 +64,7 @@ func TestStreamTemplate_Reset(t *testing.T) {
 	srv, nc := startJSServer(t)
 	defer srv.Shutdown()
 
-	templ, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.Subjects("ORDERS.*"))
+	templ, err := jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.FileStorage(), jsm.Subjects("ORDERS.*"))
 	checkErr(t, err, "new stream template failed")
 
 	if len(templ.Streams()) != 0 {

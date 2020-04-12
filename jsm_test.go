@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nats-io/jsm.go/api"
 	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 
@@ -133,7 +134,7 @@ func TestIsKnownStream(t *testing.T) {
 	}
 
 	stream.Reset()
-	if stream.Storage() != natsd.MemoryStorage {
+	if stream.Storage() != api.MemoryStorage {
 		t.Fatalf("ORDERS is not memory storage")
 	}
 }
@@ -265,7 +266,7 @@ func TestIsKnownStreamTemplate(t *testing.T) {
 		t.Fatalf("found orders_templ when it shouldnt have")
 	}
 
-	_, err = jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.Subjects("ORDERS.*"))
+	_, err = jsm.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.FileStorage(), jsm.Subjects("ORDERS.*"))
 	checkErr(t, err, "new stream template failed")
 
 	exists, err = jsm.IsKnownStreamTemplate("orders_templ")

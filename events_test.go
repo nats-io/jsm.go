@@ -17,9 +17,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/nats-io/nats-server/v2/server"
-
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/api"
 )
 
 func TestSchemaForEvent(t *testing.T) {
@@ -46,7 +45,7 @@ func TestParseEvent(t *testing.T) {
 		t.Fatalf("expected io.nats.jetstream.metric.v1.consumer_ack got %s", s)
 	}
 
-	_, ok := e.(*server.ConsumerAckMetric)
+	_, ok := e.(*api.ConsumerAckMetric)
 	if !ok {
 		t.Fatalf("expected ConsumerAckMetric got %v", reflect.TypeOf(e))
 	}

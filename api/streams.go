@@ -14,6 +14,7 @@
 package api
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -65,6 +66,21 @@ const (
 	InterestPolicy  RetentionPolicy = "interest"
 	WorkQueuePolicy RetentionPolicy = "workqueue"
 )
+
+func (p *RetentionPolicy) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("limits"):
+		*p = LimitsPolicy
+	case jsonString("interest"):
+		*p = InterestPolicy
+	case jsonString("workqueue"):
+		*p = WorkQueuePolicy
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
 
 type StreamState struct {
 	Msgs      uint64 `json:"messages"`

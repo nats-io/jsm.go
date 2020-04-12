@@ -14,6 +14,7 @@
 package api
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -41,6 +42,19 @@ const (
 	MemoryStorage StorageType = "memory"
 	FileStorage   StorageType = "file"
 )
+
+func (t *StorageType) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("memory"):
+		*t = MemoryStorage
+	case jsonString("file"):
+		*t = FileStorage
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
 
 type JetStreamAccountStats struct {
 	Memory  uint64                 `json:"memory"`

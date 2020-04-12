@@ -14,6 +14,7 @@
 package api
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -38,6 +39,21 @@ const (
 	AckExplicit AckPolicy = "explicit"
 )
 
+func (p *AckPolicy) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("none"):
+		*p = AckNone
+	case jsonString("all"):
+		*p = AckAll
+	case jsonString("explicit"):
+		*p = AckExplicit
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
+
 type ReplayPolicy string
 
 func (p ReplayPolicy) String() string { return strings.Title(string(p)) }
@@ -46,6 +62,19 @@ const (
 	ReplayInstant  ReplayPolicy = "instant"
 	ReplayOriginal ReplayPolicy = "original"
 )
+
+func (p *ReplayPolicy) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("instant"):
+		*p = ReplayInstant
+	case jsonString("original"):
+		*p = ReplayOriginal
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
 
 var (
 	AckAck      = []byte(OK)
@@ -91,4 +120,8 @@ type ConsumerInfo struct {
 	Name   string         `json:"name"`
 	Config ConsumerConfig `json:"config"`
 	State  ConsumerState  `json:"state"`
+}
+
+func jsonString(s string) string {
+	return "\"" + s + "\""
 }

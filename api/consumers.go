@@ -14,6 +14,7 @@
 package api
 
 import (
+	"strings"
 	"time"
 )
 
@@ -29,6 +30,8 @@ const (
 
 type AckPolicy string
 
+func (p AckPolicy) String() string { return strings.Title(string(p)) }
+
 const (
 	AckNone     AckPolicy = "none"
 	AckAll      AckPolicy = "all"
@@ -36,6 +39,8 @@ const (
 )
 
 type ReplayPolicy string
+
+func (p ReplayPolicy) String() string { return strings.Title(string(p)) }
 
 const (
 	ReplayInstant  ReplayPolicy = "instant"

@@ -13,6 +13,10 @@
 
 package api
 
+import (
+	"strings"
+)
+
 // Subjects used by the JetStream API
 const (
 	JetStreamEnabled        = "$JS.ENABLED"
@@ -27,6 +31,15 @@ const (
 	OK = "+OK"
 	// ERR prefix response
 	ErrPrefix = "-ERR"
+)
+
+type StorageType string
+
+func (t StorageType) String() string { return strings.Title(string(t)) }
+
+const (
+	MemoryStorage StorageType = "memory"
+	FileStorage   StorageType = "file"
 )
 
 type JetStreamAccountStats struct {

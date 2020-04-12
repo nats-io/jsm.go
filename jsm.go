@@ -23,8 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
+
+	"github.com/nats-io/jsm.go/api"
 )
 
 var timeout = 5 * time.Second
@@ -72,13 +73,13 @@ func IsJetStreamEnabled(opts ...RequestOption) bool {
 		return false
 	}
 
-	_, err = request(server.JetStreamEnabled, nil, ropts)
+	_, err = request(api.JetStreamEnabled, nil, ropts)
 	return err == nil
 }
 
 // IsErrorResponse checks if the message holds a standard JetStream error
 func IsErrorResponse(m *nats.Msg) bool {
-	return strings.HasPrefix(string(m.Data), server.ErrPrefix)
+	return strings.HasPrefix(string(m.Data), api.ErrPrefix)
 }
 
 // ParseErrorResponse parses the JetStream response, if it's an error returns an error instance holding the message else nil
@@ -87,12 +88,12 @@ func ParseErrorResponse(m *nats.Msg) error {
 		return nil
 	}
 
-	return fmt.Errorf(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(string(m.Data), server.ErrPrefix), " '"), "'"))
+	return fmt.Errorf(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(string(m.Data), api.ErrPrefix), " '"), "'"))
 }
 
 // IsOKResponse checks if the message holds a standard JetStream error
 func IsOKResponse(m *nats.Msg) bool {
-	return strings.HasPrefix(string(m.Data), server.OK)
+	return strings.HasPrefix(string(m.Data), api.OK)
 }
 
 // IsKnownStream determines if a Stream is known
@@ -144,13 +145,13 @@ func IsKnownConsumer(stream string, consumer string, opts ...RequestOption) (boo
 }
 
 // JetStreamAccountInfo retrieves information about the current account limits and more
-func JetStreamAccountInfo(opts ...RequestOption) (info server.JetStreamAccountStats, err error) {
+func JetStreamAccountInfo(opts ...RequestOption) (info api.JetStreamAccountStats, err error) {
 	conn, err := newreqoptions(opts...)
 	if err != nil {
-		return server.JetStreamAccountStats{}, err
+		return api.JetStreamAccountStats{}, err
 	}
 
-	response, err := request(server.JetStreamInfo, nil, conn)
+	response, err := request(api.JetStreamInfo, nil, conn)
 	if err != nil {
 		return info, err
 	}
@@ -172,7 +173,7 @@ func StreamNames(opts ...RequestOption) (streams []string, err error) {
 		return nil, err
 	}
 
-	response, err := request(server.JetStreamListStreams, nil, conn)
+	response, err := request(api.JetStreamListStreams, nil, conn)
 	if err != nil {
 		return streams, err
 	}
@@ -196,7 +197,7 @@ func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) 
 		return nil, err
 	}
 
-	response, err := request(server.JetStreamListTemplates, nil, conn)
+	response, err := request(api.JetStreamListTemplates, nil, conn)
 	if err != nil {
 		return templates, err
 	}
@@ -220,7 +221,7 @@ func ConsumerNames(stream string, opts ...RequestOption) (consumers []string, er
 		return nil, err
 	}
 
-	response, err := request(fmt.Sprintf(server.JetStreamConsumersT, stream), nil, conn)
+	response, err := request(fmt.Sprintf(api.JetStreamConsumersT, stream), nil, conn)
 	if err != nil {
 		return consumers, err
 	}

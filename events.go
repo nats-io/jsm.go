@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/jsm.go/api"
 )
 
 // SchemasRepo is the repository holding NATS Schemas
@@ -17,9 +17,9 @@ type schemaDetector struct {
 }
 
 var schemaTypes = map[string]func() interface{}{
-	"io.nats.jetstream.metric.v1.consumer_ack":  func() interface{} { return &server.ConsumerAckMetric{} },
-	"io.nats.jetstream.advisory.v1.max_deliver": func() interface{} { return &server.ConsumerDeliveryExceededAdvisory{} },
-	"io.nats.jetstream.advisory.v1.api_audit":   func() interface{} { return &server.JetStreamAPIAudit{} },
+	"io.nats.jetstream.metric.v1.consumer_ack":  func() interface{} { return &api.ConsumerAckMetric{} },
+	"io.nats.jetstream.advisory.v1.max_deliver": func() interface{} { return &api.ConsumerDeliveryExceededAdvisory{} },
+	"io.nats.jetstream.advisory.v1.api_audit":   func() interface{} { return &api.JetStreamAPIAudit{} },
 	"io.nats.unknown_event":                     func() interface{} { return &UnknownEvent{} },
 }
 
@@ -64,7 +64,7 @@ func SchemaURLForToken(schema string) (address string, url *url.URL, err error) 
 	return address, url, err
 }
 
-// ParseEvent parses event e and returns event as for example *server.ConsumerAckMetric, all unknown
+// ParseEvent parses event e and returns event as for example *api.ConsumerAckMetric, all unknown
 // event schemas will be of type *UnknownEvent
 func ParseEvent(e []byte) (schema string, event interface{}, err error) {
 	schema, err = SchemaTokenForEvent(e)

@@ -17,7 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/jsm.go/api"
 )
 
 type StreamTemplate struct {
@@ -26,20 +26,20 @@ type StreamTemplate struct {
 }
 
 type StreamTemplateConfig struct {
-	server.StreamTemplateConfig
+	api.StreamTemplateConfig
 
 	conn  *reqoptions
 	ropts []RequestOption
 }
 
 // NewStreamTemplate creates a new template
-func NewStreamTemplate(name string, maxStreams uint32, config server.StreamConfig, opts ...StreamOption) (template *StreamTemplate, err error) {
+func NewStreamTemplate(name string, maxStreams uint32, config api.StreamConfig, opts ...StreamOption) (template *StreamTemplate, err error) {
 	cfg, err := NewStreamConfiguration(config, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	tc := server.StreamTemplateConfig{
+	tc := api.StreamTemplateConfig{
 		Name:       name,
 		Config:     &cfg.StreamConfig,
 		MaxStreams: maxStreams,
@@ -50,7 +50,7 @@ func NewStreamTemplate(name string, maxStreams uint32, config server.StreamConfi
 		return nil, err
 	}
 
-	_, err = request(fmt.Sprintf(server.JetStreamCreateTemplateT, name), jreq, cfg.conn)
+	_, err = request(fmt.Sprintf(api.JetStreamCreateTemplateT, name), jreq, cfg.conn)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func NewStreamTemplate(name string, maxStreams uint32, config server.StreamConfi
 }
 
 // LoadOrNewStreamTemplate loads an existing template, else creates a new one based on config
-func LoadOrNewStreamTemplate(name string, maxStreams uint32, config server.StreamConfig, opts ...StreamOption) (template *StreamTemplate, err error) {
+func LoadOrNewStreamTemplate(name string, maxStreams uint32, config api.StreamConfig, opts ...StreamOption) (template *StreamTemplate, err error) {
 	template, err = LoadStreamTemplate(name)
 	if template != nil && err == nil {
 		return template, nil
@@ -77,7 +77,7 @@ func LoadStreamTemplate(name string, opts ...RequestOption) (template *StreamTem
 
 	template = &StreamTemplate{
 		cfg: StreamTemplateConfig{
-			StreamTemplateConfig: server.StreamTemplateConfig{Name: name},
+			StreamTemplateConfig: api.StreamTemplateConfig{Name: name},
 			conn:                 conn,
 			ropts:                opts,
 		},
@@ -92,12 +92,12 @@ func LoadStreamTemplate(name string, opts ...RequestOption) (template *StreamTem
 }
 
 func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
-	response, err := request(fmt.Sprintf(server.JetStreamTemplateInfoT, template.Name()), nil, template.cfg.conn)
+	response, err := request(fmt.Sprintf(api.JetStreamTemplateInfoT, template.Name()), nil, template.cfg.conn)
 	if err != nil {
 		return err
 	}
 
-	info := server.StreamTemplateInfo{}
+	info := api.StreamTemplateInfo{}
 	err = json.Unmarshal(response.Data, &info)
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
 
 // Delete deletes the StreamTemplate, after this the StreamTemplate object should be disposed
 func (t *StreamTemplate) Delete() error {
-	_, err := request(fmt.Sprintf(server.JetStreamDeleteTemplateT, t.Name()), nil, t.cfg.conn)
+	_, err := request(fmt.Sprintf(api.JetStreamDeleteTemplateT, t.Name()), nil, t.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -124,11 +124,11 @@ func (t *StreamTemplate) Reset() error {
 	return loadConfigForStreamTemplate(t)
 }
 
-func (t *StreamTemplate) Configuration() server.StreamTemplateConfig {
+func (t *StreamTemplate) Configuration() api.StreamTemplateConfig {
 	return t.cfg.StreamTemplateConfig
 }
 
-func (t *StreamTemplate) StreamConfiguration() server.StreamConfig {
+func (t *StreamTemplate) StreamConfiguration() api.StreamConfig {
 	return *t.cfg.Config
 }
 

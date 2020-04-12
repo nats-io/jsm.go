@@ -20,6 +20,9 @@ import (
 	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
+
+	"github.com/nats-io/jsm.go/api"
+
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go"
@@ -42,7 +45,7 @@ func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
 	c, err := jsm.NewConsumerConfiguration(jsm.DefaultConsumer)
 	checkErr(t, err, "create failed")
 
-	checkPolicy := func(c *jsm.ConsumerConfig, sseq uint64, stime time.Time, dlast, dall bool) {
+	checkPolicy := func(c *jsm.ConsumerCfg, sseq uint64, stime time.Time, dlast, dall bool) {
 		t.Helper()
 
 		if c.StreamSeq != sseq {
@@ -136,8 +139,8 @@ func TestNewConsumer(t *testing.T) {
 	checkErr(t, err, "create failed")
 
 	consumer.Reset()
-	if consumer.AckPolicy() != server.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy().String())
+	if consumer.AckPolicy() != api.AckExplicit {
+		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
 	}
 
 	if consumer.Name() != "NEW" {
@@ -154,8 +157,8 @@ func TestNewConsumerFromDefaultDurable(t *testing.T) {
 	checkErr(t, err, "create failed")
 
 	consumer.Reset()
-	if consumer.AckPolicy() != server.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy().String())
+	if consumer.AckPolicy() != api.AckExplicit {
+		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
 	}
 
 	if consumer.Name() != "NEW" {
@@ -204,8 +207,8 @@ func TestLoadConsumer(t *testing.T) {
 	consumer, err := jsm.LoadConsumer("ORDERS", "NEW")
 	checkErr(t, err, "load failed")
 
-	if consumer.AckPolicy() != server.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy().String())
+	if consumer.AckPolicy() != api.AckExplicit {
+		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
 	}
 
 	if consumer.Name() != "NEW" {
@@ -228,8 +231,8 @@ func TestLoadOrNewConsumer(t *testing.T) {
 	consumer, err := jsm.LoadOrNewConsumer("ORDERS", "NEW", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
 	checkErr(t, err, "load failed")
 
-	if consumer.AckPolicy() != server.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy().String())
+	if consumer.AckPolicy() != api.AckExplicit {
+		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
 	}
 
 	if consumer.Name() != "NEW" {
@@ -248,8 +251,8 @@ func TestLoadOrNewConsumerFromDefault(t *testing.T) {
 	consumer, err := jsm.LoadOrNewConsumerFromDefault("ORDERS", "NEW", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
 	checkErr(t, err, "load failed")
 
-	if consumer.AckPolicy() != server.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy().String())
+	if consumer.AckPolicy() != api.AckExplicit {
+		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
 	}
 
 	if consumer.Name() != "NEW" {
@@ -485,12 +488,12 @@ func TestConsumer_IsSampled(t *testing.T) {
 	}
 }
 
-func testConsumerConfig() *jsm.ConsumerConfig {
-	return &jsm.ConsumerConfig{ConsumerConfig: server.ConsumerConfig{
+func testConsumerConfig() *jsm.ConsumerCfg {
+	return &jsm.ConsumerCfg{ConsumerConfig: api.ConsumerConfig{
 		AckWait:      0,
-		AckPolicy:    -1,
+		AckPolicy:    "",
 		MaxDeliver:   -1,
-		ReplayPolicy: -1,
+		ReplayPolicy: "",
 		StreamSeq:    0,
 		StartTime:    time.Now(),
 	}}
@@ -506,24 +509,24 @@ func TestAckWait(t *testing.T) {
 func TestAcknowledgeAll(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.AcknowledgeAll()(cfg)
-	if cfg.AckPolicy != server.AckAll {
-		t.Fatalf("expected AckAll got %s", cfg.AckPolicy.String())
+	if cfg.AckPolicy != api.AckAll {
+		t.Fatalf("expected AckAll got %s", cfg.AckPolicy)
 	}
 }
 
 func TestAcknowledgeExplicit(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.AcknowledgeExplicit()(cfg)
-	if cfg.AckPolicy != server.AckExplicit {
-		t.Fatalf("expected AckExplicit got %s", cfg.AckPolicy.String())
+	if cfg.AckPolicy != api.AckExplicit {
+		t.Fatalf("expected AckExplicit got %s", cfg.AckPolicy)
 	}
 }
 
 func TestAcknowledgeNone(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.AcknowledgeNone()(cfg)
-	if cfg.AckPolicy != server.AckNone {
-		t.Fatalf("expected AckNone got %s", cfg.AckPolicy.String())
+	if cfg.AckPolicy != api.AckNone {
+		t.Fatalf("expected AckNone got %s", cfg.AckPolicy)
 	}
 }
 
@@ -575,16 +578,16 @@ func TestMaxDeliveryAttempts(t *testing.T) {
 func TestReplayAsReceived(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.ReplayAsReceived()(cfg)
-	if cfg.ReplayPolicy != server.ReplayOriginal {
-		t.Fatalf("expected ReplayOriginal got %s", cfg.ReplayPolicy.String())
+	if cfg.ReplayPolicy != api.ReplayOriginal {
+		t.Fatalf("expected ReplayOriginal got %s", cfg.ReplayPolicy)
 	}
 }
 
 func TestReplayInstantly(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.ReplayInstantly()(cfg)
-	if cfg.ReplayPolicy != server.ReplayInstant {
-		t.Fatalf("expected ReplayInstant got %s", cfg.ReplayPolicy.String())
+	if cfg.ReplayPolicy != api.ReplayInstant {
+		t.Fatalf("expected ReplayInstant got %s", cfg.ReplayPolicy)
 	}
 }
 

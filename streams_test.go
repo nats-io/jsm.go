@@ -17,9 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nats-io/nats-server/v2/server"
-
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/api"
 )
 
 func TestNewStreamFromDefault(t *testing.T) {
@@ -35,8 +34,8 @@ func TestNewStreamFromDefault(t *testing.T) {
 		t.Fatalf("incorrect name %q", stream.Name())
 	}
 
-	if stream.Storage() != server.MemoryStorage {
-		t.Fatalf("incorrect storage, expected memory got %s", stream.Storage().String())
+	if stream.Storage() != api.MemoryStorage {
+		t.Fatalf("incorrect storage, expected memory got %s", stream.Storage())
 	}
 
 	if stream.MaxAge() != time.Hour {
@@ -81,12 +80,12 @@ func TestNewStream(t *testing.T) {
 		t.Fatalf("expected q1 got %s", stream.Name())
 	}
 
-	if stream.Storage() != server.FileStorage {
-		t.Fatalf("expected file storage got %s", stream.Storage().String())
+	if stream.Storage() != api.FileStorage {
+		t.Fatalf("expected file storage got %s", stream.Storage())
 	}
 
-	if stream.Retention() != server.LimitsPolicy {
-		t.Fatalf("expected stream retention got %s", stream.Retention().String())
+	if stream.Retention() != api.LimitsPolicy {
+		t.Fatalf("expected stream retention got %s", stream.Retention())
 	}
 }
 
@@ -108,12 +107,12 @@ func TestLoadOrNewStream(t *testing.T) {
 		t.Fatalf("expected q1 got %s", stream.Name())
 	}
 
-	if stream.Storage() != server.FileStorage {
-		t.Fatalf("expected file storage got %s", stream.Storage().String())
+	if stream.Storage() != api.FileStorage {
+		t.Fatalf("expected file storage got %s", stream.Storage())
 	}
 
-	if stream.Retention() != server.LimitsPolicy {
-		t.Fatalf("expected stream retention got %s", stream.Retention().String())
+	if stream.Retention() != api.LimitsPolicy {
+		t.Fatalf("expected stream retention got %s", stream.Retention())
 	}
 
 	stream, err = jsm.LoadOrNewStream("q1", jsm.FileStorage())
@@ -150,8 +149,8 @@ func TestLoadStream(t *testing.T) {
 		t.Fatalf("expected q1 got %s", stream.Name())
 	}
 
-	if stream.Storage() != server.FileStorage {
-		t.Fatalf("expected file storage got %s", stream.Storage().String())
+	if stream.Storage() != api.FileStorage {
+		t.Fatalf("expected file storage got %s", stream.Storage())
 	}
 }
 
@@ -176,8 +175,8 @@ func TestStream_Reset(t *testing.T) {
 	checkErr(t, err, "reset failed")
 
 	// verify its good
-	if orig.Storage() != server.MemoryStorage {
-		t.Fatalf("expected memory storage got %s", orig.Storage().String())
+	if orig.Storage() != api.MemoryStorage {
+		t.Fatalf("expected memory storage got %s", orig.Storage())
 	}
 }
 
@@ -423,39 +422,40 @@ func TestStream_DeleteMessage(t *testing.T) {
 	}
 }
 
-func TestFileStorage(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			Storage: -1,
+func testStreamConfig() *jsm.StreamConfig {
+	return &jsm.StreamConfig{
+		StreamConfig: api.StreamConfig{
+			Subjects:     []string{},
+			MaxAge:       -1,
+			MaxBytes:     -1,
+			MaxMsgSize:   -1,
+			MaxMsgs:      -1,
+			MaxConsumers: -1,
+			Replicas:     -1,
 		},
 	}
-	err := jsm.FileStorage()(&cfg)
+}
+func TestFileStorage(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.FileStorage()(cfg)
 	checkErr(t, err, "failed")
-	if cfg.Storage != server.FileStorage {
+	if cfg.Storage != api.FileStorage {
 		t.Fatalf("expected FileStorage")
 	}
 }
 
 func TestInterestRetention(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			Retention: -1,
-		},
-	}
-	err := jsm.InterestRetention()(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.InterestRetention()(cfg)
 	checkErr(t, err, "failed")
-	if cfg.Retention != server.InterestPolicy {
+	if cfg.Retention != api.InterestPolicy {
 		t.Fatalf("expected InterestPolicy")
 	}
 }
 
 func TestMaxAge(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			MaxAge: -1,
-		},
-	}
-	err := jsm.MaxAge(time.Hour)(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.MaxAge(time.Hour)(cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxAge != time.Hour {
 		t.Fatalf("expected 1 hour")
@@ -463,12 +463,8 @@ func TestMaxAge(t *testing.T) {
 }
 
 func TestMaxBytes(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			MaxBytes: -1,
-		},
-	}
-	err := jsm.MaxBytes(1024)(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.MaxBytes(1024)(cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxBytes != 1024 {
 		t.Fatalf("expected 1024")
@@ -476,12 +472,8 @@ func TestMaxBytes(t *testing.T) {
 }
 
 func TestMaxMessageSize(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			MaxMsgSize: -1,
-		},
-	}
-	err := jsm.MaxMessageSize(1024)(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.MaxMessageSize(1024)(cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxMsgSize != 1024 {
 		t.Fatalf("expected 1024")
@@ -489,12 +481,8 @@ func TestMaxMessageSize(t *testing.T) {
 }
 
 func TestMaxMessages(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			MaxMsgs: -1,
-		},
-	}
-	err := jsm.MaxMessages(1024)(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.MaxMessages(1024)(cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxMsgs != 1024 {
 		t.Fatalf("expected 1024")
@@ -502,12 +490,8 @@ func TestMaxMessages(t *testing.T) {
 }
 
 func TestMaxObservables(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			MaxConsumers: -1,
-		},
-	}
-	err := jsm.MaxConsumers(1024)(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.MaxConsumers(1024)(cfg)
 	checkErr(t, err, "failed")
 	if cfg.MaxConsumers != 1024 {
 		t.Fatalf("expected 1024")
@@ -515,25 +499,17 @@ func TestMaxObservables(t *testing.T) {
 }
 
 func TestMemoryStorage(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			Storage: -1,
-		},
-	}
-	err := jsm.MemoryStorage()(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.MemoryStorage()(cfg)
 	checkErr(t, err, "memory storage failed")
-	if cfg.Storage != server.MemoryStorage {
+	if cfg.Storage != api.MemoryStorage {
 		t.Fatalf("expected MemoryStorage")
 	}
 }
 
 func TestNoAck(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			NoAck: false,
-		},
-	}
-	err := jsm.NoAck()(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.NoAck()(cfg)
 	checkErr(t, err, "failed")
 	if !cfg.NoAck {
 		t.Fatalf("expected NoAck")
@@ -541,12 +517,8 @@ func TestNoAck(t *testing.T) {
 }
 
 func TestReplicas(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			Replicas: -1,
-		},
-	}
-	err := jsm.Replicas(1024)(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.Replicas(1024)(cfg)
 	checkErr(t, err, "failed")
 	if cfg.Replicas != 1024 {
 		t.Fatalf("expected 1024")
@@ -554,25 +526,17 @@ func TestReplicas(t *testing.T) {
 }
 
 func TestLimitsRetention(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			Retention: -1,
-		},
-	}
-	err := jsm.LimitsRetention()(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.LimitsRetention()(cfg)
 	checkErr(t, err, "failed")
-	if cfg.Retention != server.LimitsPolicy {
+	if cfg.Retention != api.LimitsPolicy {
 		t.Fatalf("expected LimitsPolicy")
 	}
 }
 
 func TestSubjects(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			Subjects: []string{},
-		},
-	}
-	err := jsm.Subjects("one", "two")(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.Subjects("one", "two")(cfg)
 	checkErr(t, err, "failed")
 	if len(cfg.Subjects) != 2 || cfg.Subjects[0] != "one" || cfg.Subjects[1] != "two" {
 		t.Fatalf("expected [one, two] got %v", cfg.Subjects)
@@ -580,14 +544,10 @@ func TestSubjects(t *testing.T) {
 }
 
 func TestWorkQueueRetention(t *testing.T) {
-	cfg := jsm.StreamConfig{
-		StreamConfig: server.StreamConfig{
-			Retention: -1,
-		},
-	}
-	err := jsm.WorkQueueRetention()(&cfg)
+	cfg := testStreamConfig()
+	err := jsm.WorkQueueRetention()(cfg)
 	checkErr(t, err, "failed")
-	if cfg.Retention != server.WorkQueuePolicy {
+	if cfg.Retention != api.WorkQueuePolicy {
 		t.Fatalf("expected WorkQueuePolicy")
 	}
 }

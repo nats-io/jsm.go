@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/jsm.go/api"
 )
 
 type BackupData struct {
@@ -35,9 +35,9 @@ type BackupData struct {
 }
 
 type ConsumerBackup struct {
-	Name   string                `json:"name"`
-	Stream string                `json:"stream"`
-	Config server.ConsumerConfig `json:"config"`
+	Name   string             `json:"name"`
+	Stream string             `json:"stream"`
+	Config api.ConsumerConfig `json:"config"`
 }
 
 // BackupJetStreamConfiguration creates a backup of all configuration for Streams, Consumers and Stream Templates
@@ -185,7 +185,7 @@ func restoreStream(backup *BackupData, update bool) error {
 		return fmt.Errorf("cannot restore backup of type %q as Stream", backup.Type)
 	}
 
-	sc := server.StreamConfig{}
+	sc := api.StreamConfig{}
 	err := json.Unmarshal([]byte(backup.Configuration), &sc)
 	if err != nil {
 		return err
@@ -227,7 +227,7 @@ func restoreStreamTemplate(backup *BackupData) error {
 		return fmt.Errorf("cannot restore backup of type %q as Stream Template", backup.Type)
 	}
 
-	tc := server.StreamTemplateConfig{}
+	tc := api.StreamTemplateConfig{}
 	err := json.Unmarshal([]byte(backup.Configuration), &tc)
 	if err != nil {
 		return err

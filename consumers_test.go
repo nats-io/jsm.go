@@ -45,40 +45,43 @@ func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
 	c, err := jsm.NewConsumerConfiguration(jsm.DefaultConsumer)
 	checkErr(t, err, "create failed")
 
-	checkPolicy := func(c *jsm.ConsumerCfg, sseq uint64, stime time.Time, dlast, dall bool) {
+	checkPolicy := func(c *jsm.ConsumerCfg, sseq uint64, stime *time.Time, policy api.DeliverPolicy) {
 		t.Helper()
 
-		if c.StreamSeq != sseq {
-			t.Fatalf("StreamSeq expected %d got %d", sseq, c.StreamSeq)
+		if c.OptStartSeq != sseq {
+			t.Fatalf("StreamSeq expected %d got %d", sseq, c.OptStartSeq)
 		}
 
-		if c.StartTime != stime {
-			t.Fatalf("StartTime expected %v got %v", stime, c.StartTime)
+		if c.OptStartTime != nil && stime != nil {
+			if c.OptStartTime.UnixNano() != stime.UnixNano() {
+				t.Fatalf("StartTime expected %v got %v", stime, c.OptStartTime)
+			}
+		} else if c.OptStartTime != nil || stime != nil {
+			t.Fatalf("expected StartTime to be nil")
 		}
 
-		if c.DeliverLast != dlast {
-			t.Fatalf("DeliverLast expected %v got %v", dlast, c.DeliverLast)
-		}
-
-		if c.DeliverAll != dall {
-			t.Fatalf("DeliverAll expected %v got %v", dall, c.DeliverAll)
+		if c.DeliverPolicy != policy {
+			t.Fatalf("DeliverPolicy expected %v got %v", policy, c.DeliverPolicy)
 		}
 	}
 
-	checkPolicy(c, 0, time.Time{}, false, true)
+	checkPolicy(c, 0, nil, api.DeliverAll)
 
 	jsm.StartAtSequence(10)(c)
-	checkPolicy(c, 10, time.Time{}, false, false)
+	checkPolicy(c, 10, nil, api.DeliverByStartSequence)
 
 	now := time.Now()
 	jsm.StartAtTime(now)(c)
-	checkPolicy(c, 0, now, false, false)
+	checkPolicy(c, 0, &now, api.DeliverByStartTime)
 
 	jsm.DeliverAllAvailable()(c)
-	checkPolicy(c, 0, time.Time{}, false, true)
+	checkPolicy(c, 0, nil, api.DeliverAll)
 
 	jsm.StartWithLastReceived()(c)
-	checkPolicy(c, 0, time.Time{}, true, false)
+	checkPolicy(c, 0, nil, api.DeliverLast)
+
+	jsm.StartWithNextReceived()(c)
+	checkPolicy(c, 0, nil, api.DeliverNew)
 }
 
 func TestNextMsg(t *testing.T) {
@@ -470,12 +473,13 @@ func TestConsumer_IsSampled(t *testing.T) {
 
 func testConsumerConfig() *jsm.ConsumerCfg {
 	return &jsm.ConsumerCfg{ConsumerConfig: api.ConsumerConfig{
-		AckWait:      0,
-		AckPolicy:    "",
-		MaxDeliver:   -1,
-		ReplayPolicy: "",
-		StreamSeq:    0,
-		StartTime:    time.Now(),
+		AckWait:       0,
+		AckPolicy:     "",
+		MaxDeliver:    -1,
+		ReplayPolicy:  "",
+		OptStartSeq:   0,
+		OptStartTime:  nil,
+		DeliverPolicy: api.DeliverAll,
 	}}
 }
 func TestAckWait(t *testing.T) {
@@ -513,7 +517,7 @@ func TestAcknowledgeNone(t *testing.T) {
 func TestDeliverAllAvailable(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.DeliverAllAvailable()(cfg)
-	if !cfg.DeliverAll {
+	if cfg.DeliverPolicy != api.DeliverAll {
 		t.Fatal("expected DeliverAll")
 	}
 }
@@ -521,8 +525,8 @@ func TestDeliverAllAvailable(t *testing.T) {
 func TestDeliverySubject(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.DeliverySubject("out")(cfg)
-	if cfg.Delivery != "out" {
-		t.Fatalf("expected 'out' got %q", cfg.Delivery)
+	if cfg.DeliverSubject != "out" {
+		t.Fatalf("expected 'out' got %q", cfg.DeliverSubject)
 	}
 }
 
@@ -599,7 +603,7 @@ func TestSamplePercent(t *testing.T) {
 func TestStartAtSequence(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.StartAtSequence(1024)(cfg)
-	if cfg.StreamSeq != 1024 {
+	if cfg.DeliverPolicy != api.DeliverByStartSequence || cfg.OptStartSeq != 1024 {
 		t.Fatal("expected 1024")
 	}
 }
@@ -608,7 +612,7 @@ func TestStartAtTime(t *testing.T) {
 	cfg := testConsumerConfig()
 	s := time.Now().Add(-1 * time.Hour)
 	jsm.StartAtTime(s)(cfg)
-	if cfg.StartTime.Unix() != s.Unix() {
+	if cfg.DeliverPolicy != api.DeliverByStartTime || cfg.OptStartTime.Unix() != s.Unix() {
 		t.Fatal("expected 1 hour delta")
 	}
 }
@@ -616,7 +620,7 @@ func TestStartAtTime(t *testing.T) {
 func TestStartAtTimeDelta(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.StartAtTimeDelta(time.Hour)(cfg)
-	if cfg.StartTime.Unix() < time.Now().Add(-1*time.Hour-time.Second).Unix() || cfg.StartTime.Unix() > time.Now().Add(-1*time.Hour+time.Second).Unix() {
+	if cfg.DeliverPolicy != api.DeliverByStartTime || cfg.OptStartTime.Unix() < time.Now().Add(-1*time.Hour-time.Second).Unix() || cfg.OptStartTime.Unix() > time.Now().Add(-1*time.Hour+time.Second).Unix() {
 		t.Fatal("expected ~ 1 hour delta")
 	}
 }
@@ -624,7 +628,14 @@ func TestStartAtTimeDelta(t *testing.T) {
 func TestStartWithLastReceived(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.StartWithLastReceived()(cfg)
-	if !cfg.DeliverLast {
+	if cfg.DeliverPolicy != api.DeliverLast {
 		t.Fatal("expected DeliverLast")
+	}
+}
+func TestStartWithNextReceived(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.StartWithNextReceived()(cfg)
+	if cfg.DeliverPolicy != api.DeliverNew {
+		t.Fatal("expected DeliverNew")
 	}
 }

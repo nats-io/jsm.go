@@ -27,15 +27,15 @@ import (
 
 // DefaultConsumer is the configuration that will be used to create new Consumers in NewConsumer
 var DefaultConsumer = api.ConsumerConfig{
-	DeliverAll:   true,
-	AckPolicy:    api.AckExplicit,
-	AckWait:      30 * time.Second,
-	ReplayPolicy: api.ReplayInstant,
+	DeliverPolicy: api.DeliverAll,
+	AckPolicy:     api.AckExplicit,
+	AckWait:       30 * time.Second,
+	ReplayPolicy:  api.ReplayInstant,
 }
 
 // SampledDefaultConsumer is the configuration that will be used to create new Consumers in NewConsumer
 var SampledDefaultConsumer = api.ConsumerConfig{
-	DeliverAll:      true,
+	DeliverPolicy:   api.DeliverAll,
 	AckPolicy:       api.AckExplicit,
 	AckWait:         30 * time.Second,
 	ReplayPolicy:    api.ReplayInstant,
@@ -218,7 +218,7 @@ func loadConsumerInfo(s string, c string, opts *reqoptions) (info api.ConsumerIn
 
 func DeliverySubject(s string) ConsumerOption {
 	return func(o *ConsumerCfg) error {
-		o.ConsumerConfig.Delivery = s
+		o.ConsumerConfig.DeliverSubject = s
 		return nil
 	}
 }
@@ -233,7 +233,8 @@ func DurableName(s string) ConsumerOption {
 func StartAtSequence(s uint64) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
-		o.ConsumerConfig.StreamSeq = s
+		o.ConsumerConfig.DeliverPolicy = api.DeliverByStartSequence
+		o.ConsumerConfig.OptStartSeq = s
 		return nil
 	}
 }
@@ -241,7 +242,8 @@ func StartAtSequence(s uint64) ConsumerOption {
 func StartAtTime(t time.Time) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
-		o.ConsumerConfig.StartTime = t
+		o.ConsumerConfig.DeliverPolicy = api.DeliverByStartTime
+		o.ConsumerConfig.OptStartTime = &t
 		return nil
 	}
 }
@@ -249,7 +251,7 @@ func StartAtTime(t time.Time) ConsumerOption {
 func DeliverAllAvailable() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
-		o.ConsumerConfig.DeliverAll = true
+		o.ConsumerConfig.DeliverPolicy = api.DeliverAll
 		return nil
 	}
 }
@@ -257,7 +259,15 @@ func DeliverAllAvailable() ConsumerOption {
 func StartWithLastReceived() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
-		o.ConsumerConfig.DeliverLast = true
+		o.ConsumerConfig.DeliverPolicy = api.DeliverLast
+		return nil
+	}
+}
+
+func StartWithNextReceived() ConsumerOption {
+	return func(o *ConsumerCfg) error {
+		resetDeliverPolicy(o)
+		o.ConsumerConfig.DeliverPolicy = api.DeliverNew
 		return nil
 	}
 }
@@ -265,16 +275,18 @@ func StartWithLastReceived() ConsumerOption {
 func StartAtTimeDelta(d time.Duration) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
-		o.ConsumerConfig.StartTime = time.Now().Add(-1 * d)
+
+		t := time.Now().Add(-1 * d)
+		o.ConsumerConfig.DeliverPolicy = api.DeliverByStartTime
+		o.ConsumerConfig.OptStartTime = &t
 		return nil
 	}
 }
 
 func resetDeliverPolicy(o *ConsumerCfg) {
-	o.ConsumerConfig.StreamSeq = 0
-	o.ConsumerConfig.StartTime = time.Time{}
-	o.ConsumerConfig.DeliverLast = false
-	o.ConsumerConfig.DeliverAll = false
+	o.ConsumerConfig.DeliverPolicy = api.DeliverAll
+	o.ConsumerConfig.OptStartSeq = 0
+	o.ConsumerConfig.OptStartTime = nil
 }
 
 func AcknowledgeNone() ConsumerOption {
@@ -525,22 +537,21 @@ func (c *Consumer) Delete() (err error) {
 	return fmt.Errorf("unknown response while removing consumer %s: %q", c.Name(), response.Data)
 }
 
-func (c *Consumer) Name() string                   { return c.name }
-func (c *Consumer) IsSampled() bool                { return c.SampleFrequency() != "" }
-func (c *Consumer) IsPullMode() bool               { return c.cfg.Delivery == "" }
-func (c *Consumer) IsPushMode() bool               { return !c.IsPullMode() }
-func (c *Consumer) IsDurable() bool                { return c.cfg.Durable != "" }
-func (c *Consumer) IsEphemeral() bool              { return !c.IsDurable() }
-func (c *Consumer) StreamName() string             { return c.stream }
-func (c *Consumer) DeliverySubject() string        { return c.cfg.Delivery }
-func (c *Consumer) DurableName() string            { return c.cfg.Durable }
-func (c *Consumer) StreamSequence() uint64         { return c.cfg.StreamSeq }
-func (c *Consumer) StartTime() time.Time           { return c.cfg.StartTime }
-func (c *Consumer) DeliverAll() bool               { return c.cfg.DeliverAll }
-func (c *Consumer) DeliverLast() bool              { return c.cfg.DeliverLast }
-func (c *Consumer) AckPolicy() api.AckPolicy       { return c.cfg.AckPolicy }
-func (c *Consumer) AckWait() time.Duration         { return c.cfg.AckWait }
-func (c *Consumer) MaxDeliver() int                { return c.cfg.MaxDeliver }
-func (c *Consumer) FilterSubject() string          { return c.cfg.FilterSubject }
-func (c *Consumer) ReplayPolicy() api.ReplayPolicy { return c.cfg.ReplayPolicy }
-func (c *Consumer) SampleFrequency() string        { return c.cfg.SampleFrequency }
+func (c *Consumer) Name() string                     { return c.name }
+func (c *Consumer) IsSampled() bool                  { return c.SampleFrequency() != "" }
+func (c *Consumer) IsPullMode() bool                 { return c.cfg.DeliverSubject == "" }
+func (c *Consumer) IsPushMode() bool                 { return !c.IsPullMode() }
+func (c *Consumer) IsDurable() bool                  { return c.cfg.Durable != "" }
+func (c *Consumer) IsEphemeral() bool                { return !c.IsDurable() }
+func (c *Consumer) StreamName() string               { return c.stream }
+func (c *Consumer) DeliverySubject() string          { return c.cfg.DeliverSubject }
+func (c *Consumer) DurableName() string              { return c.cfg.Durable }
+func (c *Consumer) StartSequence() uint64            { return c.cfg.OptStartSeq }
+func (c *Consumer) StartTime() time.Time             { return *c.cfg.OptStartTime }
+func (c *Consumer) DeliverPolicy() api.DeliverPolicy { return c.cfg.DeliverPolicy }
+func (c *Consumer) AckPolicy() api.AckPolicy         { return c.cfg.AckPolicy }
+func (c *Consumer) AckWait() time.Duration           { return c.cfg.AckWait }
+func (c *Consumer) MaxDeliver() int                  { return c.cfg.MaxDeliver }
+func (c *Consumer) FilterSubject() string            { return c.cfg.FilterSubject }
+func (c *Consumer) ReplayPolicy() api.ReplayPolicy   { return c.cfg.ReplayPolicy }
+func (c *Consumer) SampleFrequency() string          { return c.cfg.SampleFrequency }

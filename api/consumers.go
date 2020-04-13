@@ -83,13 +83,41 @@ var (
 	AckNext     = []byte("+NXT")
 )
 
+type DeliverPolicy string
+
+func (p DeliverPolicy) String() string { return strings.Title(string(p)) }
+
+const (
+	DeliverAll             DeliverPolicy = "all"
+	DeliverLast            DeliverPolicy = "last"
+	DeliverNew             DeliverPolicy = "new"
+	DeliverByStartSequence DeliverPolicy = "by_start_sequence"
+	DeliverByStartTime     DeliverPolicy = "by_start_time"
+)
+
+func (p *DeliverPolicy) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("all"), jsonString("undefined"):
+		*p = DeliverAll
+	case jsonString("last"):
+		*p = DeliverLast
+	case jsonString("new"):
+		*p = DeliverNew
+	case jsonString("by_start_sequence"):
+		*p = DeliverByStartSequence
+	case jsonString("by_start_time"):
+		*p = DeliverByStartTime
+	}
+
+	return nil
+}
+
 type ConsumerConfig struct {
-	Delivery        string        `json:"delivery_subject"`
 	Durable         string        `json:"durable_name,omitempty"`
-	StreamSeq       uint64        `json:"stream_seq,omitempty"`
-	StartTime       time.Time     `json:"start_time,omitempty"`
-	DeliverAll      bool          `json:"deliver_all,omitempty"`
-	DeliverLast     bool          `json:"deliver_last,omitempty"`
+	DeliverSubject  string        `json:"deliver_subject,omitempty"`
+	DeliverPolicy   DeliverPolicy `json:"deliver_policy"`
+	OptStartSeq     uint64        `json:"opt_start_seq,omitempty"`
+	OptStartTime    *time.Time    `json:"opt_start_time,omitempty"`
 	AckPolicy       AckPolicy     `json:"ack_policy"`
 	AckWait         time.Duration `json:"ack_wait,omitempty"`
 	MaxDeliver      int           `json:"max_deliver,omitempty"`

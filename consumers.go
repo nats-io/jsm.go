@@ -547,7 +547,6 @@ func (c *Consumer) StreamName() string               { return c.stream }
 func (c *Consumer) DeliverySubject() string          { return c.cfg.DeliverSubject }
 func (c *Consumer) DurableName() string              { return c.cfg.Durable }
 func (c *Consumer) StartSequence() uint64            { return c.cfg.OptStartSeq }
-func (c *Consumer) StartTime() time.Time             { return *c.cfg.OptStartTime }
 func (c *Consumer) DeliverPolicy() api.DeliverPolicy { return c.cfg.DeliverPolicy }
 func (c *Consumer) AckPolicy() api.AckPolicy         { return c.cfg.AckPolicy }
 func (c *Consumer) AckWait() time.Duration           { return c.cfg.AckWait }
@@ -555,3 +554,9 @@ func (c *Consumer) MaxDeliver() int                  { return c.cfg.MaxDeliver }
 func (c *Consumer) FilterSubject() string            { return c.cfg.FilterSubject }
 func (c *Consumer) ReplayPolicy() api.ReplayPolicy   { return c.cfg.ReplayPolicy }
 func (c *Consumer) SampleFrequency() string          { return c.cfg.SampleFrequency }
+func (c *Consumer) StartTime() time.Time {
+	if c.cfg.OptStartTime == nil {
+		return time.Time{}
+	}
+	return *c.cfg.OptStartTime
+}

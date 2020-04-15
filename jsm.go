@@ -14,6 +14,8 @@
 // Package jsm provides client helpers for managing and interacting with NATS JetStream
 package jsm
 
+//go:generate go run api/gen.go
+
 import (
 	"context"
 	"encoding/json"

@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -124,6 +126,31 @@ type ConsumerConfig struct {
 	FilterSubject   string        `json:"filter_subject,omitempty"`
 	ReplayPolicy    ReplayPolicy  `json:"replay_policy"`
 	SampleFrequency string        `json:"sample_freq,omitempty"`
+}
+
+func (c ConsumerConfig) Schema() []byte {
+	return schemas["io.nats.jetstream.api.v1.consumer_configuration"]
+}
+
+func (c ConsumerConfig) Validate() (bool, []string) {
+	schema := gojsonschema.NewBytesLoader(c.Schema())
+	doc := gojsonschema.NewGoLoader(c)
+
+	result, err := gojsonschema.Validate(schema, doc)
+	if err != nil {
+		return false, []string{err.Error()}
+	}
+
+	if result.Valid() {
+		return true, nil
+	}
+
+	errors := make([]string, len(result.Errors()))
+	for i, verr := range result.Errors() {
+		errors[i] = verr.String()
+	}
+
+	return false, errors
 }
 
 type CreateConsumerRequest struct {

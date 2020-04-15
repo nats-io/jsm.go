@@ -13,6 +13,10 @@
 
 package api
 
+import (
+	"github.com/xeipuuv/gojsonschema"
+)
+
 type StreamTemplateConfig struct {
 	Name       string        `json:"name"`
 	Config     *StreamConfig `json:"config"`
@@ -23,6 +27,37 @@ type StreamTemplateConfig struct {
 type StreamTemplateInfo struct {
 	Config  *StreamTemplateConfig `json:"config"`
 	Streams []string              `json:"streams"`
+}
+
+func (c StreamTemplateConfig) Schema() []byte {
+	return schemas["io.nats.jetstream.api.v1.stream_template_configuration"]
+}
+
+func (c StreamTemplateConfig) Validate() (bool, []string) {
+	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchema("https://nats.io/schemas/jetstream/api/v1/stream_configuration.json", gojsonschema.NewBytesLoader(c.Config.Schema()))
+	root := gojsonschema.NewBytesLoader(c.Schema())
+	js, err := sl.Compile(root)
+	if err != nil {
+		return false, []string{err.Error()}
+	}
+
+	doc := gojsonschema.NewGoLoader(c)
+
+	result, err := js.Validate(doc)
+	if err != nil {
+		return false, []string{err.Error()}
+	}
+
+	if result.Valid() {
+		return true, nil
+	}
+	errors := make([]string, len(result.Errors()))
+	for i, verr := range result.Errors() {
+		errors[i] = verr.String()
+	}
+
+	return false, errors
 }
 
 const (

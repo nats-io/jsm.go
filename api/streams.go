@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -50,6 +52,31 @@ type StreamConfig struct {
 	Replicas     int             `json:"num_replicas"`
 	NoAck        bool            `json:"no_ack,omitempty"`
 	Template     string          `json:"template_owner,omitempty"`
+}
+
+func (c StreamConfig) Schema() []byte {
+	return schemas["io.nats.jetstream.api.v1.stream_configuration"]
+}
+
+func (c StreamConfig) Validate() (bool, []string) {
+	schema := gojsonschema.NewBytesLoader(c.Schema())
+	doc := gojsonschema.NewGoLoader(c)
+
+	result, err := gojsonschema.Validate(schema, doc)
+	if err != nil {
+		return false, []string{err.Error()}
+	}
+
+	if result.Valid() {
+		return true, nil
+	}
+
+	errors := make([]string, len(result.Errors()))
+	for i, verr := range result.Errors() {
+		errors[i] = verr.String()
+	}
+
+	return false, errors
 }
 
 type StreamInfo struct {

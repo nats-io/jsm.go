@@ -16,6 +16,7 @@ package jsm
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/nats-io/jsm.go/api"
 )
@@ -43,6 +44,11 @@ func NewStreamTemplate(name string, maxStreams uint32, config api.StreamConfig, 
 		Name:       name,
 		Config:     &cfg.StreamConfig,
 		MaxStreams: maxStreams,
+	}
+
+	valid, errs := tc.Validate()
+	if !valid {
+		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}
 
 	jreq, err := json.Marshal(&tc)

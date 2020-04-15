@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/nats-io/jsm.go/api"
@@ -73,6 +74,11 @@ func NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOpti
 	}
 
 	cfg.Name = name
+
+	valid, errs := cfg.Validate()
+	if !valid {
+		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
+	}
 
 	jreq, err := json.Marshal(&cfg)
 	if err != nil {

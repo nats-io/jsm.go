@@ -128,6 +128,12 @@ type ConsumerConfig struct {
 	SampleFrequency string        `json:"sample_freq,omitempty"`
 }
 
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (c ConsumerConfig) SchemaID() string {
+	return "https://nats.io/schemas/jetstream/api/v1/consumer_configuration.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
 func (c ConsumerConfig) Schema() []byte {
 	return schemas["io.nats.jetstream.api.v1.consumer_configuration"]
 }

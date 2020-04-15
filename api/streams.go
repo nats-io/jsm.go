@@ -54,6 +54,12 @@ type StreamConfig struct {
 	Template     string          `json:"template_owner,omitempty"`
 }
 
+// SchemaID is the url to the JSON Schema for JetStream Stream Configuration
+func (c StreamConfig) SchemaID() string {
+	return "https://nats.io/schemas/jetstream/api/v1/stream_configuration.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Stream Configuration
 func (c StreamConfig) Schema() []byte {
 	return schemas["io.nats.jetstream.api.v1.stream_configuration"]
 }

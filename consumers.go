@@ -66,6 +66,11 @@ func NewConsumerFromDefault(stream string, dflt api.ConsumerConfig, opts ...Cons
 		return nil, err
 	}
 
+	valid, errs := cfg.Validate()
+	if !valid {
+		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
+	}
+
 	req := api.CreateConsumerRequest{
 		Stream: stream,
 		Config: cfg.ConsumerConfig,

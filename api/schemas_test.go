@@ -44,9 +44,6 @@ func TestStreamConfiguration(t *testing.T) {
 	cfg := reset()
 	validateExpectSuccess(t, cfg)
 
-	cfg.Name = ""
-	validateExpectFailure(t, cfg)
-
 	// invalid names
 	cfg = reset()
 	cfg.Name = "X.X"

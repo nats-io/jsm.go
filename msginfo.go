@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nats-io/nats.go"
 )
@@ -28,6 +29,7 @@ type MsgInfo struct {
 	sSeq      int
 	cSeq      int
 	delivered int
+	ts        time.Time
 }
 
 func (i *MsgInfo) Stream() string {
@@ -50,13 +52,11 @@ func (i *MsgInfo) Delivered() int {
 	return i.delivered
 }
 
-// ParseJSMsgMetadata parse the reply subject metadata to determine message metadata
-func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
-	if len(m.Reply) == 0 {
-		return nil, fmt.Errorf("reply subject is not an Ack")
-	}
+func (i *MsgInfo) TimeStamp() time.Time {
+	return i.ts
+}
 
-	parts := strings.Split(m.Reply, ".")
+func oldParseJSMsgMetadata(parts []string) (info *MsgInfo, err error) {
 	c := len(parts)
 
 	if c != 7 || parts[0] != "$JS" || parts[1] != "ACK" {
@@ -69,5 +69,33 @@ func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
 	streamSeq, _ := strconv.Atoi(parts[c-2])
 	consumerSeq, _ := strconv.Atoi(parts[c-1])
 
-	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered}, nil
+	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, time.Time{}}, nil
+}
+
+// ParseJSMsgMetadata parse the reply subject metadata to determine message metadata
+func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
+	if len(m.Reply) == 0 {
+		return nil, fmt.Errorf("reply subject is not an Ack")
+	}
+
+	parts := strings.Split(m.Reply, ".")
+	c := len(parts)
+
+	if c == 7 {
+		return oldParseJSMsgMetadata(parts)
+	}
+
+	if c != 8 || parts[0] != "$JS" || parts[1] != "ACK" {
+		return nil, fmt.Errorf("message metadata does not appear to be an ACK")
+	}
+
+	stream := parts[c-6]
+	consumer := parts[c-5]
+	delivered, _ := strconv.Atoi(parts[c-4])
+	streamSeq, _ := strconv.Atoi(parts[c-3])
+	consumerSeq, _ := strconv.Atoi(parts[c-2])
+	tsi, _ := strconv.Atoi(parts[c-1])
+	ts := time.Unix(0, int64(tsi))
+
+	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, ts}, nil
 }

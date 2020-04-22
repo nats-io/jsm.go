@@ -41,8 +41,10 @@ func (c StreamTemplateConfig) Schema() []byte {
 
 func (c StreamTemplateConfig) Validate() (bool, []string) {
 	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchema("https://nats.io/schemas/jetstream/api/v1/definitions.json", gojsonschema.NewBytesLoader(schemas["io.nats.jetstream.api.v1.definitions"]))
 	sl.AddSchema("https://nats.io/schemas/jetstream/api/v1/stream_configuration.json", gojsonschema.NewBytesLoader(c.Config.Schema()))
 	root := gojsonschema.NewBytesLoader(c.Schema())
+
 	js, err := sl.Compile(root)
 	if err != nil {
 		return false, []string{err.Error()}

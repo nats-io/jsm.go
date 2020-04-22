@@ -17,6 +17,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -55,6 +56,11 @@ type schema struct {
 
 type schemas []*schema
 
+type idDetect struct {
+	ID    string `json:"$id"`
+	Title string `json:"title"`
+}
+
 func (s schemas) Now() string {
 	return fmt.Sprintf("%s", time.Now())
 }
@@ -75,46 +81,50 @@ func goFmt(file string) error {
 	return err
 }
 
-func getSchame(u string) (string, error) {
+func getSchame(u string) (title string, id string, body string, err error) {
 	log.Printf("Fetching %s", u)
 	result, err := http.Get(u)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 
 	if result.StatusCode != 200 {
-		return "", fmt.Errorf("got HTTP status: %d: %s", result.StatusCode, result.Status)
+		return "", "", "", fmt.Errorf("got HTTP status: %d: %s", result.StatusCode, result.Status)
 	}
 
 	defer result.Body.Close()
 
 	data, err := ioutil.ReadAll(result.Body)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 
-	return base64.StdEncoding.EncodeToString(data), nil
+	idt := &idDetect{}
+	err = json.Unmarshal(data, idt)
+	panicIfErr(err)
+
+	log.Printf("Detected %+v", *idt)
+	return idt.Title, idt.ID, base64.StdEncoding.EncodeToString(data), nil
 }
 func main() {
 	s := schemas{
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json"},
 		&schema{
-			T: "io.nats.jetstream.api.v1.consumer_configuration",
-			U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json",
-		},
-		&schema{
-			T: "io.nats.jetstream.api.v1.stream_configuration",
-			U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json",
-		},
-		&schema{
-			T: "io.nats.jetstream.api.v1.stream_template_configuration",
-			U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json",
+			U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/definitions.json",
+			T: "io.nats.jetstream.api.v1.definitions",
 		},
 	}
 
 	for _, i := range s {
-		body, err := getSchame(i.U)
+		title, _, body, err := getSchame(i.U)
 		panicIfErr(err)
+
 		i.S = body
+		if i.T == "" {
+			i.T = title
+		}
 	}
 
 	t, err := template.New("schemas").Parse(schemasFileTemplate)

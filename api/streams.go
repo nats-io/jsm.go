@@ -65,10 +65,17 @@ func (c StreamConfig) Schema() []byte {
 }
 
 func (c StreamConfig) Validate() (bool, []string) {
-	schema := gojsonschema.NewBytesLoader(c.Schema())
+	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchema("definitions.json", gojsonschema.NewBytesLoader(schemas["io.nats.jetstream.api.v1.definitions"]))
+
+	js, err := sl.Compile(gojsonschema.NewBytesLoader(c.Schema()))
+	if err != nil {
+		return false, []string{"compile failed", err.Error()}
+	}
+
 	doc := gojsonschema.NewGoLoader(c)
 
-	result, err := gojsonschema.Validate(schema, doc)
+	result, err := js.Validate(doc)
 	if err != nil {
 		return false, []string{err.Error()}
 	}

@@ -139,10 +139,18 @@ func (c ConsumerConfig) Schema() []byte {
 }
 
 func (c ConsumerConfig) Validate() (bool, []string) {
-	schema := gojsonschema.NewBytesLoader(c.Schema())
+	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchema("https://nats.io/schemas/jetstream/api/v1/definitions.json", gojsonschema.NewBytesLoader(schemas["io.nats.jetstream.api.v1.definitions"]))
+	root := gojsonschema.NewBytesLoader(c.Schema())
+
+	js, err := sl.Compile(root)
+	if err != nil {
+		return false, []string{err.Error()}
+	}
+
 	doc := gojsonschema.NewGoLoader(c)
 
-	result, err := gojsonschema.Validate(schema, doc)
+	result, err := js.Validate(doc)
 	if err != nil {
 		return false, []string{err.Error()}
 	}

@@ -121,6 +121,7 @@ func main() {
 	s := schemas{
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_connect.json", St: "ConnectEventMsg"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_disconnect.json", St: "DisconnectEventMsg"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/metric/v1/service_latency.json", St: "ServiceLatency"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/api_audit.json", St: "JetStreamAPIAudit"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/max_deliver.json", St: "ConsumerDeliveryExceededAdvisory"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/metric/v1/consumer_ack.json", St: "ConsumerAckMetric"},

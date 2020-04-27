@@ -41,6 +41,28 @@ type ServerInfo struct {
 	Time      time.Time `json:"time"`
 }
 
+// ServiceLatency is the JSON message sent out in response to latency tracking for
+// exported services.
+type ServiceLatency struct {
+	Type           string        `json:"type"`
+	ID             string        `json:"id"`
+	Time           string        `json:"timestamp"`
+	Status         int           `json:"status"`
+	Error          string        `json:"description,omitempty"`
+	AppName        string        `json:"app,omitempty"`
+	RequestStart   time.Time     `json:"start"`
+	ServiceLatency time.Duration `json:"svc"`
+	NATSLatency    NATSLatency   `json:"nats"`
+	TotalLatency   time.Duration `json:"total"`
+}
+
+// NATSLatency represents the internal NATS latencies, including RTTs to clients.
+type NATSLatency struct {
+	Requestor time.Duration `json:"req"`
+	Responder time.Duration `json:"resp"`
+	System    time.Duration `json:"sys"`
+}
+
 // DataStats reports how may msg and bytes. Applicable for both sent and received.
 type DataStats struct {
 	Msgs  int64 `json:"msgs"`

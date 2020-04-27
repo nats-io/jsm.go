@@ -1,12 +1,17 @@
 package api
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 )
 
-type validator interface {
-	Validate() (bool, []string)
+func checkErr(t *testing.T, err error, m string) {
+	t.Helper()
+	if err == nil {
+		return
+	}
+	t.Fatal(m + ": " + err.Error())
 }
 
 func validateExpectSuccess(t *testing.T, cfg validator) {
@@ -25,6 +30,66 @@ func validateExpectFailure(t *testing.T, cfg validator) {
 	if ok {
 		t.Fatalf("expected success but got: %v", errs)
 	}
+}
+
+func TestValidateStruct(t *testing.T) {
+	sc := StreamConfig{
+		Name:         "BASIC",
+		Retention:    LimitsPolicy,
+		MaxConsumers: -1,
+		MaxAge:       0,
+		MaxBytes:     -1,
+		MaxMsgs:      -1,
+		Storage:      FileStorage,
+		Replicas:     1,
+	}
+
+	ok, errs := ValidateStruct(sc, sc.SchemaType())
+	if !ok {
+		t.Fatalf("expected no errors got %v", errs)
+	}
+
+	sc.MaxMsgs = -2
+	ok, errs = ValidateStruct(sc, sc.SchemaType())
+	if ok || len(errs) != 1 {
+		t.Fatal("expected errors got none")
+	}
+
+	jaj := `{
+  "type": "io.nats.jetstream.advisory.v1.api_audit",
+  "id": "uafvZ1UEDIW5FZV6kvLgWA",
+  "timestamp": "2020-04-23T16:51:18.516363Z",
+  "server": "NDJWE4SOUJOJT2TY5Y2YQEOAHGAK5VIGXTGKWJSFHVCII4ITI3LBHBUV",
+  "client": {
+    "host": "::1",
+    "port": 57924,
+    "cid": 17,
+    "account": "$G",
+    "name": "NATS CLI",
+    "lang": "go",
+    "version": "1.9.2"
+  },
+  "subject": "$JS.STREAM.LIST",
+  "response": "[\n  \"ORDERS\"\n]"
+}`
+
+	ja := JetStreamAPIAudit{}
+	err := json.Unmarshal([]byte(jaj), &ja)
+	if err != nil {
+		t.Fatalf("could not unmarshal event: %s", err)
+	}
+
+	ok, errs = ValidateStruct(ja, "io.nats.jetstream.advisory.v1.api_audit")
+	if !ok {
+		t.Fatalf("expected no errors got %v", errs)
+	}
+
+	ja.Type = ""
+	ok, errs = ValidateStruct(ja, "io.nats.jetstream.advisory.v1.api_audit")
+	if ok || len(errs) != 1 {
+		t.Fatal("expected errors got none")
+	}
+
 }
 
 func TestStreamConfiguration(t *testing.T) {
@@ -208,4 +273,55 @@ func TestConsumerConfiguration(t *testing.T) {
 	validateExpectSuccess(t, cfg)
 	cfg.ReplayPolicy = ReplayOriginal
 	validateExpectSuccess(t, cfg)
+}
+
+func TestSchemaForEvent(t *testing.T) {
+	s, err := SchemaTypeForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	checkErr(t, err, "schema extract failed")
+
+	if s != "io.nats.jetstream.metric.v1.consumer_ack" {
+		t.Fatalf("expected io.nats.jetstream.metric.v1.consumer_ack got %s", s)
+	}
+
+	s, err = SchemaTypeForEvent([]byte(`{}`))
+	checkErr(t, err, "schema extract failed")
+
+	if s != "io.nats.unknown_event" {
+		t.Fatalf("expected io.nats.unknown_event got %s", s)
+	}
+}
+
+func TestSchemaURLForToken(t *testing.T) {
+	SchemasRepo = "https://nats.io/schemas"
+
+	a, u, err := SchemaURLForType("io.nats.jetstream.metric.v1.consumer_ack")
+	checkErr(t, err, "parse failed")
+
+	if a != "https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json" {
+		t.Fatalf("expected https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json got %q", a)
+	}
+
+	if u.Host != "nats.io" || u.Scheme != "https" || u.Path != "/schemas/jetstream/metric/v1/consumer_ack.json" {
+		t.Fatalf("invalid url: %v", u.String())
+	}
+
+	_, _, err = SchemaURLForType("jetstream.metric.v1.consumer_ack")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func TestSchemaURLForEvent(t *testing.T) {
+	SchemasRepo = "https://nats.io/schemas"
+
+	a, u, err := SchemaURLForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	checkErr(t, err, "parse failed")
+
+	if a != "https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json" {
+		t.Fatalf("expected . got %q", a)
+	}
+
+	if u.Host != "nats.io" || u.Scheme != "https" || u.Path != "/schemas/jetstream/metric/v1/consumer_ack.json" {
+		t.Fatalf("invalid url: %v", u.String())
+	}
 }

@@ -5,9 +5,7 @@ import (
 	"reflect"
 )
 
-func Example() {
-	// an event received from some medium like a NATS Subject or an event router
-	receivedEvent := `
+const receivedEvent = `
 {
   "type": "io.nats.jetstream.advisory.v1.api_audit",
   "id": "uafvZ1UEDIW5FZV6kvLgWA",
@@ -27,27 +25,32 @@ func Example() {
 }
 `
 
+func Example() {
 	// sets a location for the schemas repo
 	SchemasRepo = "https://nats.io/schemas"
 
+	// receivedEvent was received over a transport like NATS, webhook or other medium
 	stype, err := SchemaTypeForEvent([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())
 	}
 	fmt.Printf("Event Type: %s\n", stype)
 
-	address, _, err := SchemaURLForEvent([]byte(receivedEvent))
+	// parses the received event and extracts the type, determines the url to fetch a schema
+	address, uri, err := SchemaURLForEvent([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("Event Schema URL: %s\n", address)
+	fmt.Printf("Event Schema URL: %s (%s)\n", address, uri.Host)
 
-	address, _, err = SchemaURLForType("io.nats.jetstream.advisory.v1.api_audit")
+	// determines the url to fetch for a specific schema kind
+	address, uri, err = SchemaURLForType("io.nats.jetstream.advisory.v1.api_audit")
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("Type Schema URL: %s\n", address)
+	fmt.Printf("Type Schema URL: %s (%s)\n", address, uri.Host)
 
+	// parses an event into it a type if supported else map[string]interface{}
 	schema, event, err := ParseEvent([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())
@@ -56,7 +59,7 @@ func Example() {
 
 	// Output:
 	// Event Type: io.nats.jetstream.advisory.v1.api_audit
-	// Event Schema URL: https://nats.io/schemas/jetstream/advisory/v1/api_audit.json
-	// Type Schema URL: https://nats.io/schemas/jetstream/advisory/v1/api_audit.json
+	// Event Schema URL: https://nats.io/schemas/jetstream/advisory/v1/api_audit.json (nats.io)
+	// Type Schema URL: https://nats.io/schemas/jetstream/advisory/v1/api_audit.json (nats.io)
 	// Parsed event with type "io.nats.jetstream.advisory.v1.api_audit" into *api.JetStreamAPIAudit
 }

@@ -39,6 +39,15 @@ import (
 
 var schemas map[string][]byte
 
+var schemaTypes = map[string]func() interface{}{
+{{- range . }}
+{{- if .St }}
+    "{{ .T }}": func() interface{} { return &{{ .St }}{} },
+{{- end }}
+{{- end }}
+	"io.nats.unknown_event":                     func() interface{} { return &UnknownEvent{} },
+}
+
 func init() {
 	schemas = make(map[string][]byte)
 
@@ -49,9 +58,10 @@ func init() {
 `
 
 type schema struct {
-	T string
-	S string
-	U string
+	T  string // type
+	S  string // schema
+	U  string // url
+	St string // struct
 }
 
 type schemas []*schema
@@ -106,11 +116,17 @@ func getSchame(u string) (title string, id string, body string, err error) {
 	log.Printf("Detected %+v", *idt)
 	return idt.Title, idt.ID, base64.StdEncoding.EncodeToString(data), nil
 }
+
 func main() {
 	s := schemas{
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_connect.json", St: "ConnectEventMsg"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_disconnect.json", St: "DisconnectEventMsg"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/api_audit.json", St: "JetStreamAPIAudit"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/max_deliver.json", St: "ConsumerDeliveryExceededAdvisory"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/metric/v1/consumer_ack.json", St: "ConsumerAckMetric"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json", St: "StreamTemplateConfig"},
 		&schema{
 			U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/definitions.json",
 			T: "io.nats.jetstream.api.v1.definitions",
@@ -130,7 +146,7 @@ func main() {
 	t, err := template.New("schemas").Parse(schemasFileTemplate)
 	panicIfErr(err)
 
-	out, err := os.Create("api/schemas.go")
+	out, err := os.Create("api/schemas_generated.go")
 	panicIfErr(err)
 
 	err = t.Execute(out, s)

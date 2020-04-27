@@ -59,9 +59,14 @@ func (c StreamConfig) SchemaID() string {
 	return "https://nats.io/schemas/jetstream/api/v1/stream_configuration.json"
 }
 
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (c StreamConfig) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_configuration"
+}
+
 // Schema is a Draft 7 JSON Schema for the JetStream Stream Configuration
 func (c StreamConfig) Schema() []byte {
-	return schemas["io.nats.jetstream.api.v1.stream_configuration"]
+	return schemas[c.SchemaType()]
 }
 
 func (c StreamConfig) Validate() (bool, []string) {

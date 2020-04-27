@@ -21,6 +21,11 @@ type validator interface {
 	Validate() (bool, []string)
 }
 
+// IsNatsEventType determines if a event type is a valid NATS type
+func IsNatsEventType(schemaType string) bool {
+	return strings.HasPrefix(schemaType, "io.nats.")
+}
+
 // SchemaURLForEvent parses event e and determines a http address for the JSON schema describing it rooted in SchemasRepo
 func SchemaURLForEvent(e []byte) (address string, url *url.URL, err error) {
 	schema, err := SchemaTypeForEvent(e)
@@ -32,12 +37,12 @@ func SchemaURLForEvent(e []byte) (address string, url *url.URL, err error) {
 }
 
 // SchemaURLForType determines the path to the JSON Schema document describing an event given a token like io.nats.jetstream.metric.v1.consumer_ack
-func SchemaURLForType(schema string) (address string, url *url.URL, err error) {
-	if !strings.HasPrefix(schema, "io.nats.") {
-		return "", nil, fmt.Errorf("unsupported schema %q", schema)
+func SchemaURLForType(schemaType string) (address string, url *url.URL, err error) {
+	if !IsNatsEventType(schemaType) {
+		return "", nil, fmt.Errorf("unsupported schema type %q", schemaType)
 	}
 
-	token := strings.TrimPrefix(schema, "io.nats.")
+	token := strings.TrimPrefix(schemaType, "io.nats.")
 	address = fmt.Sprintf("%s/%s.json", SchemasRepo, strings.ReplaceAll(token, ".", "/"))
 	url, err = url.Parse(address)
 
@@ -81,7 +86,7 @@ func NewEvent(schemaType string) (interface{}, bool) {
 		gf = schemaTypes["io.nats.unknown_event"]
 	}
 
-	return gf, ok
+	return gf(), ok
 }
 
 // ValidateStruct validates data matches schemaType like io.nats.jetstream.advisory.v1.api_audit

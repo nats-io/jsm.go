@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+
+	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
 )
 
 func ExampleParseEvent() {
@@ -13,7 +15,7 @@ func ExampleParseEvent() {
 
 	fmt.Printf("Event Type: %s\n", schema)
 	switch e := event.(type) {
-	case *JetStreamAPIAudit:
+	case *jsadvisory.JetStreamAPIAuditV1:
 		fmt.Printf("API Audit: subject: %s in account %s", e.Subject, e.Client.Account)
 
 	default:

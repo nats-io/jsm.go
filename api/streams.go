@@ -39,6 +39,9 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
+// StreamConfig is the configuration for a JetStream Stream Template
+//
+// NATS Schema Type io.nats.jetstream.api.v1.stream_configuration
 type StreamConfig struct {
 	Name         string          `json:"name"`
 	Subjects     []string        `json:"subjects,omitempty"`

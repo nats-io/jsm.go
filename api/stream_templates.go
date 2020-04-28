@@ -17,6 +17,9 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+// StreamTemplateConfig is the configuration for a JetStream Stream Template
+//
+// NATS Schema Type io.nats.jetstream.api.v1.stream_template_configuration
 type StreamTemplateConfig struct {
 	Name       string        `json:"name"`
 	Config     *StreamConfig `json:"config"`

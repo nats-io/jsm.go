@@ -12,6 +12,9 @@ import (
 // SchemasRepo is the repository holding NATS Schemas
 var SchemasRepo = "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas"
 
+// UnknownEvent is a type returned when parsing an unknown type of event
+type UnknownEvent = map[string]interface{}
+
 type schemaDetector struct {
 	Schema string `json:"schema"`
 	Type   string `json:"type"`

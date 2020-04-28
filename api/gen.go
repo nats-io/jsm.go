@@ -34,7 +34,9 @@ package api
 
 import (
 	"encoding/base64"
-
+	srvadvisory "github.com/nats-io/jsm.go/api/server/advisory"
+	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
+    jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
 )
 
 var schemas map[string][]byte
@@ -45,7 +47,7 @@ var schemaTypes = map[string]func() interface{}{
     "{{ .T }}": func() interface{} { return &{{ .St }}{} },
 {{- end }}
 {{- end }}
-	"io.nats.unknown_event":                     func() interface{} { return &UnknownEvent{} },
+	"io.nats.unknown_event": func() interface{} { return &UnknownEvent{} },
 }
 
 func init() {
@@ -82,8 +84,14 @@ func panicIfErr(err error) {
 }
 
 func goFmt(file string) error {
-	c := exec.Command("go", "fmt", file)
+	c := exec.Command("goimports", "-w", file)
 	out, err := c.CombinedOutput()
+	if err != nil {
+		log.Printf("goimports failed: %s", string(out))
+	}
+
+	c = exec.Command("go", "fmt", file)
+	out, err = c.CombinedOutput()
 	if err != nil {
 		log.Printf("go fmt failed: %s", string(out))
 	}
@@ -119,12 +127,12 @@ func getSchame(u string) (title string, id string, body string, err error) {
 
 func main() {
 	s := schemas{
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_connect.json", St: "ConnectEventMsg"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_disconnect.json", St: "DisconnectEventMsg"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/metric/v1/service_latency.json", St: "ServiceLatency"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/api_audit.json", St: "JetStreamAPIAudit"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/max_deliver.json", St: "ConsumerDeliveryExceededAdvisory"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/metric/v1/consumer_ack.json", St: "ConsumerAckMetric"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_connect.json", St: "srvadvisory.ConnectEventMsgV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_disconnect.json", St: "srvadvisory.DisconnectEventMsgV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/metric/v1/service_latency.json", St: "srvadvisory.ServiceLatencyV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/api_audit.json", St: "jsadvisory.JetStreamAPIAuditV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/max_deliver.json", St: "jsadvisory.ConsumerDeliveryExceededAdvisoryV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/metric/v1/consumer_ack.json", St: "jsmetric.ConsumerAckMetricV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json", St: "StreamTemplateConfig"},

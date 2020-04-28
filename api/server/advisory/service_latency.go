@@ -1,0 +1,22 @@
+package advisory
+
+import (
+	"time"
+)
+
+// ServiceLatencyV1 is the JSON message sent out in response to latency tracking for
+// exported services.
+//
+// NATS Schema Type io.nats.server.metric.v1.service_latency
+type ServiceLatencyV1 struct {
+	Type           string        `json:"type"`
+	ID             string        `json:"id"`
+	Time           string        `json:"timestamp"`
+	Status         int           `json:"status"`
+	Error          string        `json:"description,omitempty"`
+	AppName        string        `json:"app,omitempty"`
+	RequestStart   time.Time     `json:"start"`
+	ServiceLatency time.Duration `json:"svc"`
+	NATSLatency    NATSLatencyV1 `json:"nats"`
+	TotalLatency   time.Duration `json:"total"`
+}

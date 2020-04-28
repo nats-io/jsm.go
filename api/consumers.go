@@ -114,6 +114,9 @@ func (p *DeliverPolicy) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ConsumerConfig is the configuration for a JetStream consumes
+//
+// NATS Schema Type io.nats.jetstream.api.v1.consumer_configuration
 type ConsumerConfig struct {
 	Durable         string        `json:"durable_name,omitempty"`
 	DeliverSubject  string        `json:"deliver_subject,omitempty"`

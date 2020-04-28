@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
 )
 
 func checkErr(t *testing.T, err error, m string) {
@@ -73,7 +75,7 @@ func TestValidateStruct(t *testing.T) {
   "response": "[\n  \"ORDERS\"\n]"
 }`
 
-	ja := JetStreamAPIAudit{}
+	ja := jsadvisory.JetStreamAPIAuditV1{}
 	err := json.Unmarshal([]byte(jaj), &ja)
 	if err != nil {
 		t.Fatalf("could not unmarshal event: %s", err)

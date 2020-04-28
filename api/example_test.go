@@ -61,5 +61,5 @@ func Example() {
 	// Event Type: io.nats.jetstream.advisory.v1.api_audit
 	// Event Schema URL: https://nats.io/schemas/jetstream/advisory/v1/api_audit.json (nats.io)
 	// Type Schema URL: https://nats.io/schemas/jetstream/advisory/v1/api_audit.json (nats.io)
-	// Parsed event with type "io.nats.jetstream.advisory.v1.api_audit" into *api.JetStreamAPIAudit
+	// Parsed event with type "io.nats.jetstream.advisory.v1.api_audit" into *advisory.JetStreamAPIAuditV1
 }

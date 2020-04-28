@@ -1,5 +1,9 @@
 package advisory
 
+import (
+	"time"
+)
+
 // DisconnectEventMsgV1 is sent when a new connection previously defined from a
 // ConnectEventMsg is closed.
 //
@@ -7,7 +11,7 @@ package advisory
 type DisconnectEventMsgV1 struct {
 	Type     string       `json:"type"`
 	ID       string       `json:"id"`
-	Time     string       `json:"timestamp"`
+	Time     time.Time    `json:"timestamp"`
 	Server   ServerInfoV1 `json:"server"`
 	Client   ClientInfoV1 `json:"client"`
 	Sent     DataStatsV1  `json:"sent"`

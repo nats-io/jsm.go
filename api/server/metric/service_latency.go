@@ -1,4 +1,4 @@
-package advisory
+package metric
 
 import (
 	"time"
@@ -19,4 +19,11 @@ type ServiceLatencyV1 struct {
 	ServiceLatency time.Duration `json:"svc"`
 	NATSLatency    NATSLatencyV1 `json:"nats"`
 	TotalLatency   time.Duration `json:"total"`
+}
+
+// NATSLatencyV1 represents the internal NATS latencies, including RTTs to clients.
+type NATSLatencyV1 struct {
+	Requestor time.Duration `json:"req"`
+	Responder time.Duration `json:"resp"`
+	System    time.Duration `json:"sys"`
 }

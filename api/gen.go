@@ -35,6 +35,7 @@ package api
 import (
 	"encoding/base64"
 	srvadvisory "github.com/nats-io/jsm.go/api/server/advisory"
+	srvmetric "github.com/nats-io/jsm.go/api/server/metric"
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
     jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
 )
@@ -129,7 +130,7 @@ func main() {
 	s := schemas{
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_connect.json", St: "srvadvisory.ConnectEventMsgV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_disconnect.json", St: "srvadvisory.DisconnectEventMsgV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/metric/v1/service_latency.json", St: "srvadvisory.ServiceLatencyV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/metric/v1/service_latency.json", St: "srvmetric.ServiceLatencyV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/api_audit.json", St: "jsadvisory.JetStreamAPIAuditV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/max_deliver.json", St: "jsadvisory.ConsumerDeliveryExceededAdvisoryV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/metric/v1/consumer_ack.json", St: "jsmetric.ConsumerAckMetricV1"},

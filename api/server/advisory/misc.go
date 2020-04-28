@@ -33,10 +33,3 @@ type DataStatsV1 struct {
 	Msgs  int64 `json:"msgs"`
 	Bytes int64 `json:"bytes"`
 }
-
-// NATSLatencyV1 represents the internal NATS latencies, including RTTs to clients.
-type NATSLatencyV1 struct {
-	Requestor time.Duration `json:"req"`
-	Responder time.Duration `json:"resp"`
-	System    time.Duration `json:"sys"`
-}

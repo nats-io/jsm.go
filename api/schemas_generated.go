@@ -1,4 +1,4 @@
-// auto generated 2020-04-28 12:21:27.991006 +0200 CEST m=+2.608824099
+// auto generated 2020-04-28 13:48:59.898502 +0200 CEST m=+2.655575518
 
 package api
 
@@ -8,6 +8,7 @@ import (
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
 	jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
 	srvadvisory "github.com/nats-io/jsm.go/api/server/advisory"
+	srvmetric "github.com/nats-io/jsm.go/api/server/metric"
 )
 
 var schemas map[string][]byte
@@ -15,7 +16,7 @@ var schemas map[string][]byte
 var schemaTypes = map[string]func() interface{}{
 	"io.nats.server.advisory.v1.client_connect":              func() interface{} { return &srvadvisory.ConnectEventMsgV1{} },
 	"io.nats.server.advisory.v1.client_disconnect":           func() interface{} { return &srvadvisory.DisconnectEventMsgV1{} },
-	"io.nats.server.metric.v1.service_latency":               func() interface{} { return &srvadvisory.ServiceLatencyV1{} },
+	"io.nats.server.metric.v1.service_latency":               func() interface{} { return &srvmetric.ServiceLatencyV1{} },
 	"io.nats.jetstream.advisory.v1.api_audit":                func() interface{} { return &jsadvisory.JetStreamAPIAuditV1{} },
 	"io.nats.jetstream.advisory.v1.max_deliver":              func() interface{} { return &jsadvisory.ConsumerDeliveryExceededAdvisoryV1{} },
 	"io.nats.jetstream.metric.v1.consumer_ack":               func() interface{} { return &jsmetric.ConsumerAckMetricV1{} },

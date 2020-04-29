@@ -11,7 +11,7 @@ import (
 type ServiceLatencyV1 struct {
 	Type           string          `json:"type"`
 	ID             string          `json:"id"`
-	Time           string          `json:"timestamp"`
+	Time           time.Time       `json:"timestamp"`
 	Status         int             `json:"status"`
 	Error          string          `json:"description,omitempty"`
 	Requestor      LatencyClientV1 `json:"requestor,omitempty"`

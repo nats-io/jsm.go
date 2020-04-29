@@ -1,7 +1,7 @@
 package advisory
 
 import (
-	"time"
+	"github.com/nats-io/jsm.go/api/event"
 )
 
 // DisconnectEventMsgV1 is sent when a new connection previously defined from a
@@ -9,9 +9,8 @@ import (
 //
 // NATS Schema Type io.nats.server.advisory.v1.client_disconnect
 type DisconnectEventMsgV1 struct {
-	Type     string       `json:"type"`
-	ID       string       `json:"id"`
-	Time     time.Time    `json:"timestamp"`
+	event.NATSEvent
+
 	Server   ServerInfoV1 `json:"server"`
 	Client   ClientInfoV1 `json:"client"`
 	Sent     DataStatsV1  `json:"sent"`

@@ -2,6 +2,8 @@ package metric
 
 import (
 	"time"
+
+	"github.com/nats-io/jsm.go/api/event"
 )
 
 // ServiceLatencyV1 is the JSON message sent out in response to latency tracking for
@@ -9,9 +11,8 @@ import (
 //
 // NATS Schema Type io.nats.server.metric.v1.service_latency
 type ServiceLatencyV1 struct {
-	Type           string          `json:"type"`
-	ID             string          `json:"id"`
-	Time           time.Time       `json:"timestamp"`
+	event.NATSEvent
+
 	Status         int             `json:"status"`
 	Error          string          `json:"description,omitempty"`
 	Requestor      LatencyClientV1 `json:"requestor,omitempty"`

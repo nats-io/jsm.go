@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -14,6 +15,27 @@ var SchemasRepo = "https://raw.githubusercontent.com/nats-io/jetstream/master/sc
 
 // UnknownEvent is a type returned when parsing an unknown type of event
 type UnknownEvent = map[string]interface{}
+
+// Event is a generic NATS Event capable of being converted to CloudEvents format
+type Event interface {
+	EventType() string
+	EventID() string
+	EventTime() time.Time
+	EventSource() string
+	EventSubject() string
+}
+
+// we dont export this since it's not official, but what this produce will be loadable by the official CE
+type cloudEvent struct {
+	Type        string          `json:"type"`
+	Time        time.Time       `json:"time"`
+	ID          string          `json:"id"`
+	Source      string          `json:"source"`
+	DataSchema  string          `json:"dataschema"`
+	SpecVersion string          `json:"specversion"`
+	Subject     string          `json:"subject"`
+	Data        json.RawMessage `json:"data"`
+}
 
 type schemaDetector struct {
 	Schema string `json:"schema"`
@@ -138,4 +160,28 @@ func ParseEvent(e []byte) (schemaType string, event interface{}, err error) {
 	err = json.Unmarshal(e, event)
 
 	return schemaType, event, err
+}
+
+func ToCloudEventV1(e Event) ([]byte, error) {
+	je, err := json.MarshalIndent(e, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	event := cloudEvent{
+		Type:        e.EventType(),
+		Time:        e.EventTime(),
+		ID:          e.EventID(),
+		Source:      e.EventSource(),
+		Subject:     e.EventSubject(),
+		SpecVersion: "1.0",
+		Data:        je,
+	}
+
+	address, _, err := SchemaURLForType(e.EventType())
+	if err == nil {
+		event.DataSchema = address
+	}
+
+	return json.MarshalIndent(event, "", "  ")
 }

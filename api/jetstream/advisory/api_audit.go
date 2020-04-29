@@ -1,16 +1,15 @@
 package advisory
 
 import (
-	"time"
+	"github.com/nats-io/jsm.go/api/event"
 )
 
 // JetStreamAPIAuditV1 is a advisory published for any JetStream API access
 //
 // NATS Schema Type io.nats.jetstream.advisory.v1.api_audit
 type JetStreamAPIAuditV1 struct {
-	Type     string           `json:"type"`
-	ID       string           `json:"id"`
-	Time     time.Time        `json:"timestamp"`
+	event.NATSEvent
+
 	Server   string           `json:"server"`
 	Client   APIAuditClientV1 `json:"client"`
 	Subject  string           `json:"subject"`

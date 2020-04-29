@@ -2,11 +2,30 @@ package api
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
 )
+
+const jetStreamAPIAuditEvent = `{
+  "type": "io.nats.jetstream.advisory.v1.api_audit",
+  "id": "uafvZ1UEDIW5FZV6kvLgWA",
+  "timestamp": "2020-04-23T16:51:18.516363Z",
+  "server": "NDJWE4SOUJOJT2TY5Y2YQEOAHGAK5VIGXTGKWJSFHVCII4ITI3LBHBUV",
+  "client": {
+    "host": "::1",
+    "port": 57924,
+    "cid": 17,
+    "account": "$G",
+    "name": "NATS CLI",
+    "lang": "go",
+    "version": "1.9.2"
+  },
+  "subject": "$JS.STREAM.LIST",
+  "response": "[\n  \"ORDERS\"\n]"
+}`
 
 func checkErr(t *testing.T, err error, m string) {
 	t.Helper()
@@ -57,26 +76,8 @@ func TestValidateStruct(t *testing.T) {
 		t.Fatal("expected errors got none")
 	}
 
-	jaj := `{
-  "type": "io.nats.jetstream.advisory.v1.api_audit",
-  "id": "uafvZ1UEDIW5FZV6kvLgWA",
-  "timestamp": "2020-04-23T16:51:18.516363Z",
-  "server": "NDJWE4SOUJOJT2TY5Y2YQEOAHGAK5VIGXTGKWJSFHVCII4ITI3LBHBUV",
-  "client": {
-    "host": "::1",
-    "port": 57924,
-    "cid": 17,
-    "account": "$G",
-    "name": "NATS CLI",
-    "lang": "go",
-    "version": "1.9.2"
-  },
-  "subject": "$JS.STREAM.LIST",
-  "response": "[\n  \"ORDERS\"\n]"
-}`
-
 	ja := jsadvisory.JetStreamAPIAuditV1{}
-	err := json.Unmarshal([]byte(jaj), &ja)
+	err := json.Unmarshal([]byte(jetStreamAPIAuditEvent), &ja)
 	if err != nil {
 		t.Fatalf("could not unmarshal event: %s", err)
 	}
@@ -92,6 +93,61 @@ func TestValidateStruct(t *testing.T) {
 		t.Fatal("expected errors got none")
 	}
 
+}
+
+func TestToCloudEvent(t *testing.T) {
+	SchemasRepo = "https://nats.io/schemas"
+
+	ja := jsadvisory.JetStreamAPIAuditV1{}
+	err := json.Unmarshal([]byte(jetStreamAPIAuditEvent), &ja)
+	if err != nil {
+		t.Fatalf("could not unmarshal event: %s", err)
+	}
+
+	ce, err := ToCloudEventV1(&ja)
+	if err != nil {
+		t.Fatalf("could not create cloud event: %s", err)
+	}
+
+	event := &cloudEvent{}
+	err = json.Unmarshal(ce, event)
+	if err != nil {
+		t.Fatalf("could not unmarshal event: %s", err)
+	}
+
+	if event.Type != "io.nats.jetstream.advisory.v1.api_audit" {
+		t.Fatalf("invalid type: %s", event.Type)
+	}
+
+	if event.SpecVersion != "1.0" {
+		t.Fatalf("invalid spec version: %s", event.SpecVersion)
+	}
+
+	if event.Source != "urn:nats:jetstream" {
+		t.Fatalf("invalid event source: %s", event.Source)
+	}
+
+	if event.Subject != "advisory" {
+		t.Fatalf("invalid subject: %s", event.Subject)
+	}
+
+	if event.ID != "uafvZ1UEDIW5FZV6kvLgWA" {
+		t.Fatalf("invalid ID: %s", event.ID)
+	}
+
+	if event.DataSchema != "https://nats.io/schemas/jetstream/advisory/v1/api_audit.json" {
+		t.Fatalf("invalid schema address: %s", event.DataSchema)
+	}
+
+	dat := jsadvisory.JetStreamAPIAuditV1{}
+	err = json.Unmarshal(event.Data, &dat)
+	if err != nil {
+		t.Fatalf("could not unmarshal data body: %s", err)
+	}
+
+	if !reflect.DeepEqual(dat, ja) {
+		t.Fatalf("invalid data: %#v", dat)
+	}
 }
 
 func TestStreamConfiguration(t *testing.T) {

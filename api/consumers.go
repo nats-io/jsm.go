@@ -79,7 +79,7 @@ func (p *ReplayPolicy) UnmarshalJSON(data []byte) error {
 }
 
 var (
-	AckAck      = []byte(OK)
+	AckAck      = []byte("+ACK")
 	AckNak      = []byte("-NAK")
 	AckProgress = []byte("+WPI")
 	AckNext     = []byte("+NXT")

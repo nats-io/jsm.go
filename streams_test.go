@@ -507,6 +507,24 @@ func TestMemoryStorage(t *testing.T) {
 	}
 }
 
+func TestDiscardNew(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.DiscardNew()(cfg)
+	checkErr(t, err, "discard new failed")
+	if cfg.Discard != api.DiscardNew {
+		t.Fatal("expected DiscardNew")
+	}
+}
+
+func TestDiscardOld(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.DiscardOld()(cfg)
+	checkErr(t, err, "discard old failed")
+	if cfg.Discard != api.DiscardOld {
+		t.Fatal("expected DiscardOld")
+	}
+}
+
 func TestNoAck(t *testing.T) {
 	cfg := testStreamConfig()
 	err := jsm.NoAck()(cfg)

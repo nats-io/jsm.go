@@ -321,7 +321,7 @@ func TestConsumer_SampleSubject(t *testing.T) {
 	}
 }
 
-func TestConsumer_State(t *testing.T) {
+func TestConsumer_DeliveredState(t *testing.T) {
 	srv, nc, _ := setupConsumerTest(t)
 	defer srv.Shutdown()
 	defer nc.Flush()
@@ -329,11 +329,11 @@ func TestConsumer_State(t *testing.T) {
 	durable, err := jsm.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
 	checkErr(t, err, "create failed")
 
-	state, err := durable.State()
+	state, err := durable.DeliveredState()
 	checkErr(t, err, "state failed")
 
-	if state.Delivered.StreamSeq != 0 {
-		t.Fatalf("expected set seq 0 got %d", state.Delivered.StreamSeq)
+	if state.StreamSeq != 0 {
+		t.Fatalf("expected stream seq 0 got %d", state.StreamSeq)
 	}
 
 	m, err := durable.NextMsg()
@@ -341,13 +341,99 @@ func TestConsumer_State(t *testing.T) {
 	err = m.Respond(nil)
 	checkErr(t, err, "ack failed")
 
-	state, err = durable.State()
+	state, err = durable.DeliveredState()
 	checkErr(t, err, "state failed")
 
-	if state.Delivered.StreamSeq != 1 {
-		t.Fatalf("expected set seq 1 got %d", state.Delivered.StreamSeq)
+	if state.StreamSeq != 1 {
+		t.Fatalf("expected stream seq 1 got %d", state.StreamSeq)
+	}
+}
+
+func TestConsumer_PendingMessageCount(t *testing.T) {
+	srv, nc, _ := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	durable, err := jsm.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+	checkErr(t, err, "create failed")
+
+	m, err := durable.NextMsg()
+	checkErr(t, err, "next failed")
+	pending, err := durable.PendingMessageCount()
+	checkErr(t, err, "state failed")
+	if pending != 1 {
+		t.Fatal("expected pending 1 got %i", pending)
+	}
+	m.Respond(nil)
+
+	pending, err = durable.PendingMessageCount()
+	checkErr(t, err, "state failed")
+	if pending != 0 {
+		t.Fatal("expected pending 0 got %i", pending)
+	}
+}
+
+func TestConsumer_RedeliveryCount(t *testing.T) {
+	srv, nc, _ := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	durable, err := jsm.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"), jsm.AckWait(500*time.Millisecond))
+	checkErr(t, err, "create failed")
+
+	_, err = durable.NextMsg()
+	checkErr(t, err, "next failed")
+
+	pending, err := durable.PendingMessageCount()
+	checkErr(t, err, "state failed")
+	if pending != 1 {
+		t.Fatal("expected pending 1 got %i", pending)
 	}
 
+	redel, err := durable.RedeliveryCount()
+	checkErr(t, err, "state failed")
+	if redel != 0 {
+		t.Fatal("expected 0 redliveries got %i", redel)
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	_, err = durable.NextMsg()
+	checkErr(t, err, "next failed")
+
+	redel, err = durable.RedeliveryCount()
+	checkErr(t, err, "state failed")
+	if redel != 1 {
+		t.Fatal("expected 1 redliveries got %i", redel)
+	}
+}
+
+func TestConsumer_AcknowledgedState(t *testing.T) {
+	srv, nc, _ := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	durable, err := jsm.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+	checkErr(t, err, "create failed")
+
+	state, err := durable.AcknowledgedFloor()
+	checkErr(t, err, "state failed")
+
+	if state.StreamSeq != 0 {
+		t.Fatalf("expected stream seq 0 got %d", state.StreamSeq)
+	}
+
+	m, err := durable.NextMsg()
+	checkErr(t, err, "next failed")
+	err = m.Respond(nil)
+	checkErr(t, err, "ack failed")
+
+	state, err = durable.AcknowledgedFloor()
+	checkErr(t, err, "state failed")
+
+	if state.ConsumerSeq != 1 {
+		t.Fatalf("expected set seq 1 got %d", state.ConsumerSeq)
+	}
 }
 
 func TestConsumer_Configuration(t *testing.T) {
@@ -474,9 +560,9 @@ func TestConsumer_IsSampled(t *testing.T) {
 func testConsumerConfig() *jsm.ConsumerCfg {
 	return &jsm.ConsumerCfg{ConsumerConfig: api.ConsumerConfig{
 		AckWait:       0,
-		AckPolicy:     "",
+		AckPolicy:     api.AckExplicit,
 		MaxDeliver:    -1,
-		ReplayPolicy:  "",
+		ReplayPolicy:  api.ReplayInstant,
 		OptStartSeq:   0,
 		OptStartTime:  nil,
 		DeliverPolicy: api.DeliverAll,

@@ -314,7 +314,7 @@ func TestConsumerConfiguration(t *testing.T) {
 
 	// ack policy
 	cfg = reset()
-	cfg.AckPolicy = "fail"
+	cfg.AckPolicy = 10
 	validateExpectFailure(t, cfg)
 	cfg.AckPolicy = AckExplicit
 	validateExpectSuccess(t, cfg)
@@ -325,7 +325,7 @@ func TestConsumerConfiguration(t *testing.T) {
 
 	// replay policy
 	cfg = reset()
-	cfg.ReplayPolicy = "other"
+	cfg.ReplayPolicy = 10
 	validateExpectFailure(t, cfg)
 	cfg.ReplayPolicy = ReplayInstant
 	validateExpectSuccess(t, cfg)

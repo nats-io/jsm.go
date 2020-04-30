@@ -14,8 +14,8 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/xeipuuv/gojsonschema"
@@ -31,15 +31,26 @@ const (
 	JetStreamMetricConsumerAckPre     = JetStreamMetricPrefix + ".CONSUMER_ACK"
 )
 
-type AckPolicy string
-
-func (p AckPolicy) String() string { return strings.Title(string(p)) }
+type AckPolicy int
 
 const (
-	AckNone     AckPolicy = "none"
-	AckAll      AckPolicy = "all"
-	AckExplicit AckPolicy = "explicit"
+	AckNone AckPolicy = iota
+	AckAll
+	AckExplicit
 )
+
+func (p AckPolicy) String() string {
+	switch p {
+	case AckNone:
+		return "None"
+	case AckAll:
+		return "All"
+	case AckExplicit:
+		return "Explicit"
+	default:
+		return "Unknown Acknowledgement Policy"
+	}
+}
 
 func (p *AckPolicy) UnmarshalJSON(data []byte) error {
 	switch string(data) {
@@ -56,14 +67,36 @@ func (p *AckPolicy) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type ReplayPolicy string
+func (p AckPolicy) MarshalJSON() ([]byte, error) {
+	switch p {
+	case AckNone:
+		return json.Marshal("none")
+	case AckAll:
+		return json.Marshal("all")
+	case AckExplicit:
+		return json.Marshal("explicit")
+	default:
+		return nil, fmt.Errorf("unknown acknowlegement policy %v", p)
+	}
+}
 
-func (p ReplayPolicy) String() string { return strings.Title(string(p)) }
+type ReplayPolicy int
 
 const (
-	ReplayInstant  ReplayPolicy = "instant"
-	ReplayOriginal ReplayPolicy = "original"
+	ReplayInstant ReplayPolicy = iota
+	ReplayOriginal
 )
+
+func (p ReplayPolicy) String() string {
+	switch p {
+	case ReplayInstant:
+		return "Instant"
+	case ReplayOriginal:
+		return "Original"
+	default:
+		return "Unknown Replay Policy"
+	}
+}
 
 func (p *ReplayPolicy) UnmarshalJSON(data []byte) error {
 	switch string(data) {
@@ -78,6 +111,17 @@ func (p *ReplayPolicy) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (p ReplayPolicy) MarshalJSON() ([]byte, error) {
+	switch p {
+	case ReplayOriginal:
+		return json.Marshal("original")
+	case ReplayInstant:
+		return json.Marshal("instant")
+	default:
+		return nil, fmt.Errorf("unknown replay policy %v", p)
+	}
+}
+
 var (
 	AckAck      = []byte("+ACK")
 	AckNak      = []byte("-NAK")
@@ -85,17 +129,32 @@ var (
 	AckNext     = []byte("+NXT")
 )
 
-type DeliverPolicy string
-
-func (p DeliverPolicy) String() string { return strings.Title(string(p)) }
+type DeliverPolicy int
 
 const (
-	DeliverAll             DeliverPolicy = "all"
-	DeliverLast            DeliverPolicy = "last"
-	DeliverNew             DeliverPolicy = "new"
-	DeliverByStartSequence DeliverPolicy = "by_start_sequence"
-	DeliverByStartTime     DeliverPolicy = "by_start_time"
+	DeliverAll DeliverPolicy = iota
+	DeliverLast
+	DeliverNew
+	DeliverByStartSequence
+	DeliverByStartTime
 )
+
+func (p DeliverPolicy) String() string {
+	switch p {
+	case DeliverAll:
+		return "All"
+	case DeliverLast:
+		return "Last"
+	case DeliverNew:
+		return "New"
+	case DeliverByStartSequence:
+		return "By Start Sequence"
+	case DeliverByStartTime:
+		return "By Start Time"
+	default:
+		return "Unknown Deliver Policy"
+	}
+}
 
 func (p *DeliverPolicy) UnmarshalJSON(data []byte) error {
 	switch string(data) {
@@ -112,6 +171,23 @@ func (p *DeliverPolicy) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+func (p DeliverPolicy) MarshalJSON() ([]byte, error) {
+	switch p {
+	case DeliverAll:
+		return json.Marshal("all")
+	case DeliverLast:
+		return json.Marshal("last")
+	case DeliverNew:
+		return json.Marshal("new")
+	case DeliverByStartSequence:
+		return json.Marshal("by_start_sequence")
+	case DeliverByStartTime:
+		return json.Marshal("by_start_time")
+	default:
+		return nil, fmt.Errorf("unknown deliver policy %v", p)
+	}
 }
 
 // ConsumerConfig is the configuration for a JetStream consumes
@@ -180,23 +256,19 @@ type CreateConsumerRequest struct {
 	Config ConsumerConfig `json:"config"`
 }
 
-type ConsumerState struct {
-	Delivered   SequencePair      `json:"delivered"`
-	AckFloor    SequencePair      `json:"ack_floor"`
-	Pending     map[uint64]int64  `json:"pending"`
-	Redelivered map[uint64]uint64 `json:"redelivered"`
-}
-
 type SequencePair struct {
 	ConsumerSeq uint64 `json:"consumer_seq"`
 	StreamSeq   uint64 `json:"stream_seq"`
 }
 
 type ConsumerInfo struct {
-	Stream string         `json:"stream_name"`
-	Name   string         `json:"name"`
-	Config ConsumerConfig `json:"config"`
-	State  ConsumerState  `json:"state"`
+	Stream         string         `json:"stream_name"`
+	Name           string         `json:"name"`
+	Config         ConsumerConfig `json:"config"`
+	Delivered      SequencePair   `json:"delivered"`
+	AckFloor       SequencePair   `json:"ack_floor"`
+	NumPending     int            `json:"num_pending"`
+	NumRedelivered int            `json:"num_redelivered"`
 }
 
 func jsonString(s string) string {

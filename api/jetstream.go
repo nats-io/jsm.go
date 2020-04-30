@@ -14,8 +14,8 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // Subjects used by the JetStream API
@@ -34,14 +34,65 @@ const (
 	ErrPrefix = "-ERR"
 )
 
-type StorageType string
-
-func (t StorageType) String() string { return strings.Title(string(t)) }
+type DiscardPolicy int
 
 const (
-	MemoryStorage StorageType = "memory"
-	FileStorage   StorageType = "file"
+	DiscardOld DiscardPolicy = iota
+	DiscardNew
 )
+
+func (p DiscardPolicy) String() string {
+	switch p {
+	case DiscardOld:
+		return "Old"
+	case DiscardNew:
+		return "New"
+	default:
+		return "Unknown Dicard Policy"
+	}
+}
+
+func (p *DiscardPolicy) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("old"):
+		*p = DiscardOld
+	case jsonString("new"):
+		*p = DiscardNew
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
+
+func (p DiscardPolicy) MarshalJSON() ([]byte, error) {
+	switch p {
+	case DiscardOld:
+		return json.Marshal("old")
+	case DiscardNew:
+		return json.Marshal("new")
+	default:
+		return nil, fmt.Errorf("unknown discard policy %v", p)
+	}
+}
+
+type StorageType int
+
+const (
+	MemoryStorage StorageType = iota
+	FileStorage
+)
+
+func (t StorageType) String() string {
+	switch t {
+	case MemoryStorage:
+		return "Memory"
+	case FileStorage:
+		return "File"
+	default:
+		return "Unknown Storage Type"
+	}
+}
 
 func (t *StorageType) UnmarshalJSON(data []byte) error {
 	switch string(data) {
@@ -54,6 +105,66 @@ func (t *StorageType) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+func (t StorageType) MarshalJSON() ([]byte, error) {
+	switch t {
+	case MemoryStorage:
+		return json.Marshal("memory")
+	case FileStorage:
+		return json.Marshal("file")
+	default:
+		return nil, fmt.Errorf("unknown storage type %q", t)
+	}
+}
+
+type RetentionPolicy int
+
+const (
+	LimitsPolicy RetentionPolicy = iota
+	InterestPolicy
+	WorkQueuePolicy
+)
+
+func (p RetentionPolicy) String() string {
+	switch p {
+	case LimitsPolicy:
+		return "Limits"
+	case InterestPolicy:
+		return "Interest"
+	case WorkQueuePolicy:
+		return "WorkQueue"
+	default:
+		return "Unknown Retention Policy"
+	}
+}
+
+func (p *RetentionPolicy) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("limits"):
+		*p = LimitsPolicy
+	case jsonString("interest"):
+		*p = InterestPolicy
+	case jsonString("workqueue"):
+		*p = WorkQueuePolicy
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
+
+func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
+	switch p {
+	case LimitsPolicy:
+		return json.Marshal("limits")
+	case InterestPolicy:
+		return json.Marshal("interest")
+	case WorkQueuePolicy:
+		return json.Marshal("workqueue")
+	default:
+		return nil, fmt.Errorf("unknown retention policy %q", p)
+	}
 }
 
 type JetStreamAccountStats struct {

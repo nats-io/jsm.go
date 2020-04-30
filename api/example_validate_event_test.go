@@ -19,6 +19,4 @@ func ExampleValidateStruct() {
 	// Output:
 	// Event Validation Failed:
 	//    num_replicas: Must be greater than or equal to 1
-	//    retention: retention must be one of the following: "limits", "interest", "workqueue"
-	//    storage: storage must be one of the following: "file", "memory"
 }

@@ -14,8 +14,6 @@
 package api
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/xeipuuv/gojsonschema"
@@ -52,6 +50,7 @@ type StreamConfig struct {
 	MaxAge       time.Duration   `json:"max_age"`
 	MaxMsgSize   int32           `json:"max_msg_size,omitempty"`
 	Storage      StorageType     `json:"storage"`
+	Discard      DiscardPolicy   `json:"discard"`
 	Replicas     int             `json:"num_replicas"`
 	NoAck        bool            `json:"no_ack,omitempty"`
 	Template     string          `json:"template_owner,omitempty"`
@@ -103,31 +102,6 @@ func (c StreamConfig) Validate() (bool, []string) {
 type StreamInfo struct {
 	Config StreamConfig `json:"config"`
 	State  StreamState  `json:"state"`
-}
-
-type RetentionPolicy string
-
-func (p RetentionPolicy) String() string { return strings.Title(string(p)) }
-
-const (
-	LimitsPolicy    RetentionPolicy = "limits"
-	InterestPolicy  RetentionPolicy = "interest"
-	WorkQueuePolicy RetentionPolicy = "workqueue"
-)
-
-func (p *RetentionPolicy) UnmarshalJSON(data []byte) error {
-	switch string(data) {
-	case jsonString("limits"):
-		*p = LimitsPolicy
-	case jsonString("interest"):
-		*p = InterestPolicy
-	case jsonString("workqueue"):
-		*p = WorkQueuePolicy
-	default:
-		return fmt.Errorf("can not unmarshal %q", data)
-	}
-
-	return nil
 }
 
 type StreamState struct {

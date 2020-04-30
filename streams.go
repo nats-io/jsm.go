@@ -27,6 +27,7 @@ import (
 // DefaultStream is a template configuration with StreamPolicy retention and 1 years maximum age. No storage type or subjects are set
 var DefaultStream = api.StreamConfig{
 	Retention:    api.LimitsPolicy,
+	Discard:      api.DiscardOld,
 	MaxConsumers: -1,
 	MaxMsgs:      -1,
 	MaxBytes:     -1,
@@ -39,6 +40,7 @@ var DefaultStream = api.StreamConfig{
 // DefaultWorkQueue is a template configuration with WorkQueuePolicy retention and 1 years maximum age. No storage type or subjects are set
 var DefaultWorkQueue = api.StreamConfig{
 	Retention:    api.WorkQueuePolicy,
+	Discard:      api.DiscardOld,
 	MaxConsumers: -1,
 	MaxMsgs:      -1,
 	MaxBytes:     -1,
@@ -269,6 +271,20 @@ func Replicas(r int) StreamOption {
 func NoAck() StreamOption {
 	return func(o *StreamConfig) error {
 		o.StreamConfig.NoAck = true
+		return nil
+	}
+}
+
+func DiscardNew() StreamOption {
+	return func(o *StreamConfig) error {
+		o.Discard = api.DiscardNew
+		return nil
+	}
+}
+
+func DiscardOld() StreamOption {
+	return func(o *StreamConfig) error {
+		o.Discard = api.DiscardOld
 		return nil
 	}
 }

@@ -182,7 +182,7 @@ func TestStreamConfiguration(t *testing.T) {
 	validateExpectSuccess(t, cfg)
 
 	// invalid retention
-	cfg.Retention = "x"
+	cfg.Retention = 10
 	validateExpectFailure(t, cfg)
 
 	// max consumers >= -1
@@ -222,7 +222,7 @@ func TestStreamConfiguration(t *testing.T) {
 
 	// storage is valid
 	cfg = reset()
-	cfg.Storage = "bob"
+	cfg.Storage = 10
 	validateExpectFailure(t, cfg)
 
 	// num replicas > 0
@@ -259,7 +259,7 @@ func TestStreamTemplateConfiguration(t *testing.T) {
 
 	// should also validate config
 	cfg = reset()
-	cfg.Config.Storage = "bob"
+	cfg.Config.Storage = 10
 	validateExpectFailure(t, cfg)
 
 	// unlimited managed streams

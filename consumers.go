@@ -514,8 +514,8 @@ func (c *Consumer) NextMsg(opts ...RequestOption) (m *nats.Msg, err error) {
 }
 
 // DeliveredState reports the messages sequences that were successfully delivered
-func (c *Consumer) DeliveredState() (stats api.SequencePair, err error) {
-	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
+func (c *Consumer) DeliveredState(opts ...RequestOption) (stats api.SequencePair, err error) {
+	info, err := c.State(opts...)
 	if err != nil {
 		return api.SequencePair{}, err
 	}
@@ -524,8 +524,8 @@ func (c *Consumer) DeliveredState() (stats api.SequencePair, err error) {
 }
 
 // AcknowledgedFloor reports the highest contiguous message sequences that were acknowledged
-func (c *Consumer) AcknowledgedFloor() (stats api.SequencePair, err error) {
-	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
+func (c *Consumer) AcknowledgedFloor(opts ...RequestOption) (stats api.SequencePair, err error) {
+	info, err := c.State(opts...)
 	if err != nil {
 		return api.SequencePair{}, err
 	}
@@ -534,23 +534,35 @@ func (c *Consumer) AcknowledgedFloor() (stats api.SequencePair, err error) {
 }
 
 // PendingMessageCount reports the number of messages sent but not yet acknowledged
-func (c *Consumer) PendingMessageCount() (int, error) {
-	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
+func (c *Consumer) PendingMessageCount(opts ...RequestOption) (int, error) {
+	info, err := c.State(opts...)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	return info.NumPending, nil
 }
 
 // RedeliveryCount reports the number of redelivers that were done
-func (c *Consumer) RedeliveryCount() (int, error) {
-	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
+func (c *Consumer) RedeliveryCount(opts ...RequestOption) (int, error) {
+	info, err := c.State(opts...)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	return info.NumRedelivered, nil
+}
+
+// State loads a snapshot of consumer state including delivery counts, retries and more
+func (c *Consumer) State(opts ...RequestOption) (api.ConsumerInfo, error) {
+	ropts, err := newreqoptions(append(c.cfg.ropts, opts...)...)
+	if err != nil {
+		if err != nil {
+			return api.ConsumerInfo{}, err
+		}
+	}
+
+	return loadConsumerInfo(c.stream, c.name, ropts)
 }
 
 // Configuration is the Consumer configuration

@@ -48,7 +48,7 @@ func (p DiscardPolicy) String() string {
 	case DiscardNew:
 		return "New"
 	default:
-		return "Unknown Dicard Policy"
+		return "Unknown Discard Policy"
 	}
 }
 

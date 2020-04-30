@@ -513,14 +513,44 @@ func (c *Consumer) NextMsg(opts ...RequestOption) (m *nats.Msg, err error) {
 	return NextMsg(c.stream, c.name, append(c.cfg.ropts, opts...)...)
 }
 
-// State returns the Consumer state
-func (c *Consumer) State() (stats api.ConsumerState, err error) {
+// DeliveredState reports the messages sequences that were successfully delivered
+func (c *Consumer) DeliveredState() (stats api.SequencePair, err error) {
 	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
 	if err != nil {
-		return api.ConsumerState{}, err
+		return api.SequencePair{}, err
 	}
 
-	return info.State, nil
+	return info.Delivered, nil
+}
+
+// AcknowledgedFloor reports the highest contiguous message sequences that were acknowledged
+func (c *Consumer) AcknowledgedFloor() (stats api.SequencePair, err error) {
+	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
+	if err != nil {
+		return api.SequencePair{}, err
+	}
+
+	return info.AckFloor, nil
+}
+
+// PendingMessageCount reports the number of messages sent but not yet acknowledged
+func (c *Consumer) PendingMessageCount() (int, error) {
+	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
+	if err != nil {
+		return -1, err
+	}
+
+	return info.NumPending, nil
+}
+
+// RedeliveryCount reports the number of redelivers that were done
+func (c *Consumer) RedeliveryCount() (int, error) {
+	info, err := loadConsumerInfo(c.stream, c.name, c.cfg.conn)
+	if err != nil {
+		return -1, err
+	}
+
+	return info.NumRedelivered, nil
 }
 
 // Configuration is the Consumer configuration

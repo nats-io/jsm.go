@@ -31,6 +31,26 @@ const (
 	JetStreamMetricConsumerAckPre     = JetStreamMetricPrefix + ".CONSUMER_ACK"
 )
 
+type JetStreamDeleteConsumerResponse struct {
+	Error   *ApiError `json:"error,omitempty"`
+	Success bool      `json:"success,omitempty"`
+}
+
+type JetStreamCreateConsumerResponse struct {
+	JetStreamResponse
+	*ConsumerInfo
+}
+
+type JetStreamConsumerInfoResponse struct {
+	JetStreamResponse
+	*ConsumerInfo
+}
+
+type JetStreamConsumersResponse struct {
+	JetStreamResponse
+	Consumers []string `json:"streams,omitempty"`
+}
+
 type AckPolicy int
 
 const (

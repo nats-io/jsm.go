@@ -14,7 +14,6 @@
 package jsm
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -51,16 +50,13 @@ func NewStreamTemplate(name string, maxStreams uint32, config api.StreamConfig, 
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}
 
-	jreq, err := json.Marshal(&tc)
+	var resp api.JetStreamCreateTemplateResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateTemplateT, name), tc, &resp, cfg.conn)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = request(fmt.Sprintf(api.JetStreamCreateTemplateT, name), jreq, cfg.conn)
-	if err != nil {
-		return nil, err
-	}
-
+	// TODO speed up with the info in resp
 	return LoadStreamTemplate(name, cfg.ropts...)
 }
 
@@ -98,28 +94,28 @@ func LoadStreamTemplate(name string, opts ...RequestOption) (template *StreamTem
 }
 
 func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
-	response, err := request(fmt.Sprintf(api.JetStreamTemplateInfoT, template.Name()), nil, template.cfg.conn)
+	var resp api.JetStreamTemplateInfoResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamTemplateInfoT, template.Name()), nil, &resp, template.cfg.conn)
 	if err != nil {
 		return err
 	}
 
-	info := api.StreamTemplateInfo{}
-	err = json.Unmarshal(response.Data, &info)
-	if err != nil {
-		return err
-	}
-
-	template.cfg.StreamTemplateConfig = *info.Config
-	template.streams = info.Streams
+	template.cfg.StreamTemplateConfig = *resp.Config
+	template.streams = resp.Streams
 
 	return nil
 }
 
 // Delete deletes the StreamTemplate, after this the StreamTemplate object should be disposed
 func (t *StreamTemplate) Delete() error {
-	_, err := request(fmt.Sprintf(api.JetStreamDeleteTemplateT, t.Name()), nil, t.cfg.conn)
+	var resp api.JetStreamDeleteTemplateResponse
+	err := jsonRequest(fmt.Sprintf(api.JetStreamDeleteTemplateT, t.Name()), nil, &resp, t.cfg.conn)
 	if err != nil {
 		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while deleting %s", t.Name())
 	}
 
 	return nil

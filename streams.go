@@ -444,7 +444,7 @@ func (s *Stream) LoadMessage(seq int) (msg api.StoredMsg, err error) {
 // DeleteMessage deletes a specific message from the Stream by overwriting it with random data
 func (s *Stream) DeleteMessage(seq int) (err error) {
 	var resp api.JetStreamDeleteMsgResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamDeleteMsgT, s.Name()), strconv.Itoa(seq), &resp, s.cfg.conn)
+	err = jsonRequest(fmt.Sprintf(api.JetStreamDeleteMsgT, s.Name()), api.JetStreamDeleteMsgRequest{Seq: uint64(seq)}, &resp, s.cfg.conn)
 	if err != nil {
 		return err
 	}

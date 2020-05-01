@@ -37,6 +37,10 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
+type JetStreamDeleteMsgRequest struct {
+	Seq uint64 `json:"seq"`
+}
+
 type JetStreamDeleteMsgResponse struct {
 	JetStreamResponse
 	Success bool `json:"success,omitempty"`

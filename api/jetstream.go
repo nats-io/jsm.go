@@ -167,6 +167,11 @@ func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
 	}
 }
 
+type JetStreamEnabledResponse struct {
+	JetStreamResponse
+	Enabled bool `json:"enabled"`
+}
+
 type JetStreamAccountStats struct {
 	Memory  uint64                 `json:"memory"`
 	Store   uint64                 `json:"storage"`
@@ -179,4 +184,45 @@ type JetStreamAccountLimits struct {
 	MaxStore     int64 `json:"max_storage"`
 	MaxStreams   int   `json:"max_streams"`
 	MaxConsumers int   `json:"max_consumers"`
+}
+
+type ApiError struct {
+	Code        int    `json:"code"`
+	Description string `json:"description,omitempty"`
+}
+
+// Error implements error
+func (e ApiError) Error() string {
+	switch {
+	case e.Description == "" && e.Code == 0:
+		return "unknown JetStream Error"
+	case e.Description == "" && e.Code > 0:
+		return fmt.Sprintf("unknown JetStream %d Error", e.Code)
+	default:
+		return e.Description
+	}
+}
+
+// ErrorCode is the JetStream error code
+func (e ApiError) ErrorCode() int {
+	return e.Code
+}
+
+type JetStreamResponse struct {
+	Type  string    `json:"type"`
+	Error *ApiError `json:"error,omitempty"`
+}
+
+// ToError extracts a standard error from a JetStream response
+func (r JetStreamResponse) ToError() error {
+	if r.Error == nil {
+		return nil
+	}
+
+	return *r.Error
+}
+
+// IsError determines if a standard JetStream API response is a error
+func (r JetStreamResponse) IsError() bool {
+	return r.Error == nil
 }

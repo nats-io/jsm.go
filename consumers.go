@@ -14,7 +14,6 @@
 package jsm
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -96,36 +95,23 @@ func NewConsumerFromDefault(stream string, dflt api.ConsumerConfig, opts ...Cons
 }
 
 func createDurableConsumer(req api.CreateConsumerRequest, opts *reqoptions) (name string, err error) {
-	jreq, err := json.Marshal(req)
+	var resp api.JetStreamCreateConsumerResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateConsumerT, req.Stream, req.Config.Durable), req, &resp, opts)
 	if err != nil {
 		return "", err
 	}
 
-	_, err = request(fmt.Sprintf(api.JetStreamCreateConsumerT, req.Stream, req.Config.Durable), jreq, opts)
-	if err != nil {
-		return "", err
-	}
-
-	return req.Config.Durable, nil
+	return resp.Name, nil
 }
 
 func createEphemeralConsumer(req api.CreateConsumerRequest, opts *reqoptions) (name string, err error) {
-	jreq, err := json.Marshal(req)
+	var resp api.JetStreamCreateConsumerResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateEphemeralConsumerT, req.Stream), req, &resp, opts)
 	if err != nil {
 		return "", err
 	}
 
-	response, err := request(fmt.Sprintf(api.JetStreamCreateEphemeralConsumerT, req.Stream), jreq, opts)
-	if err != nil {
-		return "", err
-	}
-
-	parts := strings.Split(string(response.Data), " ")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid ephemeral OK response from server: %q", response.Data)
-	}
-
-	return parts[1], nil
+	return resp.Name, nil
 }
 
 // NewConsumer creates a consumer based on DefaultConsumer modified by opts
@@ -140,7 +126,7 @@ func LoadOrNewConsumer(stream string, name string, opts ...ConsumerOption) (cons
 
 // LoadOrNewConsumerFromDefault loads a consumer by name if known else creates a new one with these properties based on template
 func LoadOrNewConsumerFromDefault(stream string, name string, template api.ConsumerConfig, opts ...ConsumerOption) (consumer *Consumer, err error) {
-	cfg, err := NewConsumerConfiguration(DefaultConsumer, opts...)
+	cfg, err := NewConsumerConfiguration(template, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +156,7 @@ func LoadConsumer(stream string, name string, opts ...RequestOption) (consumer *
 		},
 	}
 
-	err = loadConfigForConsumer(consumer)
+	err = loadConfigForConsumer(consumer, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +181,8 @@ func NewConsumerConfiguration(dflt api.ConsumerConfig, opts ...ConsumerOption) (
 	return cfg, nil
 }
 
-func loadConfigForConsumer(consumer *Consumer) (err error) {
-	info, err := loadConsumerInfo(consumer.stream, consumer.name, consumer.cfg.conn)
+func loadConfigForConsumer(consumer *Consumer, opts *reqoptions) (err error) {
+	info, err := loadConsumerInfo(consumer.stream, consumer.name, opts)
 	if err != nil {
 		return err
 	}
@@ -207,18 +193,14 @@ func loadConfigForConsumer(consumer *Consumer) (err error) {
 }
 
 func loadConsumerInfo(s string, c string, opts *reqoptions) (info api.ConsumerInfo, err error) {
-	response, err := request(fmt.Sprintf(api.JetStreamConsumerInfoT, s, c), nil, opts)
+	var resp api.JetStreamConsumerInfoResponse
+
+	err = jsonRequest(fmt.Sprintf(api.JetStreamConsumerInfoT, s, c), nil, &resp, opts)
 	if err != nil {
 		return info, err
 	}
 
-	info = api.ConsumerInfo{}
-	err = json.Unmarshal(response.Data, &info)
-	if err != nil {
-		return info, err
-	}
-
-	return info, nil
+	return *resp.ConsumerInfo, nil
 }
 
 func DeliverySubject(s string) ConsumerOption {
@@ -382,8 +364,15 @@ func ConsumerConnection(opts ...RequestOption) ConsumerOption {
 }
 
 // Reset reloads the Consumer configuration from the JetStream server
-func (c *Consumer) Reset() error {
-	return loadConfigForConsumer(c)
+func (c *Consumer) Reset(opts ...RequestOption) error {
+	ropts, err := newreqoptions(opts...)
+	if err != nil {
+		if err != nil {
+			return err
+		}
+	}
+
+	return loadConfigForConsumer(c, ropts)
 }
 
 // NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
@@ -572,16 +561,17 @@ func (c *Consumer) Configuration() (config api.ConsumerConfig) {
 
 // Delete deletes the Consumer, after this the Consumer object should be disposed
 func (c *Consumer) Delete() (err error) {
-	response, err := request(fmt.Sprintf(api.JetStreamDeleteConsumerT, c.StreamName(), c.Name()), nil, c.cfg.conn)
+	var resp api.JetStreamDeleteConsumerResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamDeleteConsumerT, c.StreamName(), c.Name()), nil, &resp, c.cfg.conn)
 	if err != nil {
 		return err
 	}
 
-	if IsOKResponse(response) {
+	if resp.Success {
 		return nil
 	}
 
-	return fmt.Errorf("unknown response while removing consumer %s: %q", c.Name(), response.Data)
+	return fmt.Errorf("unknown response while removing consumer %s", c.Name())
 }
 
 func (c *Consumer) Name() string                     { return c.name }

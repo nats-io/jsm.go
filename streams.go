@@ -82,16 +82,13 @@ func NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOpti
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}
 
-	jreq, err := json.Marshal(&cfg)
+	var resp api.JetStreamCreateStreamResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateStreamT, name), &cfg, &resp, cfg.conn)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = request(fmt.Sprintf(api.JetStreamCreateStreamT, name), jreq, cfg.conn)
-	if err != nil {
-		return nil, err
-	}
-
+	// TODO: use new response data to speed this up using resp.StreamInfo
 	return LoadStream(name, cfg.ropts...)
 }
 
@@ -170,18 +167,13 @@ func loadConfigForStream(stream *Stream) (err error) {
 }
 
 func loadStreamInfo(stream string, conn *reqoptions) (info *api.StreamInfo, err error) {
-	response, err := request(fmt.Sprintf(api.JetStreamStreamInfoT, stream), nil, conn)
+	var resp api.JetStreamStreamInfoResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamStreamInfoT, stream), nil, &resp, conn)
 	if err != nil {
 		return nil, err
 	}
 
-	info = &api.StreamInfo{}
-	err = json.Unmarshal(response.Data, info)
-	if err != nil {
-		return nil, err
-	}
-
-	return info, nil
+	return resp.StreamInfo, nil
 }
 
 func Subjects(s ...string) StreamOption {
@@ -308,12 +300,8 @@ func (s *Stream) UpdateConfiguration(cfg api.StreamConfig, opts ...StreamOption)
 		return err
 	}
 
-	jcfg, err := json.Marshal(ncfg)
-	if err != nil {
-		return err
-	}
-
-	_, err = request(fmt.Sprintf(api.JetStreamUpdateStreamT, s.Name()), jcfg, s.cfg.conn)
+	var resp api.JetStreamUpdateStreamResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamUpdateStreamT, s.Name()), ncfg, &resp, s.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -358,19 +346,16 @@ func (s *Stream) LoadOrNewConsumerFromDefault(name string, deflt api.ConsumerCon
 
 // ConsumerNames is a list of all known consumers for this Stream
 func (s *Stream) ConsumerNames() (names []string, err error) {
-	response, err := request(fmt.Sprintf(api.JetStreamConsumersT, s.Name()), nil, s.cfg.conn)
+	var resp api.JetStreamConsumersResponse
+
+	err = jsonRequest(fmt.Sprintf(api.JetStreamConsumersT, s.Name()), nil, &resp, s.cfg.conn)
 	if err != nil {
 		return names, err
 	}
 
-	err = json.Unmarshal(response.Data, &names)
-	if err != nil {
-		return names, err
-	}
+	sort.Strings(resp.Consumers)
 
-	sort.Strings(names)
-
-	return names, nil
+	return resp.Consumers, nil
 }
 
 // EachConsumer calls cb with each known consumer for this stream, error on any error to load consumers
@@ -408,9 +393,14 @@ func (s *Stream) State() (stats api.StreamState, err error) {
 
 // Delete deletes the Stream, after this the Stream object should be disposed
 func (s *Stream) Delete() error {
-	_, err := request(fmt.Sprintf(api.JetStreamDeleteStreamT, s.Name()), nil, s.cfg.conn)
+	var resp api.JetStreamDeleteStreamResponse
+	err := jsonRequest(fmt.Sprintf(api.JetStreamDeleteStreamT, s.Name()), nil, &resp, s.cfg.conn)
 	if err != nil {
 		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown failure")
 	}
 
 	return nil
@@ -418,9 +408,14 @@ func (s *Stream) Delete() error {
 
 // Purge deletes all messages from the Stream
 func (s *Stream) Purge() error {
-	_, err := request(fmt.Sprintf(api.JetStreamPurgeStreamT, s.Name()), nil, s.cfg.conn)
+	var resp api.JetStreamPurgeStreamResponse
+	err := jsonRequest(fmt.Sprintf(api.JetStreamPurgeStreamT, s.Name()), nil, &resp, s.cfg.conn)
 	if err != nil {
 		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown failure")
 	}
 
 	return nil
@@ -431,6 +426,10 @@ func (s *Stream) LoadMessage(seq int) (msg api.StoredMsg, err error) {
 	response, err := request(fmt.Sprintf(api.JetStreamMsgBySeqT, s.Name()), []byte(strconv.Itoa(seq)), s.cfg.conn)
 	if err != nil {
 		return api.StoredMsg{}, err
+	}
+
+	if IsErrorResponse(response) {
+		return api.StoredMsg{}, fmt.Errorf("could not load message: %s", ParseErrorResponse(response))
 	}
 
 	msg = api.StoredMsg{}
@@ -444,9 +443,14 @@ func (s *Stream) LoadMessage(seq int) (msg api.StoredMsg, err error) {
 
 // DeleteMessage deletes a specific message from the Stream by overwriting it with random data
 func (s *Stream) DeleteMessage(seq int) (err error) {
-	_, err = request(fmt.Sprintf(api.JetStreamDeleteMsgT, s.Name()), []byte(strconv.Itoa(seq)), s.cfg.conn)
+	var resp api.JetStreamDeleteMsgResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamDeleteMsgT, s.Name()), strconv.Itoa(seq), &resp, s.cfg.conn)
 	if err != nil {
 		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while deleting message %d", seq)
 	}
 
 	return nil

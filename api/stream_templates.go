@@ -82,3 +82,23 @@ const (
 	JetStreamTemplateInfoT   = "$JS.TEMPLATE.%s.INFO"
 	JetStreamDeleteTemplateT = "$JS.TEMPLATE.%s.DELETE"
 )
+
+type JetStreamDeleteTemplateResponse struct {
+	JetStreamResponse
+	Success bool `json:"success,omitempty"`
+}
+
+type JetStreamCreateTemplateResponse struct {
+	JetStreamResponse
+	*StreamTemplateInfo
+}
+
+type JetStreamListTemplatesResponse struct {
+	JetStreamResponse
+	Templates []string `json:"streams,omitempty"`
+}
+
+type JetStreamTemplateInfoResponse struct {
+	JetStreamResponse
+	*StreamTemplateInfo
+}

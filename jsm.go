@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -75,16 +76,23 @@ func IsJetStreamEnabled(opts ...RequestOption) bool {
 		return false
 	}
 
-	_, err = request(api.JetStreamEnabled, nil, ropts)
-	return err == nil
+	var resp api.JetStreamEnabledResponse
+	err = jsonRequest(api.JetStreamEnabled, nil, &resp, ropts)
+	if err != nil {
+		return false
+	}
+
+	return resp.Enabled
 }
 
 // IsErrorResponse checks if the message holds a standard JetStream error
+// TODO: parse for error response
 func IsErrorResponse(m *nats.Msg) bool {
 	return strings.HasPrefix(string(m.Data), api.ErrPrefix)
 }
 
 // ParseErrorResponse parses the JetStream response, if it's an error returns an error instance holding the message else nil
+// TODO: parse json error response
 func ParseErrorResponse(m *nats.Msg) error {
 	if !IsErrorResponse(m) {
 		return nil
@@ -94,6 +102,7 @@ func ParseErrorResponse(m *nats.Msg) error {
 }
 
 // IsOKResponse checks if the message holds a standard JetStream error
+// TODO: parse json responses
 func IsOKResponse(m *nats.Msg) bool {
 	return strings.HasPrefix(string(m.Data), api.OK)
 }
@@ -168,74 +177,56 @@ func JetStreamAccountInfo(opts ...RequestOption) (info api.JetStreamAccountStats
 
 // StreamNames is a sorted list of all known Streams
 func StreamNames(opts ...RequestOption) (streams []string, err error) {
-	streams = []string{}
-
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := request(api.JetStreamListStreams, nil, conn)
+	var resp api.JetStreamListStreamsResponse
+	err = jsonRequest(api.JetStreamListStreams, nil, &resp, conn)
 	if err != nil {
 		return streams, err
 	}
 
-	err = json.Unmarshal(response.Data, &streams)
-	if err != nil {
-		return streams, err
-	}
+	sort.Strings(resp.Streams)
 
-	sort.Strings(streams)
-
-	return streams, nil
+	return resp.Streams, nil
 }
 
 // StreamTemplateNames is a sorted list of all known StreamTemplates
 func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) {
-	templates = []string{}
-
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := request(api.JetStreamListTemplates, nil, conn)
+	var resp api.JetStreamListTemplatesResponse
+	err = jsonRequest(api.JetStreamListTemplates, nil, &resp, conn)
 	if err != nil {
 		return templates, err
 	}
 
-	err = json.Unmarshal(response.Data, &templates)
-	if err != nil {
-		return templates, err
-	}
+	sort.Strings(resp.Templates)
 
-	sort.Strings(templates)
-
-	return templates, nil
+	return resp.Templates, nil
 }
 
 // ConsumerNames is a sorted list of all known Consumers within a Stream
 func ConsumerNames(stream string, opts ...RequestOption) (consumers []string, err error) {
-	consumers = []string{}
-
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := request(fmt.Sprintf(api.JetStreamConsumersT, stream), nil, conn)
+	var resp api.JetStreamConsumersResponse
+	err = jsonRequest(fmt.Sprintf(api.JetStreamConsumersT, stream), nil, &resp, conn)
 	if err != nil {
 		return consumers, err
 	}
 
-	err = json.Unmarshal(response.Data, &consumers)
-	if err != nil {
-		return consumers, err
-	}
+	sort.Strings(resp.Consumers)
 
-	sort.Strings(consumers)
-
-	return consumers, nil
+	return resp.Consumers, nil
 }
 
 // EachStream iterates over all known Streams
@@ -295,6 +286,43 @@ func Connection() *nats.Conn {
 	defer mu.Unlock()
 
 	return nc
+}
+
+type jetStreamResponseError interface {
+	ToError() error
+}
+
+func jsonRequest(subj string, req interface{}, response interface{}, opts *reqoptions) (err error) {
+	var body []byte
+
+	switch {
+	case req == nil:
+		body = []byte("")
+	case reflect.TypeOf(req) == reflect.TypeOf(""):
+		body = []byte(req.(string))
+	default:
+		body, err = json.Marshal(req)
+		if err != nil {
+			return err
+		}
+	}
+
+	msg, err := request(subj, body, opts)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(msg.Data, response)
+	if err != nil {
+		return err
+	}
+
+	jsr, ok := response.(jetStreamResponseError)
+	if !ok {
+		return nil
+	}
+
+	return jsr.ToError()
 }
 
 func request(subj string, data []byte, opts *reqoptions) (res *nats.Msg, err error) {

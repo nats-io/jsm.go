@@ -14,14 +14,14 @@
 package jsm_test
 
 import (
-	"context"
 	"io/ioutil"
 	"testing"
 	"time"
 
-	"github.com/nats-io/jsm.go/api"
 	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
+
+	"github.com/nats-io/jsm.go/api"
 
 	"github.com/nats-io/jsm.go"
 )
@@ -75,7 +75,7 @@ func TestJetStreamEnabled(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	if !jsm.IsJetStreamEnabled(jsm.WithContext(context.Background())) {
+	if !jsm.IsJetStreamEnabled(jsm.WithTimeout(time.Second)) {
 		t.Fatalf("expected JS to be enabled")
 	}
 }

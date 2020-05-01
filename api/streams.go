@@ -37,6 +37,37 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
+type JetStreamDeleteMsgResponse struct {
+	JetStreamResponse
+	Success bool `json:"success,omitempty"`
+}
+
+type JetStreamCreateStreamResponse struct {
+	JetStreamResponse
+	*StreamInfo
+}
+
+type JetStreamStreamInfoResponse struct {
+	JetStreamResponse
+	*StreamInfo
+}
+
+type JetStreamUpdateStreamResponse struct {
+	JetStreamResponse
+	*StreamInfo
+}
+
+type JetStreamDeleteStreamResponse struct {
+	JetStreamResponse
+	Success bool `json:"success,omitempty"`
+}
+
+type JetStreamPurgeStreamResponse struct {
+	Error   *ApiError `json:"error,omitempty"`
+	Success bool      `json:"success,omitempty"`
+	Purged  uint64    `json:"purged,omitempty"`
+}
+
 // StreamConfig is the configuration for a JetStream Stream Template
 //
 // NATS Schema Type io.nats.jetstream.api.v1.stream_configuration
@@ -110,4 +141,10 @@ type StreamState struct {
 	FirstSeq  uint64 `json:"first_seq"`
 	LastSeq   uint64 `json:"last_seq"`
 	Consumers int    `json:"consumer_count"`
+}
+
+// Response from JetStreamListStreams
+type JetStreamListStreamsResponse struct {
+	JetStreamResponse
+	Streams []string `json:"streams,omitempty"`
 }

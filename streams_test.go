@@ -377,7 +377,7 @@ func TestStream_Purge(t *testing.T) {
 	}
 }
 
-func TestStream_LoadMessage(t *testing.T) {
+func TestStream_ReadMessage(t *testing.T) {
 	srv, nc := startJSServer(t)
 	defer srv.Shutdown()
 	defer nc.Flush()
@@ -387,17 +387,16 @@ func TestStream_LoadMessage(t *testing.T) {
 
 	nc.Publish(stream.Subjects()[0], []byte("message 1"))
 
-	msg, err := stream.LoadMessage(1)
+	msg, err := stream.ReadMessage(1)
 	checkErr(t, err, "load failed")
 	if string(msg.Data) != "message 1" {
 		t.Fatalf("expected message 1 got %q", msg.Data)
 	}
 
-	msg, err = stream.LoadMessage(2)
+	_, err = stream.ReadMessage(2)
 	if err == nil {
-		t.Fatalf("LoadMessage didnt fail on unknown message")
+		t.Fatalf("ReadMessage didnt fail on unknown message")
 	}
-
 }
 
 func TestStream_DeleteMessage(t *testing.T) {
@@ -410,13 +409,13 @@ func TestStream_DeleteMessage(t *testing.T) {
 
 	nc.Publish(stream.Subjects()[0], []byte("message 1"))
 
-	_, err = stream.LoadMessage(1)
+	_, err = stream.ReadMessage(1)
 	checkErr(t, err, "load failed")
 
 	err = stream.DeleteMessage(1)
 	checkErr(t, err, "delete failed")
 
-	msg, err := stream.LoadMessage(1)
+	msg, err := stream.ReadMessage(1)
 	if err == nil {
 		t.Fatalf("deleted messages was loaded %q", msg.Data)
 	}

@@ -17,6 +17,33 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+const (
+	JSApiTemplateCreateT = "$JS.API.STREAM.TEMPLATE.CREATE.%s"
+	JSApiTemplates       = "$JS.API.STREAM.TEMPLATE.NAMES"
+	JSApiTemplateInfoT   = "$JS.API.STREAM.TEMPLATE.INFO.%s"
+	JSApiTemplateDeleteT = "$JS.API.STREAM.TEMPLATE.DELETE.%s"
+)
+
+type JSApiStreamTemplateDeleteResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
+}
+
+type JSApiStreamTemplateCreateResponse struct {
+	JSApiResponse
+	*StreamTemplateInfo
+}
+
+type JSApiTemplateNamesResponse struct {
+	JSApiResponse
+	Templates []string `json:"streams"`
+}
+
+type JSApiTemplateInfoResponse struct {
+	JSApiResponse
+	*StreamTemplateInfo
+}
+
 // StreamTemplateConfig is the configuration for a JetStream Stream Template
 //
 // NATS Schema Type io.nats.jetstream.api.v1.stream_template_configuration
@@ -74,31 +101,4 @@ func (c StreamTemplateConfig) Validate() (bool, []string) {
 	}
 
 	return false, errors
-}
-
-const (
-	JetStreamCreateTemplateT = "$JS.TEMPLATE.%s.CREATE"
-	JetStreamListTemplates   = "$JS.TEMPLATE.LIST"
-	JetStreamTemplateInfoT   = "$JS.TEMPLATE.%s.INFO"
-	JetStreamDeleteTemplateT = "$JS.TEMPLATE.%s.DELETE"
-)
-
-type JetStreamDeleteTemplateResponse struct {
-	JetStreamResponse
-	Success bool `json:"success,omitempty"`
-}
-
-type JetStreamCreateTemplateResponse struct {
-	JetStreamResponse
-	*StreamTemplateInfo
-}
-
-type JetStreamListTemplatesResponse struct {
-	JetStreamResponse
-	Templates []string `json:"streams,omitempty"`
-}
-
-type JetStreamTemplateInfoResponse struct {
-	JetStreamResponse
-	*StreamTemplateInfo
 }

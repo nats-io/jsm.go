@@ -22,33 +22,50 @@ import (
 )
 
 const (
-	JetStreamCreateConsumerT          = "$JS.STREAM.%s.CONSUMER.%s.CREATE"
-	JetStreamCreateEphemeralConsumerT = "$JS.STREAM.%s.EPHEMERAL.CONSUMER.CREATE"
-	JetStreamConsumersT               = "$JS.STREAM.%s.CONSUMERS"
-	JetStreamConsumerInfoT            = "$JS.STREAM.%s.CONSUMER.%s.INFO"
-	JetStreamDeleteConsumerT          = "$JS.STREAM.%s.CONSUMER.%s.DELETE"
-	JetStreamRequestNextT             = "$JS.STREAM.%s.CONSUMER.%s.NEXT"
-	JetStreamMetricConsumerAckPre     = JetStreamMetricPrefix + ".CONSUMER_ACK"
+	JSApiConsumerCreateT                   = "$JS.API.CONSUMER.CREATE.%s"
+	JSApiDurableCreateT                    = "$JS.API.CONSUMER.DURABLE.CREATE.%s.%s"
+	JSApiConsumerNamesT                    = "$JS.API.CONSUMER.NAMES.%s"
+	JSApiConsumerListT                     = "$JS.API.CONSUMER.LIST.%s"
+	JSApiConsumerInfoT                     = "$JS.API.CONSUMER.INFO.%s.%s"
+	JSApiConsumerDeleteT                   = "$JS.API.CONSUMER.DELETE.%s.%s"
+	JSApiRequestNextT                      = "$JS.API.CONSUMER.MSG.NEXT.%s.%s"
+	JSMetricConsumerAckPre                 = JSMetricPrefix + ".CONSUMER.ACK"
+	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"
 )
 
-type JetStreamDeleteConsumerResponse struct {
-	Error   *ApiError `json:"error,omitempty"`
-	Success bool      `json:"success,omitempty"`
+type JSApiConsumerDeleteResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
 }
 
-type JetStreamCreateConsumerResponse struct {
-	JetStreamResponse
+type JSApiConsumerCreateResponse struct {
+	JSApiResponse
 	*ConsumerInfo
 }
 
-type JetStreamConsumerInfoResponse struct {
-	JetStreamResponse
+type JSApiConsumerInfoResponse struct {
+	JSApiResponse
 	*ConsumerInfo
 }
 
-type JetStreamConsumersResponse struct {
-	JetStreamResponse
-	Consumers []string `json:"streams,omitempty"`
+type JSApiConsumerNamesRequest struct {
+	JSApiIterableRequest
+}
+
+type JSApiConsumerListRequest struct {
+	JSApiIterableRequest
+}
+
+type JSApiConsumerNamesResponse struct {
+	JSApiResponse
+	JSApiIterableResponse
+	Consumers []string `json:"consumers"`
+}
+
+type JSApiConsumerListResponse struct {
+	JSApiResponse
+	JSApiIterableResponse
+	Consumers []*ConsumerInfo `json:"consumers"`
 }
 
 type AckPolicy int
@@ -285,6 +302,7 @@ type ConsumerInfo struct {
 	Stream         string         `json:"stream_name"`
 	Name           string         `json:"name"`
 	Config         ConsumerConfig `json:"config"`
+	Created        time.Time      `json:"created"`
 	Delivered      SequencePair   `json:"delivered"`
 	AckFloor       SequencePair   `json:"ack_floor"`
 	NumPending     int            `json:"num_pending"`

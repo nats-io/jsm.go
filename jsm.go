@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -34,6 +34,27 @@ import (
 var timeout = 5 * time.Second
 var nc *nats.Conn
 var mu sync.Mutex
+var trace bool
+
+// Trace enables logs to be written with request and response traces
+func Trace() {
+	mu.Lock()
+	trace = true
+	mu.Unlock()
+}
+
+// NoTrace disables Trace() logs
+func NoTrace() {
+	mu.Lock()
+	trace = false
+	mu.Unlock()
+}
+
+func shouldTrace() bool {
+	mu.Lock()
+	defer mu.Unlock()
+	return trace
+}
 
 // Connect connects to NATS and configures it to use the connection in future interactions with JetStream
 // Deprecated: Use Request Options to supply the connection
@@ -71,18 +92,16 @@ func SetConnection(c *nats.Conn) {
 
 // IsJetStreamEnabled determines if JetStream is enabled for the current account
 func IsJetStreamEnabled(opts ...RequestOption) bool {
-	ropts, err := newreqoptions(opts...)
+	info, err := JetStreamAccountInfo(opts...)
 	if err != nil {
 		return false
 	}
 
-	var resp api.JetStreamEnabledResponse
-	err = jsonRequest(api.JetStreamEnabled, nil, &resp, ropts)
-	if err != nil {
+	if info == nil {
 		return false
 	}
 
-	return resp.Enabled
+	return true
 }
 
 // IsErrorResponse checks if the message holds a standard JetStream error
@@ -109,88 +128,172 @@ func IsOKResponse(m *nats.Msg) bool {
 
 // IsKnownStream determines if a Stream is known
 func IsKnownStream(stream string, opts ...RequestOption) (bool, error) {
-	streams, err := StreamNames(opts...)
+	s, err := LoadStream(stream, opts...)
 	if err != nil {
+		jserr, ok := err.(api.ApiError)
+		if ok {
+			if jserr.NotFoundError() {
+				return false, nil
+			}
+		}
+
 		return false, err
 	}
 
-	for _, s := range streams {
-		if s == stream {
-			return true, nil
-		}
+	if s.Name() != stream {
+		return false, fmt.Errorf("received invalid stream from load")
 	}
 
-	return false, nil
+	return true, nil
 }
 
 // IsKnownStreamTemplate determines if a StreamTemplate is known
 func IsKnownStreamTemplate(template string, opts ...RequestOption) (bool, error) {
-	templates, err := StreamTemplateNames(opts...)
+	t, err := LoadStreamTemplate(template, opts...)
 	if err != nil {
+		jserr, ok := err.(api.ApiError)
+		if ok {
+			if jserr.NotFoundError() {
+				return false, nil
+			}
+		}
+
 		return false, err
 	}
 
-	for _, s := range templates {
-		if s == template {
-			return true, nil
-		}
+	if t.Name() != template {
+		return false, fmt.Errorf("received invalid stream template from load")
 	}
 
-	return false, nil
+	return true, nil
 }
 
 // IsKnownConsumer determines if a Consumer is known for a specific Stream
 func IsKnownConsumer(stream string, consumer string, opts ...RequestOption) (bool, error) {
-	consumers, err := ConsumerNames(stream, opts...)
+	c, err := LoadConsumer(stream, consumer, opts...)
 	if err != nil {
+		jserr, ok := err.(api.ApiError)
+		if ok {
+			if jserr.NotFoundError() {
+				return false, nil
+			}
+		}
+
 		return false, err
 	}
 
-	for _, c := range consumers {
-		if c == consumer {
-			return true, nil
-		}
+	if c.Name() != consumer {
+		return false, fmt.Errorf("invalid consumer received from load")
 	}
 
-	return false, nil
+	return true, nil
 }
 
 // JetStreamAccountInfo retrieves information about the current account limits and more
-func JetStreamAccountInfo(opts ...RequestOption) (info api.JetStreamAccountStats, err error) {
-	conn, err := newreqoptions(opts...)
-	if err != nil {
-		return api.JetStreamAccountStats{}, err
-	}
-
-	response, err := request(api.JetStreamInfo, nil, conn)
-	if err != nil {
-		return info, err
-	}
-
-	err = json.Unmarshal(response.Data, &info)
-	if err != nil {
-		return info, err
-	}
-
-	return info, nil
-}
-
-// StreamNames is a sorted list of all known Streams
-func StreamNames(opts ...RequestOption) (streams []string, err error) {
+func JetStreamAccountInfo(opts ...RequestOption) (info *api.JetStreamAccountStats, err error) {
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp api.JetStreamListStreamsResponse
-	err = jsonRequest(api.JetStreamListStreams, nil, &resp, conn)
+	var resp api.JSApiAccountInfoResponse
+	err = jsonRequest(api.JSApiAccountInfo, nil, &resp, conn)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.JetStreamAccountStats, nil
+}
+
+// Streams is a sorted list of all known Streams
+func Streams(opts ...RequestOption) (streams []*Stream, err error) {
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp api.JSApiStreamListResponse
+	err = iterableRequest(api.JSApiStreamList, &api.JSApiStreamListRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn, func(page interface{}) error {
+		apiresp, ok := page.(*api.JSApiStreamListResponse)
+		if !ok {
+			return fmt.Errorf("invalid response type from iterable request")
+		}
+
+		sort.Slice(apiresp.Streams, func(i int, j int) bool {
+			return apiresp.Streams[i].Config.Name < apiresp.Streams[j].Config.Name
+		})
+
+		for _, s := range apiresp.Streams {
+			cfg := &StreamConfig{
+				StreamConfig: s.Config,
+				conn:         conn,
+				ropts:        opts,
+			}
+
+			streams = append(streams, streamFromConfig(cfg))
+		}
+
+		return nil
+	})
 	if err != nil {
 		return streams, err
 	}
 
-	sort.Strings(resp.Streams)
+	return streams, nil
+}
 
-	return resp.Streams, nil
+// StreamNames is a sorted list of all known Streams
+func StreamNames(opts ...RequestOption) (names []string, err error) {
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp api.JSApiStreamNamesResponse
+	err = iterableRequest(api.JSApiStreamNames, &api.JSApiStreamNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn, func(page interface{}) error {
+		apiresp, ok := page.(*api.JSApiStreamNamesResponse)
+		if !ok {
+			return fmt.Errorf("invalid response type from iterable request")
+		}
+
+		names = append(names, apiresp.Streams...)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(names)
+
+	return names, nil
+}
+
+// StreamNames is a sorted list of all known consumers within a stream
+func ConsumerNames(stream string, opts ...RequestOption) (names []string, err error) {
+	conn, err := newreqoptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp api.JSApiConsumerNamesResponse
+	err = iterableRequest(fmt.Sprintf(api.JSApiConsumerNamesT, stream), &api.JSApiConsumerNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn, func(page interface{}) error {
+		apiresp, ok := page.(*api.JSApiConsumerNamesResponse)
+		if !ok {
+			return fmt.Errorf("invalid response type from iterable request")
+		}
+
+		names = append(names, apiresp.Consumers...)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(names)
+
+	return names, nil
 }
 
 // StreamTemplateNames is a sorted list of all known StreamTemplates
@@ -200,8 +303,8 @@ func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) 
 		return nil, err
 	}
 
-	var resp api.JetStreamListTemplatesResponse
-	err = jsonRequest(api.JetStreamListTemplates, nil, &resp, conn)
+	var resp api.JSApiTemplateNamesResponse
+	err = jsonRequest(api.JSApiTemplates, nil, &resp, conn)
 	if err != nil {
 		return templates, err
 	}
@@ -211,38 +314,46 @@ func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) 
 	return resp.Templates, nil
 }
 
-// ConsumerNames is a sorted list of all known Consumers within a Stream
-func ConsumerNames(stream string, opts ...RequestOption) (consumers []string, err error) {
+// Consumers is a sorted list of all known Consumers within a Stream
+// TODO: paging
+func Consumers(stream string, opts ...RequestOption) (consumers []*Consumer, err error) {
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp api.JetStreamConsumersResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamConsumersT, stream), nil, &resp, conn)
+	var resp api.JSApiConsumerListResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiConsumerListT, stream), &api.JSApiConsumerListRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn)
 	if err != nil {
 		return consumers, err
 	}
 
-	sort.Strings(resp.Consumers)
+	sort.Slice(resp.Consumers, func(i int, j int) bool {
+		return resp.Consumers[i].Name < resp.Consumers[j].Name
+	})
 
-	return resp.Consumers, nil
+	for _, c := range resp.Consumers {
+		cfg := &ConsumerCfg{
+			ConsumerConfig: c.Config,
+			conn:           conn,
+			ropts:          opts,
+		}
+
+		consumers = append(consumers, consumerFromCfg(c.Stream, c.Name, cfg))
+	}
+
+	return consumers, nil
 }
 
 // EachStream iterates over all known Streams
 func EachStream(cb func(*Stream), opts ...RequestOption) (err error) {
-	names, err := StreamNames()
+	streams, err := Streams()
 	if err != nil {
 		return err
 	}
 
-	for _, s := range names {
-		stream, err := LoadStream(s, opts...)
-		if err != nil {
-			return err
-		}
-
-		cb(stream)
+	for _, s := range streams {
+		cb(s)
 	}
 
 	return nil
@@ -292,14 +403,48 @@ type jetStreamResponseError interface {
 	ToError() error
 }
 
+type apiIterableResponse interface {
+	ItemsTotal() int
+	ItemsOffset() int
+	ItemsLimit() int
+	LastPage() bool
+}
+
+type apiIterableRequest interface {
+	SetOffset(o int)
+}
+
+func iterableRequest(subj string, req apiIterableRequest, response apiIterableResponse, opts *reqoptions, cb func(interface{}) error) (err error) {
+	offset := 0
+	for {
+		req.SetOffset(offset)
+
+		err = jsonRequest(subj, req, response, opts)
+		if err != nil {
+			return err
+		}
+
+		err = cb(response)
+		if err != nil {
+			return err
+		}
+
+		if response.LastPage() {
+			break
+		}
+
+		offset = offset * response.ItemsLimit()
+	}
+
+	return nil
+}
+
 func jsonRequest(subj string, req interface{}, response interface{}, opts *reqoptions) (err error) {
 	var body []byte
 
 	switch {
 	case req == nil:
 		body = []byte("")
-	case reflect.TypeOf(req) == reflect.TypeOf(""):
-		body = []byte(req.(string))
 	default:
 		body, err = json.Marshal(req)
 		if err != nil {
@@ -307,9 +452,17 @@ func jsonRequest(subj string, req interface{}, response interface{}, opts *reqop
 		}
 	}
 
+	if shouldTrace() {
+		log.Printf(">>> %s\n%s\n\n", subj, string(body))
+	}
+
 	msg, err := request(subj, body, opts)
 	if err != nil {
 		return err
+	}
+
+	if shouldTrace() {
+		log.Printf("<<< %s\n%s\n\n", subj, string(msg.Data))
 	}
 
 	err = json.Unmarshal(msg.Data, response)

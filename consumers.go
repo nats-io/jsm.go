@@ -75,43 +75,44 @@ func NewConsumerFromDefault(stream string, dflt api.ConsumerConfig, opts ...Cons
 		Config: cfg.ConsumerConfig,
 	}
 
-	var createdName string
+	var createdInfo *api.ConsumerInfo
 
 	switch req.Config.Durable {
 	case "":
-		createdName, err = createEphemeralConsumer(req, cfg.conn)
+		createdInfo, err = createEphemeralConsumer(req, cfg.conn)
 	default:
-		createdName, err = createDurableConsumer(req, cfg.conn)
+		createdInfo, err = createDurableConsumer(req, cfg.conn)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	if createdName == "" {
+	if createdInfo == nil {
 		return nil, fmt.Errorf("expected a consumer name but none were generated")
 	}
 
-	return LoadConsumer(stream, createdName, cfg.ropts...)
+	// TODO: we have the info, avoid this round trip
+	return LoadConsumer(stream, createdInfo.Name, cfg.ropts...)
 }
 
-func createDurableConsumer(req api.CreateConsumerRequest, opts *reqoptions) (name string, err error) {
-	var resp api.JetStreamCreateConsumerResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateConsumerT, req.Stream, req.Config.Durable), req, &resp, opts)
+func createDurableConsumer(req api.CreateConsumerRequest, opts *reqoptions) (info *api.ConsumerInfo, err error) {
+	var resp api.JSApiConsumerCreateResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiDurableCreateT, req.Stream, req.Config.Durable), req, &resp, opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return resp.Name, nil
+	return resp.ConsumerInfo, nil
 }
 
-func createEphemeralConsumer(req api.CreateConsumerRequest, opts *reqoptions) (name string, err error) {
-	var resp api.JetStreamCreateConsumerResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateEphemeralConsumerT, req.Stream), req, &resp, opts)
+func createEphemeralConsumer(req api.CreateConsumerRequest, opts *reqoptions) (info *api.ConsumerInfo, err error) {
+	var resp api.JSApiConsumerCreateResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiConsumerCreateT, req.Stream), req, &resp, opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return resp.Name, nil
+	return resp.ConsumerInfo, nil
 }
 
 // NewConsumer creates a consumer based on DefaultConsumer modified by opts
@@ -146,15 +147,7 @@ func LoadConsumer(stream string, name string, opts ...RequestOption) (consumer *
 		return nil, err
 	}
 
-	consumer = &Consumer{
-		name:   name,
-		stream: stream,
-		cfg: &ConsumerCfg{
-			ConsumerConfig: api.ConsumerConfig{},
-			conn:           conn,
-			ropts:          opts,
-		},
-	}
+	consumer = consumerFromCfg(stream, name, &ConsumerCfg{ConsumerConfig: api.ConsumerConfig{}, conn: conn, ropts: opts})
 
 	err = loadConfigForConsumer(consumer, conn)
 	if err != nil {
@@ -162,6 +155,14 @@ func LoadConsumer(stream string, name string, opts ...RequestOption) (consumer *
 	}
 
 	return consumer, nil
+}
+
+func consumerFromCfg(stream string, name string, cfg *ConsumerCfg) *Consumer {
+	return &Consumer{
+		name:   name,
+		stream: stream,
+		cfg:    cfg,
+	}
 }
 
 // NewConsumerConfiguration generates a new configuration based on template modified by opts
@@ -193,9 +194,8 @@ func loadConfigForConsumer(consumer *Consumer, opts *reqoptions) (err error) {
 }
 
 func loadConsumerInfo(s string, c string, opts *reqoptions) (info api.ConsumerInfo, err error) {
-	var resp api.JetStreamConsumerInfoResponse
-
-	err = jsonRequest(fmt.Sprintf(api.JetStreamConsumerInfoT, s, c), nil, &resp, opts)
+	var resp api.JSApiConsumerInfoResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiConsumerInfoT, s, c), nil, &resp, opts)
 	if err != nil {
 		return info, err
 	}
@@ -396,7 +396,7 @@ func NextSubject(stream string, consumer string) (string, error) {
 		return "", fmt.Errorf("consumer name can not be empty string")
 	}
 
-	return fmt.Sprintf(api.JetStreamRequestNextT, stream, consumer), nil
+	return fmt.Sprintf(api.JSApiRequestNextT, stream, consumer), nil
 }
 
 // AckSampleSubject is the subject used to publish ack samples to
@@ -405,17 +405,17 @@ func (c *Consumer) AckSampleSubject() string {
 		return ""
 	}
 
-	return api.JetStreamMetricConsumerAckPre + "." + c.StreamName() + "." + c.name
+	return api.JSMetricConsumerAckPre + "." + c.StreamName() + "." + c.name
 }
 
 // AdvisorySubject is a wildcard subscription subject that subscribes to all advisories for this consumer
 func (c *Consumer) AdvisorySubject() string {
-	return api.JetStreamAdvisoryPrefix + "." + "*" + "." + c.StreamName() + "." + c.name
+	return api.JSAdvisoryPrefix + ".CONSUMER.*." + c.StreamName() + "." + c.name
 }
 
 // MetricSubject is a wildcard subscription subject that subscribes to all metrics for this consumer
 func (c *Consumer) MetricSubject() string {
-	return api.JetStreamMetricPrefix + "." + "*" + "." + c.StreamName() + "." + c.name
+	return api.JSMetricPrefix + ".CONSUMER.*." + c.StreamName() + "." + c.name
 }
 
 // Subscribe see nats.Subscribe
@@ -561,8 +561,8 @@ func (c *Consumer) Configuration() (config api.ConsumerConfig) {
 
 // Delete deletes the Consumer, after this the Consumer object should be disposed
 func (c *Consumer) Delete() (err error) {
-	var resp api.JetStreamDeleteConsumerResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamDeleteConsumerT, c.StreamName(), c.Name()), nil, &resp, c.cfg.conn)
+	var resp api.JSApiConsumerDeleteResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiConsumerDeleteT, c.StreamName(), c.Name()), nil, &resp, c.cfg.conn)
 	if err != nil {
 		return err
 	}

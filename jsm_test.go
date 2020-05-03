@@ -14,6 +14,7 @@
 package jsm_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -118,6 +119,7 @@ func TestIsKnownStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
+	jsm.Trace()
 	known, err := jsm.IsKnownStream("ORDERS")
 	checkErr(t, err, "known lookup failed")
 	if known {
@@ -192,14 +194,16 @@ func TestStreamNames(t *testing.T) {
 		t.Fatalf("expected 0 streams got: %v", names)
 	}
 
-	_, err = jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
-	checkErr(t, err, "create failed")
+	for i := 0; i < 510; i++ {
+		_, err = jsm.NewStreamFromDefault(fmt.Sprintf("ORDERS_%d", i), jsm.DefaultStream, jsm.MemoryStorage())
+		checkErr(t, err, "create failed")
+	}
 
 	names, err = jsm.StreamNames()
 	checkErr(t, err, "lookup failed")
 
-	if len(names) != 1 || names[0] != "ORDERS" {
-		t.Fatalf("expected [ORDERS] got %v", names)
+	if len(names) != 510 || names[0] != "ORDERS_0" && names[509] != "ORDERS_99" {
+		t.Fatalf("expected 510 orders got %d", len(names))
 	}
 }
 
@@ -222,6 +226,7 @@ func TestConsumerNames(t *testing.T) {
 	_, err = stream.NewConsumerFromDefault(jsm.DefaultConsumer, jsm.DurableName("NEW"))
 	checkErr(t, err, "create failed")
 
+	jsm.Trace()
 	names, err := jsm.ConsumerNames("ORDERS")
 	checkErr(t, err, "lookup failed")
 
@@ -242,9 +247,10 @@ func TestEachStream(t *testing.T) {
 	checkErr(t, err, "create failed")
 
 	seen := []string{}
-	jsm.EachStream(func(s *jsm.Stream) {
+	err = jsm.EachStream(func(s *jsm.Stream) {
 		seen = append(seen, s.Name())
 	})
+	checkErr(t, err, "iteration failed")
 
 	if len(seen) != 2 {
 		t.Fatalf("expected 2 got %d", len(seen))

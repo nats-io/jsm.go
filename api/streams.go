@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	JetStreamCreateStreamT = "$JS.STREAM.%s.CREATE"
-	JetStreamUpdateStreamT = "$JS.STREAM.%s.UPDATE"
-	JetStreamListStreams   = "$JS.STREAM.LIST"
-	JetStreamStreamInfoT   = "$JS.STREAM.%s.INFO"
-	JetStreamDeleteStreamT = "$JS.STREAM.%s.DELETE"
-	JetStreamPurgeStreamT  = "$JS.STREAM.%s.PURGE"
-	JetStreamDeleteMsgT    = "$JS.STREAM.%s.MSG.DELETE"
-	JetStreamMsgBySeqT     = "$JS.STREAM.%s.MSG.BYSEQ"
+	JSApiStreamCreateT = "$JS.API.STREAM.CREATE.%s"
+	JSApiStreamUpdate  = "$JS.API.STREAM.UPDATE.%s"
+	JSApiStreamNames   = "$JS.API.STREAM.NAMES"
+	JSApiStreamList    = "$JS.API.STREAM.LIST"
+	JSApiStreamInfoT   = "$JS.API.STREAM.INFO.%s"
+	JSApiStreamDeleteT = "$JS.API.STREAM.DELETE.%s"
+	JSApiStreamPurgeT  = "$JS.API.STREAM.PURGE.%s"
+	JSApiMsgDeleteT    = "$JS.API.STREAM.MSG.DELETE.%s"
+	JSApiMsgGetT       = "$JS.API.STREAM.MSG.GET.%s"
 )
 
 type StoredMsg struct {
@@ -37,39 +38,68 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
-type JetStreamDeleteMsgRequest struct {
+type JSApiStreamNamesResponse struct {
+	JSApiResponse
+	JSApiIterableResponse
+	Streams []string `json:"streams"`
+}
+
+type JSApiStreamListResponse struct {
+	JSApiResponse
+	JSApiIterableResponse
+	Streams []*StreamInfo `json:"streams"`
+}
+
+type JSApiStreamNamesRequest struct {
+	JSApiIterableRequest
+}
+
+type JSApiStreamListRequest struct {
+	JSApiIterableRequest
+}
+
+type JSApiMsgDeleteRequest struct {
 	Seq uint64 `json:"seq"`
 }
 
-type JetStreamDeleteMsgResponse struct {
-	JetStreamResponse
+type JSApiMsgDeleteResponse struct {
+	JSApiResponse
 	Success bool `json:"success,omitempty"`
 }
 
-type JetStreamCreateStreamResponse struct {
-	JetStreamResponse
+type JSApiStreamCreateResponse struct {
+	JSApiResponse
 	*StreamInfo
 }
 
-type JetStreamStreamInfoResponse struct {
-	JetStreamResponse
+type JSApiStreamInfoResponse struct {
+	JSApiResponse
 	*StreamInfo
 }
 
-type JetStreamUpdateStreamResponse struct {
-	JetStreamResponse
+type JSApiStreamUpdateResponse struct {
+	JSApiResponse
 	*StreamInfo
 }
 
-type JetStreamDeleteStreamResponse struct {
-	JetStreamResponse
+type JSApiStreamDeleteResponse struct {
+	JSApiResponse
 	Success bool `json:"success,omitempty"`
 }
 
-type JetStreamPurgeStreamResponse struct {
-	Error   *ApiError `json:"error,omitempty"`
-	Success bool      `json:"success,omitempty"`
-	Purged  uint64    `json:"purged,omitempty"`
+type JSApiStreamPurgeResponse struct {
+	JSApiResponse
+	Success bool   `json:"success,omitempty"`
+	Purged  uint64 `json:"purged,omitempty"`
+}
+
+type JSApiMsgGetResponse struct {
+	JSApiResponse
+	Message *StoredMsg `json:"message,omitempty"`
+}
+
+type JSApiMsgGetRequest struct {
+	Seq uint64 `json:"seq"`
 }
 
 // StreamConfig is the configuration for a JetStream Stream Template
@@ -145,10 +175,4 @@ type StreamState struct {
 	FirstSeq  uint64 `json:"first_seq"`
 	LastSeq   uint64 `json:"last_seq"`
 	Consumers int    `json:"consumer_count"`
-}
-
-// Response from JetStreamListStreams
-type JetStreamListStreamsResponse struct {
-	JetStreamResponse
-	Streams []string `json:"streams,omitempty"`
 }

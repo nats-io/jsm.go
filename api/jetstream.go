@@ -20,10 +20,10 @@ import (
 
 // Subjects used by the JetStream API
 const (
-	JetStreamEnabled        = "$JS.ENABLED"
-	JetStreamMetricPrefix   = "$JS.EVENT.METRIC"
-	JetStreamAdvisoryPrefix = "$JS.EVENT.ADVISORY"
-	JetStreamInfo           = "$JS.INFO"
+	JSAuditAdvisory  = "$JS.EVENT.ADVISORY.API"
+	JSMetricPrefix   = "$JS.EVENT.METRIC"
+	JSAdvisoryPrefix = "$JS.EVENT.ADVISORY"
+	JSApiAccountInfo = "$JS.API.INFO"
 )
 
 // Responses to requests sent to a server from a client.
@@ -167,9 +167,28 @@ func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
 	}
 }
 
-type JetStreamEnabledResponse struct {
-	JetStreamResponse
-	Enabled bool `json:"enabled"`
+type JSApiIterableRequest struct {
+	Offset int `json:"offset"`
+}
+
+func (i *JSApiIterableRequest) SetOffset(o int) { i.Offset = o }
+
+type JSApiIterableResponse struct {
+	Total  int `json:"total"`
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+}
+
+func (i JSApiIterableResponse) ItemsTotal() int  { return i.Total }
+func (i JSApiIterableResponse) ItemsOffset() int { return i.Offset }
+func (i JSApiIterableResponse) ItemsLimit() int  { return i.Limit }
+func (i JSApiIterableResponse) LastPage() bool {
+	return (i.Offset+1)*i.Limit >= i.Total
+}
+
+type JSApiAccountInfoResponse struct {
+	Error *ApiError `json:"error,omitempty"`
+	*JetStreamAccountStats
 }
 
 type JetStreamAccountStats struct {
@@ -203,18 +222,25 @@ func (e ApiError) Error() string {
 	}
 }
 
-// ErrorCode is the JetStream error code
-func (e ApiError) ErrorCode() int {
-	return e.Code
-}
+// NotFoundError is true when the error is one about a resource not found
+func (e ApiError) NotFoundError() bool { return e.Code == 404 }
 
-type JetStreamResponse struct {
+// ServerError is true when the server returns a 5xx error code
+func (e ApiError) ServerError() bool { return e.Code >= 500 && e.Code < 600 }
+
+// UserError is true when the server returns a 4xx error code
+func (e ApiError) UserError() bool { return e.Code >= 400 && e.Code < 500 }
+
+// ErrorCode is the JetStream error code
+func (e ApiError) ErrorCode() int { return e.Code }
+
+type JSApiResponse struct {
 	Type  string    `json:"type"`
 	Error *ApiError `json:"error,omitempty"`
 }
 
 // ToError extracts a standard error from a JetStream response
-func (r JetStreamResponse) ToError() error {
+func (r JSApiResponse) ToError() error {
 	if r.Error == nil {
 		return nil
 	}
@@ -223,6 +249,6 @@ func (r JetStreamResponse) ToError() error {
 }
 
 // IsError determines if a standard JetStream API response is a error
-func (r JetStreamResponse) IsError() bool {
+func (r JSApiResponse) IsError() bool {
 	return r.Error == nil
 }

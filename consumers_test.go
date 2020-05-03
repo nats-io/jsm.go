@@ -283,7 +283,7 @@ func TestNextSubject(t *testing.T) {
 	s, err := jsm.NextSubject("str", "cons")
 	checkErr(t, err, "good subject params failed")
 
-	if s != "$JS.STREAM.str.CONSUMER.cons.NEXT" {
+	if s != "$JS.API.CONSUMER.MSG.NEXT.str.cons" {
 		t.Fatalf("invalid next subject %q", s)
 	}
 }
@@ -296,7 +296,7 @@ func TestConsumer_NextSubject(t *testing.T) {
 	consumer, err := jsm.NewConsumer("ORDERS", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
 	checkErr(t, err, "create failed")
 
-	if consumer.NextSubject() != "$JS.STREAM.ORDERS.CONSUMER.NEW.NEXT" {
+	if consumer.NextSubject() != "$JS.API.CONSUMER.MSG.NEXT.ORDERS.NEW" {
 		t.Fatalf("expected next subject got %s", consumer.NextSubject())
 	}
 }
@@ -309,7 +309,7 @@ func TestConsumer_SampleSubject(t *testing.T) {
 	consumer, err := jsm.NewConsumerFromDefault("ORDERS", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"))
 	checkErr(t, err, "create failed")
 
-	if consumer.AckSampleSubject() != "$JS.EVENT.METRIC.CONSUMER_ACK.ORDERS.NEW" {
+	if consumer.AckSampleSubject() != "$JS.EVENT.METRIC.CONSUMER.ACK.ORDERS.NEW" {
 		t.Fatalf("expected next subject got %s", consumer.AckSampleSubject())
 	}
 

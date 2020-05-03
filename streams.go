@@ -14,10 +14,7 @@
 package jsm
 
 import (
-	"encoding/json"
 	"fmt"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -82,14 +79,19 @@ func NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOpti
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}
 
-	var resp api.JetStreamCreateStreamResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateStreamT, name), &cfg, &resp, cfg.conn)
+	var resp api.JSApiStreamCreateResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiStreamCreateT, name), &cfg, &resp, cfg.conn)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: use new response data to speed this up using resp.StreamInfo
-	return LoadStream(name, cfg.ropts...)
+	cfg.StreamConfig = resp.Config
+
+	return streamFromConfig(cfg), nil
+}
+
+func streamFromConfig(cfg *StreamConfig) (stream *Stream) {
+	return &Stream{cfg: cfg}
 }
 
 // LoadOrNewStreamFromDefault loads an existing stream or creates a new one matching opts and template
@@ -167,8 +169,8 @@ func loadConfigForStream(stream *Stream) (err error) {
 }
 
 func loadStreamInfo(stream string, conn *reqoptions) (info *api.StreamInfo, err error) {
-	var resp api.JetStreamStreamInfoResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamStreamInfoT, stream), nil, &resp, conn)
+	var resp api.JSApiStreamInfoResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiStreamInfoT, stream), nil, &resp, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -300,8 +302,8 @@ func (s *Stream) UpdateConfiguration(cfg api.StreamConfig, opts ...StreamOption)
 		return err
 	}
 
-	var resp api.JetStreamUpdateStreamResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamUpdateStreamT, s.Name()), ncfg, &resp, s.cfg.conn)
+	var resp api.JSApiStreamUpdateResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiStreamUpdate, s.Name()), ncfg, &resp, s.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -346,31 +348,17 @@ func (s *Stream) LoadOrNewConsumerFromDefault(name string, deflt api.ConsumerCon
 
 // ConsumerNames is a list of all known consumers for this Stream
 func (s *Stream) ConsumerNames() (names []string, err error) {
-	var resp api.JetStreamConsumersResponse
-
-	err = jsonRequest(fmt.Sprintf(api.JetStreamConsumersT, s.Name()), nil, &resp, s.cfg.conn)
-	if err != nil {
-		return names, err
-	}
-
-	sort.Strings(resp.Consumers)
-
-	return resp.Consumers, nil
+	return ConsumerNames(s.Name())
 }
 
 // EachConsumer calls cb with each known consumer for this stream, error on any error to load consumers
 func (s *Stream) EachConsumer(cb func(consumer *Consumer)) error {
-	names, err := s.ConsumerNames()
+	consumers, err := Consumers(s.Name())
 	if err != nil {
 		return err
 	}
 
-	for _, name := range names {
-		c, err := s.LoadConsumer(name)
-		if err != nil {
-			return err
-		}
-
+	for _, c := range consumers {
 		cb(c)
 	}
 
@@ -393,8 +381,8 @@ func (s *Stream) State() (stats api.StreamState, err error) {
 
 // Delete deletes the Stream, after this the Stream object should be disposed
 func (s *Stream) Delete() error {
-	var resp api.JetStreamDeleteStreamResponse
-	err := jsonRequest(fmt.Sprintf(api.JetStreamDeleteStreamT, s.Name()), nil, &resp, s.cfg.conn)
+	var resp api.JSApiStreamDeleteResponse
+	err := jsonRequest(fmt.Sprintf(api.JSApiStreamDeleteT, s.Name()), nil, &resp, s.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -408,8 +396,8 @@ func (s *Stream) Delete() error {
 
 // Purge deletes all messages from the Stream
 func (s *Stream) Purge() error {
-	var resp api.JetStreamPurgeStreamResponse
-	err := jsonRequest(fmt.Sprintf(api.JetStreamPurgeStreamT, s.Name()), nil, &resp, s.cfg.conn)
+	var resp api.JSApiStreamPurgeResponse
+	err := jsonRequest(fmt.Sprintf(api.JSApiStreamPurgeT, s.Name()), nil, &resp, s.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -421,30 +409,21 @@ func (s *Stream) Purge() error {
 	return nil
 }
 
-// LoadMessage loads a message from the message set by its sequence number
-func (s *Stream) LoadMessage(seq int) (msg api.StoredMsg, err error) {
-	response, err := request(fmt.Sprintf(api.JetStreamMsgBySeqT, s.Name()), []byte(strconv.Itoa(seq)), s.cfg.conn)
+// ReadMessage loads a message from the stream by its sequence number
+func (s *Stream) ReadMessage(seq int) (msg *api.StoredMsg, err error) {
+	var resp api.JSApiMsgGetResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiMsgGetT, s.Name()), api.JSApiMsgGetRequest{Seq: uint64(seq)}, &resp, s.cfg.conn)
 	if err != nil {
-		return api.StoredMsg{}, err
+		return nil, err
 	}
 
-	if IsErrorResponse(response) {
-		return api.StoredMsg{}, fmt.Errorf("could not load message: %s", ParseErrorResponse(response))
-	}
-
-	msg = api.StoredMsg{}
-	err = json.Unmarshal(response.Data, &msg)
-	if err != nil {
-		return api.StoredMsg{}, err
-	}
-
-	return msg, nil
+	return resp.Message, nil
 }
 
 // DeleteMessage deletes a specific message from the Stream by overwriting it with random data
 func (s *Stream) DeleteMessage(seq int) (err error) {
-	var resp api.JetStreamDeleteMsgResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamDeleteMsgT, s.Name()), api.JetStreamDeleteMsgRequest{Seq: uint64(seq)}, &resp, s.cfg.conn)
+	var resp api.JSApiMsgDeleteResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), api.JSApiMsgDeleteRequest{Seq: uint64(seq)}, &resp, s.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -458,12 +437,13 @@ func (s *Stream) DeleteMessage(seq int) (err error) {
 
 // AdvisorySubject is a wildcard subscription subject that subscribes to all advisories for this stream
 func (s *Stream) AdvisorySubject() string {
-	return api.JetStreamAdvisoryPrefix + "." + "*" + "." + s.Name() + ".*"
+	return api.JSAdvisoryPrefix + ".*.*." + s.Name() + ".>"
+
 }
 
 // MetricSubject is a wildcard subscription subject that subscribes to all advisories for this stream
 func (s *Stream) MetricSubject() string {
-	return api.JetStreamMetricPrefix + "." + "*" + "." + s.Name() + ".*"
+	return api.JSMetricPrefix + ".*.*." + s.Name() + ".*"
 }
 
 // IsTemplateManaged determines if this stream is managed by a template

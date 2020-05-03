@@ -50,8 +50,8 @@ func NewStreamTemplate(name string, maxStreams uint32, config api.StreamConfig, 
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}
 
-	var resp api.JetStreamCreateTemplateResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamCreateTemplateT, name), tc, &resp, cfg.conn)
+	var resp api.JSApiStreamTemplateCreateResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiTemplateCreateT, name), tc, &resp, cfg.conn)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +94,8 @@ func LoadStreamTemplate(name string, opts ...RequestOption) (template *StreamTem
 }
 
 func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
-	var resp api.JetStreamTemplateInfoResponse
-	err = jsonRequest(fmt.Sprintf(api.JetStreamTemplateInfoT, template.Name()), nil, &resp, template.cfg.conn)
+	var resp api.JSApiTemplateInfoResponse
+	err = jsonRequest(fmt.Sprintf(api.JSApiTemplateInfoT, template.Name()), nil, &resp, template.cfg.conn)
 	if err != nil {
 		return err
 	}
@@ -108,8 +108,8 @@ func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
 
 // Delete deletes the StreamTemplate, after this the StreamTemplate object should be disposed
 func (t *StreamTemplate) Delete() error {
-	var resp api.JetStreamDeleteTemplateResponse
-	err := jsonRequest(fmt.Sprintf(api.JetStreamDeleteTemplateT, t.Name()), nil, &resp, t.cfg.conn)
+	var resp api.JSApiStreamTemplateDeleteResponse
+	err := jsonRequest(fmt.Sprintf(api.JSApiTemplateDeleteT, t.Name()), nil, &resp, t.cfg.conn)
 	if err != nil {
 		return err
 	}

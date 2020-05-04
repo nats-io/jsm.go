@@ -42,10 +42,6 @@ type schemaDetector struct {
 	Type   string `json:"type"`
 }
 
-type validator interface {
-	Validate() (bool, []string)
-}
-
 // IsNatsEventType determines if a event type is a valid NATS type
 func IsNatsEventType(schemaType string) bool {
 	return strings.HasPrefix(schemaType, "io.nats.")
@@ -116,13 +112,6 @@ func NewEvent(schemaType string) (interface{}, bool) {
 
 // ValidateStruct validates data matches schemaType like io.nats.jetstream.advisory.v1.api_audit
 func ValidateStruct(data interface{}, schemaType string) (ok bool, errs []string) {
-	// some types have complex validation needs involving many schemas, those can
-	// validate themselves so we defer to that
-	v, ok := data.(validator)
-	if ok {
-		return v.Validate()
-	}
-
 	// other more basic types can be validated directly against their schemaType
 	s, err := Schema(schemaType)
 	if err != nil {

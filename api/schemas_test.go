@@ -27,6 +27,10 @@ const jetStreamAPIAuditEvent = `{
   "response": "[\n  \"ORDERS\"\n]"
 }`
 
+type validator interface {
+	Validate() (bool, []string)
+}
+
 func checkErr(t *testing.T, err error, m string) {
 	t.Helper()
 	if err == nil {

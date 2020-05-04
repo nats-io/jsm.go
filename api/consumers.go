@@ -17,8 +17,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -33,35 +31,42 @@ const (
 	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"
 )
 
+// io.nats.jetstream.api.v1.consumer_delete_response
 type JSApiConsumerDeleteResponse struct {
 	JSApiResponse
 	Success bool `json:"success,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.consumer_create_response
 type JSApiConsumerCreateResponse struct {
 	JSApiResponse
 	*ConsumerInfo
 }
 
+// io.nats.jetstream.api.v1.consumer_info_response
 type JSApiConsumerInfoResponse struct {
 	JSApiResponse
 	*ConsumerInfo
 }
 
+// io.nats.jetstream.api.v1.consumer_names_request
 type JSApiConsumerNamesRequest struct {
 	JSApiIterableRequest
 }
 
-type JSApiConsumerListRequest struct {
-	JSApiIterableRequest
-}
-
+// io.nats.jetstream.api.v1.consumer_names_response
 type JSApiConsumerNamesResponse struct {
 	JSApiResponse
 	JSApiIterableResponse
 	Consumers []string `json:"consumers"`
 }
 
+// io.nats.jetstream.api.v1.consumer_list_request
+type JSApiConsumerListRequest struct {
+	JSApiIterableRequest
+}
+
+// io.nats.jetstream.api.v1.consumer_list_response
 type JSApiConsumerListResponse struct {
 	JSApiResponse
 	JSApiIterableResponse
@@ -244,6 +249,11 @@ type ConsumerConfig struct {
 	SampleFrequency string        `json:"sample_freq,omitempty"`
 }
 
+// Validate performs a JSON Schema validation of the configuration
+func (c ConsumerConfig) Validate() (valid bool, errors []string) {
+	return ValidateStruct(c, c.SchemaType())
+}
+
 // SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
 func (c ConsumerConfig) SchemaID() string {
 	return "https://nats.io/schemas/jetstream/api/v1/consumer_configuration.json"
@@ -257,35 +267,6 @@ func (c ConsumerConfig) SchemaType() string {
 // Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
 func (c ConsumerConfig) Schema() []byte {
 	return schemas[c.SchemaType()]
-}
-
-func (c ConsumerConfig) Validate() (bool, []string) {
-	sl := gojsonschema.NewSchemaLoader()
-	sl.AddSchema("https://nats.io/schemas/jetstream/api/v1/definitions.json", gojsonschema.NewBytesLoader(schemas["io.nats.jetstream.api.v1.definitions"]))
-	root := gojsonschema.NewBytesLoader(c.Schema())
-
-	js, err := sl.Compile(root)
-	if err != nil {
-		return false, []string{err.Error()}
-	}
-
-	doc := gojsonschema.NewGoLoader(c)
-
-	result, err := js.Validate(doc)
-	if err != nil {
-		return false, []string{err.Error()}
-	}
-
-	if result.Valid() {
-		return true, nil
-	}
-
-	errors := make([]string, len(result.Errors()))
-	for i, verr := range result.Errors() {
-		errors[i] = verr.String()
-	}
-
-	return false, errors
 }
 
 type CreateConsumerRequest struct {

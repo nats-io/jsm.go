@@ -186,8 +186,9 @@ func (i JSApiIterableResponse) LastPage() bool {
 	return (i.Offset+1)*i.Limit >= i.Total
 }
 
+// io.nats.jetstream.api.v1.account_info_response
 type JSApiAccountInfoResponse struct {
-	Error *ApiError `json:"error,omitempty"`
+	JSApiResponse
 	*JetStreamAccountStats
 }
 

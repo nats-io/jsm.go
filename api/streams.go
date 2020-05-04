@@ -15,8 +15,6 @@ package api
 
 import (
 	"time"
-
-	"github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -38,55 +36,66 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
+// io.nats.jetstream.api.v1.stream_names_request
+type JSApiStreamNamesRequest struct {
+	JSApiIterableRequest
+}
+
+// io.nats.jetstream.api.v1.stream_names_response
 type JSApiStreamNamesResponse struct {
 	JSApiResponse
 	JSApiIterableResponse
 	Streams []string `json:"streams"`
 }
 
+// io.nats.jetstream.api.v1.stream_list_response
 type JSApiStreamListResponse struct {
 	JSApiResponse
 	JSApiIterableResponse
 	Streams []*StreamInfo `json:"streams"`
 }
 
-type JSApiStreamNamesRequest struct {
-	JSApiIterableRequest
-}
-
+// io.nats.jetstream.api.v1.stream_list_request
 type JSApiStreamListRequest struct {
 	JSApiIterableRequest
 }
 
+// io.nats.jetstream.api.v1.stream_msg_delete_request
 type JSApiMsgDeleteRequest struct {
 	Seq uint64 `json:"seq"`
 }
 
+// io.nats.jetstream.api.v1.stream_msg_delete_response
 type JSApiMsgDeleteResponse struct {
 	JSApiResponse
 	Success bool `json:"success,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.stream_create_response
 type JSApiStreamCreateResponse struct {
 	JSApiResponse
 	*StreamInfo
 }
 
+// io.nats.jetstream.api.v1.stream_info_response
 type JSApiStreamInfoResponse struct {
 	JSApiResponse
 	*StreamInfo
 }
 
+// io.nats.jetstream.api.v1.stream_update_response
 type JSApiStreamUpdateResponse struct {
 	JSApiResponse
 	*StreamInfo
 }
 
+// io.nats.jetstream.api.v1.stream_delete_response
 type JSApiStreamDeleteResponse struct {
 	JSApiResponse
 	Success bool `json:"success,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.stream_purge_response
 type JSApiStreamPurgeResponse struct {
 	JSApiResponse
 	Success bool   `json:"success,omitempty"`
@@ -98,6 +107,7 @@ type JSApiMsgGetResponse struct {
 	Message *StoredMsg `json:"message,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.stream_msg_get_request
 type JSApiMsgGetRequest struct {
 	Seq uint64 `json:"seq"`
 }
@@ -121,6 +131,11 @@ type StreamConfig struct {
 	Template     string          `json:"template_owner,omitempty"`
 }
 
+// Validate performs a JSON Schema validation of the configuration
+func (c StreamConfig) Validate() (valid bool, errors []string) {
+	return ValidateStruct(c, c.SchemaType())
+}
+
 // SchemaID is the url to the JSON Schema for JetStream Stream Configuration
 func (c StreamConfig) SchemaID() string {
 	return "https://nats.io/schemas/jetstream/api/v1/stream_configuration.json"
@@ -134,34 +149,6 @@ func (c StreamConfig) SchemaType() string {
 // Schema is a Draft 7 JSON Schema for the JetStream Stream Configuration
 func (c StreamConfig) Schema() []byte {
 	return schemas[c.SchemaType()]
-}
-
-func (c StreamConfig) Validate() (bool, []string) {
-	sl := gojsonschema.NewSchemaLoader()
-	sl.AddSchema("definitions.json", gojsonschema.NewBytesLoader(schemas["io.nats.jetstream.api.v1.definitions"]))
-
-	js, err := sl.Compile(gojsonschema.NewBytesLoader(c.Schema()))
-	if err != nil {
-		return false, []string{"compile failed", err.Error()}
-	}
-
-	doc := gojsonschema.NewGoLoader(c)
-
-	result, err := js.Validate(doc)
-	if err != nil {
-		return false, []string{err.Error()}
-	}
-
-	if result.Valid() {
-		return true, nil
-	}
-
-	errors := make([]string, len(result.Errors()))
-	for i, verr := range result.Errors() {
-		errors[i] = verr.String()
-	}
-
-	return false, errors
 }
 
 type StreamInfo struct {

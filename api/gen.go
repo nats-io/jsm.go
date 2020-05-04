@@ -38,6 +38,7 @@ import (
 	srvmetric "github.com/nats-io/jsm.go/api/server/metric"
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
     jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
+	jsapi "github.com/nats-io/jsm.go/api/jetstream/api"
 )
 
 var schemas map[string][]byte
@@ -137,10 +138,30 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json", St: "StreamTemplateConfig"},
-		&schema{
-			U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/definitions.json",
-			T: "io.nats.jetstream.api.v1.definitions",
-		},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/account_info_response.json", St: "JSApiAccountInfoResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_list_request.json", St: "JSApiConsumerListRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_list_response.json", St: "JSApiConsumerListResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_request.json", St: "JSApiConsumerNamesRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_response.json", St: "JSApiConsumerNamesResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_create_response.json", St: "JSApiStreamCreateResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_delete_response.json", St: "JSApiStreamDeleteResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_info_response.json", St: "JSApiStreamInfoResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_request.json", St: "JSApiStreamListRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_response.json", St: "JSApiStreamListResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_delete_response.json", St: "JSApiStreamDeleteResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_request.json", St: "JSApiMsgGetRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_response.json", St: "JSApiMsgGetResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_names_request.json", St: "JSApiStreamNamesRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_names_response.json", St: "JSApiStreamNamesResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_purge_response.json", St: "JSApiStreamPurgeResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_create_response.json", St: "JSApiStreamTemplateCreateResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_delete_response.json", St: "JSApiStreamTemplateDeleteResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_info_response.json", St: "JSApiTemplateInfoResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_response.json", St: "JSApiTemplateNamesResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_update_response.json", St: "JSApiStreamUpdateResponse"},
 	}
 
 	for _, i := range s {

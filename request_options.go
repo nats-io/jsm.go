@@ -28,6 +28,7 @@ type reqoptions struct {
 	nc      *nats.Conn
 	timeout time.Duration
 	ctx     context.Context
+	trace   bool
 }
 
 func dfltreqoptions() *reqoptions {
@@ -49,6 +50,12 @@ func newreqoptions(opts ...RequestOption) (*reqoptions, error) {
 	}
 
 	return ropts, nil
+}
+
+func WithTrace() RequestOption {
+	return func(o *reqoptions) {
+		o.trace = true
+	}
 }
 
 // WithConnection sets the connection to use

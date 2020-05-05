@@ -1,4 +1,4 @@
-// auto generated 2020-05-05 15:20:30.299865 +0200 CEST m=+8.449836479
+// auto generated 2020-05-05 19:12:23.392786 +0200 CEST m=+1.712931085
 
 package api
 
@@ -36,7 +36,7 @@ var schemaTypes = map[string]func() interface{}{
 	"io.nats.jetstream.api.v1.stream_info_response":            func() interface{} { return &JSApiStreamInfoResponse{} },
 	"io.nats.jetstream.api.v1.stream_list_request":             func() interface{} { return &JSApiStreamListRequest{} },
 	"io.nats.jetstream.api.v1.stream_list_response":            func() interface{} { return &JSApiStreamListResponse{} },
-	"io.nats.jetstream.api.v1.stream_msg_delete_response":      func() interface{} { return &JSApiStreamDeleteResponse{} },
+	"io.nats.jetstream.api.v1.stream_msg_delete_response":      func() interface{} { return &JSApiMsgDeleteResponse{} },
 	"io.nats.jetstream.api.v1.stream_msg_get_request":          func() interface{} { return &JSApiMsgGetRequest{} },
 	"io.nats.jetstream.api.v1.stream_msg_get_response":         func() interface{} { return &JSApiMsgGetResponse{} },
 	"io.nats.jetstream.api.v1.stream_names_request":            func() interface{} { return &JSApiStreamNamesRequest{} },
@@ -49,6 +49,566 @@ var schemaTypes = map[string]func() interface{}{
 	"io.nats.jetstream.api.v1.stream_template_names_request":   func() interface{} { return &JSApiStreamTemplateNamesRequest{} },
 	"io.nats.jetstream.api.v1.stream_update_response":          func() interface{} { return &JSApiStreamUpdateResponse{} },
 	"io.nats.unknown_event":                                    func() interface{} { return &UnknownEvent{} },
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t ConsumerConfig) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t ConsumerConfig) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_configuration"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t ConsumerConfig) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t ConsumerConfig) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t StreamConfig) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t StreamConfig) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_configuration"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t StreamConfig) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t StreamConfig) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t StreamTemplateConfig) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t StreamTemplateConfig) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_configuration"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t StreamTemplateConfig) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t StreamTemplateConfig) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiAccountInfoResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiAccountInfoResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.account_info_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiAccountInfoResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/account_info_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiAccountInfoResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerCreateResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiConsumerCreateResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_create_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerCreateResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_create_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiConsumerCreateResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerDeleteResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiConsumerDeleteResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_delete_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerDeleteResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_delete_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiConsumerDeleteResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerInfoResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiConsumerInfoResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_info_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerInfoResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_info_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiConsumerInfoResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerListRequest) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiConsumerListRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_list_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerListRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_list_request.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiConsumerListRequest) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerListResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiConsumerListResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_list_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerListResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_list_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiConsumerListResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerNamesRequest) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiConsumerNamesRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_names_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerNamesRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_request.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiConsumerNamesRequest) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerNamesResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiConsumerNamesResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_names_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerNamesResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiConsumerNamesResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamCreateResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamCreateResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_create_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamCreateResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_create_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamCreateResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamDeleteResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamDeleteResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_delete_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamDeleteResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_delete_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamDeleteResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamInfoResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamInfoResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_info_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamInfoResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_info_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamInfoResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamListRequest) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamListRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_list_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamListRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_request.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamListRequest) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamListResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamListResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_list_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamListResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamListResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMsgDeleteResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiMsgDeleteResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_msg_delete_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMsgDeleteResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_delete_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiMsgDeleteResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMsgGetRequest) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiMsgGetRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_msg_get_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMsgGetRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_request.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiMsgGetRequest) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMsgGetResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiMsgGetResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_msg_get_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMsgGetResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiMsgGetResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamNamesRequest) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamNamesRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_names_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamNamesRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_names_request.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamNamesRequest) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamNamesResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamNamesResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_names_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamNamesResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_names_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamNamesResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamPurgeResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamPurgeResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_purge_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamPurgeResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_purge_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamPurgeResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamTemplateCreateResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamTemplateCreateResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_create_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamTemplateCreateResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_create_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamTemplateCreateResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamTemplateDeleteResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamTemplateDeleteResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_delete_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamTemplateDeleteResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_delete_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamTemplateDeleteResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamTemplateInfoResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamTemplateInfoResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_info_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamTemplateInfoResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_info_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamTemplateInfoResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamTemplateNamesResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamTemplateNamesResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_names_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamTemplateNamesResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamTemplateNamesResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamTemplateNamesRequest) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamTemplateNamesRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_names_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamTemplateNamesRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_request.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamTemplateNamesRequest) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamUpdateResponse) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t JSApiStreamUpdateResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_update_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamUpdateResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_update_response.json"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t JSApiStreamUpdateResponse) Schema() []byte {
+	return schemas[t.SchemaType()]
 }
 
 func init() {

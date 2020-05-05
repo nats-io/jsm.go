@@ -102,6 +102,7 @@ type JSApiStreamPurgeResponse struct {
 	Purged  uint64 `json:"purged,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.stream_msg_get_response
 type JSApiMsgGetResponse struct {
 	JSApiResponse
 	Message *StoredMsg `json:"message,omitempty"`

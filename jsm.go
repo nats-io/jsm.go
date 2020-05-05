@@ -34,27 +34,6 @@ import (
 var timeout = 5 * time.Second
 var nc *nats.Conn
 var mu sync.Mutex
-var trace bool
-
-// Trace enables logs to be written with request and response traces
-func Trace() {
-	mu.Lock()
-	trace = true
-	mu.Unlock()
-}
-
-// NoTrace disables Trace() logs
-func NoTrace() {
-	mu.Lock()
-	trace = false
-	mu.Unlock()
-}
-
-func shouldTrace() bool {
-	mu.Lock()
-	defer mu.Unlock()
-	return trace
-}
 
 // Connect connects to NATS and configures it to use the connection in future interactions with JetStream
 // Deprecated: Use Request Options to supply the connection
@@ -303,15 +282,24 @@ func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) 
 		return nil, err
 	}
 
-	var resp api.JSApiTemplateNamesResponse
-	err = jsonRequest(api.JSApiTemplates, nil, &resp, conn)
+	var resp api.JSApiStreamTemplateNamesResponse
+	err = iterableRequest(api.JSApiTemplates, &api.JSApiStreamTemplateNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn, func(page interface{}) error {
+		apiresp, ok := page.(*api.JSApiStreamTemplateNamesResponse)
+		if !ok {
+			return fmt.Errorf("invalid response type from iterable request")
+		}
+
+		templates = append(templates, apiresp.Templates...)
+
+		return nil
+	})
 	if err != nil {
 		return templates, err
 	}
 
-	sort.Strings(resp.Templates)
+	sort.Strings(templates)
 
-	return resp.Templates, nil
+	return templates, nil
 }
 
 // Consumers is a sorted list of all known Consumers within a Stream
@@ -452,7 +440,7 @@ func jsonRequest(subj string, req interface{}, response interface{}, opts *reqop
 		}
 	}
 
-	if shouldTrace() {
+	if opts.trace {
 		log.Printf(">>> %s\n%s\n\n", subj, string(body))
 	}
 
@@ -461,7 +449,7 @@ func jsonRequest(subj string, req interface{}, response interface{}, opts *reqop
 		return err
 	}
 
-	if shouldTrace() {
+	if opts.trace {
 		log.Printf("<<< %s\n%s\n\n", subj, string(msg.Data))
 	}
 

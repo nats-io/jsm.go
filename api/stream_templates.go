@@ -32,14 +32,20 @@ type JSApiStreamTemplateCreateResponse struct {
 	*StreamTemplateInfo
 }
 
+// io.nats.jetstream.api.v1.stream_template_names_request
+type JSApiStreamTemplateNamesRequest struct {
+	JSApiIterableRequest
+}
+
 // io.nats.jetstream.api.v1.stream_template_names_response
-type JSApiTemplateNamesResponse struct {
+type JSApiStreamTemplateNamesResponse struct {
 	JSApiResponse
+	JSApiIterableResponse
 	Templates []string `json:"streams"`
 }
 
 // io.nats.jetstream.api.v1.stream_template_info_response
-type JSApiTemplateInfoResponse struct {
+type JSApiStreamTemplateInfoResponse struct {
 	JSApiResponse
 	*StreamTemplateInfo
 }

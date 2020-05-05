@@ -94,7 +94,7 @@ func LoadStreamTemplate(name string, opts ...RequestOption) (template *StreamTem
 }
 
 func loadConfigForStreamTemplate(template *StreamTemplate) (err error) {
-	var resp api.JSApiTemplateInfoResponse
+	var resp api.JSApiStreamTemplateInfoResponse
 	err = jsonRequest(fmt.Sprintf(api.JSApiTemplateInfoT, template.Name()), nil, &resp, template.cfg.conn)
 	if err != nil {
 		return err

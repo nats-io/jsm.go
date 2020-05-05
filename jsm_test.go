@@ -119,7 +119,6 @@ func TestIsKnownStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	jsm.Trace()
 	known, err := jsm.IsKnownStream("ORDERS")
 	checkErr(t, err, "known lookup failed")
 	if known {
@@ -226,7 +225,6 @@ func TestConsumerNames(t *testing.T) {
 	_, err = stream.NewConsumerFromDefault(jsm.DefaultConsumer, jsm.DurableName("NEW"))
 	checkErr(t, err, "create failed")
 
-	jsm.Trace()
 	names, err := jsm.ConsumerNames("ORDERS")
 	checkErr(t, err, "lookup failed")
 

@@ -64,23 +64,3 @@ type StreamTemplateInfo struct {
 	Config  *StreamTemplateConfig `json:"config"`
 	Streams []string              `json:"streams"`
 }
-
-// Validate performs a JSON Schema validation of the configuration
-func (c StreamTemplateConfig) Validate() (valid bool, errors []string) {
-	return ValidateStruct(c, c.SchemaType())
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Stream Template Configuration
-func (c StreamTemplateConfig) SchemaID() string {
-	return "https://nats.io/schemas/jetstream/api/v1/stream_template_configuration.json"
-}
-
-// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
-func (c StreamTemplateConfig) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_template_configuration"
-}
-
-// Schema is a Draft 7 JSON Schema for the JetStream Stream Template Configuration
-func (c StreamTemplateConfig) Schema() []byte {
-	return schemas[c.SchemaType()]
-}

@@ -24,8 +24,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"text/template"
 	"time"
+
+	"github.com/nats-io/jsm.go/api"
 )
 
 var schemasFileTemplate = `// auto generated {{.Now}}
@@ -52,6 +55,31 @@ var schemaTypes = map[string]func() interface{}{
 	"io.nats.unknown_event": func() interface{} { return &UnknownEvent{} },
 }
 
+{{- range . }}
+{{- if .ShouldAddValidator }}
+// Validate performs a JSON Schema validation of the configuration
+func (t {{ .St }}) Validate() (valid bool, errors []string) {
+	return ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+func (t {{ .St }}) SchemaType() string {
+	return "{{ .T }}"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t {{ .St }}) SchemaID() string {
+	return "{{ .SchemaURL }}"
+}
+
+// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+func (t {{ .St }}) Schema() []byte {
+	return schemas[t.SchemaType()]
+}
+
+{{- end }}
+{{- end }}
+
 func init() {
 	schemas = make(map[string][]byte)
 
@@ -61,11 +89,31 @@ func init() {
 }
 `
 
+type validator interface {
+	Validate() (valid bool, errors []string)
+	SchemaType() string
+	SchemaID() string
+	Schema() []byte
+}
+
 type schema struct {
 	T  string // type
 	S  string // schema
 	U  string // url
 	St string // struct
+}
+
+func (s schema) ShouldAddValidator() bool {
+	return !strings.Contains(s.St, ".")
+}
+
+func (s schema) SchemaURL() string {
+	t, _, err := api.SchemaURLForType(s.T)
+	if err != nil {
+		panic(err)
+	}
+
+	return t
 }
 
 type schemas []*schema
@@ -151,7 +199,7 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_info_response.json", St: "JSApiStreamInfoResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_request.json", St: "JSApiStreamListRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_response.json", St: "JSApiStreamListResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_delete_response.json", St: "JSApiStreamDeleteResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_delete_response.json", St: "JSApiMsgDeleteResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_request.json", St: "JSApiMsgGetRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_response.json", St: "JSApiMsgGetResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_names_request.json", St: "JSApiStreamNamesRequest"},

@@ -249,26 +249,6 @@ type ConsumerConfig struct {
 	SampleFrequency string        `json:"sample_freq,omitempty"`
 }
 
-// Validate performs a JSON Schema validation of the configuration
-func (c ConsumerConfig) Validate() (valid bool, errors []string) {
-	return ValidateStruct(c, c.SchemaType())
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (c ConsumerConfig) SchemaID() string {
-	return "https://nats.io/schemas/jetstream/api/v1/consumer_configuration.json"
-}
-
-// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
-func (c ConsumerConfig) SchemaType() string {
-	return "io.nats.jetstream.api.v1.consumer_configuration"
-}
-
-// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
-func (c ConsumerConfig) Schema() []byte {
-	return schemas[c.SchemaType()]
-}
-
 type CreateConsumerRequest struct {
 	Stream string         `json:"stream_name"`
 	Config ConsumerConfig `json:"config"`

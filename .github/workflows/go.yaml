@@ -1,13 +1,9 @@
 name: Testing
-on: push
+on: [push, pull_request]
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        go: [1.14]
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-    runs-on: ${{matrix.os}}
+  lint:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v1
@@ -16,7 +12,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v1
         with:
-          go-version: ${{matrix.go}}
+          go-version: 1.14
       - name: Install deps
         shell: bash --noprofile --norc -x -eo pipefail {0}
         env:
@@ -35,6 +31,19 @@ jobs:
           $(exit $(go fmt $(go list ./...) | wc -l))
           find . -type f -name "*.go" | grep -v "/vendor/" | xargs misspell -error -locale US
           staticcheck -f stylish $(go list ./...)
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v1
+        with:
+          path: src/github.com/nats-io/jsm.go
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
 
       - name: Run tests
         shell: bash --noprofile --norc -x -eo pipefail {0}

@@ -338,18 +338,18 @@ func TestConsumerConfiguration(t *testing.T) {
 }
 
 func TestSchemaForEvent(t *testing.T) {
-	s, err := SchemaTypeForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	s, err := SchemaTypeForMessage([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
 	checkErr(t, err, "schema extract failed")
 
 	if s != "io.nats.jetstream.metric.v1.consumer_ack" {
 		t.Fatalf("expected io.nats.jetstream.metric.v1.consumer_ack got %s", s)
 	}
 
-	s, err = SchemaTypeForEvent([]byte(`{}`))
+	s, err = SchemaTypeForMessage([]byte(`{}`))
 	checkErr(t, err, "schema extract failed")
 
-	if s != "io.nats.unknown_event" {
-		t.Fatalf("expected io.nats.unknown_event got %s", s)
+	if s != "io.nats.unknown_message" {
+		t.Fatalf("expected io.nats.unknown_message got %s", s)
 	}
 }
 
@@ -376,7 +376,7 @@ func TestSchemaURLForToken(t *testing.T) {
 func TestSchemaURLForEvent(t *testing.T) {
 	SchemasRepo = "https://nats.io/schemas"
 
-	a, u, err := SchemaURLForEvent([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	a, u, err := SchemaURL([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
 	checkErr(t, err, "parse failed")
 
 	if a != "https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json" {

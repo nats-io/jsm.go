@@ -30,14 +30,14 @@ func Example() {
 	SchemasRepo = "https://nats.io/schemas"
 
 	// receivedEvent was received over a transport like NATS, webhook or other medium
-	stype, err := SchemaTypeForEvent([]byte(receivedEvent))
+	stype, err := SchemaTypeForMessage([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())
 	}
 	fmt.Printf("Event Type: %s\n", stype)
 
 	// parses the received event and extracts the type, determines the url to fetch a schema
-	address, uri, err := SchemaURLForEvent([]byte(receivedEvent))
+	address, uri, err := SchemaURL([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())
 	}
@@ -51,7 +51,7 @@ func Example() {
 	fmt.Printf("Type Schema URL: %s (%s)\n", address, uri.Host)
 
 	// parses an event into it a type if supported else map[string]interface{}
-	schema, event, err := ParseEvent([]byte(receivedEvent))
+	schema, event, err := ParseMessage([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())
 	}

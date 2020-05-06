@@ -6,9 +6,9 @@ import (
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
 )
 
-func ExampleParseEvent() {
+func ExampleParseMessage() {
 	// receivedEvent was received over a transport like NATS, webhook or other medium
-	schema, event, err := ParseEvent([]byte(receivedEvent))
+	schema, event, err := ParseMessage([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())
 	}

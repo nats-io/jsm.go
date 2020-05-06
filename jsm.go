@@ -35,6 +35,33 @@ var timeout = 5 * time.Second
 var nc *nats.Conn
 var mu sync.Mutex
 var trace bool
+var validate bool
+
+// standard api responses with error embedded
+type jetStreamResponseError interface {
+	ToError() error
+}
+
+// jetstream iterable responses
+type apiIterableResponse interface {
+	ItemsTotal() int
+	ItemsOffset() int
+	ItemsLimit() int
+	LastPage() bool
+}
+
+// jetstream iterable requests
+type apiIterableRequest interface {
+	SetOffset(o int)
+}
+
+// all types generated using the api/gen.go which includes all
+// the jetstream api types.  Validate() will force validate all
+// of these on every jsonRequest
+type apiValidatable interface {
+	Validate() (valid bool, errors []string)
+	SchemaType() string
+}
 
 // Connect connects to NATS and configures it to use the connection in future interactions with JetStream
 // Deprecated: Use Request Options to supply the connection
@@ -59,12 +86,28 @@ func SetTimeout(t time.Duration) {
 	timeout = t
 }
 
+// Validate enables JSON Schema validation of all responses from the Server
+func Validate() {
+	mu.Lock()
+	validate = true
+	mu.Unlock()
+}
+
+// NoValidate disables Validate()
+func NoValidate() {
+	mu.Lock()
+	validate = true
+	mu.Unlock()
+}
+
+// Trace produce logs for all interactions with the server
 func Trace() {
 	mu.Lock()
 	trace = true
 	mu.Unlock()
 }
 
+// NoTrace disables Trace()
 func NoTrace() {
 	mu.Lock()
 	trace = false
@@ -75,6 +118,12 @@ func shouldTrace() bool {
 	mu.Lock()
 	defer mu.Unlock()
 	return trace
+}
+
+func shouldValidate() bool {
+	mu.Lock()
+	defer mu.Unlock()
+	return validate
 }
 
 // SetConnection sets the connection used to perform requests. Will force using old style requests.
@@ -415,21 +464,6 @@ func Connection() *nats.Conn {
 	return nc
 }
 
-type jetStreamResponseError interface {
-	ToError() error
-}
-
-type apiIterableResponse interface {
-	ItemsTotal() int
-	ItemsOffset() int
-	ItemsLimit() int
-	LastPage() bool
-}
-
-type apiIterableRequest interface {
-	SetOffset(o int)
-}
-
 func iterableRequest(subj string, req apiIterableRequest, response apiIterableResponse, opts *reqoptions, cb func(interface{}) error) (err error) {
 	offset := 0
 	for {
@@ -491,7 +525,25 @@ func jsonRequest(subj string, req interface{}, response interface{}, opts *reqop
 		return nil
 	}
 
-	return jsr.ToError()
+	if jsr.ToError() != nil {
+		return jsr.ToError()
+	}
+
+	if !opts.apiValidate {
+		return nil
+	}
+
+	jv, ok := response.(apiValidatable)
+	if ok {
+		valid, errs := jv.Validate()
+		if valid {
+			return nil
+		}
+
+		return fmt.Errorf("server response is not a valid %q message: %s", jv.SchemaType(), strings.Join(errs, "\n"))
+	} else {
+		return fmt.Errorf("validation is required but an unknown response were received")
+	}
 }
 
 func request(subj string, data []byte, opts *reqoptions) (res *nats.Msg, err error) {

@@ -27,6 +27,10 @@ import (
 	"github.com/nats-io/jsm.go"
 )
 
+func init() {
+	jsm.Validate()
+}
+
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn) {
 	t.Helper()
 

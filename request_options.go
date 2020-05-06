@@ -25,17 +25,19 @@ import (
 type RequestOption func(o *reqoptions)
 
 type reqoptions struct {
-	nc      *nats.Conn
-	timeout time.Duration
-	ctx     context.Context
-	trace   bool
+	nc          *nats.Conn
+	timeout     time.Duration
+	ctx         context.Context
+	trace       bool
+	apiValidate bool
 }
 
 func dfltreqoptions() *reqoptions {
 	return &reqoptions{
-		nc:      Connection(),
-		timeout: timeout,
-		trace:   shouldTrace(),
+		nc:          Connection(),
+		timeout:     timeout,
+		trace:       shouldTrace(),
+		apiValidate: shouldValidate(),
 	}
 }
 
@@ -53,6 +55,14 @@ func newreqoptions(opts ...RequestOption) (*reqoptions, error) {
 	return ropts, nil
 }
 
+// WithAPIValidation validates responses sent from the NATS server against a schema
+func WithAPIValidation() RequestOption {
+	return func(o *reqoptions) {
+		o.apiValidate = true
+	}
+}
+
+// WithTrace enables logging of JSON API requests and responses
 func WithTrace() RequestOption {
 	return func(o *reqoptions) {
 		o.trace = true

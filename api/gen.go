@@ -52,7 +52,7 @@ var schemaTypes = map[string]func() interface{}{
     "{{ .T }}": func() interface{} { return &{{ .St }}{} },
 {{- end }}
 {{- end }}
-	"io.nats.unknown_event": func() interface{} { return &UnknownEvent{} },
+	"io.nats.unknown_message": func() interface{} { return &UnknownMessage{} },
 }
 
 {{- range . }}
@@ -62,7 +62,7 @@ func (t {{ .St }}) Validate() (valid bool, errors []string) {
 	return ValidateStruct(t, t.SchemaType())
 }
 
-// SchemaType is the NATS schema type like io.nats.jetstream.api.v1.stream_configuration
+// SchemaType is the NATS schema type {{ .T }}
 func (t {{ .St }}) SchemaType() string {
 	return "{{ .T }}"
 }
@@ -72,7 +72,7 @@ func (t {{ .St }}) SchemaID() string {
 	return "{{ .SchemaURL }}"
 }
 
-// Schema is a Draft 7 JSON Schema for the JetStream Consumer Configuration
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t {{ .St }}) Schema() []byte {
 	return schemas[t.SchemaType()]
 }
@@ -103,6 +103,7 @@ type schema struct {
 	St string // struct
 }
 
+// ShouldAddValidator only adds validator logic for package local structs
 func (s schema) ShouldAddValidator() bool {
 	return !strings.Contains(s.St, ".")
 }

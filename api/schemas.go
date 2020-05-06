@@ -13,8 +13,8 @@ import (
 // SchemasRepo is the repository holding NATS Schemas
 var SchemasRepo = "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas"
 
-// UnknownEvent is a type returned when parsing an unknown type of event
-type UnknownEvent = map[string]interface{}
+// UnknownMessage is a type returned when parsing an unknown type of event
+type UnknownMessage = map[string]interface{}
 
 // Event is a generic NATS Event capable of being converted to CloudEvents format
 type Event interface {
@@ -42,14 +42,15 @@ type schemaDetector struct {
 	Type   string `json:"type"`
 }
 
-// IsNatsEventType determines if a event type is a valid NATS type
-func IsNatsEventType(schemaType string) bool {
+// IsNatsSchemaType determines if a schema type is a valid NATS type.
+// The logic here is currently quite naive while we learn what works best
+func IsNatsSchemaType(schemaType string) bool {
 	return strings.HasPrefix(schemaType, "io.nats.")
 }
 
-// SchemaURLForEvent parses event e and determines a http address for the JSON schema describing it rooted in SchemasRepo
-func SchemaURLForEvent(e []byte) (address string, url *url.URL, err error) {
-	schema, err := SchemaTypeForEvent(e)
+// SchemaURL parses a typed message m and determines a http address for the JSON schema describing it rooted in SchemasRepo
+func SchemaURL(m []byte) (address string, url *url.URL, err error) {
+	schema, err := SchemaTypeForMessage(m)
 	if err != nil {
 		return "", nil, err
 	}
@@ -57,9 +58,9 @@ func SchemaURLForEvent(e []byte) (address string, url *url.URL, err error) {
 	return SchemaURLForType(schema)
 }
 
-// SchemaURLForType determines the path to the JSON Schema document describing an event given a token like io.nats.jetstream.metric.v1.consumer_ack
+// SchemaURLForType determines the path to the JSON Schema document describing a typed message given a token like io.nats.jetstream.metric.v1.consumer_ack
 func SchemaURLForType(schemaType string) (address string, url *url.URL, err error) {
-	if !IsNatsEventType(schemaType) {
+	if !IsNatsSchemaType(schemaType) {
 		return "", nil, fmt.Errorf("unsupported schema type %q", schemaType)
 	}
 
@@ -70,9 +71,11 @@ func SchemaURLForType(schemaType string) (address string, url *url.URL, err erro
 	return address, url, err
 }
 
-// SchemaTypeForEvent retrieves the schema token from an event byte stream
-// it does this by doing a small JSON unmarshal and is probably not the fastest
-func SchemaTypeForEvent(e []byte) (schemaType string, err error) {
+// SchemaTypeForMessage retrieves the schema token from a typed message byte stream
+// it does this by doing a small JSON unmarshal and is probably not the fastest.
+//
+// Returns the schema io.nats.unknown_message for unknown messages
+func SchemaTypeForMessage(e []byte) (schemaType string, err error) {
 	sd := &schemaDetector{}
 	err = json.Unmarshal(e, sd)
 	if err != nil {
@@ -80,7 +83,7 @@ func SchemaTypeForEvent(e []byte) (schemaType string, err error) {
 	}
 
 	if sd.Schema == "" && sd.Type == "" {
-		sd.Type = "io.nats.unknown_event"
+		sd.Type = "io.nats.unknown_message"
 	}
 
 	if sd.Schema != "" && sd.Type == "" {
@@ -100,11 +103,11 @@ func Schema(schemaType string) (schema []byte, err error) {
 	return schema, nil
 }
 
-// NewEvent creates a new instance of the structure matching schema. When unknown creates a UnknownEvent
-func NewEvent(schemaType string) (interface{}, bool) {
+// NewMessage creates a new instance of the structure matching schema. When unknown creates a UnknownMessage
+func NewMessage(schemaType string) (interface{}, bool) {
 	gf, ok := schemaTypes[schemaType]
 	if !ok {
-		gf = schemaTypes["io.nats.unknown_event"]
+		gf = schemaTypes["io.nats.unknown_message"]
 	}
 
 	return gf(), ok
@@ -137,20 +140,21 @@ func ValidateStruct(data interface{}, schemaType string) (ok bool, errs []string
 	return false, errors
 }
 
-// ParseEvent parses event e and returns event as for example *api.ConsumerAckMetric, all unknown
-// event schemas will be of type *UnknownEvent
-func ParseEvent(e []byte) (schemaType string, event interface{}, err error) {
-	schemaType, err = SchemaTypeForEvent(e)
+// ParseMessage parses a typed message m and returns event as for example *api.ConsumerAckMetric, all unknown
+// event schemas will be of type *UnknownMessage
+func ParseMessage(m []byte) (schemaType string, msg interface{}, err error) {
+	schemaType, err = SchemaTypeForMessage(m)
 	if err != nil {
 		return "", nil, err
 	}
 
-	event, _ = NewEvent(schemaType)
-	err = json.Unmarshal(e, event)
+	msg, _ = NewMessage(schemaType)
+	err = json.Unmarshal(m, msg)
 
-	return schemaType, event, err
+	return schemaType, msg, err
 }
 
+// ToCloudEventV1 turns a NATS Event into a version 1.0 CloudEvent
 func ToCloudEventV1(e Event) ([]byte, error) {
 	je, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {

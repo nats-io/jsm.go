@@ -303,7 +303,7 @@ func (s *Stream) UpdateConfiguration(cfg api.StreamConfig, opts ...StreamOption)
 	}
 
 	var resp api.JSApiStreamUpdateResponse
-	err = jsonRequest(fmt.Sprintf(api.JSApiStreamUpdate, s.Name()), ncfg, &resp, s.cfg.conn)
+	err = jsonRequest(fmt.Sprintf(api.JSApiStreamUpdateT, s.Name()), ncfg, &resp, s.cfg.conn)
 	if err != nil {
 		return err
 	}

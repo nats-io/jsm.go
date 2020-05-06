@@ -19,7 +19,7 @@ import (
 
 const (
 	JSApiStreamCreateT = "$JS.API.STREAM.CREATE.%s"
-	JSApiStreamUpdate  = "$JS.API.STREAM.UPDATE.%s"
+	JSApiStreamUpdateT = "$JS.API.STREAM.UPDATE.%s"
 	JSApiStreamNames   = "$JS.API.STREAM.NAMES"
 	JSApiStreamList    = "$JS.API.STREAM.LIST"
 	JSApiStreamInfoT   = "$JS.API.STREAM.INFO.%s"

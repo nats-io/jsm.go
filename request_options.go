@@ -35,6 +35,7 @@ func dfltreqoptions() *reqoptions {
 	return &reqoptions{
 		nc:      Connection(),
 		timeout: timeout,
+		trace:   shouldTrace(),
 	}
 }
 

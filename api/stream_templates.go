@@ -15,7 +15,7 @@ package api
 
 const (
 	JSApiTemplateCreateT = "$JS.API.STREAM.TEMPLATE.CREATE.%s"
-	JSApiTemplates       = "$JS.API.STREAM.TEMPLATE.NAMES"
+	JSApiTemplateNames   = "$JS.API.STREAM.TEMPLATE.NAMES"
 	JSApiTemplateInfoT   = "$JS.API.STREAM.TEMPLATE.INFO.%s"
 	JSApiTemplateDeleteT = "$JS.API.STREAM.TEMPLATE.DELETE.%s"
 )

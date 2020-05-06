@@ -34,6 +34,7 @@ import (
 var timeout = 5 * time.Second
 var nc *nats.Conn
 var mu sync.Mutex
+var trace bool
 
 // Connect connects to NATS and configures it to use the connection in future interactions with JetStream
 // Deprecated: Use Request Options to supply the connection
@@ -56,6 +57,24 @@ func SetTimeout(t time.Duration) {
 	defer mu.Unlock()
 
 	timeout = t
+}
+
+func Trace() {
+	mu.Lock()
+	trace = true
+	mu.Unlock()
+}
+
+func NoTrace() {
+	mu.Lock()
+	trace = false
+	mu.Unlock()
+}
+
+func shouldTrace() bool {
+	mu.Lock()
+	defer mu.Unlock()
+	return trace
 }
 
 // SetConnection sets the connection used to perform requests. Will force using old style requests.
@@ -283,7 +302,7 @@ func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) 
 	}
 
 	var resp api.JSApiStreamTemplateNamesResponse
-	err = iterableRequest(api.JSApiTemplates, &api.JSApiStreamTemplateNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn, func(page interface{}) error {
+	err = iterableRequest(api.JSApiTemplateNames, &api.JSApiStreamTemplateNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn, func(page interface{}) error {
 		apiresp, ok := page.(*api.JSApiStreamTemplateNamesResponse)
 		if !ok {
 			return fmt.Errorf("invalid response type from iterable request")
@@ -303,24 +322,33 @@ func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) 
 }
 
 // Consumers is a sorted list of all known Consumers within a Stream
-// TODO: paging
 func Consumers(stream string, opts ...RequestOption) (consumers []*Consumer, err error) {
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
+	var cinfo []*api.ConsumerInfo
+
 	var resp api.JSApiConsumerListResponse
-	err = jsonRequest(fmt.Sprintf(api.JSApiConsumerListT, stream), &api.JSApiConsumerListRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn)
+	err = iterableRequest(fmt.Sprintf(api.JSApiConsumerListT, stream), &api.JSApiConsumerListRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, conn, func(page interface{}) error {
+		apiresp, ok := page.(*api.JSApiConsumerListResponse)
+		if !ok {
+			return fmt.Errorf("invalid response type from iterable request")
+		}
+
+		cinfo = append(cinfo, apiresp.Consumers...)
+		return nil
+	})
 	if err != nil {
 		return consumers, err
 	}
 
-	sort.Slice(resp.Consumers, func(i int, j int) bool {
+	sort.Slice(cinfo, func(i int, j int) bool {
 		return resp.Consumers[i].Name < resp.Consumers[j].Name
 	})
 
-	for _, c := range resp.Consumers {
+	for _, c := range cinfo {
 		cfg := &ConsumerCfg{
 			ConsumerConfig: c.Config,
 			conn:           conn,

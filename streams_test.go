@@ -337,6 +337,9 @@ func TestStream_Delete(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
+	jsm.Trace()
+	defer jsm.NoTrace()
+
 	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 

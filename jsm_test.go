@@ -129,7 +129,7 @@ func TestIsKnownStream(t *testing.T) {
 		t.Fatalf("ORDERS should not be known")
 	}
 
-	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
+	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
 	known, err = jsm.IsKnownStream("ORDERS")
@@ -149,7 +149,7 @@ func TestIsKnownConsumer(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
+	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
 	known, err := jsm.IsKnownConsumer("ORDERS", "NEW")
@@ -174,7 +174,7 @@ func TestJetStreamAccountInfo(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	_, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
+	_, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
 	info, err := jsm.JetStreamAccountInfo()
@@ -198,7 +198,7 @@ func TestStreamNames(t *testing.T) {
 	}
 
 	for i := 0; i < 510; i++ {
-		_, err = jsm.NewStreamFromDefault(fmt.Sprintf("ORDERS_%d", i), jsm.DefaultStream, jsm.MemoryStorage())
+		_, err = jsm.NewStreamFromDefault(fmt.Sprintf("ORDERS_%d", i), jsm.DefaultStream, jsm.Subjects(fmt.Sprintf("ORDERS_%d", i)), jsm.MemoryStorage())
 		checkErr(t, err, "create failed")
 	}
 
@@ -220,7 +220,7 @@ func TestConsumerNames(t *testing.T) {
 		t.Fatalf("expected err")
 	}
 
-	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
+	stream, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
 	_, err = jsm.ConsumerNames("ORDERS")
@@ -242,7 +242,7 @@ func TestEachStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	orders, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.MemoryStorage())
+	orders, err := jsm.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
 	checkErr(t, err, "create failed")
 
 	_, err = jsm.NewStreamFromDefault("ARCHIVE", orders.Configuration(), jsm.Subjects("OTHER"))

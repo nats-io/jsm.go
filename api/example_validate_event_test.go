@@ -18,5 +18,6 @@ func ExampleValidateStruct() {
 
 	// Output:
 	// Event Validation Failed:
+	//    (root): subjects is required
 	//    num_replicas: Must be greater than or equal to 1
 }

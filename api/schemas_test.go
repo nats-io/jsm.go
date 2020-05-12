@@ -60,6 +60,7 @@ func validateExpectFailure(t *testing.T, cfg validator) {
 func TestValidateStruct(t *testing.T) {
 	sc := StreamConfig{
 		Name:         "BASIC",
+		Subjects:     []string{"BASIC"},
 		Retention:    LimitsPolicy,
 		MaxConsumers: -1,
 		MaxAge:       0,
@@ -158,6 +159,7 @@ func TestStreamConfiguration(t *testing.T) {
 	reset := func() StreamConfig {
 		return StreamConfig{
 			Name:         "BASIC",
+			Subjects:     []string{"BASIC"},
 			Retention:    LimitsPolicy,
 			MaxConsumers: -1,
 			MaxAge:       0,
@@ -244,6 +246,7 @@ func TestStreamTemplateConfiguration(t *testing.T) {
 			MaxStreams: 10,
 			Config: &StreamConfig{
 				Name:         "BASIC",
+				Subjects:     []string{"BASIC"},
 				Retention:    LimitsPolicy,
 				MaxConsumers: -1,
 				MaxAge:       0,

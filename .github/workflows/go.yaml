@@ -2,29 +2,30 @@ name: Testing
 on: [push, pull_request]
 
 jobs:
-  lint:
+  lint_and_test:
     runs-on: ubuntu-latest
+    env:
+      GO111MODULE: "on"
     steps:
       - name: Checkout code
         uses: actions/checkout@v1
         with:
           path: src/github.com/nats-io/jsm.go
+
       - name: Setup Go
         uses: actions/setup-go@v1
         with:
           go-version: 1.14
+
       - name: Install deps
         shell: bash --noprofile --norc -x -eo pipefail {0}
-        env:
-          GO111MODULE: "on"
         run: |
           export GOPATH="$RUNNER_WORKSPACE"
           go get -v -u honnef.co/go/tools/cmd/staticcheck
           go get -v -u github.com/client9/misspell/cmd/misspell
+
       - name: Lint
         shell: bash --noprofile --norc -x -eo pipefail {0}
-        env:
-          GO111MODULE: "on"
         run: |
           export GOPATH="$RUNNER_WORKSPACE"
           PATH=$PATH:$GOPATH/bin
@@ -32,23 +33,8 @@ jobs:
           find . -type f -name "*.go" | grep -v "/vendor/" | xargs misspell -error -locale US
           staticcheck -f stylish $(go list ./...)
 
-  test:
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v1
-        with:
-          path: src/github.com/nats-io/jsm.go
-      - name: Setup Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.14
-
       - name: Run tests
         shell: bash --noprofile --norc -x -eo pipefail {0}
-        env:
-          GO111MODULE: "on"
         run: |
           export GOPATH="$RUNNER_WORKSPACE"
           go test -v -race -p 1 ./...

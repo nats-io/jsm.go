@@ -18,15 +18,17 @@ import (
 )
 
 const (
-	JSApiStreamCreateT = "$JS.API.STREAM.CREATE.%s"
-	JSApiStreamUpdateT = "$JS.API.STREAM.UPDATE.%s"
-	JSApiStreamNames   = "$JS.API.STREAM.NAMES"
-	JSApiStreamList    = "$JS.API.STREAM.LIST"
-	JSApiStreamInfoT   = "$JS.API.STREAM.INFO.%s"
-	JSApiStreamDeleteT = "$JS.API.STREAM.DELETE.%s"
-	JSApiStreamPurgeT  = "$JS.API.STREAM.PURGE.%s"
-	JSApiMsgDeleteT    = "$JS.API.STREAM.MSG.DELETE.%s"
-	JSApiMsgGetT       = "$JS.API.STREAM.MSG.GET.%s"
+	JSApiStreamCreateT   = "$JS.API.STREAM.CREATE.%s"
+	JSApiStreamUpdateT   = "$JS.API.STREAM.UPDATE.%s"
+	JSApiStreamNames     = "$JS.API.STREAM.NAMES"
+	JSApiStreamList      = "$JS.API.STREAM.LIST"
+	JSApiStreamInfoT     = "$JS.API.STREAM.INFO.%s"
+	JSApiStreamDeleteT   = "$JS.API.STREAM.DELETE.%s"
+	JSApiStreamPurgeT    = "$JS.API.STREAM.PURGE.%s"
+	JSApiMsgDeleteT      = "$JS.API.STREAM.MSG.DELETE.%s"
+	JSApiMsgGetT         = "$JS.API.STREAM.MSG.GET.%s"
+	JSApiStreamSnapshotT = "$JS.API.STREAM.SNAPSHOT.%s"
+	JSApiStreamRestoreT  = "$JS.API.STREAM.RESTORE.%s"
 )
 
 type StoredMsg struct {
@@ -111,6 +113,32 @@ type JSApiMsgGetResponse struct {
 // io.nats.jetstream.api.v1.stream_msg_get_request
 type JSApiMsgGetRequest struct {
 	Seq uint64 `json:"seq"`
+}
+
+// io.nats.jetstream.api.v1.stream_snapshot_response
+type JSApiStreamSnapshotResponse struct {
+	JSApiResponse
+	// Estimate of number of blocks for the messages.
+	NumBlks int `json:"num_blks"`
+	// Block size limit as specified by the stream.
+	BlkSize int `json:"blk_size"`
+}
+
+// io.nats.jetstream.api.v1.stream_snapshot_request
+type JSApiStreamSnapshotRequest struct {
+	// Subject to deliver the chunks to for the snapshot.
+	DeliverSubject string `json:"deliver_subject"`
+	// Do not include consumers in the snapshot.
+	NoConsumers bool `json:"no_consumers,omitempty"`
+	// Optional chunk size preference. Otherwise server selects.
+	ChunkSize int `json:"chunk_size,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.stream_restore_response
+type JSApiStreamRestoreResponse struct {
+	JSApiResponse
+	// Subject to deliver the chunks to for the snapshot restore.
+	DeliverSubject string `json:"deliver_subject"`
 }
 
 // StreamConfig is the configuration for a JetStream Stream Template

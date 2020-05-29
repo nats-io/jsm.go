@@ -434,6 +434,7 @@ func testStreamConfig() *jsm.StreamConfig {
 		},
 	}
 }
+
 func TestFileStorage(t *testing.T) {
 	cfg := testStreamConfig()
 	err := jsm.FileStorage()(cfg)

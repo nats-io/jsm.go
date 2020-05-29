@@ -78,6 +78,8 @@ type SnapshotProgress interface {
 	BlockSize() int
 	// BlocksExpected is the number of blocks expected to be received
 	BlocksExpected() int
+	// BlockBytesReceived is the size of uncompressed block data received
+	BlockBytesReceived() uint64
 	// HasMetadata indicates if the metadata blocks have been received yet
 	HasMetadata() bool
 	// HasData indicates if all the data blocks have been received
@@ -104,23 +106,28 @@ type RestoreProgress interface {
 }
 
 type snapshotProgress struct {
-	startTime      time.Time
-	endTime        time.Time
-	chunkSize      int
-	chunksReceived uint32
-	chunksSent     uint32
-	chunksToSend   int
-	bytesReceived  uint64
-	bytesSent      uint64
-	blocksReceived int32
-	blockSize      int
-	blocksExpected int
-	metadataDone   bool
-	dataDone       bool
-	bps            uint64 // Bytes per second
-	scb            func(SnapshotProgress)
-	rcb            func(RestoreProgress)
+	startTime          time.Time
+	endTime            time.Time
+	chunkSize          int
+	chunksReceived     uint32
+	chunksSent         uint32
+	chunksToSend       int
+	bytesReceived      uint64
+	bytesSent          uint64
+	blocksReceived     int32
+	blockSize          int
+	blocksExpected     int
+	blockBytesReceived uint64
+	metadataDone       bool
+	dataDone           bool
+	bps                uint64 // Bytes per second
+	scb                func(SnapshotProgress)
+	rcb                func(RestoreProgress)
 	sync.Mutex
+}
+
+func (sp snapshotProgress) BlockBytesReceived() uint64 {
+	return sp.blockBytesReceived
 }
 
 func (sp snapshotProgress) ChunksReceived() uint32 {
@@ -177,6 +184,10 @@ func (sp snapshotProgress) ChunksSent() uint32 {
 
 func (sp snapshotProgress) BytesSent() uint64 {
 	return sp.bytesSent
+}
+
+func (sp *snapshotProgress) incBlockBytesReceived(c uint64) {
+	atomic.AddUint64(&sp.blockBytesReceived, c)
 }
 
 func (sp *snapshotProgress) incBytesSent(c uint64) {
@@ -248,6 +259,7 @@ func (sp *snapshotProgress) trackBlockProgress(r io.Reader, errc chan error) {
 
 		if strings.HasSuffix(hdr.Name, "blk") {
 			br := atomic.AddInt32(&sp.blocksReceived, 1)
+			sp.incBlockBytesReceived(uint64(hdr.Size))
 
 			// notify before setting done so callers can easily print the
 			// last progress for blocks

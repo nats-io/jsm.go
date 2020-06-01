@@ -129,6 +129,7 @@ type snapshotProgress struct {
 	blockBytesReceived uint64
 	metadataDone       bool
 	dataDone           bool
+	sending            bool   // if we are sending data, this is a hint for bps calc
 	bps                uint64 // Bytes per second
 	scb                func(SnapshotProgress)
 	rcb                func(RestoreProgress)
@@ -290,16 +291,25 @@ func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc cha
 }
 
 func (sp *snapshotProgress) trackBps(ctx context.Context) {
-	var lastBytesRecvd uint64 = 0
+	var lastBytes uint64 = 0
 
 	ticker := time.NewTicker(time.Second)
 
 	for {
 		select {
 		case <-ticker.C:
-			received := atomic.LoadUint64(&sp.bytesReceived)
-			bps := received - lastBytesRecvd
-			lastBytesRecvd = received
+			var bps uint64
+
+			if sp.sending {
+				sent := atomic.LoadUint64(&sp.bytesSent)
+				bps = sent - lastBytes
+				lastBytes = sent
+			} else {
+				received := atomic.LoadUint64(&sp.bytesReceived)
+				bps = received - lastBytes
+				lastBytes = received
+			}
+
 			sp.bps = bps
 			sp.notify()
 
@@ -341,6 +351,7 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 		startTime:    time.Now(),
 		chunkSize:    chunkSize,
 		chunksToSend: int(fstat.Size()) / chunkSize,
+		sending:      true,
 		rcb:          sopts.rcb,
 		scb:          sopts.scb,
 	}

@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -32,10 +33,11 @@ import (
 )
 
 type snapshotOptions struct {
-	file string
-	scb  func(SnapshotProgress)
-	rcb  func(RestoreProgress)
-	conn *reqoptions
+	file  string
+	scb   func(SnapshotProgress)
+	rcb   func(RestoreProgress)
+	debug bool
+	conn  *reqoptions
 }
 
 type SnapshotOption func(o *snapshotOptions)
@@ -58,6 +60,13 @@ func SnapshotConnection(opts ...RequestOption) SnapshotOption {
 		for _, opt := range opts {
 			opt(o.conn)
 		}
+	}
+}
+
+// SnapshotDebug enables logging using the standard go logging library
+func SnapshotDebug() SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.debug = true
 	}
 }
 
@@ -159,6 +168,10 @@ func (sp snapshotProgress) HasData() bool {
 }
 
 func (sp snapshotProgress) BytesPerSecond() uint64 {
+	if sp.bps == 0 {
+		return sp.bytesReceived
+	}
+
 	return sp.bps
 }
 
@@ -218,7 +231,7 @@ func (sp *snapshotProgress) notify() {
 // the tracker will gunzip and untar the stream as it passes by looking
 // for the file names in the tar data and based on these will notify the
 // caller about blocks received etc
-func (sp *snapshotProgress) trackBlockProgress(r io.Reader, errc chan error) {
+func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc chan error) {
 	seenMetaSum := false
 	seenMetaInf := false
 
@@ -240,6 +253,10 @@ func (sp *snapshotProgress) trackBlockProgress(r io.Reader, errc chan error) {
 		if err != nil {
 			errc <- fmt.Errorf("progress tracker received an unexpected error: %s", err)
 			return
+		}
+
+		if debug {
+			log.Printf("Received file %s", hdr.Name)
 		}
 
 		if !sp.metadataDone {
@@ -358,6 +375,7 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 	if err != nil {
 		return nil, err
 	}
+
 	err = nc.Flush()
 	if err != nil {
 		return nil, err
@@ -375,6 +393,10 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 
 	for _, opt := range opts {
 		opt(sopts)
+	}
+
+	if sopts.debug {
+		log.Printf("Starting backup of %q to %q", s.Name(), file)
 	}
 
 	of, err := os.Create(file)
@@ -416,7 +438,7 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 	trackingR, trackingW := net.Pipe()
 	defer trackingR.Close()
 	defer trackingW.Close()
-	go progress.trackBlockProgress(trackingR, errc)
+	go progress.trackBlockProgress(trackingR, sopts.debug, errc)
 
 	writer := io.MultiWriter(of, trackingW)
 
@@ -450,6 +472,10 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 
 	select {
 	case err := <-errc:
+		if sopts.debug {
+			log.Printf("Snapshot Error: %s", err)
+		}
+
 		return &progress, err
 	case <-sctx.Done():
 		return &progress, nil

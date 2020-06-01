@@ -14,6 +14,7 @@
 package jsm
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -40,8 +41,10 @@ type ConsumerBackup struct {
 	Config api.ConsumerConfig `json:"config"`
 }
 
-// BackupJetStreamConfiguration creates a backup of all configuration for Streams, Consumers and Stream Templates
-func BackupJetStreamConfiguration(backupDir string) error {
+// BackupJetStreamConfiguration creates a backup of all configuration for Streams, Consumers and Stream Templates.
+//
+// Stream data can optionally be backed up
+func BackupJetStreamConfiguration(backupDir string, data bool) error {
 	_, err := os.Stat(backupDir)
 	if err == nil || !os.IsNotExist(err) {
 		return fmt.Errorf("%s already exist", backupDir)
@@ -54,7 +57,7 @@ func BackupJetStreamConfiguration(backupDir string) error {
 
 	log.Printf("Creating JetStream backup into %s", backupDir)
 	err = EachStream(func(stream *Stream) {
-		err = backupStream(stream, backupDir)
+		err = backupStream(stream, backupDir, data)
 		if err != nil {
 			log.Fatalf("Could not backup Stream %s: %s", stream.Name(), err)
 		}
@@ -204,6 +207,7 @@ func restoreStream(backup *BackupData, update bool) error {
 	switch {
 	case known && !update:
 		err = fmt.Errorf("stream %s exists and update was not specified", sc.Name)
+
 	case known && update:
 		var stream *Stream
 		stream, err = LoadStream(sc.Name)
@@ -266,7 +270,7 @@ func restoreConsumer(backup *BackupData) error {
 	return err
 }
 
-func backupStream(stream *Stream, backupDir string) error {
+func backupStream(stream *Stream, backupDir string, data bool) error {
 	path := filepath.Join(backupDir, fmt.Sprintf("stream_%s.json", stream.Name()))
 	log.Printf("Stream %s to %s", stream.Name(), path)
 
@@ -286,6 +290,14 @@ func backupStream(stream *Stream, backupDir string) error {
 			return
 		}
 	})
+
+	if data {
+		dataPath := filepath.Join(backupDir, fmt.Sprintf("stream_%s.tgz", stream.Name()))
+		_, err := stream.SnapshotToFile(context.Background(), dataPath, true, SnapshotDebug())
+		if err != nil {
+			return err
+		}
+	}
 
 	return err
 }

@@ -204,30 +204,6 @@ func (sp snapshotProgress) BytesSent() uint64 {
 	return sp.bytesSent
 }
 
-func (sp *snapshotProgress) incBytesSent(c uint64) {
-	sp.Lock()
-	sp.bytesSent = c
-	sp.Unlock()
-}
-
-func (sp *snapshotProgress) incChunksSent(c uint32) {
-	sp.Lock()
-	sp.chunksSent = c
-	sp.Unlock()
-}
-
-func (sp *snapshotProgress) incBytesReceived(c uint64) {
-	sp.Lock()
-	sp.bytesReceived = c
-	sp.Unlock()
-}
-
-func (sp *snapshotProgress) incChunksReceived(c uint32) {
-	sp.Lock()
-	sp.chunksReceived = c
-	sp.Unlock()
-}
-
 func (sp *snapshotProgress) notify() {
 	if sp.scb != nil {
 		sp.scb(*sp)
@@ -357,7 +333,7 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 	}
 
 	chunkSize := 512 * 1024
-	progress := snapshotProgress{
+	progress := &snapshotProgress{
 		startTime:    time.Now(),
 		chunkSize:    chunkSize,
 		chunksToSend: 1 + int(fstat.Size())/chunkSize,
@@ -377,6 +353,9 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 	if progress.chunksToSend >= 20 {
 		notifyInterval = uint32(math.Ceil(float64(progress.chunksToSend) / 20))
 	}
+
+	// send initial notify to inform what to expect
+	progress.notify()
 
 	nc := sopts.conn.nc
 	var chunk [512 * 1024]byte
@@ -402,9 +381,16 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 			log.Printf("Sent %d chunks", progress.chunksSent)
 		}
 
-		progress.incChunksSent(1)
-		progress.incBytesSent(uint64(n))
+		progress.Lock()
+		progress.chunksSent++
+		progress.bytesSent += uint64(n)
+		progress.Unlock()
+
 		progress.notify()
+	}
+	err = nc.Flush()
+	if err != nil {
+		return nil, err
 	}
 
 	if sopts.debug {
@@ -421,7 +407,7 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 		return nil, err
 	}
 
-	return &progress, nil
+	return progress, nil
 }
 
 // SnapshotToFile creates a backup into gzipped tar file
@@ -462,7 +448,7 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 	sctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	progress := snapshotProgress{
+	progress := &snapshotProgress{
 		startTime:      time.Now(),
 		chunkSize:      req.ChunkSize,
 		blockSize:      resp.BlkSize,
@@ -492,8 +478,10 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 			return
 		}
 
-		progress.incBytesReceived(uint64(len(m.Data)))
-		progress.incChunksReceived(1)
+		progress.Lock()
+		progress.bytesReceived += uint64(len(m.Data))
+		progress.chunksReceived++
+		progress.Unlock()
 
 		n, err := writer.Write(m.Data)
 		if err != nil {
@@ -506,7 +494,7 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 		}
 	})
 	if err != nil {
-		return &progress, err
+		return progress, err
 	}
 	defer sub.Unsubscribe()
 
@@ -516,8 +504,8 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 			log.Printf("Snapshot Error: %s", err)
 		}
 
-		return &progress, err
+		return progress, err
 	case <-sctx.Done():
-		return &progress, nil
+		return progress, nil
 	}
 }

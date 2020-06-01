@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -169,11 +169,15 @@ func (sp snapshotProgress) HasData() bool {
 }
 
 func (sp snapshotProgress) BytesPerSecond() uint64 {
-	if sp.bps == 0 {
-		return sp.bytesReceived
+	if sp.bps > 0 {
+		return sp.bps
 	}
 
-	return sp.bps
+	if sp.sending {
+		return sp.bytesSent
+	}
+
+	return sp.bytesReceived
 }
 
 func (sp snapshotProgress) StartTime() time.Time {
@@ -200,24 +204,28 @@ func (sp snapshotProgress) BytesSent() uint64 {
 	return sp.bytesSent
 }
 
-func (sp *snapshotProgress) incBlockBytesReceived(c uint64) {
-	atomic.AddUint64(&sp.blockBytesReceived, c)
-}
-
 func (sp *snapshotProgress) incBytesSent(c uint64) {
-	atomic.AddUint64(&sp.bytesSent, c)
+	sp.Lock()
+	sp.bytesSent = c
+	sp.Unlock()
 }
 
 func (sp *snapshotProgress) incChunksSent(c uint32) {
-	atomic.AddUint32(&sp.chunksSent, c)
+	sp.Lock()
+	sp.chunksSent = c
+	sp.Unlock()
 }
 
 func (sp *snapshotProgress) incBytesReceived(c uint64) {
-	atomic.AddUint64(&sp.bytesReceived, c)
+	sp.Lock()
+	sp.bytesReceived = c
+	sp.Unlock()
 }
 
 func (sp *snapshotProgress) incChunksReceived(c uint32) {
-	atomic.AddUint32(&sp.chunksReceived, c)
+	sp.Lock()
+	sp.chunksReceived = c
+	sp.Unlock()
 }
 
 func (sp *snapshotProgress) notify() {
@@ -276,8 +284,11 @@ func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc cha
 		}
 
 		if strings.HasSuffix(hdr.Name, "blk") {
-			br := atomic.AddInt32(&sp.blocksReceived, 1)
-			sp.incBlockBytesReceived(uint64(hdr.Size))
+			sp.Lock()
+			br := sp.blocksReceived
+			sp.blocksReceived++
+			sp.bytesReceived += uint64(hdr.Size)
+			sp.Unlock()
 
 			// notify before setting done so callers can easily print the
 			// last progress for blocks
@@ -298,19 +309,18 @@ func (sp *snapshotProgress) trackBps(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			var bps uint64
-
+			sp.Lock()
 			if sp.sending {
-				sent := atomic.LoadUint64(&sp.bytesSent)
-				bps = sent - lastBytes
+				sent := sp.bytesSent
+				sp.bps = sent - lastBytes
 				lastBytes = sent
 			} else {
-				received := atomic.LoadUint64(&sp.bytesReceived)
-				bps = received - lastBytes
+				received := sp.bytesReceived
+				sp.bps = received - lastBytes
 				lastBytes = received
 			}
+			sp.Unlock()
 
-			sp.bps = bps
 			sp.notify()
 
 		case <-ctx.Done():
@@ -350,13 +360,23 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 	progress := snapshotProgress{
 		startTime:    time.Now(),
 		chunkSize:    chunkSize,
-		chunksToSend: int(fstat.Size()) / chunkSize,
+		chunksToSend: 1 + int(fstat.Size())/chunkSize,
 		sending:      true,
 		rcb:          sopts.rcb,
 		scb:          sopts.scb,
 	}
 	defer func() { progress.endTime = time.Now() }()
 	go progress.trackBps(ctx)
+
+	if sopts.debug {
+		log.Printf("Starting restore of %q from %s using %d chunks", stream, file, progress.chunksToSend)
+	}
+
+	// in debug notify ~20ish times
+	notifyInterval := uint32(1)
+	if progress.chunksToSend >= 20 {
+		notifyInterval = uint32(math.Ceil(float64(progress.chunksToSend) / 20))
+	}
 
 	nc := sopts.conn.nc
 	var chunk [512 * 1024]byte
@@ -378,9 +398,17 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 			return nil, err
 		}
 
+		if sopts.debug && progress.chunksSent > 0 && progress.chunksSent%notifyInterval == 0 {
+			log.Printf("Sent %d chunks", progress.chunksSent)
+		}
+
 		progress.incChunksSent(1)
 		progress.incBytesSent(uint64(n))
 		progress.notify()
+	}
+
+	if sopts.debug {
+		log.Printf("Sent %d chunks", progress.chunksSent)
 	}
 
 	err = nc.Publish(resp.DeliverSubject, nil)

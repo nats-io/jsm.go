@@ -35,9 +35,8 @@ func TestStream_Snapshot(t *testing.T) {
 	_, err = stream.NewConsumer(jsm.DurableName("c"))
 	checkErr(t, err, "consumer failed")
 
-	body := []byte(RandomString(5480))
-	for i := 0; i <= 50; i++ {
-		nc.Publish(stream.Subjects()[0], body)
+	for i := 0; i <= 3000; i++ {
+		nc.Publish(stream.Subjects()[0], []byte(RandomString(5480)))
 	}
 
 	preState, err := stream.State()
@@ -53,7 +52,7 @@ func TestStream_Snapshot(t *testing.T) {
 
 	checkErr(t, stream.Delete(), "delete failed")
 
-	_, err = jsm.RestoreSnapshotFromFile(context.Background(), "q1", tf.Name())
+	_, err = jsm.RestoreSnapshotFromFile(context.Background(), "q1", tf.Name(), jsm.SnapshotDebug())
 	checkErr(t, err, "restore failed")
 
 	stream, err = jsm.LoadStream("q1")

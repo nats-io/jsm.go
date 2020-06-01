@@ -336,10 +336,11 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 		return nil, err
 	}
 
+	chunkSize := 512 * 1024
 	progress := snapshotProgress{
 		startTime:    time.Now(),
-		chunkSize:    512 * 1024,
-		chunksToSend: int(fstat.Size()) / 512 * 1024,
+		chunkSize:    chunkSize,
+		chunksToSend: int(fstat.Size()) / chunkSize,
 		rcb:          sopts.rcb,
 		scb:          sopts.scb,
 	}

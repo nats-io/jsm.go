@@ -292,10 +292,14 @@ func backupStream(stream *Stream, backupDir string, data bool) error {
 	})
 
 	if data {
-		dataPath := filepath.Join(backupDir, fmt.Sprintf("stream_%s.tgz", stream.Name()))
-		_, err := stream.SnapshotToFile(context.Background(), dataPath, true, SnapshotDebug())
-		if err != nil {
-			return err
+		if stream.Storage() == api.FileStorage {
+			dataPath := filepath.Join(backupDir, fmt.Sprintf("stream_%s.tgz", stream.Name()))
+			_, err := stream.SnapshotToFile(context.Background(), dataPath, true, SnapshotDebug())
+			if err != nil {
+				return err
+			}
+		} else {
+			log.Printf("Skipping data backup for Stream %q, only file store backed data can be backed up", stream.Name())
 		}
 	}
 

@@ -263,7 +263,7 @@ func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc cha
 			sp.Lock()
 			br := sp.blocksReceived
 			sp.blocksReceived++
-			sp.bytesReceived += uint64(hdr.Size)
+			sp.blockBytesReceived += uint64(hdr.Size)
 			sp.Unlock()
 
 			// notify before setting done so callers can easily print the

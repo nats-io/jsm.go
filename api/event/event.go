@@ -139,6 +139,8 @@ func compileTemplate(schema string, body string) (*template.Template, error) {
 		"ShortTime":   func(v time.Time) string { return v.Format("15:04:05") },
 		"NanoTime":    func(v time.Time) string { return v.Format("15:04:05.000") },
 		"IBytes":      func(v int64) string { return humanize.IBytes(uint64(v)) },
+		"IntCommas":   func(v int) string { return humanize.Comma(int64(v)) },
+		"Int64Commas": func(v int64) string { return humanize.Comma(v) },
 		"HostPort":    func(h string, p int) string { return net.JoinHostPort(h, strconv.Itoa(p)) },
 		"LeftPad":     func(indent int, v string) string { return leftPad(v, indent) },
 		"ToString":    func(v stringer) string { return v.String() },

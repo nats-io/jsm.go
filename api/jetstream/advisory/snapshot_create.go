@@ -16,7 +16,7 @@ type JSSnapshotCreateAdvisoryV1 struct {
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_create", `{{ .Time | ShortTime }} [Snapshot Create] {{ .Stream }} {{ .NumBlks }} blocks of {{ .BlkSize }}`)
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_create", `{{ .Time | ShortTime }} [Snapshot Create] {{ .Stream }} {{ .NumBlks | IntCommas }} blocks of {{ .BlkSize | IBytes }}`)
 	if err != nil {
 		panic(err)
 	}
@@ -25,8 +25,8 @@ func init() {
 [{{ .Time | ShortTime }}] [{{ .ID }}] Stream Snapshot Created
 
         Stream: {{ .Stream }}
-        Blocks: {{ .NumBlks }}
-    Block Size: {{ .BlkSize }}
+        Blocks: {{ .NumBlks | IntCommas }}
+    Block Size: {{ .BlkSize | IBytes }}
         Client:
 {{- if .Client.User }}
                User: {{ .Client.User }} Account: {{ .Client.Account }}

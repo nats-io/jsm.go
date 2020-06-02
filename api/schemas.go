@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/xeipuuv/gojsonschema"
@@ -23,7 +25,18 @@ type Event interface {
 	EventTime() time.Time
 	EventSource() string
 	EventSubject() string
+	Template(kind string) (*template.Template, error)
 }
+
+// RenderFormat indicates the format to render templates in
+type RenderFormat string
+
+const (
+	// TextCompact renders a single line view of an event
+	TextCompact RenderFormat = "text/compact"
+	// TextExtended renders a multi line full view of an event
+	TextExtended RenderFormat = "text/extended"
+)
 
 // we dont export this since it's not official, but what this produce will be loadable by the official CE
 type cloudEvent struct {
@@ -177,4 +190,14 @@ func ToCloudEventV1(e Event) ([]byte, error) {
 	}
 
 	return json.MarshalIndent(event, "", "  ")
+}
+
+// Renders an event to a writer in specific format
+func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
+	t, err := e.Template(string(format))
+	if err != nil {
+		return err
+	}
+
+	return t.Execute(wr, e)
 }

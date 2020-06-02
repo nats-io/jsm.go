@@ -18,3 +18,32 @@ type JSRestoreCompleteAdvisoryV1 struct {
 	Bytes  int64            `json:"bytes"`
 	Client APIAuditClientV1 `json:"client"`
 }
+
+func init() {
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.restore_complete", `{{ .Time | ShortTime }} [Restore Complete] {{ .Stream }} restored {{ .Bytes | IBytes }} bytes started {{ .Start | ShortTime }} ended {{ .End | ShortTime }}`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = event.RegisterTextExtendedTemplate("io.nats.jetstream.advisory.v1.restore_complete", `
+[{{ .Time | ShortTime }}] [{{ .ID }}] Stream Restore Completed
+
+        Stream: {{ .Stream }}
+         Start: {{ .Start | NanoTime }}
+           End: {{ .Start | NanoTime }}
+         Bytes: {{ .Bytes | IBytes }}
+        Client:
+{{- if .Client.User }}
+               User: {{ .Client.User }} Account: {{ .Client.Account }}
+{{- end }}
+               Host: {{ HostPort .Client.Host .Client.Port }}
+                CID: {{ .Client.CID }}
+{{- if .Client.Name }}
+               Name: {{ .Client.Name }}
+{{- end }}
+           Language: {{ .Client.Language }} {{ .Client.Version }}
+`)
+	if err != nil {
+		panic(err)
+	}
+}

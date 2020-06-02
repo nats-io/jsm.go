@@ -13,3 +13,37 @@ type ConnectEventMsgV1 struct {
 	Server ServerInfoV1 `json:"server"`
 	Client ClientInfoV1 `json:"client"`
 }
+
+func init() {
+	err := event.RegisterTextCompactTemplate("io.nats.server.advisory.v1.client_connect", `{{ .Time | ShortTime }} [Connection] {{ if .Client.User }}user: {{ .Client.User }}{{ end }} cid: {{ .Client.ID }} in account {{ .Client.Account }}`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = event.RegisterTextExtendedTemplate("io.nats.server.advisory.v1.client_connect", `
+[{{ .Time | ShortTime }}] [{{ .ID }}] Client Connection
+
+   Server: {{ .Server.Name }}
+{{- if .Server.Cluster }}
+  Cluster: {{ .Server.Cluster }}
+{{- end }}
+
+   Client:
+            ID: {{ .Client.ID }}
+{{- if .Client.User }}
+          User: {{ .Client.User }}
+{{- end }}
+{{- if .Client.Name }}
+          Name: {{ .Client.Name }}
+{{- end }}
+       Account: {{ .Client.Account }}
+{{- if .Client.Lang }}
+      Language: {{ .Client.Lang }} {{ .Client.Version }}
+{{- end }}
+{{- if .Client.Host }}
+          Host: {{ .Client.Host }}
+{{- end }}`)
+	if err != nil {
+		panic(err)
+	}
+}

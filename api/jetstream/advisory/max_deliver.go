@@ -16,3 +16,20 @@ type ConsumerDeliveryExceededAdvisoryV1 struct {
 	StreamSeq  uint64 `json:"stream_seq"`
 	Deliveries uint64 `json:"deliveries"`
 }
+
+func init() {
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.max_deliver", `{{ .Time | ShortTime }} [JS Max Deliveries] {{ .Stream }} ({{ .StreamSeq }}) > {{ .Consumer }}: {{ .Deliveries }} deliveries`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = event.RegisterTextExtendedTemplate("io.nats.jetstream.advisory.v1.max_deliver", `
+[{{ .Time | ShortTime }}] [{{ .ID }}] Delivery Attempts Exceeded
+
+          Consumer: {{ .Stream }} > {{ .Consumer }}
+   Stream Sequence: {{ .StreamSeq }}
+        Deliveries: {{ .Deliveries }}`)
+	if err != nil {
+		panic(err)
+	}
+}

@@ -36,6 +36,8 @@ const (
 	TextCompact RenderFormat = "text/compact"
 	// TextExtended renders a multi line full view of an event
 	TextExtended RenderFormat = "text/extended"
+	// ApplicationJSON renders as indented JSON
+	ApplicationJSON RenderFormat = "application/json"
 )
 
 // we dont export this since it's not official, but what this produce will be loadable by the official CE
@@ -194,10 +196,25 @@ func ToCloudEventV1(e Event) ([]byte, error) {
 
 // Renders an event to a writer in specific format
 func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
-	t, err := e.Template(string(format))
-	if err != nil {
-		return err
-	}
+	switch format {
+	case TextCompact, TextExtended:
+		t, err := e.Template(string(format))
+		if err != nil {
+			return err
+		}
 
-	return t.Execute(wr, e)
+		return t.Execute(wr, e)
+
+	case ApplicationJSON:
+		j, err := json.MarshalIndent(e, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		_, err = wr.Write(j)
+		return err
+
+	default:
+		return fmt.Errorf("unsupported format %q", format)
+	}
 }

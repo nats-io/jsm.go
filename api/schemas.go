@@ -196,7 +196,7 @@ func ToCloudEventV1(e Event) ([]byte, error) {
 	return json.MarshalIndent(event, "", "  ")
 }
 
-// Renders an event to a writer in specific format
+// RenderEvent renders an event in specific format
 func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
 	switch format {
 	case TextCompact, TextExtended:

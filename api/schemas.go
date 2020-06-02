@@ -25,7 +25,7 @@ type Event interface {
 	EventTime() time.Time
 	EventSource() string
 	EventSubject() string
-	Template(kind string) (*template.Template, error)
+	EventTemplate(kind string) (*template.Template, error)
 }
 
 // RenderFormat indicates the format to render templates in
@@ -38,6 +38,8 @@ const (
 	TextExtended RenderFormat = "text/extended"
 	// ApplicationJSON renders as indented JSON
 	ApplicationJSON RenderFormat = "application/json"
+	// ApplicationCloudEventV1 renders as a ApplicationCloudEventV1 v1
+	ApplicationCloudEventV1 RenderFormat = "application/cloudeventv1"
 )
 
 // we dont export this since it's not official, but what this produce will be loadable by the official CE
@@ -169,7 +171,7 @@ func ParseMessage(m []byte) (schemaType string, msg interface{}, err error) {
 	return schemaType, msg, err
 }
 
-// ToCloudEventV1 turns a NATS Event into a version 1.0 CloudEvent
+// ToCloudEventV1 turns a NATS Event into a version 1.0 Cloud Event
 func ToCloudEventV1(e Event) ([]byte, error) {
 	je, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {
@@ -198,7 +200,7 @@ func ToCloudEventV1(e Event) ([]byte, error) {
 func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
 	switch format {
 	case TextCompact, TextExtended:
-		t, err := e.Template(string(format))
+		t, err := e.EventTemplate(string(format))
 		if err != nil {
 			return err
 		}
@@ -212,6 +214,15 @@ func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
 		}
 
 		_, err = wr.Write(j)
+		return err
+
+	case ApplicationCloudEventV1:
+		ce, err := ToCloudEventV1(e)
+		if err != nil {
+			return err
+		}
+
+		_, err = wr.Write(ce)
 		return err
 
 	default:

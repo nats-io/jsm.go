@@ -54,7 +54,7 @@ func (e NATSEvent) EventSource() string {
 	return fmt.Sprintf("urn:nats:%s", parts[2])
 }
 
-func (e NATSEvent) Template(kind string) (*template.Template, error) {
+func (e NATSEvent) EventTemplate(kind string) (*template.Template, error) {
 	switch kind {
 	case textCompact:
 		return e.textCompactTemplate()

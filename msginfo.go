@@ -26,8 +26,8 @@ import (
 type MsgInfo struct {
 	stream    string
 	consumer  string
-	sSeq      int
-	cSeq      int
+	sSeq      int64
+	cSeq      int64
 	delivered int
 	ts        time.Time
 }
@@ -40,11 +40,11 @@ func (i *MsgInfo) Consumer() string {
 	return i.consumer
 }
 
-func (i *MsgInfo) StreamSequence() int {
+func (i *MsgInfo) StreamSequence() int64 {
 	return i.sSeq
 }
 
-func (i *MsgInfo) ConsumerSequence() int {
+func (i *MsgInfo) ConsumerSequence() int64 {
 	return i.cSeq
 }
 
@@ -66,8 +66,8 @@ func oldParseJSMsgMetadata(parts []string) (info *MsgInfo, err error) {
 	stream := parts[c-5]
 	consumer := parts[c-4]
 	delivered, _ := strconv.Atoi(parts[c-3])
-	streamSeq, _ := strconv.Atoi(parts[c-2])
-	consumerSeq, _ := strconv.Atoi(parts[c-1])
+	streamSeq, _ := strconv.ParseInt(parts[c-2], 10, 64)
+	consumerSeq, _ := strconv.ParseInt(parts[c-1], 10, 64)
 
 	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, time.Time{}}, nil
 }
@@ -92,8 +92,8 @@ func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
 	stream := parts[c-6]
 	consumer := parts[c-5]
 	delivered, _ := strconv.Atoi(parts[c-4])
-	streamSeq, _ := strconv.Atoi(parts[c-3])
-	consumerSeq, _ := strconv.Atoi(parts[c-2])
+	streamSeq, _ := strconv.ParseInt(parts[c-3], 10, 64)
+	consumerSeq, _ := strconv.ParseInt(parts[c-2], 10, 64)
 	tsi, _ := strconv.Atoi(parts[c-1])
 	ts := time.Unix(0, int64(tsi))
 

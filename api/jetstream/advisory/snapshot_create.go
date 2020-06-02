@@ -10,13 +10,13 @@ import (
 type JSSnapshotCreateAdvisoryV1 struct {
 	event.NATSEvent
 	Stream  string           `json:"stream"`
-	NumBlks int              `json:"blocks"`
-	BlkSize int              `json:"block_size"`
+	NumBlks int64            `json:"blocks"`
+	BlkSize int64            `json:"block_size"`
 	Client  APIAuditClientV1 `json:"client"`
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_create", `{{ .Time | ShortTime }} [Snapshot Create] {{ .Stream }} {{ .NumBlks | IntCommas }} blocks of {{ .BlkSize | IBytes }}`)
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_create", `{{ .Time | ShortTime }} [Snapshot Create] {{ .Stream }} {{ .NumBlks | Int64Commas }} blocks of {{ .BlkSize | IBytes }}`)
 	if err != nil {
 		panic(err)
 	}
@@ -25,7 +25,7 @@ func init() {
 [{{ .Time | ShortTime }}] [{{ .ID }}] Stream Snapshot Created
 
         Stream: {{ .Stream }}
-        Blocks: {{ .NumBlks | IntCommas }}
+        Blocks: {{ .NumBlks | Int64Commas }}
     Block Size: {{ .BlkSize | IBytes }}
         Client:
 {{- if .Client.User }}

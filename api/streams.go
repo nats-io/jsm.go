@@ -34,7 +34,8 @@ const (
 type StoredMsg struct {
 	Subject  string    `json:"subject"`
 	Sequence uint64    `json:"seq"`
-	Data     []byte    `json:"data"`
+	Header   []byte    `json:"hdrs,omitempty"`
+	Data     []byte    `json:"data,omitempty"`
 	Time     time.Time `json:"time"`
 }
 

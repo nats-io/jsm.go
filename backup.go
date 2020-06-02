@@ -294,7 +294,7 @@ func backupStream(stream *Stream, backupDir string, data bool) error {
 	if data {
 		if stream.Storage() == api.FileStorage {
 			dataPath := filepath.Join(backupDir, fmt.Sprintf("stream_%s.tgz", stream.Name()))
-			_, err := stream.SnapshotToFile(context.Background(), dataPath, true, SnapshotDebug())
+			_, err := stream.SnapshotToFile(context.Background(), dataPath, SnapshotConsumers(), SnapshotDebug())
 			if err != nil {
 				return err
 			}

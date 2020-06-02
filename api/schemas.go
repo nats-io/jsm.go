@@ -32,14 +32,14 @@ type Event interface {
 type RenderFormat string
 
 const (
-	// TextCompact renders a single line view of an event
-	TextCompact RenderFormat = "text/compact"
-	// TextExtended renders a multi line full view of an event
-	TextExtended RenderFormat = "text/extended"
-	// ApplicationJSON renders as indented JSON
-	ApplicationJSON RenderFormat = "application/json"
-	// ApplicationCloudEventV1 renders as a ApplicationCloudEventV1 v1
-	ApplicationCloudEventV1 RenderFormat = "application/cloudeventv1"
+	// TextCompactFormat renders a single line view of an event
+	TextCompactFormat RenderFormat = "text/compact"
+	// TextExtendedFormat renders a multi line full view of an event
+	TextExtendedFormat RenderFormat = "text/extended"
+	// ApplicationJSONFormat renders as indented JSON
+	ApplicationJSONFormat RenderFormat = "application/json"
+	// ApplicationCloudEventV1Format renders as a ApplicationCloudEventV1Format v1
+	ApplicationCloudEventV1Format RenderFormat = "application/cloudeventv1"
 )
 
 // we dont export this since it's not official, but what this produce will be loadable by the official CE
@@ -199,7 +199,7 @@ func ToCloudEventV1(e Event) ([]byte, error) {
 // RenderEvent renders an event in specific format
 func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
 	switch format {
-	case TextCompact, TextExtended:
+	case TextCompactFormat, TextExtendedFormat:
 		t, err := e.EventTemplate(string(format))
 		if err != nil {
 			return err
@@ -207,7 +207,7 @@ func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
 
 		return t.Execute(wr, e)
 
-	case ApplicationJSON:
+	case ApplicationJSONFormat:
 		j, err := json.MarshalIndent(e, "", "  ")
 		if err != nil {
 			return err
@@ -216,7 +216,7 @@ func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
 		_, err = wr.Write(j)
 		return err
 
-	case ApplicationCloudEventV1:
+	case ApplicationCloudEventV1Format:
 		ce, err := ToCloudEventV1(e)
 		if err != nil {
 			return err

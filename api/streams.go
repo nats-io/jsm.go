@@ -132,6 +132,8 @@ type JSApiStreamSnapshotRequest struct {
 	NoConsumers bool `json:"no_consumers,omitempty"`
 	// Optional chunk size preference. Otherwise server selects.
 	ChunkSize int `json:"chunk_size,omitempty"`
+	// Check all message's checksums prior to snapshot.
+	CheckMsgs bool `json:"jsck,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_restore_response

@@ -7,6 +7,10 @@ import (
 // ActionAdvisoryTypeV1 indicates which action against a stream, consumer or template triggered an advisory
 type ActionAdvisoryTypeV1 string
 
+func (a ActionAdvisoryTypeV1) String() string {
+	return string(a)
+}
+
 const (
 	CreateEvent ActionAdvisoryTypeV1 = "create"
 	DeleteEvent ActionAdvisoryTypeV1 = "delete"

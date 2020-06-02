@@ -101,7 +101,7 @@ func RegisterTextCompactTemplate(schema string, body string) error {
 
 	_, ok := sTemplateBodies[schema]
 	if ok {
-		return fmt.Errorf("short template for %q already registered", schema)
+		return fmt.Errorf("text/compact template for %q already registered", schema)
 	}
 
 	sTemplateBodies[schema] = body
@@ -121,13 +121,17 @@ func RegisterTextExtendedTemplate(schema string, body string) error {
 
 	_, ok := lTemplateBodies[schema]
 	if ok {
-		return fmt.Errorf("long template for %q already registered", schema)
+		return fmt.Errorf("text/extended template for %q already registered", schema)
 	}
 
 	lTemplateBodies[schema] = body
 	lTemplates[schema] = parsed
 
 	return nil
+}
+
+type stringer interface {
+	String() string
 }
 
 func compileTemplate(schema string, body string) (*template.Template, error) {
@@ -137,7 +141,7 @@ func compileTemplate(schema string, body string) (*template.Template, error) {
 		"IBytes":      func(v int64) string { return humanize.IBytes(uint64(v)) },
 		"HostPort":    func(h string, p int) string { return net.JoinHostPort(h, strconv.Itoa(p)) },
 		"LeftPad":     func(indent int, v string) string { return leftPad(v, indent) },
-		"ToString":    func(v interface{}) string { return v.(string) },
+		"ToString":    func(v stringer) string { return v.String() },
 		"TitleString": func(v string) string { return strings.Title(v) },
 	}).Parse(body)
 }

@@ -169,6 +169,7 @@ var (
 	AckNak      = []byte("-NAK")
 	AckProgress = []byte("+WPI")
 	AckNext     = []byte("+NXT")
+	AckTerm     = []byte("+TERM")
 )
 
 type DeliverPolicy int

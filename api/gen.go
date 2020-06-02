@@ -183,6 +183,7 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/metric/v1/service_latency.json", St: "srvmetric.ServiceLatencyV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/api_audit.json", St: "jsadvisory.JetStreamAPIAuditV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/max_deliver.json", St: "jsadvisory.ConsumerDeliveryExceededAdvisoryV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/terminated.json", St: "jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/stream_action.json", St: "jsadvisory.JSStreamActionAdvisoryV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/consumer_action.json", St: "jsadvisory.JSConsumerActionAdvisoryV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/snapshot_create.json", St: "jsadvisory.JSSnapshotCreateAdvisoryV1"},

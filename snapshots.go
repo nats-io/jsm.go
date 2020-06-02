@@ -33,21 +33,47 @@ import (
 )
 
 type snapshotOptions struct {
-	file  string
-	scb   func(SnapshotProgress)
-	rcb   func(RestoreProgress)
-	debug bool
-	conn  *reqoptions
+	file      string
+	scb       func(SnapshotProgress)
+	rcb       func(RestoreProgress)
+	debug     bool
+	consumers bool
+	jsck      bool
+	chunkSz   int
+	conn      *reqoptions
 }
 
 type SnapshotOption func(o *snapshotOptions)
 
+// SnapshotChunkSize sets the size of data chunks to retrieve
+func SnapshotChunkSize(sz int) SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.chunkSz = sz
+	}
+}
+
+// SnapshotConsumers includes consumer configuration and state in backups
+func SnapshotConsumers() SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.consumers = true
+	}
+}
+
+// SnapshotHealthCheck performs a health check prior to starting the snapshot
+func SnapshotHealthCheck() SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.jsck = true
+	}
+}
+
+// SnapshotNotify notifies cb about progress of the snapshot operation
 func SnapshotNotify(cb func(SnapshotProgress)) SnapshotOption {
 	return func(o *snapshotOptions) {
 		o.scb = cb
 	}
 }
 
+// RestoreNotify notifies cb about progress of the restore operation
 func RestoreNotify(cb func(RestoreProgress)) SnapshotOption {
 	return func(o *snapshotOptions) {
 		o.rcb = cb
@@ -95,6 +121,8 @@ type SnapshotProgress interface {
 	HasData() bool
 	// BytesPerSecond is the number of bytes received in the last second, 0 during the first second
 	BytesPerSecond() uint64
+	// HealthCheck indicates if health checking was requested
+	HealthCheck() bool
 }
 
 type RestoreProgress interface {
@@ -117,6 +145,7 @@ type RestoreProgress interface {
 type snapshotProgress struct {
 	startTime          time.Time
 	endTime            time.Time
+	healthCheck        bool
 	chunkSize          int
 	chunksReceived     uint32
 	chunksSent         uint32
@@ -134,6 +163,10 @@ type snapshotProgress struct {
 	scb                func(SnapshotProgress)
 	rcb                func(RestoreProgress)
 	sync.Mutex
+}
+
+func (sp snapshotProgress) HealthCheck() bool {
+	return sp.healthCheck
 }
 
 func (sp snapshotProgress) BlockBytesReceived() uint64 {
@@ -307,8 +340,9 @@ func (sp *snapshotProgress) trackBps(ctx context.Context) {
 
 func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, opts ...SnapshotOption) (RestoreProgress, error) {
 	sopts := &snapshotOptions{
-		file: file,
-		conn: dfltreqoptions(),
+		file:    file,
+		conn:    dfltreqoptions(),
+		chunkSz: 512 * 1024,
 	}
 
 	for _, opt := range opts {
@@ -332,11 +366,10 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 		return nil, err
 	}
 
-	chunkSize := 512 * 1024
 	progress := &snapshotProgress{
 		startTime:    time.Now(),
-		chunkSize:    chunkSize,
-		chunksToSend: 1 + int(fstat.Size())/chunkSize,
+		chunkSize:    sopts.chunkSz,
+		chunksToSend: 1 + int(fstat.Size())/sopts.chunkSz,
 		sending:      true,
 		rcb:          sopts.rcb,
 		scb:          sopts.scb,
@@ -411,10 +444,13 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 }
 
 // SnapshotToFile creates a backup into gzipped tar file
-func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool, opts ...SnapshotOption) (SnapshotProgress, error) {
+func (s *Stream) SnapshotToFile(ctx context.Context, file string, opts ...SnapshotOption) (SnapshotProgress, error) {
 	sopts := &snapshotOptions{
-		file: file,
-		conn: s.cfg.conn,
+		file:      file,
+		conn:      s.cfg.conn,
+		jsck:      false,
+		consumers: false,
+		chunkSz:   512 * 1024,
 	}
 
 	for _, opt := range opts {
@@ -434,8 +470,9 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 	ib := nats.NewInbox()
 	req := api.JSApiStreamSnapshotRequest{
 		DeliverSubject: ib,
-		NoConsumers:    !consumers,
-		ChunkSize:      512 * 1024,
+		NoConsumers:    !sopts.consumers,
+		CheckMsgs:      sopts.jsck,
+		ChunkSize:      sopts.chunkSz,
 	}
 
 	var resp api.JSApiStreamSnapshotResponse
@@ -455,6 +492,7 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, consumers bool
 		blocksExpected: resp.NumBlks,
 		scb:            sopts.scb,
 		rcb:            sopts.rcb,
+		healthCheck:    sopts.jsck,
 	}
 	defer func() { progress.endTime = time.Now() }()
 	go progress.trackBps(sctx)

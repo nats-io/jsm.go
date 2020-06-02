@@ -47,7 +47,7 @@ func TestStream_Snapshot(t *testing.T) {
 	tf.Close()
 	defer os.Remove(tf.Name())
 
-	_, err = stream.SnapshotToFile(context.Background(), tf.Name(), true, jsm.SnapshotDebug())
+	_, err = stream.SnapshotToFile(context.Background(), tf.Name(), jsm.SnapshotConsumers(), jsm.SnapshotHealthCheck(), jsm.SnapshotDebug())
 	checkErr(t, err, "snapshot failed")
 
 	checkErr(t, stream.Delete(), "delete failed")

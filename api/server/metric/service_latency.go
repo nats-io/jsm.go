@@ -35,3 +35,86 @@ type LatencyClientV1 struct {
 	CID     uint64        `json:"cid,omitempty"`
 	Server  string        `json:"server,omitempty"`
 }
+
+func init() {
+	err := event.RegisterTextCompactTemplate("io.nats.server.metric.v1.service_latency", `{{ .Time | ShortTime }} [Svc Latency] {{ if .Error }}{{ .Error }} {{ end }}requestor {{ .Requestor.RTT }} <-> system {{ .SystemLatency }} <- service rtt {{ .Responder.RTT }} -> service {{ .ServiceLatency }}`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = event.RegisterTextExtendedTemplate("io.nats.server.metric.v1.service_latency", `
+{{- if .Error }}
+[{{ .Time | ShortTime }}] [{{ .ID }}] Service Latency - {{ .Error }}
+{{- else }}
+[{{ .Time | ShortTime }}] [{{ .ID }}] Service Latency
+{{- end }}
+
+   Start Time: {{ .RequestStart | NanoTime }}
+{{- if .Error }}
+        Error: {{ .Error }}
+{{- end }}
+
+   Latencies:
+
+      Request Duration: {{ .TotalLatency }}
+{{- if .Requestor }}
+             Requestor: {{ .Requestor.RTT }}
+{{- end }}
+           NATS System: {{ .SystemLatency }}
+               Service: {{ .ServiceLatency }}
+{{ with .Requestor }}
+   Requestor:
+     Account: {{ .Account }}
+{{ if .Start }}
+       Start: {{ .Start }}
+{{- end }}
+{{ if .User }}
+        User: {{ .User }}
+{{- end }}
+{{- if .Name }}
+        Name: {{ .Name }}
+{{- end }}
+{{- if .Lang }}
+    Language: {{ .Lang }}
+{{- end }}
+{{- if .Version }}
+     Version: {{ .Version }}
+{{- end }}
+
+{{- if .CID }}
+          IP: {{ .IP }}
+         CID: {{ .CID }}
+      Server: {{ .Server }}
+{{- end }}
+         RTT: {{ .RTT }}
+{{- end }}
+{{ with .Responder }}
+   Responder:
+     Account: {{ .Account }}
+{{ if .Start }}
+       Start: {{ .Start }}
+{{- end }}
+{{ if .User }}
+        User: {{ .User }}
+{{- end }}
+{{- if .Name }}
+        Name: {{ .Name }}
+{{- end }}
+{{- if .Lang }}
+    Language: {{ .Lang }}
+{{- end }}
+{{- if .Version }}
+     Version: {{ .Version }}
+{{- end }}
+
+{{- if .CID }}
+          IP: {{ .IP }}
+         CID: {{ .CID }}
+      Server: {{ .Server }}
+{{- end }}
+         RTT: {{ .RTT }}
+{{- end }}`)
+	if err != nil {
+		panic(err)
+	}
+}

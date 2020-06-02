@@ -14,3 +14,19 @@ type JSConsumerActionAdvisoryV1 struct {
 	Consumer string               `json:"consumer"`
 	Action   ActionAdvisoryTypeV1 `json:"action"`
 }
+
+func init() {
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.consumer_action", `{{ .Time | ShortTime }} [Consumer {{ .Action | ToString | TitleString }}] {{ .Stream }} > {{ .Consumer }}`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = event.RegisterTextExtendedTemplate("io.nats.jetstream.advisory.v1.consumer_action", `
+[{{ .Time | ShortTime }}] [{{ .ID }}] Consumer {{ .Action | ToString | TitleString }} Action
+
+        Stream: {{ .Stream }}
+      Consumer: {{ .Consumer }}`)
+	if err != nil {
+		panic(err)
+	}
+}

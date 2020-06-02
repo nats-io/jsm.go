@@ -27,3 +27,40 @@ type APIAuditClientV1 struct {
 	Language string `json:"lang,omitempty"`
 	Version  string `json:"version,omitempty"`
 }
+
+func init() {
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.api_audit", `{{ .Time | ShortTime }} [JS API] {{ .Subject }}{{ if .Client.User }} {{ .Client.User}} @{{ end }}{{ if .Client.Account }} {{ .Client.Account }}{{ end }}`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = event.RegisterTextExtendedTemplate("io.nats.jetstream.advisory.v1.api_audit", `
+[{{ .Time | ShortTime }}] [{{ .ID }}] JetStream API Access
+
+      Server: {{ .Server }}
+     Subject: {{ .Subject }}
+      Client:
+{{- if .Client.User }}
+               User: {{ .Client.User }} Account: {{ .Client.Account }}
+{{- end }}
+               Host: {{ HostPort .Client.Host .Client.Port }}
+                CID: {{ .Client.CID }}
+{{- if .Client.Name }}
+               Name: {{ .Client.Name }}
+{{- end }}
+           Language: {{ .Client.Language }} {{ .Client.Version }}
+
+    Request:
+{{ if .Request }}
+{{ .Request | LeftPad 10 }}
+{{- else }}
+          Empty Request
+{{- end }}
+
+    Response:
+
+{{ .Response | LeftPad 10 }}`)
+	if err != nil {
+		panic(err)
+	}
+}

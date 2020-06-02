@@ -23,3 +23,21 @@ type JSStreamActionAdvisoryV1 struct {
 	Action   ActionAdvisoryTypeV1 `json:"action"`
 	Template string               `json:"template,omitempty"`
 }
+
+func init() {
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.stream_action", `{{ .Time | ShortTime }} [Stream {{ .Action | ToString | TitleString }}] {{ .Stream }}`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = event.RegisterTextExtendedTemplate("io.nats.jetstream.advisory.v1.stream_action", `
+[{{ .Time | ShortTime }}] [{{ .ID }}] Stream {{ .Action | ToString | TitleString }} Action
+
+        Stream: {{ .Stream }}
+{{- if .Template }}
+      Template: {{ .Template }}
+{{- end }}`)
+	if err != nil {
+		panic(err)
+	}
+}

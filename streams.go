@@ -16,6 +16,7 @@ package jsm
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nats-io/jsm.go/api"
@@ -55,7 +56,9 @@ type StreamOption func(o *StreamConfig) error
 
 // Stream represents a JetStream Stream
 type Stream struct {
-	cfg *StreamConfig
+	cfg      *StreamConfig
+	lastInfo *api.StreamInfo
+	sync.Mutex
 }
 
 type StreamConfig struct {
@@ -365,8 +368,41 @@ func (s *Stream) EachConsumer(cb func(consumer *Consumer)) error {
 	return nil
 }
 
+// LatestInformation returns the most recently fetched stream information
+func (s *Stream) LatestInformation() (info *api.StreamInfo, err error) {
+	s.Lock()
+	nfo := s.lastInfo
+	s.Unlock()
+
+	if nfo != nil {
+		return nfo, nil
+	}
+
+	return s.Information()
+}
+
+// Information loads the current stream information
 func (s *Stream) Information() (info *api.StreamInfo, err error) {
-	return loadStreamInfo(s.Name(), s.cfg.conn)
+	info, err = loadStreamInfo(s.Name(), s.cfg.conn)
+	if err != nil {
+		return nil, err
+	}
+
+	s.Lock()
+	s.lastInfo = info
+	s.Unlock()
+
+	return info, nil
+}
+
+// LatestState returns the most recently fetched stream state
+func (s *Stream) LatestState() (state api.StreamState, err error) {
+	nfo, err := s.LatestInformation()
+	if err != nil {
+		return api.StreamState{}, err
+	}
+
+	return nfo.State, nil
 }
 
 // State retrieves the Stream State
@@ -375,6 +411,10 @@ func (s *Stream) State() (stats api.StreamState, err error) {
 	if err != nil {
 		return stats, err
 	}
+
+	s.Lock()
+	s.lastInfo = info
+	s.Unlock()
 
 	return info.State, nil
 }

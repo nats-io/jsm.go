@@ -277,7 +277,7 @@ func Streams(opts ...RequestOption) (streams []*Stream, err error) {
 				ropts:        opts,
 			}
 
-			streams = append(streams, streamFromConfig(cfg))
+			streams = append(streams, streamFromConfig(cfg, s))
 		}
 
 		return nil

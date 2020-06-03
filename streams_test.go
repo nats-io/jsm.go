@@ -309,7 +309,30 @@ func TestStream_Information(t *testing.T) {
 	}
 }
 
-func TestStream_Statistics(t *testing.T) {
+func TestStream_LatestInformation(t *testing.T) {
+	srv, nc := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	stream, err := jsm.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+
+	info, err := stream.Information()
+	checkErr(t, err, "info failed")
+
+	if info.Config.Name != "q1" {
+		t.Fatalf("expected q1 got %s", info.Config.Name)
+	}
+
+	srv.Shutdown()
+	newinfo, err := stream.LatestInformation()
+	checkErr(t, err, "latest info failed")
+	if info != newinfo {
+		t.Fatalf("Latest information is not the same")
+	}
+}
+
+func TestStream_State(t *testing.T) {
 	srv, nc := startJSServer(t)
 	defer srv.Shutdown()
 	defer nc.Flush()
@@ -329,6 +352,28 @@ func TestStream_Statistics(t *testing.T) {
 	checkErr(t, err, "stats failed")
 	if stats.Msgs != 1 {
 		t.Fatalf("expected 1 messages got %d", stats.Msgs)
+	}
+}
+
+func TestStream_LatestState(t *testing.T) {
+	srv, nc := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
+	checkErr(t, err, "create failed")
+
+	state, err := stream.State()
+	checkErr(t, err, "state failed")
+	if state.Msgs != 0 {
+		t.Fatalf("expected 0 messages got %d", state.Msgs)
+	}
+
+	srv.Shutdown()
+	newstate, err := stream.LatestState()
+	checkErr(t, err, "state failed")
+	if newstate != state {
+		t.Fatalf("latest state is not the same as last")
 	}
 }
 

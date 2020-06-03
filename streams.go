@@ -90,11 +90,16 @@ func NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOpti
 
 	cfg.StreamConfig = resp.Config
 
-	return streamFromConfig(cfg), nil
+	return streamFromConfig(cfg, resp.StreamInfo), nil
 }
 
-func streamFromConfig(cfg *StreamConfig) (stream *Stream) {
-	return &Stream{cfg: cfg}
+func streamFromConfig(cfg *StreamConfig, info *api.StreamInfo) (stream *Stream) {
+	s := &Stream{cfg: cfg}
+	if info != nil {
+		s.lastInfo = info
+	}
+
+	return s
 }
 
 // LoadOrNewStreamFromDefault loads an existing stream or creates a new one matching opts and template
@@ -166,7 +171,10 @@ func loadConfigForStream(stream *Stream) (err error) {
 		return err
 	}
 
+	stream.Lock()
 	stream.cfg.StreamConfig = info.Config
+	stream.lastInfo = info
+	stream.Unlock()
 
 	return nil
 }

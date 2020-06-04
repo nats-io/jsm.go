@@ -338,7 +338,7 @@ func (sp *snapshotProgress) trackBps(ctx context.Context) {
 	}
 }
 
-func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, opts ...SnapshotOption) (RestoreProgress, error) {
+func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, opts ...SnapshotOption) (RestoreProgress, *api.StreamState, error) {
 	sopts := &snapshotOptions{
 		file:    file,
 		conn:    dfltreqoptions(),
@@ -351,19 +351,19 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 
 	fstat, err := os.Stat(file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	inf, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer inf.Close()
 
 	var resp api.JSApiStreamRestoreResponse
 	err = jsonRequest(fmt.Sprintf(api.JSApiStreamRestoreT, stream), map[string]string{}, &resp, sopts.conn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	progress := &snapshotProgress{
@@ -392,9 +392,11 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 
 	nc := sopts.conn.nc
 	var chunk [512 * 1024]byte
+	var cresp *nats.Msg
+
 	for {
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		}
 
 		n, err := inf.Read(chunk[:])
@@ -402,12 +404,15 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		err = nc.Publish(resp.DeliverSubject, chunk[:n])
+		cresp, err = nc.Request(resp.DeliverSubject, chunk[:n], sopts.conn.timeout)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if IsErrorResponse(cresp) {
+			return nil, nil, fmt.Errorf("restore failed: %q", cresp.Data)
 		}
 
 		if sopts.debug && progress.chunksSent > 0 && progress.chunksSent%notifyInterval == 0 {
@@ -421,26 +426,38 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 
 		progress.notify()
 	}
-	err = nc.Flush()
-	if err != nil {
-		return nil, err
-	}
 
 	if sopts.debug {
-		log.Printf("Sent %d chunks", progress.chunksSent)
+		log.Printf("Sent %d chunks, server will now restore the snapshot, this might take a long time", progress.chunksSent)
 	}
 
-	err = nc.Publish(resp.DeliverSubject, nil)
+	// very long timeout as the server is doing the restore here and might take any mount of time
+	cresp, err = nc.Request(resp.DeliverSubject, nil, time.Hour)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	if IsErrorResponse(cresp) {
+		return nil, nil, fmt.Errorf("restore failed: %q", cresp.Data)
 	}
 
-	err = nc.Flush()
+	kind, finalr, err := api.ParseMessage(cresp.Data)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return progress, nil
+	if kind != "io.nats.jetstream.api.v1.stream_create_response" {
+		return nil, nil, fmt.Errorf("invalid final response, expected a io.nats.jetstream.api.v1.stream_create_response message but got %q", kind)
+	}
+
+	createResp, ok := finalr.(*api.JSApiStreamCreateResponse)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid final response type")
+	}
+	if createResp.IsError() {
+		return nil, nil, createResp.ToError()
+	}
+
+	return progress, &createResp.State, nil
 }
 
 // SnapshotToFile creates a backup into gzipped tar file

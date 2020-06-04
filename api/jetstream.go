@@ -251,5 +251,5 @@ func (r JSApiResponse) ToError() error {
 
 // IsError determines if a standard JetStream API response is a error
 func (r JSApiResponse) IsError() bool {
-	return r.Error == nil
+	return r.Error != nil
 }

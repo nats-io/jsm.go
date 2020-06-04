@@ -20,6 +20,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/nats-io/jsm.go"
 )
@@ -52,8 +53,15 @@ func TestStream_Snapshot(t *testing.T) {
 
 	checkErr(t, stream.Delete(), "delete failed")
 
-	_, err = jsm.RestoreSnapshotFromFile(context.Background(), "q1", tf.Name(), jsm.SnapshotDebug())
+	_, postRestoreState, err := jsm.RestoreSnapshotFromFile(context.Background(), "q1", tf.Name(), jsm.SnapshotDebug(), jsm.SnapshotConnection(jsm.WithTimeout(5*time.Second)))
 	checkErr(t, err, "restore failed")
+	if postRestoreState == nil {
+		t.Fatalf("got a nil post restore state")
+	}
+
+	if !reflect.DeepEqual(preState, *postRestoreState) {
+		t.Fatalf("pre state does not match post restore state")
+	}
 
 	stream, err = jsm.LoadStream("q1")
 	checkErr(t, err, "load failed")

@@ -195,6 +195,7 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json", St: "StreamTemplateConfig"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/account_info_response.json", St: "JSApiAccountInfoResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_create_request.json", St: "JSApiConsumerCreateRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse"},

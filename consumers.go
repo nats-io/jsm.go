@@ -70,7 +70,7 @@ func NewConsumerFromDefault(stream string, dflt api.ConsumerConfig, opts ...Cons
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}
 
-	req := api.CreateConsumerRequest{
+	req := api.JSApiConsumerCreateRequest{
 		Stream: stream,
 		Config: cfg.ConsumerConfig,
 	}
@@ -95,7 +95,7 @@ func NewConsumerFromDefault(stream string, dflt api.ConsumerConfig, opts ...Cons
 	return LoadConsumer(stream, createdInfo.Name, cfg.ropts...)
 }
 
-func createDurableConsumer(req api.CreateConsumerRequest, opts *reqoptions) (info *api.ConsumerInfo, err error) {
+func createDurableConsumer(req api.JSApiConsumerCreateRequest, opts *reqoptions) (info *api.ConsumerInfo, err error) {
 	var resp api.JSApiConsumerCreateResponse
 	err = jsonRequest(fmt.Sprintf(api.JSApiDurableCreateT, req.Stream, req.Config.Durable), req, &resp, opts)
 	if err != nil {
@@ -105,7 +105,7 @@ func createDurableConsumer(req api.CreateConsumerRequest, opts *reqoptions) (inf
 	return resp.ConsumerInfo, nil
 }
 
-func createEphemeralConsumer(req api.CreateConsumerRequest, opts *reqoptions) (info *api.ConsumerInfo, err error) {
+func createEphemeralConsumer(req api.JSApiConsumerCreateRequest, opts *reqoptions) (info *api.ConsumerInfo, err error) {
 	var resp api.JSApiConsumerCreateResponse
 	err = jsonRequest(fmt.Sprintf(api.JSApiConsumerCreateT, req.Stream), req, &resp, opts)
 	if err != nil {

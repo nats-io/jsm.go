@@ -37,6 +37,12 @@ type JSApiConsumerDeleteResponse struct {
 	Success bool `json:"success,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.consumer_create_request
+type JSApiConsumerCreateRequest struct {
+	Stream string         `json:"stream_name"`
+	Config ConsumerConfig `json:"config"`
+}
+
 // io.nats.jetstream.api.v1.consumer_create_response
 type JSApiConsumerCreateResponse struct {
 	JSApiResponse
@@ -248,11 +254,6 @@ type ConsumerConfig struct {
 	FilterSubject   string        `json:"filter_subject,omitempty"`
 	ReplayPolicy    ReplayPolicy  `json:"replay_policy"`
 	SampleFrequency string        `json:"sample_freq,omitempty"`
-}
-
-type CreateConsumerRequest struct {
-	Stream string         `json:"stream_name"`
-	Config ConsumerConfig `json:"config"`
 }
 
 type SequencePair struct {

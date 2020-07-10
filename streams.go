@@ -517,3 +517,4 @@ func (s *Stream) Storage() api.StorageType        { return s.cfg.Storage }
 func (s *Stream) Replicas() int                   { return s.cfg.Replicas }
 func (s *Stream) NoAck() bool                     { return s.cfg.NoAck }
 func (s *Stream) Template() string                { return s.cfg.Template }
+func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }

@@ -294,6 +294,13 @@ func DiscardOld() StreamOption {
 	}
 }
 
+func DuplicateWindow(d time.Duration) StreamOption {
+	return func(o *StreamConfig) error {
+		o.Duplicates = d
+		return nil
+	}
+}
+
 func StreamConnection(opts ...RequestOption) StreamOption {
 	return func(o *StreamConfig) error {
 		for _, opt := range opts {

@@ -161,6 +161,7 @@ type StreamConfig struct {
 	Replicas     int             `json:"num_replicas"`
 	NoAck        bool            `json:"no_ack,omitempty"`
 	Template     string          `json:"template_owner,omitempty"`
+	Duplicates   time.Duration   `json:"duplicate_window,omitempty"`
 }
 
 type StreamInfo struct {

@@ -14,8 +14,12 @@
 package jsm_test
 
 import (
+	"fmt"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
@@ -396,6 +400,28 @@ func TestStream_Delete(t *testing.T) {
 	}
 }
 
+func TestStream_Dedupe(t *testing.T) {
+	srv, nc := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
+	checkErr(t, err, "create failed")
+
+	for i := 0; i < 4; i++ {
+		m := nats.NewMsg(stream.Subjects()[0])
+		m.Data = []byte(fmt.Sprintf("message %d", i))
+		m.Header.Add("Msg-Id", strconv.Itoa(i%2))
+		nc.PublishMsg(m)
+	}
+
+	stats, err := stream.State()
+	checkErr(t, err, "stats failed")
+	if stats.Msgs != 2 {
+		t.Fatalf("expected 2 messages got %d", stats.Msgs)
+	}
+}
+
 func TestStream_Purge(t *testing.T) {
 	srv, nc := startJSServer(t)
 	defer srv.Shutdown()
@@ -404,12 +430,17 @@ func TestStream_Purge(t *testing.T) {
 	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
-	nc.Publish(stream.Subjects()[0], []byte("message 1"))
+	for i := 0; i < 4; i++ {
+		m := nats.NewMsg(stream.Subjects()[0])
+		m.Data = []byte(fmt.Sprintf("message %d", i))
+		m.Header.Add("Msg-Id", strconv.Itoa(i))
+		nc.PublishMsg(m)
+	}
 
 	stats, err := stream.State()
 	checkErr(t, err, "stats failed")
-	if stats.Msgs != 1 {
-		t.Fatalf("expected 1 messages got %d", stats.Msgs)
+	if stats.Msgs != 4 {
+		t.Fatalf("expected 4 messages got %d", stats.Msgs)
 	}
 
 	err = stream.Purge()
@@ -612,5 +643,14 @@ func TestWorkQueueRetention(t *testing.T) {
 	checkErr(t, err, "failed")
 	if cfg.Retention != api.WorkQueuePolicy {
 		t.Fatalf("expected WorkQueuePolicy")
+	}
+}
+
+func TestDuplicateWindow(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.DuplicateWindow(time.Hour)(cfg)
+	checkErr(t, err, "failed")
+	if cfg.Duplicates != time.Hour {
+		t.Fatalf("expected a 1 hour windows got %v", cfg.Duplicates)
 	}
 }

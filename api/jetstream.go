@@ -183,7 +183,7 @@ func (i JSApiIterableResponse) ItemsTotal() int  { return i.Total }
 func (i JSApiIterableResponse) ItemsOffset() int { return i.Offset }
 func (i JSApiIterableResponse) ItemsLimit() int  { return i.Limit }
 func (i JSApiIterableResponse) LastPage() bool {
-	return (i.Offset+1)*i.Limit >= i.Total
+	return i.Offset+i.Limit >= i.Total
 }
 
 // io.nats.jetstream.api.v1.account_info_response

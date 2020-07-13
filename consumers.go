@@ -484,9 +484,7 @@ func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (
 func NextMsg(stream string, consumer string, opts ...RequestOption) (msgs *nats.Msg, err error) {
 	ropts, err := newreqoptions(opts...)
 	if err != nil {
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	s, err := NextSubject(stream, consumer)

@@ -70,6 +70,10 @@ type StreamConfig struct {
 
 // NewStreamFromDefault creates a new stream based on a supplied template and options
 func NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOption) (stream *Stream, err error) {
+	if !IsValidName(name) {
+		return nil, fmt.Errorf("%q is not a valid stream name", name)
+	}
+
 	cfg, err := NewStreamConfiguration(dflt, opts...)
 	if err != nil {
 		return nil, err
@@ -104,6 +108,10 @@ func streamFromConfig(cfg *StreamConfig, info *api.StreamInfo) (stream *Stream) 
 
 // LoadOrNewStreamFromDefault loads an existing stream or creates a new one matching opts and template
 func LoadOrNewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOption) (stream *Stream, err error) {
+	if !IsValidName(name) {
+		return nil, fmt.Errorf("%q is not a valid stream name", name)
+	}
+
 	cfg, err := NewStreamConfiguration(DefaultStream, opts...)
 	if err != nil {
 		return nil, err
@@ -129,6 +137,10 @@ func LoadOrNewStream(name string, opts ...StreamOption) (stream *Stream, err err
 
 // LoadStream loads a stream by name
 func LoadStream(name string, opts ...RequestOption) (stream *Stream, err error) {
+	if !IsValidName(name) {
+		return nil, fmt.Errorf("%q is not a valid stream name", name)
+	}
+
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err

@@ -285,3 +285,16 @@ func TestIsKnownStreamTemplate(t *testing.T) {
 		t.Fatalf("did not find orders_templ when it should have")
 	}
 }
+
+func TestIsValidName(t *testing.T) {
+	if jsm.IsValidName("") {
+		t.Fatalf("did not detect empty string as invalid")
+	}
+
+	for _, c := range []string{".", ">", "*"} {
+		tc := "x" + c + "x"
+		if jsm.IsValidName(tc) {
+			t.Fatalf("did not detect %q as invalid", tc)
+		}
+	}
+}

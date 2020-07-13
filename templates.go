@@ -72,6 +72,10 @@ func LoadOrNewStreamTemplate(name string, maxStreams uint32, config api.StreamCo
 
 // LoadStreamTemplate loads a given stream template from JetStream
 func LoadStreamTemplate(name string, opts ...RequestOption) (template *StreamTemplate, err error) {
+	if !IsValidName(name) {
+		return nil, fmt.Errorf("%q is not a valid stream template name", name)
+	}
+
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err

@@ -60,6 +60,10 @@ type ConsumerCfg struct {
 
 // NewConsumerFromDefault creates a new consumer based on a template config that gets modified by opts
 func NewConsumerFromDefault(stream string, dflt api.ConsumerConfig, opts ...ConsumerOption) (consumer *Consumer, err error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
 	cfg, err := NewConsumerConfiguration(dflt, opts...)
 	if err != nil {
 		return nil, err
@@ -117,6 +121,10 @@ func createEphemeralConsumer(req api.JSApiConsumerCreateRequest, opts *reqoption
 
 // NewConsumer creates a consumer based on DefaultConsumer modified by opts
 func NewConsumer(stream string, opts ...ConsumerOption) (consumer *Consumer, err error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
 	return NewConsumerFromDefault(stream, DefaultConsumer, opts...)
 }
 
@@ -127,6 +135,14 @@ func LoadOrNewConsumer(stream string, name string, opts ...ConsumerOption) (cons
 
 // LoadOrNewConsumerFromDefault loads a consumer by name if known else creates a new one with these properties based on template
 func LoadOrNewConsumerFromDefault(stream string, name string, template api.ConsumerConfig, opts ...ConsumerOption) (consumer *Consumer, err error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
+	if !IsValidName(name) {
+		return nil, fmt.Errorf("%q is not a valid consumer name", name)
+	}
+
 	cfg, err := NewConsumerConfiguration(template, opts...)
 	if err != nil {
 		return nil, err
@@ -142,6 +158,14 @@ func LoadOrNewConsumerFromDefault(stream string, name string, template api.Consu
 
 // LoadConsumer loads a consumer by name
 func LoadConsumer(stream string, name string, opts ...RequestOption) (consumer *Consumer, err error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
+	if !IsValidName(name) {
+		return nil, fmt.Errorf("%q is not a valid consumer name", name)
+	}
+
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
@@ -212,6 +236,10 @@ func DeliverySubject(s string) ConsumerOption {
 
 func DurableName(s string) ConsumerOption {
 	return func(o *ConsumerCfg) error {
+		if !IsValidName(s) {
+			return fmt.Errorf("%q is not a valid consumer name", s)
+		}
+
 		o.ConsumerConfig.Durable = s
 		return nil
 	}
@@ -388,12 +416,11 @@ func (c *Consumer) NextSubject() string {
 
 // NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
 func NextSubject(stream string, consumer string) (string, error) {
-	if stream == "" {
-		return "", fmt.Errorf("stream name can not be empty string")
+	if !IsValidName(stream) {
+		return "", fmt.Errorf("%q is not a valid stream name", stream)
 	}
-
-	if consumer == "" {
-		return "", fmt.Errorf("consumer name can not be empty string")
+	if !IsValidName(consumer) {
+		return "", fmt.Errorf("%q is not a valid consumer name", consumer)
 	}
 
 	return fmt.Sprintf(api.JSApiRequestNextT, stream, consumer), nil

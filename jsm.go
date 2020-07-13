@@ -318,6 +318,10 @@ func StreamNames(opts ...RequestOption) (names []string, err error) {
 
 // StreamNames is a sorted list of all known consumers within a stream
 func ConsumerNames(stream string, opts ...RequestOption) (names []string, err error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
@@ -372,6 +376,10 @@ func StreamTemplateNames(opts ...RequestOption) (templates []string, err error) 
 
 // Consumers is a sorted list of all known Consumers within a Stream
 func Consumers(stream string, opts ...RequestOption) (consumers []*Consumer, err error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
 	conn, err := newreqoptions(opts...)
 	if err != nil {
 		return nil, err
@@ -567,4 +575,13 @@ func request(subj string, data []byte, opts *reqoptions) (res *nats.Msg, err err
 	}
 
 	return res, ParseErrorResponse(res)
+}
+
+// IsValidName verifies if n is a valid stream, template or consumer name
+func IsValidName(n string) bool {
+	if n == "" {
+		return false
+	}
+
+	return !strings.ContainsAny(n, ">*. ")
 }

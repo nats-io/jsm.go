@@ -483,7 +483,7 @@ func iterableRequest(subj string, req apiIterableRequest, response apiIterableRe
 			break
 		}
 
-		offset = offset * response.ItemsLimit()
+		offset += response.ItemsLimit()
 	}
 
 	return nil

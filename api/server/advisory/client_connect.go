@@ -37,9 +37,7 @@ func init() {
           Name: {{ .Client.Name }}
 {{- end }}
        Account: {{ .Client.Account }}
-{{- if .Client.Lang }}
-      Language: {{ .Client.Lang }} {{ .Client.Version }}
-{{- end }}
+       Library: {{ with .Client.Version }}version={{ . }} {{ end }}{{ with .Client.Lang }}language={{ . }}{{ else }}language-unknown{{ end }}
 {{- if .Client.Host }}
           Host: {{ .Client.Host }}
 {{- end }}`)

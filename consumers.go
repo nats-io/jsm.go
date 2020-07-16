@@ -446,6 +446,7 @@ func (c *Consumer) MetricSubject() string {
 }
 
 // Subscribe see nats.Subscribe
+// Deprecated: use core nats feature
 func (c *Consumer) Subscribe(h func(*nats.Msg)) (sub *nats.Subscription, err error) {
 	if !c.IsPushMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
@@ -455,6 +456,7 @@ func (c *Consumer) Subscribe(h func(*nats.Msg)) (sub *nats.Subscription, err err
 }
 
 // ChanSubscribe see nats.ChangSubscribe
+// Deprecated: use core nats feature
 func (c *Consumer) ChanSubscribe(ch chan *nats.Msg) (sub *nats.Subscription, err error) {
 	if !c.IsPushMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
@@ -464,6 +466,7 @@ func (c *Consumer) ChanSubscribe(ch chan *nats.Msg) (sub *nats.Subscription, err
 }
 
 // ChanQueueSubscribe see nats.ChanQueueSubscribe
+// Deprecated: use core nats feature
 func (c *Consumer) ChanQueueSubscribe(group string, ch chan *nats.Msg) (sub *nats.Subscription, err error) {
 	if !c.IsPushMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
@@ -473,6 +476,7 @@ func (c *Consumer) ChanQueueSubscribe(group string, ch chan *nats.Msg) (sub *nat
 }
 
 // SubscribeSync see nats.SubscribeSync
+// Deprecated: use core nats feature
 func (c *Consumer) SubscribeSync() (sub *nats.Subscription, err error) {
 	if !c.IsPushMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
@@ -482,6 +486,7 @@ func (c *Consumer) SubscribeSync() (sub *nats.Subscription, err error) {
 }
 
 // QueueSubscribe see nats.QueueSubscribe
+// Deprecated: use core nats feature
 func (c *Consumer) QueueSubscribe(queue string, h func(*nats.Msg)) (sub *nats.Subscription, err error) {
 	if !c.IsPushMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
@@ -491,6 +496,7 @@ func (c *Consumer) QueueSubscribe(queue string, h func(*nats.Msg)) (sub *nats.Su
 }
 
 // QueueSubscribeSync see nats.QueueSubscribeSync
+// Deprecated: use core nats feature
 func (c *Consumer) QueueSubscribeSync(queue string) (sub *nats.Subscription, err error) {
 	if !c.IsPushMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)
@@ -500,6 +506,7 @@ func (c *Consumer) QueueSubscribeSync(queue string) (sub *nats.Subscription, err
 }
 
 // QueueSubscribeSyncWithChan see nats.QueueSubscribeSyncWithChan
+// Deprecated: use core nats feature
 func (c *Consumer) QueueSubscribeSyncWithChan(queue string, ch chan *nats.Msg) (sub *nats.Subscription, err error) {
 	if !c.IsPushMode() {
 		return nil, fmt.Errorf("consumer %s > %s is not push-based", c.stream, c.name)

@@ -725,3 +725,11 @@ func TestStartWithNextReceived(t *testing.T) {
 		t.Fatal("expected DeliverNew")
 	}
 }
+
+func TestRateLimitBitPerSecond(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.RateLimitBitsPerSecond(10)(cfg)
+	if cfg.RateLimit != 10 {
+		t.Fatal("expected RateLimit==10")
+	}
+}

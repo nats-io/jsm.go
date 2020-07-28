@@ -254,6 +254,7 @@ type ConsumerConfig struct {
 	FilterSubject   string        `json:"filter_subject,omitempty"`
 	ReplayPolicy    ReplayPolicy  `json:"replay_policy"`
 	SampleFrequency string        `json:"sample_freq,omitempty"`
+	RateLimit       uint64        `json:"rate_limit_bps,omitempty"`
 }
 
 type SequencePair struct {

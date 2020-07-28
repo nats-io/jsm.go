@@ -379,6 +379,13 @@ func SamplePercent(i int) ConsumerOption {
 	}
 }
 
+func RateLimitBitsPerSecond(bps uint64) ConsumerOption {
+	return func(o *ConsumerCfg) error {
+		o.ConsumerConfig.RateLimit = bps
+		return nil
+	}
+}
+
 func ConsumerConnection(opts ...RequestOption) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		for _, opt := range opts {
@@ -623,6 +630,7 @@ func (c *Consumer) MaxDeliver() int                  { return c.cfg.MaxDeliver }
 func (c *Consumer) FilterSubject() string            { return c.cfg.FilterSubject }
 func (c *Consumer) ReplayPolicy() api.ReplayPolicy   { return c.cfg.ReplayPolicy }
 func (c *Consumer) SampleFrequency() string          { return c.cfg.SampleFrequency }
+func (c *Consumer) RateLimit() uint64                { return c.cfg.RateLimit }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {
 		return time.Time{}

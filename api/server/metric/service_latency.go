@@ -65,54 +65,36 @@ func init() {
 {{ with .Requestor }}
    Requestor:
      Account: {{ .Account }}
-{{ if .Start }}
+         RTT: {{ .RTT }}
+{{- if .User }}
        Start: {{ .Start }}
-{{- end }}
-{{ if .User }}
         User: {{ .User }}
-{{- end }}
-{{- if .Name }}
         Name: {{ .Name }}
-{{- end }}
-{{- if .Lang }}
     Language: {{ .Lang }}
-{{- end }}
-{{- if .Version }}
      Version: {{ .Version }}
 {{- end }}
-
 {{- if .CID }}
           IP: {{ .IP }}
          CID: {{ .CID }}
       Server: {{ .Server }}
 {{- end }}
-         RTT: {{ .RTT }}
 {{- end }}
 {{ with .Responder }}
    Responder:
      Account: {{ .Account }}
-{{ if .Start }}
+         RTT: {{ .RTT }}
+{{- if .User }}
        Start: {{ .Start }}
-{{- end }}
-{{ if .User }}
         User: {{ .User }}
-{{- end }}
-{{- if .Name }}
         Name: {{ .Name }}
-{{- end }}
-{{- if .Lang }}
     Language: {{ .Lang }}
-{{- end }}
-{{- if .Version }}
      Version: {{ .Version }}
 {{- end }}
-
 {{- if .CID }}
           IP: {{ .IP }}
          CID: {{ .CID }}
       Server: {{ .Server }}
 {{- end }}
-         RTT: {{ .RTT }}
 {{- end }}`)
 	if err != nil {
 		panic(err)

@@ -34,14 +34,14 @@ func init() {
          Bytes: {{ .Bytes | IBytes }}
         Client:
 {{- if .Client.User }}
-               User: {{ .Client.User }} Account: {{ .Client.Account }}
+                      User: {{ .Client.User }} Account: {{ .Client.Account }}
 {{- end }}
-               Host: {{ HostPort .Client.Host .Client.Port }}
-                CID: {{ .Client.CID }}
+                      Host: {{ HostPort .Client.Host .Client.Port }}
+                       CID: {{ .Client.CID }}
 {{- if .Client.Name }}
-               Name: {{ .Client.Name }}
+                      Name: {{ .Client.Name }}
 {{- end }}
-           Language: {{ .Client.Language }} {{ .Client.Version }}
+           Library Version: {{ .Client.Version }}  Language: {{ with .Client.Lang }}{{ . }}{{ else }}Unknown{{ end }}
 `)
 	if err != nil {
 		panic(err)

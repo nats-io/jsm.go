@@ -35,17 +35,17 @@ func init() {
 {{- end }}
 
    Client:
-            ID: {{ .Client.ID }}
+                 ID: {{ .Client.ID }}
 {{- if .Client.User }}
-          User: {{ .Client.User }}
+               User: {{ .Client.User }}
 {{- end }}
 {{- if .Client.Name }}
-          Name: {{ .Client.Name }}
+               Name: {{ .Client.Name }}
 {{- end }}
-       Account: {{ .Client.Account }}
-       Library Version: {{ .Client.Version }}  Language: {{ with .Client.Lang }}{{ . }}{{ else }}Unknown{{ end }}
+            Account: {{ .Client.Account }}
+    Library Version: {{ .Client.Version }}  Language: {{ with .Client.Lang }}{{ . }}{{ else }}Unknown{{ end }}
 {{- if .Client.Host }}
-          Host: {{ .Client.Host }}
+               Host: {{ .Client.Host }}
 {{- end }}
 
    Stats:

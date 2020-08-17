@@ -45,13 +45,6 @@ type snapshotOptions struct {
 
 type SnapshotOption func(o *snapshotOptions)
 
-// SnapshotChunkSize sets the size of data chunks to retrieve
-func SnapshotChunkSize(sz int) SnapshotOption {
-	return func(o *snapshotOptions) {
-		o.chunkSz = sz
-	}
-}
-
 // SnapshotConsumers includes consumer configuration and state in backups
 func SnapshotConsumers() SnapshotOption {
 	return func(o *snapshotOptions) {

@@ -170,6 +170,14 @@ func (p ReplayPolicy) MarshalJSON() ([]byte, error) {
 	}
 }
 
+var (
+	AckAck      = []byte("+ACK")
+	AckNak      = []byte("-NAK")
+	AckProgress = []byte("+WPI")
+	AckNext     = []byte("+NXT")
+	AckTerm     = []byte("+TERM")
+)
+
 type DeliverPolicy int
 
 const (

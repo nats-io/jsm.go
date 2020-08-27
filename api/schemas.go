@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -63,6 +65,29 @@ type schemaDetector struct {
 // The logic here is currently quite naive while we learn what works best
 func IsNatsSchemaType(schemaType string) bool {
 	return strings.HasPrefix(schemaType, "io.nats.")
+}
+
+// SchemaSearch searches all known schemas using a regular expression f
+func SchemaSearch(f string) ([]string, error) {
+	if f == "" {
+		f = "."
+	}
+
+	r, err := regexp.Compile(f)
+	if err != nil {
+		return nil, err
+	}
+
+	var found []string
+	for s := range schemaTypes {
+		if r.MatchString(s) {
+			found = append(found, s)
+		}
+	}
+
+	sort.Strings(found)
+
+	return found, nil
 }
 
 // SchemaURL parses a typed message m and determines a http address for the JSON schema describing it rooted in SchemasRepo

@@ -390,3 +390,21 @@ func TestSchemaURLForEvent(t *testing.T) {
 		t.Fatalf("invalid url: %v", u.String())
 	}
 }
+
+func TestSchemaSearch(t *testing.T) {
+	found, err := SchemaSearch("")
+	checkErr(t, err, "search failed")
+	if len(found) != len(schemaTypes) {
+		t.Fatalf("Expected %d matched got %d", len(schemaTypes), len(found))
+	}
+
+	found, err = SchemaSearch("consumer_create")
+	checkErr(t, err, "search failed")
+	if len(found) != 2 {
+		t.Fatalf("Expected [io.nats.jetstream.api.v1.consumer_create_request io.nats.jetstream.api.v1.consumer_create_response] got %v", found)
+	}
+
+	if found[0] != "io.nats.jetstream.api.v1.consumer_create_request" || found[1] != "io.nats.jetstream.api.v1.consumer_create_response" {
+		t.Fatalf("Expected [io.nats.jetstream.api.v1.consumer_create_request io.nats.jetstream.api.v1.consumer_create_response] got %v", found)
+	}
+}

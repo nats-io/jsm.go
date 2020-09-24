@@ -58,8 +58,12 @@ var schemaTypes = map[string]func() interface{}{
 {{- range . }}
 {{- if .ShouldAddValidator }}
 // Validate performs a JSON Schema validation of the configuration
-func (t {{ .St }}) Validate() (valid bool, errors []string) {
-	return ValidateStruct(t, t.SchemaType())
+func (t {{ .St }}) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
 }
 
 // SchemaType is the NATS schema type {{ .T }}

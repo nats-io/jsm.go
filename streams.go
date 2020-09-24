@@ -81,7 +81,7 @@ func NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOpti
 
 	cfg.Name = name
 
-	valid, errs := cfg.Validate()
+	valid, errs := cfg.Validate(structValidator())
 	if !valid {
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}

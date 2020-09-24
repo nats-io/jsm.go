@@ -45,7 +45,7 @@ func NewStreamTemplate(name string, maxStreams uint32, config api.StreamConfig, 
 		MaxStreams: maxStreams,
 	}
 
-	valid, errs := tc.Validate()
+	valid, errs := tc.Validate(structValidator())
 	if !valid {
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}

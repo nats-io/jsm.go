@@ -35,7 +35,7 @@ var timeout = 5 * time.Second
 var nc *nats.Conn
 var mu sync.Mutex
 var trace bool
-var validate bool
+var validator api.StructValidator
 
 // standard api responses with error embedded
 type jetStreamResponseError interface {
@@ -56,25 +56,11 @@ type apiIterableRequest interface {
 }
 
 // all types generated using the api/gen.go which includes all
-// the jetstream api types.  Validate() will force validate all
+// the jetstream api types.  Validate() will force validator all
 // of these on every jsonRequest
 type apiValidatable interface {
-	Validate() (valid bool, errors []string)
+	Validate(...api.StructValidator) (valid bool, errors []string)
 	SchemaType() string
-}
-
-// Connect connects to NATS and configures it to use the connection in future interactions with JetStream
-// Deprecated: Use Request Options to supply the connection
-func Connect(servers string, opts ...nats.Option) (err error) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	// needed so that interest drops are observed by JetStream to stop
-	opts = append(opts, nats.UseOldRequestStyle())
-
-	nc, err = nats.Connect(servers, opts...)
-
-	return err
 }
 
 // SetTimeout sets the timeout for requests to JetStream
@@ -86,17 +72,10 @@ func SetTimeout(t time.Duration) {
 	timeout = t
 }
 
-// Validate enables JSON Schema validation of all responses from the Server
-func Validate() {
+// Validate enables JSON Schema validation of all responses from the Server using a supplied validator, setting nil disables
+func Validate(v api.StructValidator) {
 	mu.Lock()
-	validate = true
-	mu.Unlock()
-}
-
-// NoValidate disables Validate()
-func NoValidate() {
-	mu.Lock()
-	validate = false
+	validator = v
 	mu.Unlock()
 }
 
@@ -114,16 +93,17 @@ func NoTrace() {
 	mu.Unlock()
 }
 
+func structValidator() api.StructValidator {
+	mu.Lock()
+	defer mu.Unlock()
+
+	return validator
+}
+
 func shouldTrace() bool {
 	mu.Lock()
 	defer mu.Unlock()
 	return trace
-}
-
-func shouldValidate() bool {
-	mu.Lock()
-	defer mu.Unlock()
-	return validate
 }
 
 // SetConnection sets the connection used to perform requests. Will force using old style requests.
@@ -316,7 +296,7 @@ func StreamNames(opts ...RequestOption) (names []string, err error) {
 	return names, nil
 }
 
-// StreamNames is a sorted list of all known consumers within a stream
+// ConsumerNames is a sorted list of all known consumers within a stream
 func ConsumerNames(stream string, opts ...RequestOption) (names []string, err error) {
 	if !IsValidName(stream) {
 		return nil, fmt.Errorf("%q is not a valid stream name", stream)
@@ -537,13 +517,13 @@ func jsonRequest(subj string, req interface{}, response interface{}, opts *reqop
 		return jsr.ToError()
 	}
 
-	if !opts.apiValidate {
-		return nil
+	if opts.validator == nil {
+		opts.validator = structValidator()
 	}
 
 	jv, ok := response.(apiValidatable)
 	if ok {
-		valid, errs := jv.Validate()
+		valid, errs := jv.Validate(opts.validator)
 		if valid {
 			return nil
 		}

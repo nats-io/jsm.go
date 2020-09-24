@@ -19,25 +19,27 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
+
+	"github.com/nats-io/jsm.go/api"
 )
 
 // RequestOption is a option to configure the NATS related options
 type RequestOption func(o *reqoptions)
 
 type reqoptions struct {
-	nc          *nats.Conn
-	timeout     time.Duration
-	ctx         context.Context
-	trace       bool
-	apiValidate bool
+	nc        *nats.Conn
+	timeout   time.Duration
+	ctx       context.Context
+	trace     bool
+	validator api.StructValidator
 }
 
 func dfltreqoptions() *reqoptions {
 	return &reqoptions{
-		nc:          Connection(),
-		timeout:     timeout,
-		trace:       shouldTrace(),
-		apiValidate: shouldValidate(),
+		nc:        Connection(),
+		timeout:   timeout,
+		trace:     shouldTrace(),
+		validator: nil,
 	}
 }
 
@@ -55,10 +57,10 @@ func newreqoptions(opts ...RequestOption) (*reqoptions, error) {
 	return ropts, nil
 }
 
-// WithAPIValidation validates responses sent from the NATS server against a schema
-func WithAPIValidation() RequestOption {
+// WithAPIValidation validates responses sent from the NATS server using a validator
+func WithAPIValidation(v api.StructValidator) RequestOption {
 	return func(o *reqoptions) {
-		o.apiValidate = true
+		o.validator = v
 	}
 }
 

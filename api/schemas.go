@@ -10,8 +10,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/xeipuuv/gojsonschema"
 )
 
 // SchemasRepo is the repository holding NATS Schemas
@@ -28,6 +26,11 @@ type Event interface {
 	EventSource() string
 	EventSubject() string
 	EventTemplate(kind string) (*template.Template, error)
+}
+
+// StructValidator is used to validate API structures
+type StructValidator interface {
+	ValidateStruct(data interface{}, schemaType string) (ok bool, errs []string)
 }
 
 // RenderFormat indicates the format to render templates in
@@ -153,33 +156,6 @@ func NewMessage(schemaType string) (interface{}, bool) {
 	}
 
 	return gf(), ok
-}
-
-// ValidateStruct validates data matches schemaType like io.nats.jetstream.advisory.v1.api_audit
-func ValidateStruct(data interface{}, schemaType string) (ok bool, errs []string) {
-	// other more basic types can be validated directly against their schemaType
-	s, err := Schema(schemaType)
-	if err != nil {
-		return false, []string{"unknown schema type %s", schemaType}
-	}
-
-	ls := gojsonschema.NewBytesLoader(s)
-	ld := gojsonschema.NewGoLoader(data)
-	result, err := gojsonschema.Validate(ls, ld)
-	if err != nil {
-		return false, []string{fmt.Sprintf("validation failed: %s", err)}
-	}
-
-	if result.Valid() {
-		return true, nil
-	}
-
-	errors := make([]string, len(result.Errors()))
-	for i, verr := range result.Errors() {
-		errors[i] = verr.String()
-	}
-
-	return false, errors
 }
 
 // ParseMessage parses a typed message m and returns event as for example *api.ConsumerAckMetric, all unknown

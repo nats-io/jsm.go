@@ -1,10 +1,10 @@
 ## Overview
 
-This is a library for managing and interacting with JetStream.
+This is a library for managing and interacting with the JetStream API and various other NATS APIs and event sources.
 
-This library provides API access to all the JetStream related abilities of the `nats` CLI utility.
-
-**NOTE** For general access to JetStream no special libraries are needed, the standard language specific NATS client can be used. These are optional helpers.
+This library provides API accesses to all the JetStream related abilities of the `nats` CLI utility. To support API access
+it provides a rich set of functions related to validation, documenting and detecting event types using a set of JSON 
+Schema documents. 
 
 ## Stability
 

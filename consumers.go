@@ -227,6 +227,7 @@ func loadConsumerInfo(s string, c string, opts *reqoptions) (info api.ConsumerIn
 	return *resp.ConsumerInfo, nil
 }
 
+// DeliverySubject is the subject where a Push consumer will deliver its messages
 func DeliverySubject(s string) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.DeliverSubject = s
@@ -234,6 +235,7 @@ func DeliverySubject(s string) ConsumerOption {
 	}
 }
 
+// DurableName is the name given to the consumer, when not set an ephemeral consumer is created
 func DurableName(s string) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		if !IsValidName(s) {
@@ -245,6 +247,7 @@ func DurableName(s string) ConsumerOption {
 	}
 }
 
+// StartAtSequence starts consuming messages at a specific sequence in the stream
 func StartAtSequence(s uint64) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
@@ -254,6 +257,7 @@ func StartAtSequence(s uint64) ConsumerOption {
 	}
 }
 
+// StartAtTime starts consuming messages at a specific point in time in the stream
 func StartAtTime(t time.Time) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
@@ -263,6 +267,7 @@ func StartAtTime(t time.Time) ConsumerOption {
 	}
 }
 
+// DeliverAllAvailable delivers messages starting with the first available in the stream
 func DeliverAllAvailable() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
@@ -271,6 +276,7 @@ func DeliverAllAvailable() ConsumerOption {
 	}
 }
 
+// StartWithLastReceived starts delivery at the last messages received in the stream
 func StartWithLastReceived() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
@@ -279,6 +285,7 @@ func StartWithLastReceived() ConsumerOption {
 	}
 }
 
+// StartWithNextReceived starts delivery at the next messages received in the stream
 func StartWithNextReceived() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
@@ -287,6 +294,7 @@ func StartWithNextReceived() ConsumerOption {
 	}
 }
 
+// StartAtTimeDelta starts delivering messages at a past point in time
 func StartAtTimeDelta(d time.Duration) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		resetDeliverPolicy(o)
@@ -304,6 +312,7 @@ func resetDeliverPolicy(o *ConsumerCfg) {
 	o.ConsumerConfig.OptStartTime = nil
 }
 
+// AcknowledgeNone disables message acknowledgement
 func AcknowledgeNone() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.AckPolicy = api.AckNone
@@ -311,6 +320,7 @@ func AcknowledgeNone() ConsumerOption {
 	}
 }
 
+// AcknowledgeAll enables an acknowledgement mode where acknowledging message 100 will also ack the preceding messages
 func AcknowledgeAll() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.AckPolicy = api.AckAll
@@ -318,6 +328,7 @@ func AcknowledgeAll() ConsumerOption {
 	}
 }
 
+// AcknowledgeExplicit requires that every message received be acknowledged
 func AcknowledgeExplicit() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.AckPolicy = api.AckExplicit
@@ -325,6 +336,7 @@ func AcknowledgeExplicit() ConsumerOption {
 	}
 }
 
+// AckWait sets the time a delivered message might remain unacknowledged before redelivery is attempted
 func AckWait(t time.Duration) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.AckWait = t
@@ -332,6 +344,7 @@ func AckWait(t time.Duration) ConsumerOption {
 	}
 }
 
+// MaxDeliveryAttempts is the number of times a message will be attempted to be delivered
 func MaxDeliveryAttempts(n int) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		if n == 0 {
@@ -342,6 +355,7 @@ func MaxDeliveryAttempts(n int) ConsumerOption {
 	}
 }
 
+// FilterStreamBySubject filters the messages in a wildcard stream to those matching a specific subject
 func FilterStreamBySubject(s string) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.FilterSubject = s
@@ -349,6 +363,7 @@ func FilterStreamBySubject(s string) ConsumerOption {
 	}
 }
 
+// ReplayInstantly delivers messages to the consumer as fast as possible
 func ReplayInstantly() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.ReplayPolicy = api.ReplayInstant
@@ -356,6 +371,7 @@ func ReplayInstantly() ConsumerOption {
 	}
 }
 
+// ReplayAsReceived delivers messages at the rate they were received at
 func ReplayAsReceived() ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.ReplayPolicy = api.ReplayOriginal
@@ -363,6 +379,7 @@ func ReplayAsReceived() ConsumerOption {
 	}
 }
 
+// SamplePercent configures sampling of a subset of messages expressed as a percentage
 func SamplePercent(i int) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		if i < 0 || i > 100 {
@@ -379,6 +396,7 @@ func SamplePercent(i int) ConsumerOption {
 	}
 }
 
+// RateLimitBitsPerSecond limits message delivery to a rate in bits per second
 func RateLimitBitsPerSecond(bps uint64) ConsumerOption {
 	return func(o *ConsumerCfg) error {
 		o.ConsumerConfig.RateLimit = bps

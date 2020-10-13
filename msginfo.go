@@ -56,22 +56,6 @@ func (i *MsgInfo) TimeStamp() time.Time {
 	return i.ts
 }
 
-func oldParseJSMsgMetadata(parts []string) (info *MsgInfo, err error) {
-	c := len(parts)
-
-	if c != 7 || parts[0] != "$JS" || parts[1] != "ACK" {
-		return nil, fmt.Errorf("message metadata does not appear to be an ACK")
-	}
-
-	stream := parts[c-5]
-	consumer := parts[c-4]
-	delivered, _ := strconv.Atoi(parts[c-3])
-	streamSeq, _ := strconv.ParseInt(parts[c-2], 10, 64)
-	consumerSeq, _ := strconv.ParseInt(parts[c-1], 10, 64)
-
-	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, time.Time{}}, nil
-}
-
 // ParseJSMsgMetadata parse the reply subject metadata to determine message metadata
 func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
 	if len(m.Reply) == 0 {
@@ -80,10 +64,6 @@ func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
 
 	parts := strings.Split(m.Reply, ".")
 	c := len(parts)
-
-	if c == 7 {
-		return oldParseJSMsgMetadata(parts)
-	}
 
 	if c != 8 || parts[0] != "$JS" || parts[1] != "ACK" {
 		return nil, fmt.Errorf("message metadata does not appear to be an ACK")

@@ -20,17 +20,16 @@ import (
 	"os"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/nats-io/jsm.go"
 )
 
 func TestStream_Snapshot(t *testing.T) {
-	srv, nc := startJSServer(t)
+	srv, nc, mgr := startJSServer(t)
 	defer os.RemoveAll(srv.JetStreamConfig().StoreDir)
 	defer srv.Shutdown()
 
-	stream, err := jsm.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
+	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
 	_, err = stream.NewConsumer(jsm.DurableName("c"))
@@ -53,7 +52,7 @@ func TestStream_Snapshot(t *testing.T) {
 
 	checkErr(t, stream.Delete(), "delete failed")
 
-	_, postRestoreState, err := jsm.RestoreSnapshotFromFile(context.Background(), "q1", tf.Name(), jsm.SnapshotDebug(), jsm.SnapshotConnection(jsm.WithTimeout(5*time.Second)))
+	_, postRestoreState, err := mgr.RestoreSnapshotFromFile(context.Background(), "q1", tf.Name(), jsm.SnapshotDebug())
 	checkErr(t, err, "restore failed")
 	if postRestoreState == nil {
 		t.Fatalf("got a nil post restore state")
@@ -63,7 +62,7 @@ func TestStream_Snapshot(t *testing.T) {
 		t.Fatalf("pre state does not match post restore state")
 	}
 
-	stream, err = jsm.LoadStream("q1")
+	stream, err = mgr.LoadStream("q1")
 	checkErr(t, err, "load failed")
 
 	postState, err := stream.State()

@@ -40,7 +40,6 @@ type snapshotOptions struct {
 	consumers bool
 	jsck      bool
 	chunkSz   int
-	conn      *reqoptions
 }
 
 type SnapshotOption func(o *snapshotOptions)
@@ -70,15 +69,6 @@ func SnapshotNotify(cb func(SnapshotProgress)) SnapshotOption {
 func RestoreNotify(cb func(RestoreProgress)) SnapshotOption {
 	return func(o *snapshotOptions) {
 		o.rcb = cb
-	}
-}
-
-// SnapshotConnection sets the connection properties to use during snapshot
-func SnapshotConnection(opts ...RequestOption) SnapshotOption {
-	return func(o *snapshotOptions) {
-		for _, opt := range opts {
-			opt(o.conn)
-		}
 	}
 }
 
@@ -155,6 +145,7 @@ type snapshotProgress struct {
 	bps                uint64 // Bytes per second
 	scb                func(SnapshotProgress)
 	rcb                func(RestoreProgress)
+
 	sync.Mutex
 }
 
@@ -331,10 +322,9 @@ func (sp *snapshotProgress) trackBps(ctx context.Context) {
 	}
 }
 
-func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, opts ...SnapshotOption) (RestoreProgress, *api.StreamState, error) {
+func (m *Manager) RestoreSnapshotFromFile(ctx context.Context, stream string, file string, opts ...SnapshotOption) (RestoreProgress, *api.StreamState, error) {
 	sopts := &snapshotOptions{
 		file:    file,
-		conn:    dfltreqoptions(),
 		chunkSz: 512 * 1024,
 	}
 
@@ -354,7 +344,7 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 	defer inf.Close()
 
 	var resp api.JSApiStreamRestoreResponse
-	err = jsonRequest(fmt.Sprintf(api.JSApiStreamRestoreT, stream), map[string]string{}, &resp, sopts.conn)
+	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamRestoreT, stream), map[string]string{}, &resp)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -383,7 +373,7 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 	// send initial notify to inform what to expect
 	progress.notify()
 
-	nc := sopts.conn.nc
+	nc := m.nc
 	var chunk [512 * 1024]byte
 	var cresp *nats.Msg
 
@@ -400,7 +390,7 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 			return nil, nil, err
 		}
 
-		cresp, err = nc.Request(resp.DeliverSubject, chunk[:n], sopts.conn.timeout)
+		cresp, err = nc.Request(resp.DeliverSubject, chunk[:n], m.timeout)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -457,7 +447,6 @@ func RestoreSnapshotFromFile(ctx context.Context, stream string, file string, op
 func (s *Stream) SnapshotToFile(ctx context.Context, file string, opts ...SnapshotOption) (SnapshotProgress, error) {
 	sopts := &snapshotOptions{
 		file:      file,
-		conn:      s.cfg.conn,
 		jsck:      false,
 		consumers: false,
 		chunkSz:   512 * 1024,
@@ -486,7 +475,7 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, opts ...Snapsh
 	}
 
 	var resp api.JSApiStreamSnapshotResponse
-	err = jsonRequest(fmt.Sprintf(api.JSApiStreamSnapshotT, s.Name()), req, &resp, sopts.conn)
+	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamSnapshotT, s.Name()), req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -519,7 +508,7 @@ func (s *Stream) SnapshotToFile(ctx context.Context, file string, opts ...Snapsh
 	// tell the caller we are starting and what to expect
 	progress.notify()
 
-	sub, err := sopts.conn.nc.Subscribe(ib, func(m *nats.Msg) {
+	sub, err := s.mgr.nc.Subscribe(ib, func(m *nats.Msg) {
 		if len(m.Data) == 0 {
 			m.Sub.Unsubscribe()
 			cancel()

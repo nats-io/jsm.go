@@ -300,6 +300,18 @@ func DuplicateWindow(d time.Duration) StreamOption {
 	}
 }
 
+// PageContents creates a StreamPager used to traverse the contents of the stream,
+// Close() should be called to dispose of the background consumer and resources
+func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
+	pgr := &StreamPager{}
+	err := pgr.start(s.Name(), s.mgr, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return pgr, err
+}
+
 // UpdateConfiguration updates the stream using cfg modified by opts, reloads configuration from the server post update
 func (s *Stream) UpdateConfiguration(cfg api.StreamConfig, opts ...StreamOption) error {
 	ncfg, err := NewStreamConfiguration(cfg, opts...)

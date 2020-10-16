@@ -130,7 +130,6 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 
 	select {
 	case msg := <-p.q:
-		msg.Ack()
 		p.seen++
 
 		return msg, p.seen == p.pageSize, nil
@@ -141,7 +140,6 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 
 func (p *StreamPager) createConsumer() error {
 	cops := []ConsumerOption{
-		AcknowledgeExplicit(),
 		DurableName(fmt.Sprintf("jsm_stream_pager_%d%d", os.Getpid(), time.Now().UnixNano())),
 	}
 

@@ -6,7 +6,7 @@ This package is the underlying library for the `nats` CLI, our Terraform provide
 
 **NOTE**: This package is under development, while JetStream is in Preview we make no promises about the API stability of this package.
 
-[![Go Doc](https://pkg.go.dev/badge/nats.io/jsm.go)](https://pkg.go.dev/nats.io/jsm.go)
+[![Go Doc](https://pkg.go.dev/badge/github.com/nats-io/jsm.go)](https://pkg.go.dev/github.com/nats-io/jsm.go)
 
 ## Features
 
@@ -205,7 +205,7 @@ schemaType, _ := api.SchemaTypeForMessage(m.Data)
 schema, _ := api.Schema(schemaType)
 ```
 
-Several other Schema related helpers exist to search Schemas, fine URLs and more.  See the `api` [![Reference](https://pkg.go.dev/badge/nats.io/jsm.go/api)](https://pkg.go.dev/github.com/nats-io/jsm.go/api).
+Several other Schema related helpers exist to search Schemas, fine URLs and more.  See the `api` [![Reference](https://pkg.go.dev/badge/github.com/nats.io/jsm.go/api)](https://pkg.go.dev/github.com/nats-io/jsm.go/api).
 
 ### Parsing Message Content
 

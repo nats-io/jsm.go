@@ -27,16 +27,13 @@ func init() {
 	err = event.RegisterTextExtendedTemplate("io.nats.server.advisory.v1.account_connections", `
 [{{ .Time | ShortTime }}] [{{ .ID }}] Account Status
 
-   Server: {{ .Server.Name }}
+      Account: {{ .Account }}
+       Server: {{ .Server.Name }}
 {{- if .Server.Cluster }}
-  Cluster: {{ .Server.Cluster }}
+      Cluster: {{ .Server.Cluster }}
 {{- end }}
-
-   Account:
-          Account: {{ .Account }}
-      Connections: {{ .Conns }}
-       Leaf Nodes: {{ .LeafNodes }}
-            Total: {{ .TotalConns }}
+  Connections: {{ .Conns }}
+   Leaf Nodes: {{ .LeafNodes }}
 `)
 	if err != nil {
 		panic(err)

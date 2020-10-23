@@ -102,7 +102,7 @@ type JSApiStreamDeleteResponse struct {
 type JSApiStreamPurgeResponse struct {
 	JSApiResponse
 	Success bool   `json:"success,omitempty"`
-	Purged  uint64 `json:"purged,omitempty"`
+	Purged  uint64 `json:"purged"`
 }
 
 // io.nats.jetstream.api.v1.stream_msg_get_response

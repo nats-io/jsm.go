@@ -23,31 +23,45 @@ import (
 )
 
 func TestParseJSMsgMetadata_New(t *testing.T) {
-	i, err := jsm.ParseJSMsgMetadata(&nats.Msg{Reply: "$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000"})
-	checkErr(t, err, "msg parse failed")
-
-	if i.Stream() != "ORDERS" {
-		t.Fatalf("expected ORDERS got %s", i.Stream())
+	cases := []struct {
+		meta    string
+		pending int
+	}{
+		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000", -1},
+		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10},
 	}
 
-	if i.Consumer() != "NEW" {
-		t.Fatalf("expected NEW got %s", i.Consumer())
-	}
+	for _, tc := range cases {
+		i, err := jsm.ParseJSMsgMetadata(&nats.Msg{Reply: tc.meta})
+		checkErr(t, err, "msg parse failed")
 
-	if i.Delivered() != 1 {
-		t.Fatalf("expceted 1 got %d", i.Delivered())
-	}
+		if i.Stream() != "ORDERS" {
+			t.Fatalf("expected ORDERS got %s", i.Stream())
+		}
 
-	if i.StreamSequence() != 2 {
-		t.Fatalf("expceted 2 got %d", i.StreamSequence())
-	}
+		if i.Consumer() != "NEW" {
+			t.Fatalf("expected NEW got %s", i.Consumer())
+		}
 
-	if i.ConsumerSequence() != 3 {
-		t.Fatalf("expceted 3 got %d", i.ConsumerSequence())
-	}
+		if i.Delivered() != 1 {
+			t.Fatalf("expceted 1 got %d", i.Delivered())
+		}
 
-	ts := time.Unix(0, 1587466354254920000)
-	if i.TimeStamp() != ts {
-		t.Fatalf("expceted %v got %v", ts, i.TimeStamp())
+		if i.StreamSequence() != 2 {
+			t.Fatalf("expceted 2 got %d", i.StreamSequence())
+		}
+
+		if i.ConsumerSequence() != 3 {
+			t.Fatalf("expceted 3 got %d", i.ConsumerSequence())
+		}
+
+		ts := time.Unix(0, 1587466354254920000)
+		if i.TimeStamp() != ts {
+			t.Fatalf("expceted %v got %v", ts, i.TimeStamp())
+		}
+
+		if i.Pending() != tc.pending {
+			t.Fatalf("expected -1 got %d", i.Pending())
+		}
 	}
 }

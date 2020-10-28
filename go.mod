@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/dustin/go-humanize v1.0.0
-	github.com/nats-io/nats-server/v2 v2.1.8-0.20201028143001-778aa5e6bbd1
-	github.com/nats-io/nats.go v1.10.1-0.20201021145452-94be476ad6e0
+	github.com/nats-io/nats-server/v2 v2.1.8-0.20201028153921-3e5d484fc8ae
+	github.com/nats-io/nats.go v1.10.1-0.20201028154001-fbdabc0ebcfc
 	google.golang.org/protobuf v1.24.0 // indirect
 )

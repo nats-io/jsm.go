@@ -359,17 +359,17 @@ func TestConsumer_PendingMessageCount(t *testing.T) {
 
 	m, err := durable.NextMsg()
 	checkErr(t, err, "next failed")
-	pending, err := durable.PendingMessageCount()
+	pending, err := durable.PendingAcknowledgement()
 	checkErr(t, err, "state failed")
 	if pending != 1 {
-		t.Fatal("expected pending 1 got %i", pending)
+		t.Fatalf("expected pending 1 got %d", pending)
 	}
 	m.Respond(nil)
 
-	pending, err = durable.PendingMessageCount()
+	pending, err = durable.PendingAcknowledgement()
 	checkErr(t, err, "state failed")
 	if pending != 0 {
-		t.Fatal("expected pending 0 got %i", pending)
+		t.Fatalf("expected pending 0 got %d", pending)
 	}
 }
 
@@ -384,16 +384,10 @@ func TestConsumer_RedeliveryCount(t *testing.T) {
 	_, err = durable.NextMsg()
 	checkErr(t, err, "next failed")
 
-	pending, err := durable.PendingMessageCount()
-	checkErr(t, err, "state failed")
-	if pending != 1 {
-		t.Fatal("expected pending 1 got %i", pending)
-	}
-
 	redel, err := durable.RedeliveryCount()
 	checkErr(t, err, "state failed")
 	if redel != 0 {
-		t.Fatal("expected 0 redliveries got %i", redel)
+		t.Fatal("expected 0 redeliveries got %i", redel)
 	}
 
 	time.Sleep(500 * time.Millisecond)
@@ -405,6 +399,31 @@ func TestConsumer_RedeliveryCount(t *testing.T) {
 	checkErr(t, err, "state failed")
 	if redel != 1 {
 		t.Fatal("expected 1 redliveries got %i", redel)
+	}
+}
+
+func TestConsumer_PendingMessages(t *testing.T) {
+	srv, nc, _, mgr := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"), jsm.AckWait(500*time.Millisecond))
+	checkErr(t, err, "create failed")
+
+	pending, err := durable.PendingMessages()
+	checkErr(t, err, "pending failed")
+	if pending != 1 {
+		t.Fatal("expected 1 pending got %i", pending)
+	}
+
+	m, err := durable.NextMsg()
+	checkErr(t, err, "next failed")
+	m.Ack()
+
+	pending, err = durable.PendingMessages()
+	checkErr(t, err, "pending failed")
+	if pending != 0 {
+		t.Fatal("expected 0 pending got %i", pending)
 	}
 }
 

@@ -29,31 +29,43 @@ type MsgInfo struct {
 	sSeq      int64
 	cSeq      int64
 	delivered int
+	pending   int
 	ts        time.Time
 }
 
+// Stream is the stream this message is stored in
 func (i *MsgInfo) Stream() string {
 	return i.stream
 }
 
+// Consumer is the name of the consumer that produced this message
 func (i *MsgInfo) Consumer() string {
 	return i.consumer
 }
 
+// StreamSequence is the sequence of this message in the stream
 func (i *MsgInfo) StreamSequence() int64 {
 	return i.sSeq
 }
 
+// ConsumerSequence is the sequence of this message in the consumer
 func (i *MsgInfo) ConsumerSequence() int64 {
 	return i.cSeq
 }
 
+// Delivered is the number of times this message had delivery attempts including this one
 func (i *MsgInfo) Delivered() int {
 	return i.delivered
 }
 
+// TimeStamp is the time the message was received by JetStream
 func (i *MsgInfo) TimeStamp() time.Time {
 	return i.ts
+}
+
+// Pending is the number of messages left to consumer, -1 when the number is not reported
+func (i *MsgInfo) Pending() int {
+	return i.pending
 }
 
 // ParseJSMsgMetadata parse the reply subject metadata to determine message metadata
@@ -65,17 +77,21 @@ func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
 	parts := strings.Split(m.Reply, ".")
 	c := len(parts)
 
-	if c != 8 || parts[0] != "$JS" || parts[1] != "ACK" {
+	if (c != 8 && c != 9) || parts[0] != "$JS" || parts[1] != "ACK" {
 		return nil, fmt.Errorf("message metadata does not appear to be an ACK")
 	}
 
-	stream := parts[c-6]
-	consumer := parts[c-5]
-	delivered, _ := strconv.Atoi(parts[c-4])
-	streamSeq, _ := strconv.ParseInt(parts[c-3], 10, 64)
-	consumerSeq, _ := strconv.ParseInt(parts[c-2], 10, 64)
-	tsi, _ := strconv.Atoi(parts[c-1])
+	stream := parts[2]
+	consumer := parts[3]
+	delivered, _ := strconv.Atoi(parts[4])
+	streamSeq, _ := strconv.ParseInt(parts[5], 10, 64)
+	consumerSeq, _ := strconv.ParseInt(parts[6], 10, 64)
+	tsi, _ := strconv.Atoi(parts[7])
 	ts := time.Unix(0, int64(tsi))
+	pending := -1
+	if c == 9 {
+		pending, _ = strconv.Atoi(parts[8])
+	}
 
-	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, ts}, nil
+	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, pending, ts}, nil
 }

@@ -269,8 +269,10 @@ type ConsumerInfo struct {
 	Created        time.Time      `json:"created"`
 	Delivered      SequencePair   `json:"delivered"`
 	AckFloor       SequencePair   `json:"ack_floor"`
-	NumPending     int            `json:"num_pending"`
+	NumAckPending  int            `json:"num_ack_pending"`
 	NumRedelivered int            `json:"num_redelivered"`
+	NumWaiting     int            `json:"num_waiting"`
+	NumPending     uint64         `json:"num_pending"`
 }
 
 func jsonString(s string) string {

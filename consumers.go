@@ -484,14 +484,34 @@ func (c *Consumer) AcknowledgedFloor() (api.SequencePair, error) {
 	return info.AckFloor, nil
 }
 
-// PendingMessageCount reports the number of messages sent but not yet acknowledged
-func (c *Consumer) PendingMessageCount() (int, error) {
+// PendingAcknowledgement reports the number of messages sent but not yet acknowledged
+func (c *Consumer) PendingAcknowledgement() (int, error) {
+	info, err := c.State()
+	if err != nil {
+		return 0, err
+	}
+
+	return info.NumAckPending, nil
+}
+
+// PendingMessages is the number of unprocessed messages for this consumer
+func (c *Consumer) PendingMessages() (uint64, error) {
 	info, err := c.State()
 	if err != nil {
 		return 0, err
 	}
 
 	return info.NumPending, nil
+}
+
+// WaitingClientPulls is the number of clients that have outstanding pull requests against this consumer
+func (c *Consumer) WaitingClientPulls() (int, error) {
+	info, err := c.State()
+	if err != nil {
+		return 0, err
+	}
+
+	return info.NumWaiting, nil
 }
 
 // RedeliveryCount reports the number of redelivers that were done

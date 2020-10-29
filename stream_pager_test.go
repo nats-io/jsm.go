@@ -26,7 +26,7 @@ func TestPager(t *testing.T) {
 		}
 	}
 
-	pgr, err := str.PageContents(jsm.PagerSize(25), jsm.PagerTimeout(250*time.Millisecond))
+	pgr, err := str.PageContents(jsm.PagerSize(25))
 	if err != nil {
 		t.Fatalf("pager creation failed: %s", err)
 	}

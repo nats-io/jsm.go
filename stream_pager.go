@@ -2,13 +2,15 @@ package jsm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
+
+	"github.com/nats-io/jsm.go/api"
 )
 
 type StreamPager struct {
@@ -119,7 +121,14 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 
 	if p.seen == p.pageSize || p.seen == -1 {
 		p.seen = 0
-		err := p.mgr.nc.PublishRequest(p.consumer.NextSubject(), p.sub.Subject, []byte(strconv.Itoa(p.pageSize)))
+
+		req := api.JSApiConsumerGetNextRequest{Batch: p.pageSize, NoWait: true}
+		rj, err := json.Marshal(req)
+		if err != nil {
+			return nil, false, err
+		}
+
+		err = p.mgr.nc.PublishRequest(p.consumer.NextSubject(), p.sub.Subject, rj)
 		if err != nil {
 			return nil, false, err
 		}
@@ -132,7 +141,12 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 	case msg := <-p.q:
 		p.seen++
 
+		if msg.Header.Get("Status") == "404" {
+			return nil, true, fmt.Errorf("last message reached")
+		}
+
 		return msg, p.seen == p.pageSize, nil
+
 	case <-timeout.Done():
 		return nil, true, fmt.Errorf("timeout waiting for new messages")
 	}

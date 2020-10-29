@@ -257,11 +257,13 @@ type ConsumerConfig struct {
 	RateLimit       uint64        `json:"rate_limit_bps,omitempty"`
 }
 
+// SequencePair is the consumer and stream sequence that uniquely identify a message
 type SequencePair struct {
 	ConsumerSeq uint64 `json:"consumer_seq"`
 	StreamSeq   uint64 `json:"stream_seq"`
 }
 
+// ConsumerInfo reports the current state of a consumer
 type ConsumerInfo struct {
 	Stream         string         `json:"stream_name"`
 	Name           string         `json:"name"`
@@ -273,6 +275,15 @@ type ConsumerInfo struct {
 	NumRedelivered int            `json:"num_redelivered"`
 	NumWaiting     int            `json:"num_waiting"`
 	NumPending     uint64         `json:"num_pending"`
+}
+
+// JSApiConsumerGetNextRequest is for getting next messages for pull based consumers
+//
+// NATS Schema Type io.nats.jetstream.api.v1.consumer_getnext_request
+type JSApiConsumerGetNextRequest struct {
+	Expires time.Time `json:"expires,omitempty"`
+	Batch   int       `json:"batch,omitempty"`
+	NoWait  bool      `json:"no_wait,omitempty"`
 }
 
 func jsonString(s string) string {

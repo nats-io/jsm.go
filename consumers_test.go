@@ -109,7 +109,41 @@ func TestNextMsg(t *testing.T) {
 			t.Fatalf("got message %d expected %d", b, i)
 		}
 
-		msg.Respond(nil)
+		msg.Ack()
+	}
+}
+
+func TestNextMsgRequest(t *testing.T) {
+	srv, nc, stream, _ := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	stream.Purge()
+
+	consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
+	checkErr(t, err, "create failed")
+
+	for i := 0; i <= 100; i++ {
+		_, err = nc.Request("ORDERS.new", []byte(fmt.Sprintf("%d", i)), time.Second)
+		checkErr(t, err, "publish failed")
+	}
+
+	sub, err := nc.SubscribeSync(nats.NewInbox())
+	checkErr(t, err, "subscribe failed")
+	defer sub.Unsubscribe()
+
+	consumer.NextMsgRequest(sub.Subject, &api.JSApiConsumerGetNextRequest{Batch: 100})
+	for i := 0; i < 100; i++ {
+		msg, err := sub.NextMsg(time.Second)
+		checkErr(t, err, fmt.Sprintf("NextMsg %d failed", i))
+		b, err := strconv.Atoi(string(msg.Data))
+		checkErr(t, err, fmt.Sprintf("invalid body: %q", string(msg.Data)))
+
+		if b != i {
+			t.Fatalf("got message %d expected %d", b, i)
+		}
+
+		msg.Ack()
 	}
 }
 

@@ -15,6 +15,7 @@ package jsm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -441,10 +442,34 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 		return nil, err
 	}
 
-	return m.request(s, []byte(strconv.Itoa(1)))
+	rj, err := json.Marshal(&api.JSApiConsumerGetNextRequest{
+		Expires: time.Now().Add(m.timeout),
+		Batch:   1,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return m.request(s, rj)
 }
 
-// NextMsg requests the next message from the server with the manager timeout
+// NextMsgRequest creates a request for a batch of messages on a consumer, data or control flow messages will be sent to inbox
+func (m *Manager) NextMsgRequest(stream string, consumer string, inbox string, req *api.JSApiConsumerGetNextRequest) error {
+	s, err := NextSubject(stream, consumer)
+	if err != nil {
+		return err
+	}
+
+	jreq, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	return m.nc.PublishMsg(&nats.Msg{Subject: s, Reply: inbox, Data: jreq})
+}
+
+// NextMsg requests the next message from the server. This request will wait for as long as the context is
+// active. If repeated pulls will be made it's better to use NextMsgRequest()
 func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer string) (*nats.Msg, error) {
 	s, err := NextSubject(stream, consumer)
 	if err != nil {
@@ -452,6 +477,11 @@ func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer st
 	}
 
 	return m.requestWithContext(ctx, s, []byte(strconv.Itoa(1)))
+}
+
+// NextMsgRequest creates a request for a batch of messages, data or control flow messages will be sent to inbox
+func (c *Consumer) NextMsgRequest(inbox string, req *api.JSApiConsumerGetNextRequest) error {
+	return c.mgr.NextMsgRequest(c.stream, c.name, inbox, req)
 }
 
 // NextMsg retrieves the next message, waiting up to manager timeout for a response

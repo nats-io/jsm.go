@@ -49,7 +49,7 @@ func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
 		t.Helper()
 
 		if c.OptStartSeq != sseq {
-			t.Fatalf("StreamSeq expected %d got %d", sseq, c.OptStartSeq)
+			t.Fatalf("Stream expected %d got %d", sseq, c.OptStartSeq)
 		}
 
 		if c.OptStartTime != nil && stime != nil {
@@ -366,8 +366,8 @@ func TestConsumer_DeliveredState(t *testing.T) {
 	state, err := durable.DeliveredState()
 	checkErr(t, err, "state failed")
 
-	if state.StreamSeq != 0 {
-		t.Fatalf("expected stream seq 0 got %d", state.StreamSeq)
+	if state.Stream != 0 {
+		t.Fatalf("expected stream seq 0 got %d", state.Stream)
 	}
 
 	m, err := durable.NextMsg()
@@ -378,8 +378,8 @@ func TestConsumer_DeliveredState(t *testing.T) {
 	state, err = durable.DeliveredState()
 	checkErr(t, err, "state failed")
 
-	if state.StreamSeq != 1 {
-		t.Fatalf("expected stream seq 1 got %d", state.StreamSeq)
+	if state.Stream != 1 {
+		t.Fatalf("expected stream seq 1 got %d", state.Stream)
 	}
 }
 
@@ -472,8 +472,8 @@ func TestConsumer_AcknowledgedState(t *testing.T) {
 	state, err := durable.AcknowledgedFloor()
 	checkErr(t, err, "state failed")
 
-	if state.StreamSeq != 0 {
-		t.Fatalf("expected stream seq 0 got %d", state.StreamSeq)
+	if state.Stream != 0 {
+		t.Fatalf("expected stream seq 0 got %d", state.Stream)
 	}
 
 	m, err := durable.NextMsg()
@@ -484,8 +484,8 @@ func TestConsumer_AcknowledgedState(t *testing.T) {
 	state, err = durable.AcknowledgedFloor()
 	checkErr(t, err, "state failed")
 
-	if state.ConsumerSeq != 1 {
-		t.Fatalf("expected set seq 1 got %d", state.ConsumerSeq)
+	if state.Consumer != 1 {
+		t.Fatalf("expected set seq 1 got %d", state.Consumer)
 	}
 }
 

@@ -259,8 +259,8 @@ type ConsumerConfig struct {
 
 // SequencePair is the consumer and stream sequence that uniquely identify a message
 type SequencePair struct {
-	ConsumerSeq uint64 `json:"consumer_seq"`
-	StreamSeq   uint64 `json:"stream_seq"`
+	Consumer uint64 `json:"consumer_seq"`
+	Stream   uint64 `json:"stream_seq"`
 }
 
 // ConsumerInfo reports the current state of a consumer

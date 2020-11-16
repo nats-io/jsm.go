@@ -786,3 +786,11 @@ func TestRateLimitBitPerSecond(t *testing.T) {
 		t.Fatal("expected RateLimit==10")
 	}
 }
+
+func TestMaxAckOutstanding(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.MaxAckPending(10)(cfg)
+	if cfg.MaxAckPending != 10 {
+		t.Fatal("expected MaxAckPending==10")
+	}
+}

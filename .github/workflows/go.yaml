@@ -32,6 +32,7 @@ jobs:
           $(exit $(go fmt $(go list ./...) | wc -l))
           find . -type f -name "*.go" | grep -v "/vendor/" | xargs misspell -error -locale US
           staticcheck -f stylish $(go list ./...)
+          go vet ./...
 
       - name: Run tests
         shell: bash --noprofile --norc -x -eo pipefail {0}

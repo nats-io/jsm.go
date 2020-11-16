@@ -39,6 +39,11 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
+// io.nats.jetstream.api.v1.stream_create_request
+type JSApiStreamCreateRequest struct {
+	StreamConfig
+}
+
 // io.nats.jetstream.api.v1.stream_names_request
 type JSApiStreamNamesRequest struct {
 	JSApiIterableRequest

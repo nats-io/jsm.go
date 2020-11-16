@@ -149,43 +149,43 @@ type snapshotProgress struct {
 	sync.Mutex
 }
 
-func (sp snapshotProgress) HealthCheck() bool {
+func (sp *snapshotProgress) HealthCheck() bool {
 	return sp.healthCheck
 }
 
-func (sp snapshotProgress) BlockBytesReceived() uint64 {
+func (sp *snapshotProgress) BlockBytesReceived() uint64 {
 	return sp.blockBytesReceived
 }
 
-func (sp snapshotProgress) ChunksReceived() uint32 {
+func (sp *snapshotProgress) ChunksReceived() uint32 {
 	return sp.chunksReceived
 }
 
-func (sp snapshotProgress) BytesReceived() uint64 {
+func (sp *snapshotProgress) BytesReceived() uint64 {
 	return sp.bytesReceived
 }
 
-func (sp snapshotProgress) BlocksReceived() int {
+func (sp *snapshotProgress) BlocksReceived() int {
 	return int(sp.blocksReceived)
 }
 
-func (sp snapshotProgress) BlockSize() int {
+func (sp *snapshotProgress) BlockSize() int {
 	return sp.blockSize
 }
 
-func (sp snapshotProgress) BlocksExpected() int {
+func (sp *snapshotProgress) BlocksExpected() int {
 	return sp.blocksExpected
 }
 
-func (sp snapshotProgress) HasMetadata() bool {
+func (sp *snapshotProgress) HasMetadata() bool {
 	return sp.metadataDone
 }
 
-func (sp snapshotProgress) HasData() bool {
+func (sp *snapshotProgress) HasData() bool {
 	return sp.dataDone
 }
 
-func (sp snapshotProgress) BytesPerSecond() uint64 {
+func (sp *snapshotProgress) BytesPerSecond() uint64 {
 	if sp.bps > 0 {
 		return sp.bps
 	}
@@ -197,36 +197,36 @@ func (sp snapshotProgress) BytesPerSecond() uint64 {
 	return sp.bytesReceived
 }
 
-func (sp snapshotProgress) StartTime() time.Time {
+func (sp *snapshotProgress) StartTime() time.Time {
 	return sp.startTime
 }
 
-func (sp snapshotProgress) EndTime() time.Time {
+func (sp *snapshotProgress) EndTime() time.Time {
 	return sp.endTime
 }
 
-func (sp snapshotProgress) ChunkSize() int {
+func (sp *snapshotProgress) ChunkSize() int {
 	return sp.chunkSize
 }
 
-func (sp snapshotProgress) ChunksToSend() int {
+func (sp *snapshotProgress) ChunksToSend() int {
 	return sp.chunksToSend
 }
 
-func (sp snapshotProgress) ChunksSent() uint32 {
+func (sp *snapshotProgress) ChunksSent() uint32 {
 	return sp.chunksSent
 }
 
-func (sp snapshotProgress) BytesSent() uint64 {
+func (sp *snapshotProgress) BytesSent() uint64 {
 	return sp.bytesSent
 }
 
 func (sp *snapshotProgress) notify() {
 	if sp.scb != nil {
-		sp.scb(*sp)
+		sp.scb(sp)
 	}
 	if sp.rcb != nil {
-		sp.rcb(*sp)
+		sp.rcb(sp)
 	}
 }
 

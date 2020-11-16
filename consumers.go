@@ -388,6 +388,14 @@ func RateLimitBitsPerSecond(bps uint64) ConsumerOption {
 	}
 }
 
+// MaxAckPending maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended
+func MaxAckPending(pending uint) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.MaxAckPending = int(pending)
+		return nil
+	}
+}
+
 // Reset reloads the Consumer configuration from the JetStream server
 func (c *Consumer) Reset() error {
 	return c.mgr.loadConfigForConsumer(c)
@@ -597,6 +605,7 @@ func (c *Consumer) FilterSubject() string            { return c.cfg.FilterSubjec
 func (c *Consumer) ReplayPolicy() api.ReplayPolicy   { return c.cfg.ReplayPolicy }
 func (c *Consumer) SampleFrequency() string          { return c.cfg.SampleFrequency }
 func (c *Consumer) RateLimit() uint64                { return c.cfg.RateLimit }
+func (c *Consumer) MaxAckPending() int               { return c.cfg.MaxAckPending }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {
 		return time.Time{}

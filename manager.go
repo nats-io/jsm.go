@@ -140,6 +140,17 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 	return fmt.Errorf("server response is not a valid %q message: %s", jv.SchemaType(), strings.Join(errs, "\n"))
 }
 
+// StreamLookup finds a stream that consumes a certain subject, empty string when no Stream matches
+func (m *Manager) StreamLookup(subject string) (string, error) {
+	var resp api.JSApiStreamLookupResponse
+	err := m.jsonRequest(api.JSApiStreamLookup, &api.JSApiStreamLookupRequest{Subject: subject}, &resp)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Stream, nil
+}
+
 // StreamNames is a sorted list of all known Streams
 func (m *Manager) StreamNames() (names []string, err error) {
 	var resp api.JSApiStreamNamesResponse

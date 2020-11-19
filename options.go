@@ -42,3 +42,17 @@ func WithTimeout(t time.Duration) Option {
 		o.timeout = t
 	}
 }
+
+// WithDefaultStream sets the default stream config when creating ad-hoc streams
+func WithDefaultStream(s api.StreamConfig) Option {
+	return func(o *Manager) {
+		o.dfltStream = s
+	}
+}
+
+// WithDefaultConsumer sets the default stream config when creating ad-hoc streams
+func WithDefaultConsumer(c api.ConsumerConfig) Option {
+	return func(o *Manager) {
+		o.dfltConsumer = c
+	}
+}

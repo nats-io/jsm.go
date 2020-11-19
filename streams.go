@@ -48,9 +48,6 @@ var DefaultWorkQueue = api.StreamConfig{
 	NoAck:        false,
 }
 
-// DefaultStreamConfiguration is the configuration that will be used to create new Streams in NewStream
-var DefaultStreamConfiguration = DefaultStream
-
 // StreamOption configures a stream
 type StreamOption func(o *api.StreamConfig) error
 
@@ -116,14 +113,14 @@ func (m *Manager) LoadOrNewStreamFromDefault(name string, dflt api.StreamConfig,
 	return s, err
 }
 
-// NewStream creates a new stream using DefaultStream as a starting template allowing adjustments to be made using options
+// NewStream creates a new stream using DefaultStream or what was supplied via WithDefaultStream() as a starting template allowing adjustments to be made using options
 func (m *Manager) NewStream(name string, opts ...StreamOption) (stream *Stream, err error) {
-	return m.NewStreamFromDefault(name, DefaultStream, opts...)
+	return m.NewStreamFromDefault(name, m.dfltStream, opts...)
 }
 
-// LoadOrNewStreamFromDefault loads an existing stream or creates a new one matching opts
+// LoadOrNewStreamFromDefault loads an existing stream or creates a new one matching opts based on DefaultStream or what was supplied via WithDefaultStream()
 func (m *Manager) LoadOrNewStream(name string, opts ...StreamOption) (stream *Stream, err error) {
-	return m.LoadOrNewStreamFromDefault(name, DefaultStream, opts...)
+	return m.LoadOrNewStreamFromDefault(name, m.dfltStream, opts...)
 }
 
 // LoadStream loads a stream by name

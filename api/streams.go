@@ -196,3 +196,10 @@ type StreamState struct {
 	LastTime  time.Time `json:"last_ts"`
 	Consumers int       `json:"consumer_count"`
 }
+
+// PubAck is the detail you get back from a publish to a stream that was successful.
+type PubAck struct {
+	Stream    string `json:"stream"`
+	Seq       uint64 `json:"seq"`
+	Duplicate bool   `json:"duplicate,omitempty"`
+}

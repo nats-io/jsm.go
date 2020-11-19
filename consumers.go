@@ -115,18 +115,18 @@ func (m *Manager) createEphemeralConsumer(req api.JSApiConsumerCreateRequest) (i
 	return resp.ConsumerInfo, nil
 }
 
-// NewConsumer creates a consumer based on DefaultConsumer modified by opts
+// NewConsumer creates a consumer based on DefaultConsumer or what was supplied via WithDefaultConsumer() modified by opts
 func (m *Manager) NewConsumer(stream string, opts ...ConsumerOption) (consumer *Consumer, err error) {
 	if !IsValidName(stream) {
 		return nil, fmt.Errorf("%q is not a valid stream name", stream)
 	}
 
-	return m.NewConsumerFromDefault(stream, DefaultConsumer, opts...)
+	return m.NewConsumerFromDefault(stream, m.dfltConsumer, opts...)
 }
 
-// LoadOrNewConsumer loads a consumer by name if known else creates a new one with these properties
+// LoadOrNewConsumer loads a consumer by name if known else creates a new one with these properties based on DefaultConsumer or what was supplied via WithDefaultConsumer()
 func (m *Manager) LoadOrNewConsumer(stream string, name string, opts ...ConsumerOption) (consumer *Consumer, err error) {
-	return m.LoadOrNewConsumerFromDefault(stream, name, DefaultConsumer, opts...)
+	return m.LoadOrNewConsumerFromDefault(stream, name, m.dfltConsumer, opts...)
 }
 
 // LoadOrNewConsumerFromDefault loads a consumer by name if known else creates a new one with these properties based on template

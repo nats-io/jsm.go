@@ -29,18 +29,22 @@ import (
 )
 
 type Manager struct {
-	nc        *nats.Conn
-	timeout   time.Duration
-	trace     bool
-	validator api.StructValidator
+	nc           *nats.Conn
+	timeout      time.Duration
+	trace        bool
+	validator    api.StructValidator
+	dfltStream   api.StreamConfig
+	dfltConsumer api.ConsumerConfig
 
 	sync.Mutex
 }
 
 func New(nc *nats.Conn, opts ...Option) (*Manager, error) {
 	m := &Manager{
-		nc:      nc,
-		timeout: 5 * time.Second,
+		nc:           nc,
+		timeout:      5 * time.Second,
+		dfltStream:   DefaultStream,
+		dfltConsumer: DefaultConsumer,
 	}
 
 	for _, opt := range opts {

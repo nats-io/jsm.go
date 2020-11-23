@@ -14,6 +14,7 @@
 package jsm_test
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -25,9 +26,9 @@ import (
 func TestParseJSMsgMetadata_New(t *testing.T) {
 	cases := []struct {
 		meta    string
-		pending int
+		pending uint64
 	}{
-		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000", -1},
+		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000", math.MaxUint64},
 		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10},
 	}
 
@@ -61,7 +62,7 @@ func TestParseJSMsgMetadata_New(t *testing.T) {
 		}
 
 		if i.Pending() != tc.pending {
-			t.Fatalf("expected -1 got %d", i.Pending())
+			t.Fatalf("expected %d got %d", tc.pending, i.Pending())
 		}
 	}
 }

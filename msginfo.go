@@ -15,6 +15,7 @@ package jsm
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -26,10 +27,10 @@ import (
 type MsgInfo struct {
 	stream    string
 	consumer  string
-	sSeq      int64
-	cSeq      int64
+	sSeq      uint64
+	cSeq      uint64
 	delivered int
-	pending   int
+	pending   uint64
 	ts        time.Time
 }
 
@@ -44,12 +45,12 @@ func (i *MsgInfo) Consumer() string {
 }
 
 // StreamSequence is the sequence of this message in the stream
-func (i *MsgInfo) StreamSequence() int64 {
+func (i *MsgInfo) StreamSequence() uint64 {
 	return i.sSeq
 }
 
 // ConsumerSequence is the sequence of this message in the consumer
-func (i *MsgInfo) ConsumerSequence() int64 {
+func (i *MsgInfo) ConsumerSequence() uint64 {
 	return i.cSeq
 }
 
@@ -64,7 +65,7 @@ func (i *MsgInfo) TimeStamp() time.Time {
 }
 
 // Pending is the number of messages left to consumer, -1 when the number is not reported
-func (i *MsgInfo) Pending() int {
+func (i *MsgInfo) Pending() uint64 {
 	return i.pending
 }
 
@@ -84,13 +85,13 @@ func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
 	stream := parts[2]
 	consumer := parts[3]
 	delivered, _ := strconv.Atoi(parts[4])
-	streamSeq, _ := strconv.ParseInt(parts[5], 10, 64)
-	consumerSeq, _ := strconv.ParseInt(parts[6], 10, 64)
+	streamSeq, _ := strconv.ParseUint(parts[5], 10, 64)
+	consumerSeq, _ := strconv.ParseUint(parts[6], 10, 64)
 	tsi, _ := strconv.Atoi(parts[7])
 	ts := time.Unix(0, int64(tsi))
-	pending := -1
+	pending := uint64(math.MaxUint64)
 	if c == 9 {
-		pending, _ = strconv.Atoi(parts[8])
+		pending, _ = strconv.ParseUint(parts[8], 10, 64)
 	}
 
 	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, pending, ts}, nil

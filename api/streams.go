@@ -22,7 +22,6 @@ const (
 	JSApiStreamUpdateT   = "$JS.API.STREAM.UPDATE.%s"
 	JSApiStreamNames     = "$JS.API.STREAM.NAMES"
 	JSApiStreamList      = "$JS.API.STREAM.LIST"
-	JSApiStreamLookup    = "$JS.API.STREAM.LOOKUP"
 	JSApiStreamInfoT     = "$JS.API.STREAM.INFO.%s"
 	JSApiStreamDeleteT   = "$JS.API.STREAM.DELETE.%s"
 	JSApiStreamPurgeT    = "$JS.API.STREAM.PURGE.%s"
@@ -40,18 +39,6 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
-// io.nats.jetstream.api.v1.stream_lookup_request
-type JSApiStreamLookupRequest struct {
-	Subject string `json:"subject"`
-}
-
-// io.nats.jetstream.api.v1.stream_lookup_response
-type JSApiStreamLookupResponse struct {
-	JSApiResponse
-	Stream   string `json:"stream"`
-	Filtered bool   `json:"is_filtered"`
-}
-
 // io.nats.jetstream.api.v1.stream_create_request
 type JSApiStreamCreateRequest struct {
 	StreamConfig
@@ -60,6 +47,8 @@ type JSApiStreamCreateRequest struct {
 // io.nats.jetstream.api.v1.stream_names_request
 type JSApiStreamNamesRequest struct {
 	JSApiIterableRequest
+	// Subject filter the names to those consuming messages matching this subject or wildcard
+	Subject string `json:"subject,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_names_response

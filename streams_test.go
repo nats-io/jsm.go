@@ -411,7 +411,7 @@ func TestStream_Dedupe(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		m := nats.NewMsg(stream.Subjects()[0])
 		m.Data = []byte(fmt.Sprintf("message %d", i))
-		m.Header.Add("Msg-Id", strconv.Itoa(i%2))
+		m.Header.Add("Nats-Msg-Id", strconv.Itoa(i%2))
 		nc.PublishMsg(m)
 	}
 

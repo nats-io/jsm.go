@@ -229,19 +229,3 @@ func TestIsKnownStreamTemplate(t *testing.T) {
 		t.Fatalf("did not find orders_templ when it should have")
 	}
 }
-
-func TestStreamLookup(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Close()
-
-	_, err := mgr.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
-	checkErr(t, err, "Stream create failed")
-
-	str, err := mgr.StreamLookup("ORDERS.NEW")
-	checkErr(t, err, "Stream lookup failed")
-
-	if str != "ORDERS" {
-		t.Fatalf("Expected ORDERS got %q", str)
-	}
-}

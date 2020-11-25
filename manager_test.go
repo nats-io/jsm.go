@@ -134,7 +134,7 @@ func TestStreamNames(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Close()
 
-	names, err := mgr.StreamNames()
+	names, err := mgr.StreamNames(nil)
 	checkErr(t, err, "lookup failed")
 
 	if len(names) > 0 {
@@ -142,16 +142,35 @@ func TestStreamNames(t *testing.T) {
 	}
 
 	for i := 0; i < 510; i++ {
-		_, err = mgr.NewStreamFromDefault(fmt.Sprintf("ORDERS_%d", i), jsm.DefaultStream, jsm.Subjects(fmt.Sprintf("ORDERS_%d", i)), jsm.MemoryStorage())
+		_, err = mgr.NewStreamFromDefault(fmt.Sprintf("ORDERS_%d", i), jsm.DefaultStream, jsm.Subjects(fmt.Sprintf("ORDERS_%d.>", i)), jsm.MemoryStorage())
 		checkErr(t, err, "create failed")
 	}
 
-	names, err = mgr.StreamNames()
+	names, err = mgr.StreamNames(nil)
 	checkErr(t, err, "lookup failed")
 
 	if len(names) != 510 || names[0] != "ORDERS_0" && names[509] != "ORDERS_99" {
 		t.Fatalf("expected 510 orders got %d", len(names))
 	}
+
+	names, err = mgr.StreamNames(&jsm.StreamNamesFilter{Subject: ">"})
+	checkErr(t, err, "names failed")
+	if len(names) != 510 {
+		t.Fatalf("expected 510 streams got %d", len(names))
+	}
+
+	names, err = mgr.StreamNames(&jsm.StreamNamesFilter{Subject: "ORDERS_10.foo"})
+	checkErr(t, err, "names failed")
+	if len(names) != 1 {
+		t.Fatalf("expected 1 stream got %d", len(names))
+	}
+
+	names, err = mgr.StreamNames(&jsm.StreamNamesFilter{Subject: "none.foo"})
+	checkErr(t, err, "names failed")
+	if len(names) != 0 {
+		t.Fatalf("expected 0 streams got %d", len(names))
+	}
+
 }
 
 func TestConsumerNames(t *testing.T) {

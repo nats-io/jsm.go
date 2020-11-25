@@ -52,7 +52,7 @@ func TestLoadOrNewStreamFromDefault(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	names, err := mgr.StreamNames()
+	names, err := mgr.StreamNames(nil)
 	checkErr(t, err, "ls failed")
 	if len(names) != 0 {
 		t.Fatalf("expected no streams")
@@ -64,7 +64,7 @@ func TestLoadOrNewStreamFromDefault(t *testing.T) {
 	_, err = mgr.LoadOrNewStreamFromDefault("q1", stream.Configuration())
 	checkErr(t, err, "load failed")
 
-	names, err = mgr.StreamNames()
+	names, err = mgr.StreamNames(nil)
 	checkErr(t, err, "ls failed")
 
 	if len(names) != 1 || names[0] != "q1" {
@@ -98,7 +98,7 @@ func TestLoadOrNewStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	names, err := mgr.StreamNames()
+	names, err := mgr.StreamNames(nil)
 	checkErr(t, err, "ls failed")
 	if len(names) != 0 {
 		t.Fatalf("expected no streams")
@@ -132,7 +132,7 @@ func TestLoadStream(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	names, err := mgr.StreamNames()
+	names, err := mgr.StreamNames(nil)
 	checkErr(t, err, "ls failed")
 	if len(names) != 0 {
 		t.Fatalf("expected no streams")
@@ -392,7 +392,7 @@ func TestStream_Delete(t *testing.T) {
 	err = stream.Delete()
 	checkErr(t, err, "delete failed")
 
-	names, err := mgr.StreamNames()
+	names, err := mgr.StreamNames(nil)
 	checkErr(t, err, "names failed")
 
 	if len(names) != 0 {

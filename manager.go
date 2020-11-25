@@ -140,10 +140,21 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 	return fmt.Errorf("server response is not a valid %q message: %s", jv.SchemaType(), strings.Join(errs, "\n"))
 }
 
-// StreamNames is a sorted list of all known Streams
-func (m *Manager) StreamNames() (names []string, err error) {
+// StreamNamesFilter limits the names being returned by the names API
+type StreamNamesFilter struct {
+	// Subject filter the names to those consuming messages matching this subject or wildcard
+	Subject string `json:"subject,omitempty"`
+}
+
+// StreamNames is a sorted list of all known Streams filtered by filter
+func (m *Manager) StreamNames(filter *StreamNamesFilter) (names []string, err error) {
 	var resp api.JSApiStreamNamesResponse
-	err = m.iterableRequest(api.JSApiStreamNames, &api.JSApiStreamNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, &resp, func(page interface{}) error {
+	req := &api.JSApiStreamNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}
+	if filter != nil {
+		req.Subject = filter.Subject
+	}
+
+	err = m.iterableRequest(api.JSApiStreamNames, req, &resp, func(page interface{}) error {
 		apiresp, ok := page.(*api.JSApiStreamNamesResponse)
 		if !ok {
 			return fmt.Errorf("invalid response type from iterable request")

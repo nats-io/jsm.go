@@ -47,6 +47,8 @@ type JSApiStreamCreateRequest struct {
 // io.nats.jetstream.api.v1.stream_names_request
 type JSApiStreamNamesRequest struct {
 	JSApiIterableRequest
+	// Subject filter the names to those consuming messages matching this subject or wildcard
+	Subject string `json:"subject,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_names_response

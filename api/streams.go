@@ -22,7 +22,6 @@ const (
 	JSApiStreamUpdateT   = "$JS.API.STREAM.UPDATE.%s"
 	JSApiStreamNames     = "$JS.API.STREAM.NAMES"
 	JSApiStreamList      = "$JS.API.STREAM.LIST"
-	JSApiStreamLookup    = "$JS.API.STREAM.LOOKUP"
 	JSApiStreamInfoT     = "$JS.API.STREAM.INFO.%s"
 	JSApiStreamDeleteT   = "$JS.API.STREAM.DELETE.%s"
 	JSApiStreamPurgeT    = "$JS.API.STREAM.PURGE.%s"

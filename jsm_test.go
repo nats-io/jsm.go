@@ -34,21 +34,31 @@ func TestIsErrorResponse(t *testing.T) {
 		t.Fatalf("OK is Error")
 	}
 
+	if jsm.IsErrorResponse(&nats.Msg{Data: []byte(`{"stream":"test"}`)}) {
+		t.Fatalf("OK JSON is Error")
+	}
+
 	if !jsm.IsErrorResponse(&nats.Msg{Data: []byte("-ERR 'error'")}) {
 		t.Fatalf("ERR is not Error")
+	}
+
+	if !jsm.IsErrorResponse(&nats.Msg{Data: []byte(`{"error":{"code":404}}`)}) {
+		t.Fatalf("JSON response is not Error")
 	}
 }
 
 func TestParseErrorResponse(t *testing.T) {
 	checkErr(t, jsm.ParseErrorResponse(&nats.Msg{Data: []byte("+OK")}), "expected nil got error")
 
-	err := jsm.ParseErrorResponse(&nats.Msg{Data: []byte("-ERR 'test error")})
-	if err == nil {
-		t.Fatalf("expected an error got nil")
-	}
+	for _, d := range []string{"-ERR 'test error", `{"error":{"code":404,"description":"test error"}}`} {
+		err := jsm.ParseErrorResponse(&nats.Msg{Data: []byte(d)})
+		if err == nil {
+			t.Fatalf("expected an error got nil")
+		}
 
-	if err.Error() != "test error" {
-		t.Fatalf("expected 'test error' got '%v'", err)
+		if err.Error() != "test error" {
+			t.Fatalf("expected 'test error' got '%v'", err)
+		}
 	}
 }
 
@@ -57,8 +67,16 @@ func TestIsOKResponse(t *testing.T) {
 		t.Fatalf("OK is Error")
 	}
 
+	if !jsm.IsOKResponse(&nats.Msg{Data: []byte(`{"stream":"x"}`)}) {
+		t.Fatalf("JSON response is not Error")
+	}
+
 	if jsm.IsOKResponse(&nats.Msg{Data: []byte("-ERR error")}) {
 		t.Fatalf("ERR is not Error")
+	}
+
+	if jsm.IsOKResponse(&nats.Msg{Data: []byte(`{"error":{"code": 404}}`)}) {
+		t.Fatalf("JSON is not Error")
 	}
 }
 

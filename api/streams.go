@@ -39,6 +39,19 @@ type StoredMsg struct {
 	Time     time.Time `json:"time"`
 }
 
+// io.nats.jetstream.api.v1.pub_ack_response
+type JSPubAckResponse struct {
+	Error *ApiError `json:"error,omitempty"`
+	PubAck
+}
+
+// PubAck is the detail you get back from a publish to a stream that was successful
+type PubAck struct {
+	Stream    string `json:"stream"`
+	Sequence  uint64 `json:"seq"`
+	Duplicate bool   `json:"duplicate,omitempty"`
+}
+
 // io.nats.jetstream.api.v1.stream_create_request
 type JSApiStreamCreateRequest struct {
 	StreamConfig

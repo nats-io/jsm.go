@@ -17,6 +17,7 @@ package jsm
 //go:generate go run api/gen.go
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -52,25 +53,53 @@ type apiValidatable interface {
 }
 
 // IsErrorResponse checks if the message holds a standard JetStream error
-// TODO: parse for error response
 func IsErrorResponse(m *nats.Msg) bool {
-	return strings.HasPrefix(string(m.Data), api.ErrPrefix)
+	if strings.HasPrefix(string(m.Data), api.ErrPrefix) {
+		return true
+	}
+
+	resp := api.JSApiResponse{}
+	err := json.Unmarshal(m.Data, &resp)
+	if err != nil {
+		return false
+	}
+
+	return resp.IsError()
 }
 
 // ParseErrorResponse parses the JetStream response, if it's an error returns an error instance holding the message else nil
-// TODO: parse json error response
 func ParseErrorResponse(m *nats.Msg) error {
 	if !IsErrorResponse(m) {
 		return nil
 	}
 
-	return fmt.Errorf(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(string(m.Data), api.ErrPrefix), " '"), "'"))
+	d := string(m.Data)
+	if strings.HasPrefix(d, api.ErrPrefix) {
+		return fmt.Errorf(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(d, api.ErrPrefix), " '"), "'"))
+	}
+
+	resp := api.JSApiResponse{}
+	err := json.Unmarshal(m.Data, &resp)
+	if err != nil {
+		return err
+	}
+
+	return resp.ToError()
 }
 
 // IsOKResponse checks if the message holds a standard JetStream error
-// TODO: parse json responses
 func IsOKResponse(m *nats.Msg) bool {
-	return strings.HasPrefix(string(m.Data), api.OK)
+	if strings.HasPrefix(string(m.Data), api.OK) {
+		return true
+	}
+
+	resp := api.JSApiResponse{}
+	err := json.Unmarshal(m.Data, &resp)
+	if err != nil {
+		return false
+	}
+
+	return !resp.IsError()
 }
 
 // IsValidName verifies if n is a valid stream, template or consumer name

@@ -231,6 +231,7 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_response.json", St: "JSApiStreamTemplateNamesResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_request.json", St: "JSApiStreamTemplateNamesRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_update_response.json", St: "JSApiStreamUpdateResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse"},
 	}
 
 	for _, i := range s {

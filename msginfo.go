@@ -69,13 +69,13 @@ func (i *MsgInfo) Pending() uint64 {
 	return i.pending
 }
 
-// ParseJSMsgMetadata parse the reply subject metadata to determine message metadata
-func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
-	if len(m.Reply) == 0 {
+// ParseJSMsgMetadataReply parses the reply subject of a JetStream originated message
+func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
+	if len(reply) == 0 {
 		return nil, fmt.Errorf("reply subject is not an Ack")
 	}
 
-	parts := strings.Split(m.Reply, ".")
+	parts := strings.Split(reply, ".")
 	c := len(parts)
 
 	if (c != 8 && c != 9) || parts[0] != "$JS" || parts[1] != "ACK" {
@@ -95,4 +95,9 @@ func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
 	}
 
 	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, pending, ts}, nil
+}
+
+// ParseJSMsgMetadata parse the reply subject metadata to determine message metadata
+func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
+	return ParseJSMsgMetadataReply(m.Reply)
 }

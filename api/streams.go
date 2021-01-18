@@ -20,17 +20,19 @@ import (
 )
 
 const (
-	JSApiStreamCreateT   = "$JS.API.STREAM.CREATE.%s"
-	JSApiStreamUpdateT   = "$JS.API.STREAM.UPDATE.%s"
-	JSApiStreamNames     = "$JS.API.STREAM.NAMES"
-	JSApiStreamList      = "$JS.API.STREAM.LIST"
-	JSApiStreamInfoT     = "$JS.API.STREAM.INFO.%s"
-	JSApiStreamDeleteT   = "$JS.API.STREAM.DELETE.%s"
-	JSApiStreamPurgeT    = "$JS.API.STREAM.PURGE.%s"
-	JSApiMsgDeleteT      = "$JS.API.STREAM.MSG.DELETE.%s"
-	JSApiMsgGetT         = "$JS.API.STREAM.MSG.GET.%s"
-	JSApiStreamSnapshotT = "$JS.API.STREAM.SNAPSHOT.%s"
-	JSApiStreamRestoreT  = "$JS.API.STREAM.RESTORE.%s"
+	JSApiStreamCreateT    = "$JS.API.STREAM.CREATE.%s"
+	JSApiStreamUpdateT    = "$JS.API.STREAM.UPDATE.%s"
+	JSApiStreamNames      = "$JS.API.STREAM.NAMES"
+	JSApiStreamList       = "$JS.API.STREAM.LIST"
+	JSApiStreamInfoT      = "$JS.API.STREAM.INFO.%s"
+	JSApiStreamDeleteT    = "$JS.API.STREAM.DELETE.%s"
+	JSApiStreamPurgeT     = "$JS.API.STREAM.PURGE.%s"
+	JSApiMsgDeleteT       = "$JS.API.STREAM.MSG.DELETE.%s"
+	JSApiMsgGetT          = "$JS.API.STREAM.MSG.GET.%s"
+	JSApiStreamSnapshotT  = "$JS.API.STREAM.SNAPSHOT.%s"
+	JSApiStreamRestoreT   = "$JS.API.STREAM.RESTORE.%s"
+	StreamDefaultReplicas = 1
+	StreamMaxReplicas     = 5
 )
 
 type StoredMsg struct {

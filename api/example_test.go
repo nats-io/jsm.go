@@ -14,8 +14,8 @@ const receivedEvent = `
   "client": {
     "host": "::1",
     "port": 57924,
-    "cid": 17,
-    "account": "$G",
+    "id": 17,
+    "acc": "$G",
     "name": "NATS CLI",
     "lang": "go",
     "version": "1.9.2"

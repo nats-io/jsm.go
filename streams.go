@@ -44,7 +44,7 @@ var DefaultWorkQueue = api.StreamConfig{
 	MaxBytes:     -1,
 	MaxAge:       24 * 365 * time.Hour,
 	MaxMsgSize:   -1,
-	Replicas:     1,
+	Replicas:     api.StreamDefaultReplicas,
 	NoAck:        false,
 }
 

@@ -15,7 +15,6 @@ package jsm
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -27,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/klauspost/compress/s2"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go/api"
@@ -237,14 +237,7 @@ func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc cha
 	seenMetaSum := false
 	seenMetaInf := false
 
-	zr, err := gzip.NewReader(r)
-	if err != nil {
-		errc <- fmt.Errorf("progress tracker failed to start gzip: %s", err)
-		return
-	}
-	defer zr.Close()
-
-	tr := tar.NewReader(zr)
+	tr := tar.NewReader(s2.NewReader(r))
 
 	for {
 		hdr, err := tr.Next()
@@ -443,7 +436,7 @@ func (m *Manager) RestoreSnapshotFromFile(ctx context.Context, stream string, fi
 	return progress, &createResp.State, nil
 }
 
-// SnapshotToFile creates a backup into gzipped tar file
+// SnapshotToFile creates a backup into s2 compressed tar file
 func (s *Stream) SnapshotToFile(ctx context.Context, file string, opts ...SnapshotOption) (SnapshotProgress, error) {
 	sopts := &snapshotOptions{
 		file:      file,

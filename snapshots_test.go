@@ -25,6 +25,7 @@ import (
 )
 
 func TestStream_Snapshot(t *testing.T) {
+	t.Skip("pending new API updates")
 	srv, nc, mgr := startJSServer(t)
 	defer os.RemoveAll(srv.JetStreamConfig().StoreDir)
 	defer srv.Shutdown()

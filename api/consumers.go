@@ -276,6 +276,7 @@ type ConsumerInfo struct {
 	NumRedelivered int            `json:"num_redelivered"`
 	NumWaiting     int            `json:"num_waiting"`
 	NumPending     uint64         `json:"num_pending"`
+	Cluster        *ClusterInfo   `json:"cluster,omitempty"`
 }
 
 // JSApiConsumerGetNextRequest is for getting next messages for pull based consumers

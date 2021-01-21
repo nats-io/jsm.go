@@ -322,8 +322,10 @@ type StreamConfig struct {
 }
 
 type StreamInfo struct {
-	Config StreamConfig `json:"config"`
-	State  StreamState  `json:"state"`
+	Config  StreamConfig `json:"config"`
+	Created time.Time    `json:"created"`
+	State   StreamState  `json:"state"`
+	Cluster *ClusterInfo `json:"cluster,omitempty"`
 }
 
 type StreamState struct {

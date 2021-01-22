@@ -47,6 +47,11 @@ func init() {
 {{- if .Client.Host }}
                Host: {{ .Client.Host }}
 {{- end }}
+{{- if .Client.Jwt }}
+         Issuer Key: {{ .Client.IssuerKey }}
+           Name Tag: {{ .Client.NameTag }}
+               Tags: {{ .Client.Tags | JoinStrings }}
+{{- end }}
 
    Stats:
       Received: {{ .Received.Msgs }} messages ({{ .Received.Bytes | IBytes }})

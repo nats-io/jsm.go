@@ -16,17 +16,21 @@ type ServerInfoV1 struct {
 
 // ClientInfoV1 is detailed information about the client forming a connection.
 type ClientInfoV1 struct {
-	Start   time.Time     `json:"start,omitempty"`
-	Host    string        `json:"host,omitempty"`
-	ID      uint64        `json:"id,omitempty"`
-	Account string        `json:"acc"`
-	User    string        `json:"user,omitempty"`
-	Name    string        `json:"name,omitempty"`
-	Lang    string        `json:"lang,omitempty"`
-	Version string        `json:"ver,omitempty"`
-	RTT     time.Duration `json:"rtt,omitempty"`
-	Server  string        `json:"server,omitempty"`
-	Stop    time.Time     `json:"stop,omitempty"`
+	Start     time.Time     `json:"start,omitempty"`
+	Host      string        `json:"host,omitempty"`
+	ID        uint64        `json:"id,omitempty"`
+	Account   string        `json:"acc"`
+	User      string        `json:"user,omitempty"`
+	Name      string        `json:"name,omitempty"`
+	Lang      string        `json:"lang,omitempty"`
+	Version   string        `json:"ver,omitempty"`
+	RTT       time.Duration `json:"rtt,omitempty"`
+	Server    string        `json:"server,omitempty"ss`
+	Stop      time.Time     `json:"stop,omitempty"`
+	Jwt       string        `json:"jwt,omitempty"`
+	IssuerKey string        `json:"issuer_key,omitempty"`
+	NameTag   string        `json:"name_tag,omitempty"`
+	Tags      []string      `json:"tags,omitempty"`
 }
 
 // DataStatsV1 reports how may msg and bytes. Applicable for both sent and received.

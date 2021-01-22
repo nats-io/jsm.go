@@ -25,7 +25,7 @@ type ClientInfoV1 struct {
 	Lang      string        `json:"lang,omitempty"`
 	Version   string        `json:"ver,omitempty"`
 	RTT       time.Duration `json:"rtt,omitempty"`
-	Server    string        `json:"server,omitempty"ss`
+	Server    string        `json:"server,omitempty"`
 	Stop      time.Time     `json:"stop,omitempty"`
 	Jwt       string        `json:"jwt,omitempty"`
 	IssuerKey string        `json:"issuer_key,omitempty"`

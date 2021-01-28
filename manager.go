@@ -101,6 +101,11 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 	}
 
 	msg, err := m.request(subj, body)
+	if m.trace && msg != nil {
+		log.Printf("<<< %s\n%s\n\n", subj, string(msg.Data))
+	} else if m.trace {
+		log.Printf("<<< %s: %s\n\n", subj, err)
+	}
 	if err != nil {
 		return err
 	}
@@ -223,7 +228,7 @@ func (m *Manager) requestWithTimeout(subj string, data []byte, timeout time.Dura
 func (m *Manager) requestWithContext(ctx context.Context, subj string, data []byte) (res *nats.Msg, err error) {
 	res, err = m.nc.RequestWithContext(ctx, subj, data)
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 
 	return res, ParseErrorResponse(res)

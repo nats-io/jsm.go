@@ -35,7 +35,7 @@ func init() {
 {{- if .Client.User }}
                      User: {{ .Client.User }} Account: {{ .Client.Account }}
 {{- end }}
-                     Host: {{ HostPort .Client.Host .Client.Port }}
+                     Host: {{ .Client.Host }}
                       ID: {{ .Client.ID }}
 {{- if .Client.Name }}
                      Name: {{ .Client.Name }}

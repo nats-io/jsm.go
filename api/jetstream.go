@@ -59,10 +59,17 @@ type JSApiAccountInfoResponse struct {
 }
 
 type JetStreamAccountStats struct {
-	Memory  uint64                 `json:"memory"`
-	Store   uint64                 `json:"storage"`
-	Streams int                    `json:"streams"`
-	Limits  JetStreamAccountLimits `json:"limits"`
+	Memory    uint64                 `json:"memory"`
+	Store     uint64                 `json:"storage"`
+	Streams   int                    `json:"streams"`
+	Consumers int                    `json:"consumers"`
+	API       JetStreamAPIStats      `json:"api"`
+	Limits    JetStreamAccountLimits `json:"limits"`
+}
+
+type JetStreamAPIStats struct {
+	Total  uint64 `json:"total"`
+	Errors uint64 `json:"errors"`
 }
 
 type JetStreamAccountLimits struct {

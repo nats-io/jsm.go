@@ -16,7 +16,7 @@ type JSConsumerQuorumLostV1 struct {
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.consumer_quorum_lost", `{{ .Time | ShortTime }} Consumer {{ .Stream }} > {{ .Consumer }} lost quorum of {{ .Replicas | len }} peers`)
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.consumer_quorum_lost", `{{ .Time | ShortTime }} [RAFT] Consumer {{ .Stream }} > {{ .Consumer }} lost quorum of {{ .Replicas | len }} peers`)
 	if err != nil {
 		panic(err)
 	}

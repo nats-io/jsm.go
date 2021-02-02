@@ -445,6 +445,10 @@ func (c *Consumer) MetricSubject() string {
 
 // NextMsg requests the next message from the server with the manager timeout
 func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
+	if !m.nc.Opts.UseOldRequestStyle {
+		return nil, fmt.Errorf("pull mode requires the use of UseOldRequestStyle() option")
+	}
+
 	s, err := NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err
@@ -479,6 +483,10 @@ func (m *Manager) NextMsgRequest(stream string, consumer string, inbox string, r
 // NextMsg requests the next message from the server. This request will wait for as long as the context is
 // active. If repeated pulls will be made it's better to use NextMsgRequest()
 func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer string) (*nats.Msg, error) {
+	if !m.nc.Opts.UseOldRequestStyle {
+		return nil, fmt.Errorf("pull mode requires the use of UseOldRequestStyle() option")
+	}
+
 	s, err := NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err

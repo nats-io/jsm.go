@@ -25,7 +25,7 @@ type JSStreamLeaderElectedV1 struct {
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.stream_leader_elected", `{{ .Time | ShortTime }} Stream {{ .Stream }} elected leader {{ .Leader }} of {{ .Replicas | len }} peers`)
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.stream_leader_elected", `{{ .Time | ShortTime }} [RAFT] Stream {{ .Stream }} elected {{ .Leader }} of {{ .Replicas | len }} peers`)
 	if err != nil {
 		panic(err)
 	}

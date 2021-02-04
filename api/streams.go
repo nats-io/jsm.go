@@ -319,6 +319,13 @@ type StreamConfig struct {
 	NoAck        bool            `json:"no_ack,omitempty"`
 	Template     string          `json:"template_owner,omitempty"`
 	Duplicates   time.Duration   `json:"duplicate_window,omitempty"`
+	Placement    *Placement      `json:"placement,omitempty"`
+}
+
+// Placement describes stream placement requirements for a stream
+type Placement struct {
+	Cluster string   `json:"cluster"`
+	Tags    []string `json:"tags,omitempty"`
 }
 
 type StreamInfo struct {

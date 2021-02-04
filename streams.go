@@ -300,6 +300,30 @@ func DuplicateWindow(d time.Duration) StreamOption {
 	}
 }
 
+func PlacementCluster(cluster string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		if o.Placement == nil {
+			o.Placement = &api.Placement{}
+		}
+
+		o.Placement.Cluster = cluster
+
+		return nil
+	}
+}
+
+func PlacementTags(tags ...string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		if o.Placement == nil {
+			o.Placement = &api.Placement{}
+		}
+
+		o.Placement.Tags = tags
+
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {

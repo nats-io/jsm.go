@@ -110,10 +110,6 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 		return err
 	}
 
-	if m.trace {
-		log.Printf("<<< %s\n%s\n\n", subj, string(msg.Data))
-	}
-
 	err = json.Unmarshal(msg.Data, response)
 	if err != nil {
 		return err

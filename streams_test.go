@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go"
@@ -650,5 +651,35 @@ func TestDuplicateWindow(t *testing.T) {
 	checkErr(t, err, "failed")
 	if cfg.Duplicates != time.Hour {
 		t.Fatalf("expected a 1 hour windows got %v", cfg.Duplicates)
+	}
+}
+
+func TestPlacementCluster(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.PlacementCluster("EAST")(cfg)
+	checkErr(t, err, "failed")
+	if cfg.Placement.Cluster != "EAST" {
+		t.Fatalf("expected EAST got %q", cfg.Placement.Cluster)
+	}
+
+	err = jsm.PlacementCluster("WEST")(cfg)
+	checkErr(t, err, "failed")
+	if cfg.Placement.Cluster != "WEST" {
+		t.Fatalf("expected WEST got %q", cfg.Placement.Cluster)
+	}
+}
+
+func TestPlacementTags(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.PlacementTags("EAST", "SSD")(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.Placement.Tags, []string{"EAST", "SSD"}) {
+		t.Fatalf("expected [EAST, SSD] got %q", cfg.Placement.Tags)
+	}
+
+	err = jsm.PlacementTags("WEST", "HDD")(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.Placement.Tags, []string{"WEST", "HDD"}) {
+		t.Fatalf("expected [WEST, HDD] got %q", cfg.Placement.Tags)
 	}
 }

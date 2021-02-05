@@ -20,19 +20,21 @@ import (
 )
 
 const (
-	JSApiStreamCreateT    = "$JS.API.STREAM.CREATE.%s"
-	JSApiStreamUpdateT    = "$JS.API.STREAM.UPDATE.%s"
-	JSApiStreamNames      = "$JS.API.STREAM.NAMES"
-	JSApiStreamList       = "$JS.API.STREAM.LIST"
-	JSApiStreamInfoT      = "$JS.API.STREAM.INFO.%s"
-	JSApiStreamDeleteT    = "$JS.API.STREAM.DELETE.%s"
-	JSApiStreamPurgeT     = "$JS.API.STREAM.PURGE.%s"
-	JSApiMsgDeleteT       = "$JS.API.STREAM.MSG.DELETE.%s"
-	JSApiMsgGetT          = "$JS.API.STREAM.MSG.GET.%s"
-	JSApiStreamSnapshotT  = "$JS.API.STREAM.SNAPSHOT.%s"
-	JSApiStreamRestoreT   = "$JS.API.STREAM.RESTORE.%s"
-	StreamDefaultReplicas = 1
-	StreamMaxReplicas     = 5
+	JSApiStreamCreateT         = "$JS.API.STREAM.CREATE.%s"
+	JSApiStreamUpdateT         = "$JS.API.STREAM.UPDATE.%s"
+	JSApiStreamNames           = "$JS.API.STREAM.NAMES"
+	JSApiStreamList            = "$JS.API.STREAM.LIST"
+	JSApiStreamInfoT           = "$JS.API.STREAM.INFO.%s"
+	JSApiStreamDeleteT         = "$JS.API.STREAM.DELETE.%s"
+	JSApiStreamPurgeT          = "$JS.API.STREAM.PURGE.%s"
+	JSApiMsgDeleteT            = "$JS.API.STREAM.MSG.DELETE.%s"
+	JSApiMsgGetT               = "$JS.API.STREAM.MSG.GET.%s"
+	JSApiStreamSnapshotT       = "$JS.API.STREAM.SNAPSHOT.%s"
+	JSApiStreamRestoreT        = "$JS.API.STREAM.RESTORE.%s"
+	JSApiStreamRemovePeerT     = "$JS.API.STREAM.PEER.REMOVE.%s"
+	JSApiStreamLeaderStepDownT = "$JS.API.STREAM.LEADER.STEPDOWN.%s"
+	StreamDefaultReplicas      = 1
+	StreamMaxReplicas          = 5
 )
 
 type StoredMsg struct {
@@ -89,7 +91,8 @@ type JSApiStreamListRequest struct {
 
 // io.nats.jetstream.api.v1.stream_msg_delete_request
 type JSApiMsgDeleteRequest struct {
-	Seq uint64 `json:"seq"`
+	Seq     uint64 `json:"seq"`
+	NoErase bool   `json:"no_erase,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_msg_delete_response
@@ -166,6 +169,24 @@ type JSApiStreamRestoreResponse struct {
 	JSApiResponse
 	// Subject to deliver the chunks to for the snapshot restore.
 	DeliverSubject string `json:"deliver_subject"`
+}
+
+// io.nats.jetstream.api.v1.stream_remove_peer_request
+type JSApiStreamRemovePeerRequest struct {
+	// Server name of the peer to be removed.
+	Peer string `json:"peer"`
+}
+
+// io.nats.jetstream.api.v1.stream_remove_peer_response
+type JSApiStreamRemovePeerResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.stream_leader_stepdown_response
+type JSApiStreamLeaderStepDownResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
 }
 
 type DiscardPolicy int

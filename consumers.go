@@ -595,6 +595,21 @@ func (c *Consumer) Delete() (err error) {
 	return fmt.Errorf("unknown response while removing consumer %s", c.Name())
 }
 
+// LeaderStepDown requests the current RAFT group leader in a clustered JetStream to stand down forcing a new election
+func (c *Consumer) LeaderStepDown() error {
+	var resp api.JSApiConsumerLeaderStepDownResponse
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerLeaderStepDownT, c.StreamName(), c.Name()), nil, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while requested leader step down")
+	}
+
+	return nil
+}
+
 func (c *Consumer) Name() string                     { return c.name }
 func (c *Consumer) IsSampled() bool                  { return c.SampleFrequency() != "" }
 func (c *Consumer) IsPullMode() bool                 { return c.cfg.DeliverSubject == "" }

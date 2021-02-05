@@ -519,6 +519,36 @@ func (s *Stream) MetricSubject() string {
 	return api.JSMetricPrefix + ".*.*." + s.Name() + ".*"
 }
 
+// RemoveRAFTPeer removes a peer from the group indicating it will not return
+func (s *Stream) RemoveRAFTPeer(peer string) error {
+	var resp api.JSApiStreamRemovePeerResponse
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamRemovePeerT, s.Name()), api.JSApiStreamRemovePeerRequest{Peer: peer}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while removing peer %q", peer)
+	}
+
+	return nil
+}
+
+// LeaderStepDown requests the current RAFT group leader in a clustered JetStream to stand down forcing a new election
+func (s *Stream) LeaderStepDown() error {
+	var resp api.JSApiStreamLeaderStepDownResponse
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamLeaderStepDownT, s.Name()), nil, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while requested leader step down")
+	}
+
+	return nil
+}
+
 // IsTemplateManaged determines if this stream is managed by a template
 func (s *Stream) IsTemplateManaged() bool { return s.Template() != "" }
 

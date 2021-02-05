@@ -213,6 +213,7 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_request.json", St: "JSApiConsumerNamesRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_response.json", St: "JSApiConsumerNamesResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_leader_stepdown_response.json", St: "JSApiConsumerLeaderStepDownResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_create_request.json", St: "JSApiStreamCreateRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_create_response.json", St: "JSApiStreamCreateResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_delete_response.json", St: "JSApiStreamDeleteResponse"},
@@ -235,6 +236,9 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_response.json", St: "JSApiStreamTemplateNamesResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_request.json", St: "JSApiStreamTemplateNamesRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_update_response.json", St: "JSApiStreamUpdateResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_remove_peer_request.json", St: "JSApiStreamRemovePeerRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_remove_peer_response.json", St: "JSApiStreamRemovePeerResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_leader_stepdown_response.json", St: "JSApiStreamLeaderStepDownResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse"},
 	}
 

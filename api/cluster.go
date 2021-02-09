@@ -17,6 +17,16 @@ import (
 	"time"
 )
 
+const (
+	JSApiLeaderStepDown = "$JS.API.META.LEADER.STEPDOWN"
+)
+
+// io.nats.jetstream.api.v1.meta_leader_stepdown_response
+type JSApiLeaderStepDownResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
+}
+
 // ClusterInfo shows information about the underlying set of servers
 // that make up the stream or consumer.
 type ClusterInfo struct {

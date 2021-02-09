@@ -240,6 +240,7 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_remove_peer_response.json", St: "JSApiStreamRemovePeerResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_leader_stepdown_response.json", St: "JSApiStreamLeaderStepDownResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_leader_stepdown_response.json", St: "JSApiLeaderStepDownResponse"},
 	}
 
 	for _, i := range s {

@@ -110,3 +110,18 @@ func IsValidName(n string) bool {
 
 	return !strings.ContainsAny(n, ">*. ")
 }
+
+// MetaLeaderStandDown requests the meta group leader to stand down, must be initiated by a system user
+func (m *Manager) MetaLeaderStandDown() error {
+	var resp api.JSApiLeaderStepDownResponse
+	err := m.jsonRequest(api.JSApiLeaderStepDown, nil, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while requesting leader step down")
+	}
+
+	return nil
+}

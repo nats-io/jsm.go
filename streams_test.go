@@ -377,7 +377,7 @@ func TestStream_LatestState(t *testing.T) {
 	srv.Shutdown()
 	newstate, err := stream.LatestState()
 	checkErr(t, err, "state failed")
-	if newstate != state {
+	if !cmp.Equal(newstate, state) {
 		t.Fatalf("latest state is not the same as last")
 	}
 }

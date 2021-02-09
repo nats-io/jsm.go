@@ -349,6 +349,14 @@ type Placement struct {
 	Tags    []string `json:"tags,omitempty"`
 }
 
+// LostStreamData indicates msgs that have been lost during file checks and recover due to corruption
+type LostStreamData struct {
+	// Message IDs of lost messages
+	Msgs []uint64 `json:"msgs"`
+	// How many bytes were lost
+	Bytes uint64 `json:"bytes"`
+}
+
 type StreamInfo struct {
 	Config  StreamConfig `json:"config"`
 	Created time.Time    `json:"created"`
@@ -357,11 +365,13 @@ type StreamInfo struct {
 }
 
 type StreamState struct {
-	Msgs      uint64    `json:"messages"`
-	Bytes     uint64    `json:"bytes"`
-	FirstSeq  uint64    `json:"first_seq"`
-	FirstTime time.Time `json:"first_ts"`
-	LastSeq   uint64    `json:"last_seq"`
-	LastTime  time.Time `json:"last_ts"`
-	Consumers int       `json:"consumer_count"`
+	Msgs      uint64          `json:"messages"`
+	Bytes     uint64          `json:"bytes"`
+	FirstSeq  uint64          `json:"first_seq"`
+	FirstTime time.Time       `json:"first_ts"`
+	LastSeq   uint64          `json:"last_seq"`
+	LastTime  time.Time       `json:"last_ts"`
+	Deleted   []uint64        `json:"deleted,omitempty"`
+	Lost      *LostStreamData `json:"lost,omitempty"`
+	Consumers int             `json:"consumer_count"`
 }

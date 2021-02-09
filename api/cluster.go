@@ -30,5 +30,7 @@ type ClusterInfo struct {
 type PeerInfo struct {
 	Name    string        `json:"name"`
 	Current bool          `json:"current"`
+	Offline bool          `json:"offline,omitempty"`
 	Active  time.Duration `json:"active"`
+	Lag     uint64        `json:"lag,omitempty"`
 }

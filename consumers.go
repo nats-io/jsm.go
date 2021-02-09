@@ -604,7 +604,7 @@ func (c *Consumer) LeaderStepDown() error {
 	}
 
 	if !resp.Success {
-		return fmt.Errorf("unknown error while requested leader step down")
+		return fmt.Errorf("unknown error while requesting leader step down")
 	}
 
 	return nil

@@ -91,7 +91,7 @@ type SnapshotProgress interface {
 	ChunkSize() int
 	// ChunksReceived is how many chunks of ChunkSize were received
 	ChunksReceived() uint32
-	// BytesExpected is how many Bytes we should be recieving
+	// BytesExpected is how many Bytes we should be receiving
 	BytesExpected() uint64
 	// BytesReceived is how many Bytes have been received
 	BytesReceived() uint64
@@ -134,7 +134,7 @@ type snapshotProgress struct {
 	uncompressedBytesReceived uint64
 	bytesExpected             uint64
 	bytesSent                 uint64
-	finished bool
+	finished                  bool
 	sending                   bool   // if we are sending data, this is a hint for bps calc
 	bps                       uint64 // Bytes per second
 	scb                       func(SnapshotProgress)
@@ -143,7 +143,7 @@ type snapshotProgress struct {
 	sync.Mutex
 }
 
-func (sp *snapshotProgress) Finished() bool{
+func (sp *snapshotProgress) Finished() bool {
 	sp.Lock()
 	defer sp.Unlock()
 
@@ -178,7 +178,7 @@ func (sp *snapshotProgress) BytesReceived() uint64 {
 	return sp.bytesReceived
 }
 
-func (sp *snapshotProgress) UncompressedBytesReceived() uint64{
+func (sp *snapshotProgress) UncompressedBytesReceived() uint64 {
 	sp.Lock()
 	defer sp.Unlock()
 
@@ -256,8 +256,8 @@ func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc cha
 	sr := s2.NewReader(r)
 
 	for {
-		b:=make([]byte, sp.chunkSize)
-		i,err:=sr.Read(b)
+		b := make([]byte, sp.chunkSize)
+		i, err := sr.Read(b)
 		if err != nil {
 			sp.notify()
 			return
@@ -566,7 +566,7 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 
 		mf.Write(mj)
 
-		progress.finished=true
+		progress.finished = true
 		progress.notify()
 
 		return progress, nil

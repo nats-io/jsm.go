@@ -14,7 +14,6 @@
 package jsm
 
 import (
-	"archive/tar"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,7 +24,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -93,12 +91,18 @@ type SnapshotProgress interface {
 	ChunkSize() int
 	// ChunksReceived is how many chunks of ChunkSize were received
 	ChunksReceived() uint32
+	// BytesExpected is how many Bytes we should be recieving
+	BytesExpected() uint64
 	// BytesReceived is how many Bytes have been received
 	BytesReceived() uint64
+	// UncompressedBytesReceived is the number of bytes received uncompressed
+	UncompressedBytesReceived() uint64
 	// BytesPerSecond is the number of bytes received in the last second, 0 during the first second
 	BytesPerSecond() uint64
 	// HealthCheck indicates if health checking was requested
 	HealthCheck() bool
+	// Finished will be true after all data have been written
+	Finished() bool
 }
 
 type RestoreProgress interface {
@@ -130,7 +134,7 @@ type snapshotProgress struct {
 	uncompressedBytesReceived uint64
 	bytesExpected             uint64
 	bytesSent                 uint64
-	metadataDone              bool
+	finished bool
 	sending                   bool   // if we are sending data, this is a hint for bps calc
 	bps                       uint64 // Bytes per second
 	scb                       func(SnapshotProgress)
@@ -139,19 +143,52 @@ type snapshotProgress struct {
 	sync.Mutex
 }
 
+func (sp *snapshotProgress) Finished() bool{
+	sp.Lock()
+	defer sp.Unlock()
+
+	return sp.finished
+}
+
 func (sp *snapshotProgress) HealthCheck() bool {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.healthCheck
 }
 
 func (sp *snapshotProgress) ChunksReceived() uint32 {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.chunksReceived
 }
 
+func (sp *snapshotProgress) BytesExpected() uint64 {
+	sp.Lock()
+	defer sp.Unlock()
+
+	return sp.bytesExpected
+}
+
 func (sp *snapshotProgress) BytesReceived() uint64 {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.bytesReceived
 }
 
+func (sp *snapshotProgress) UncompressedBytesReceived() uint64{
+	sp.Lock()
+	defer sp.Unlock()
+
+	return sp.uncompressedBytesReceived
+}
+
 func (sp *snapshotProgress) BytesPerSecond() uint64 {
+	sp.Lock()
+	defer sp.Unlock()
+
 	if sp.bps > 0 {
 		return sp.bps
 	}
@@ -164,26 +201,44 @@ func (sp *snapshotProgress) BytesPerSecond() uint64 {
 }
 
 func (sp *snapshotProgress) StartTime() time.Time {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.startTime
 }
 
 func (sp *snapshotProgress) EndTime() time.Time {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.endTime
 }
 
 func (sp *snapshotProgress) ChunkSize() int {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.chunkSize
 }
 
 func (sp *snapshotProgress) ChunksToSend() int {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.chunksToSend
 }
 
 func (sp *snapshotProgress) ChunksSent() uint32 {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.chunksSent
 }
 
 func (sp *snapshotProgress) BytesSent() uint64 {
+	sp.Lock()
+	defer sp.Unlock()
+
 	return sp.bytesSent
 }
 
@@ -198,50 +253,21 @@ func (sp *snapshotProgress) notify() {
 
 // the tracker will uncompress and untar the stream keeping count of bytes received etc
 func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc chan error) {
-	seenMetaSum := false
-	seenMetaInf := false
-
-	tr := tar.NewReader(s2.NewReader(r))
+	sr := s2.NewReader(r)
 
 	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			errc <- fmt.Errorf("progress tracker received EOF")
-			return
-		}
+		b:=make([]byte, sp.chunkSize)
+		i,err:=sr.Read(b)
 		if err != nil {
-			errc <- fmt.Errorf("progress tracker received an unexpected error: %s", err)
+			sp.notify()
 			return
-		}
-
-		if debug {
-			log.Printf("Received file %s", hdr.Name)
 		}
 
 		sp.Lock()
-		sp.uncompressedBytesReceived += uint64(hdr.Size)
+		sp.uncompressedBytesReceived += uint64(i)
 		sp.Unlock()
 
-		if !sp.metadataDone {
-			if hdr.Name == "meta.sum" {
-				seenMetaSum = true
-			}
-			if hdr.Name == "meta.inf" {
-				seenMetaInf = true
-			}
-			if seenMetaInf && seenMetaSum {
-				sp.metadataDone = true
-
-				// tell the caller soon as we are done with metadata
-				sp.notify()
-			}
-		}
-
-		if strings.HasSuffix(hdr.Name, "blk") {
-			// notify before setting done so callers can easily print the
-			// last progress for blocks
-			sp.notify()
-		}
+		sp.notify()
 	}
 }
 
@@ -539,6 +565,9 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 		}
 
 		mf.Write(mj)
+
+		progress.finished=true
+		progress.notify()
 
 		return progress, nil
 	}

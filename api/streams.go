@@ -146,10 +146,8 @@ type JSApiMsgGetRequest struct {
 // io.nats.jetstream.api.v1.stream_snapshot_response
 type JSApiStreamSnapshotResponse struct {
 	JSApiResponse
-	// Estimate of number of blocks for the messages.
-	NumBlks int `json:"num_blks"`
-	// Block size limit as specified by the stream.
-	BlkSize int `json:"blk_size"`
+	Config StreamConfig `json:"config"`
+	State  StreamState  `json:"state"`
 }
 
 // io.nats.jetstream.api.v1.stream_snapshot_request
@@ -162,6 +160,12 @@ type JSApiStreamSnapshotRequest struct {
 	ChunkSize int `json:"chunk_size,omitempty"`
 	// Check all message's checksums prior to snapshot.
 	CheckMsgs bool `json:"jsck,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.stream_restore_request
+type JSApiStreamRestoreRequest struct {
+	Config StreamConfig `json:"config"`
+	State  StreamState  `json:"state"`
 }
 
 // io.nats.jetstream.api.v1.stream_restore_response

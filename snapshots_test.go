@@ -25,7 +25,6 @@ import (
 )
 
 func TestStream_Snapshot(t *testing.T) {
-	t.Skip("pending new API updates")
 	srv, nc, mgr := startJSServer(t)
 	defer os.RemoveAll(srv.JetStreamConfig().StoreDir)
 	defer srv.Shutdown()
@@ -43,17 +42,16 @@ func TestStream_Snapshot(t *testing.T) {
 	preState, err := stream.State()
 	checkErr(t, err, "state retrieve failed")
 
-	tf, err := ioutil.TempFile("", "")
-	checkErr(t, err, "temp file failed")
-	tf.Close()
-	defer os.Remove(tf.Name())
+	td, err := ioutil.TempDir("", "")
+	checkErr(t, err, "temp dir failed")
+	defer os.RemoveAll(td)
 
-	_, err = stream.SnapshotToFile(context.Background(), tf.Name(), jsm.SnapshotConsumers(), jsm.SnapshotHealthCheck(), jsm.SnapshotDebug())
+	_, err = stream.SnapshotToDirectory(context.Background(), td, jsm.SnapshotConsumers(), jsm.SnapshotHealthCheck(), jsm.SnapshotDebug())
 	checkErr(t, err, "snapshot failed")
 
 	checkErr(t, stream.Delete(), "delete failed")
 
-	_, postRestoreState, err := mgr.RestoreSnapshotFromFile(context.Background(), "q1", tf.Name(), jsm.SnapshotDebug())
+	_, postRestoreState, err := mgr.RestoreSnapshotFromDirectory(context.Background(), "q1", td, jsm.SnapshotDebug())
 	checkErr(t, err, "restore failed")
 	if postRestoreState == nil {
 		t.Fatalf("got a nil post restore state")

@@ -535,11 +535,16 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 			errc <- fmt.Errorf("failed to write %d bytes to %s, only wrote %d", len(m.Data), sopts.dataFile, n)
 			return
 		}
+
+		if m.Reply != "" {
+			m.Respond(nil)
+		}
 	})
 	if err != nil {
 		return progress, err
 	}
 	defer sub.Unsubscribe()
+	sub.SetPendingLimits(-1, -1)
 
 	select {
 	case err := <-errc:

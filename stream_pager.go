@@ -145,6 +145,8 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 			return nil, true, fmt.Errorf("last message reached")
 		}
 
+		msg.Ack()
+
 		return msg, p.seen == p.pageSize, nil
 
 	case <-timeout.Done():

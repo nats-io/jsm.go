@@ -125,3 +125,21 @@ func (m *Manager) MetaLeaderStandDown() error {
 
 	return nil
 }
+
+// APISubject returns API subject with prefix applied
+func APISubject(subject string, prefix string) string {
+	if prefix == "" {
+		return subject
+	}
+
+	return prefix + strings.TrimPrefix(subject, "$JS.API")
+}
+
+// EventSubject returns Event subject with prefix applied
+func EventSubject(subject string, prefix string) string {
+	if prefix == "" {
+		return subject
+	}
+
+	return prefix + strings.TrimPrefix(subject, "$JS.EVENT")
+}

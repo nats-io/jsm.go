@@ -409,7 +409,7 @@ func (c *Consumer) NextSubject() string {
 
 	s, _ := NextSubject(c.stream, c.name)
 
-	return s
+	return c.mgr.apiSubject(s)
 }
 
 // NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
@@ -453,6 +453,7 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 	if err != nil {
 		return nil, err
 	}
+	s = m.apiSubject(s)
 
 	rj, err := json.Marshal(&api.JSApiConsumerGetNextRequest{
 		Expires: time.Now().Add(m.timeout),

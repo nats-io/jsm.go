@@ -43,18 +43,20 @@ import (
 type Option func(c *settings)
 
 type settings struct {
-	Description string `json:"description"`
-	URL         string `json:"url"`
-	nscUrl      string
-	User        string `json:"user"`
-	Password    string `json:"password"`
-	Creds       string `json:"creds"`
-	nscCreds    string
-	NKey        string `json:"nkey"`
-	Cert        string `json:"cert"`
-	Key         string `json:"key"`
-	CA          string `json:"ca"`
-	NSCLookup   string `json:"nsc"`
+	Description   string `json:"description"`
+	URL           string `json:"url"`
+	nscUrl        string
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	Creds         string `json:"creds"`
+	nscCreds      string
+	NKey          string `json:"nkey"`
+	Cert          string `json:"cert"`
+	Key           string `json:"key"`
+	CA            string `json:"ca"`
+	NSCLookup     string `json:"nsc"`
+	JSAPIPrefix   string `json:"jetstream_api_prefix"`
+	JSEventPrefix string `json:"jetstream_event_prefix"`
 }
 
 type Context struct {
@@ -542,3 +544,23 @@ func (c *Context) Description() string { return c.config.Description }
 
 // Path returns the path on disk for a loaded context, empty when not saved or loaded
 func (c *Context) Path() string { return c.path }
+
+// WithJSAPIPrefix sets the prefix to use for JetStream API
+func WithJSAPIPrefix(p string) Option {
+	return func(s *settings) {
+		s.JSAPIPrefix = p
+	}
+}
+
+// JSAPIPrefix is the subject prefix to use when accessing JetStream API
+func (c *Context) JSAPIPrefix() string { return c.config.JSAPIPrefix }
+
+// WithJSEventPrefix sets the prefix to use for JetStream Events
+func WithJSEventPrefix(p string) Option {
+	return func(s *settings) {
+		s.JSEventPrefix = p
+	}
+}
+
+// JSEventPrefix is the subject prefix to use when accessing JetStream events
+func (c *Context) JSEventPrefix() string { return c.config.JSEventPrefix }

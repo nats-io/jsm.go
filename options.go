@@ -42,3 +42,17 @@ func WithTimeout(t time.Duration) Option {
 		o.timeout = t
 	}
 }
+
+// WithAPIPrefix replace API endpoints like $JS.API.STREAM.NAMES with prefix.STREAM.NAMES
+func WithAPIPrefix(s string) Option {
+	return func(o *Manager) {
+		o.apiPrefix = s
+	}
+}
+
+// WithEventPrefix replace event subjects like $JS.EVENT.ADVISORY.API with prefix.ADVISORY
+func WithEventPrefix(s string) Option {
+	return func(o *Manager) {
+		o.eventPrefix = s
+	}
+}

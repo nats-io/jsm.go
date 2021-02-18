@@ -29,10 +29,12 @@ import (
 )
 
 type Manager struct {
-	nc        *nats.Conn
-	timeout   time.Duration
-	trace     bool
-	validator api.StructValidator
+	nc          *nats.Conn
+	timeout     time.Duration
+	trace       bool
+	validator   api.StructValidator
+	apiPrefix   string
+	eventPrefix string
 
 	sync.Mutex
 }
@@ -100,7 +102,7 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 		log.Printf(">>> %s\n%s\n\n", subj, string(body))
 	}
 
-	msg, err := m.request(subj, body)
+	msg, err := m.request(m.apiSubject(subj), body)
 	if m.trace && msg != nil {
 		log.Printf("<<< %s\n%s\n\n", subj, string(msg.Data))
 	} else if m.trace {
@@ -431,4 +433,8 @@ func (m *Manager) Streams() (streams []*Stream, err error) {
 	}
 
 	return streams, nil
+}
+
+func (m *Manager) apiSubject(subject string) string {
+	return APISubject(subject, m.apiPrefix)
 }

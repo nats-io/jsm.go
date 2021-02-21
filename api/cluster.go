@@ -21,6 +21,11 @@ const (
 	JSApiLeaderStepDown = "$JS.API.META.LEADER.STEPDOWN"
 )
 
+// io.nats.jetstream.api.v1.meta_leader_stepdown_request
+type JSApiLeaderStepDownRequest struct {
+	Placement *Placement `json:"placement,omitempty"`
+}
+
 // io.nats.jetstream.api.v1.meta_leader_stepdown_response
 type JSApiLeaderStepDownResponse struct {
 	JSApiResponse

@@ -112,9 +112,9 @@ func IsValidName(n string) bool {
 }
 
 // MetaLeaderStandDown requests the meta group leader to stand down, must be initiated by a system user
-func (m *Manager) MetaLeaderStandDown() error {
+func (m *Manager) MetaLeaderStandDown(placement *api.Placement) error {
 	var resp api.JSApiLeaderStepDownResponse
-	err := m.jsonRequest(api.JSApiLeaderStepDown, nil, &resp)
+	err := m.jsonRequest(api.JSApiLeaderStepDown, api.JSApiLeaderStepDownRequest{Placement: placement}, &resp)
 	if err != nil {
 		return err
 	}

@@ -324,6 +324,30 @@ func PlacementTags(tags ...string) StreamOption {
 	}
 }
 
+func Mirror(stream string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Mirror = stream
+
+		return nil
+	}
+}
+
+func Sources(streams ...string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Sources = streams
+
+		return nil
+	}
+}
+
+func Syncs(streams ...string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Syncs = streams
+
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -552,6 +576,16 @@ func (s *Stream) LeaderStepDown() error {
 // IsTemplateManaged determines if this stream is managed by a template
 func (s *Stream) IsTemplateManaged() bool { return s.Template() != "" }
 
+// IsMirror determines if this stream is a mirror of another
+func (s *Stream) IsMirror() bool { return s.cfg.Mirror != "" }
+
+// IsSynced determines if this stream is pushing it's data to another stream
+func (s *Stream) IsSynced() bool { return len(s.cfg.Syncs) > 0 }
+
+// IsSourced determines if this stream is sourcing data from another stream. Other streams
+// could be synced to this stream and it would not be reported by this property
+func (s *Stream) IsSourced() bool { return len(s.cfg.Sources) > 0 }
+
 func (s *Stream) Configuration() api.StreamConfig { return *s.cfg }
 func (s *Stream) Name() string                    { return s.cfg.Name }
 func (s *Stream) Subjects() []string              { return s.cfg.Subjects }
@@ -566,3 +600,6 @@ func (s *Stream) Replicas() int                   { return s.cfg.Replicas }
 func (s *Stream) NoAck() bool                     { return s.cfg.NoAck }
 func (s *Stream) Template() string                { return s.cfg.Template }
 func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }
+func (s *Stream) Mirror() string                  { return s.cfg.Mirror }
+func (s *Stream) Sources() []string               { return s.cfg.Sources }
+func (s *Stream) Syncs() []string                 { return s.cfg.Syncs }

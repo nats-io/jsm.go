@@ -345,12 +345,23 @@ type StreamConfig struct {
 	Template     string          `json:"template_owner,omitempty"`
 	Duplicates   time.Duration   `json:"duplicate_window,omitempty"`
 	Placement    *Placement      `json:"placement,omitempty"`
+	Mirror       string          `json:"mirror,omitempty"`
+	Sources      []string        `json:"sources,omitempty"`
+	Syncs        []string        `json:"syncs,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream
 type Placement struct {
 	Cluster string   `json:"cluster"`
 	Tags    []string `json:"tags,omitempty"`
+}
+
+// StreamSourceInfo shows information about an upstream stream source.
+type StreamSourceInfo struct {
+	Name   string        `json:"name"`
+	Lag    uint64        `json:"lag"`
+	Active time.Duration `json:"active"`
+	Error  *ApiError     `json:"error,omitempty"`
 }
 
 // LostStreamData indicates msgs that have been lost during file checks and recover due to corruption
@@ -362,10 +373,11 @@ type LostStreamData struct {
 }
 
 type StreamInfo struct {
-	Config  StreamConfig `json:"config"`
-	Created time.Time    `json:"created"`
-	State   StreamState  `json:"state"`
-	Cluster *ClusterInfo `json:"cluster,omitempty"`
+	Config  StreamConfig      `json:"config"`
+	Created time.Time         `json:"created"`
+	State   StreamState       `json:"state"`
+	Cluster *ClusterInfo      `json:"cluster,omitempty"`
+	Mirror  *StreamSourceInfo `json:"mirror,omitempty"`
 }
 
 type StreamState struct {

@@ -683,3 +683,85 @@ func TestPlacementTags(t *testing.T) {
 		t.Fatalf("expected [WEST, HDD] got %q", cfg.Placement.Tags)
 	}
 }
+
+func TestSources(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.Sources("one", "two")(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.Sources, []string{"one", "two"}) {
+		t.Fatalf("expected [one, two] got %q", cfg.Sources)
+	}
+}
+
+func TestMirror(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.Mirror("one")(cfg)
+	checkErr(t, err, "failed")
+	if cfg.Mirror != "one" {
+		t.Fatalf("expected 'one' got %q", cfg.Mirror)
+	}
+}
+
+func TestSyncs(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.Syncs("one", "two")(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.Syncs, []string{"one", "two"}) {
+		t.Fatalf("expected [one, two] got %q", cfg.Syncs)
+	}
+}
+
+func TestStream_IsMirror(t *testing.T) {
+	t.Skip("Waiting for feature to merge")
+
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+	s, err := mgr.NewStream("q2", jsm.FileStorage(), jsm.Mirror("other"))
+	checkErr(t, err, "create failed")
+
+	if !s.IsMirror() {
+		t.Fatalf("Expected a mirror")
+	}
+}
+
+func TestStream_IsSynced(t *testing.T) {
+	t.Skip("Waiting for feature to merge")
+
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+	_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+	s, err := mgr.NewStream("q3", jsm.Subjects("in.q3"), jsm.FileStorage(), jsm.Syncs("q1", "q2"))
+	checkErr(t, err, "create failed")
+
+	if !s.IsSynced() {
+		t.Fatalf("Expected a synced")
+	}
+}
+
+func TestStream_IsSourced(t *testing.T) {
+	t.Skip("Waiting for feature to merge")
+
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+	_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+	s, err := mgr.NewStream("q3", jsm.Subjects("in.q3"), jsm.FileStorage(), jsm.Sources("q1", "q2"))
+	checkErr(t, err, "create failed")
+
+	if !s.IsSourced() {
+		t.Fatalf("Expected a synced")
+	}
+}

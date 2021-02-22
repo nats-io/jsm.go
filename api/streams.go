@@ -373,11 +373,12 @@ type LostStreamData struct {
 }
 
 type StreamInfo struct {
-	Config  StreamConfig      `json:"config"`
-	Created time.Time         `json:"created"`
-	State   StreamState       `json:"state"`
-	Cluster *ClusterInfo      `json:"cluster,omitempty"`
-	Mirror  *StreamSourceInfo `json:"mirror,omitempty"`
+	Config  StreamConfig        `json:"config"`
+	Created time.Time           `json:"created"`
+	State   StreamState         `json:"state"`
+	Cluster *ClusterInfo        `json:"cluster,omitempty"`
+	Mirror  *StreamSourceInfo   `json:"mirror,omitempty"`
+	Sources []*StreamSourceInfo `json:"sources,omitempty"`
 }
 
 type StreamState struct {

@@ -705,16 +705,6 @@ func TestMirror(t *testing.T) {
 	}
 }
 
-func TestSyncs(t *testing.T) {
-	cfg := testStreamConfig()
-	expected := []*api.StreamSource{{Name: "one"}, {Name: "two"}}
-	err := jsm.Syncs(expected...)(cfg)
-	checkErr(t, err, "failed")
-	if !cmp.Equal(cfg.Syncs, expected) {
-		t.Fatalf("expected [one, two] got %#v", cfg.Syncs)
-	}
-}
-
 func TestStream_IsMirror(t *testing.T) {
 	t.Skip("Waiting for feature to merge")
 
@@ -729,25 +719,6 @@ func TestStream_IsMirror(t *testing.T) {
 
 	if !s.IsMirror() {
 		t.Fatalf("Expected a mirror")
-	}
-}
-
-func TestStream_IsSynced(t *testing.T) {
-	t.Skip("Waiting for feature to merge")
-
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
-
-	_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
-	checkErr(t, err, "create failed")
-	_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.FileStorage())
-	checkErr(t, err, "create failed")
-	s, err := mgr.NewStream("q3", jsm.Subjects("in.q3"), jsm.FileStorage(), jsm.Syncs(&api.StreamSource{Name: "q1"}, &api.StreamSource{Name: "q2"}))
-	checkErr(t, err, "create failed")
-
-	if !s.IsSynced() {
-		t.Fatalf("Expected a synced")
 	}
 }
 

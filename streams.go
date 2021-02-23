@@ -348,21 +348,6 @@ func Sources(streams ...*api.StreamSource) StreamOption {
 	}
 }
 
-func AppendSync(stream *api.StreamSource) StreamOption {
-	return func(o *api.StreamConfig) error {
-		o.Syncs = append(o.Syncs, stream)
-		return nil
-	}
-}
-
-func Syncs(streams ...*api.StreamSource) StreamOption {
-	return func(o *api.StreamConfig) error {
-		o.Syncs = streams
-
-		return nil
-	}
-}
-
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -594,9 +579,6 @@ func (s *Stream) IsTemplateManaged() bool { return s.Template() != "" }
 // IsMirror determines if this stream is a mirror of another
 func (s *Stream) IsMirror() bool { return s.cfg.Mirror != nil }
 
-// IsSynced determines if this stream is pushing it's data to another stream
-func (s *Stream) IsSynced() bool { return len(s.cfg.Syncs) > 0 }
-
 // IsSourced determines if this stream is sourcing data from another stream. Other streams
 // could be synced to this stream and it would not be reported by this property
 func (s *Stream) IsSourced() bool { return len(s.cfg.Sources) > 0 }
@@ -617,4 +599,3 @@ func (s *Stream) Template() string                { return s.cfg.Template }
 func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }
 func (s *Stream) Mirror() *api.StreamSource       { return s.cfg.Mirror }
 func (s *Stream) Sources() []*api.StreamSource    { return s.cfg.Sources }
-func (s *Stream) Syncs() []*api.StreamSource      { return s.cfg.Syncs }

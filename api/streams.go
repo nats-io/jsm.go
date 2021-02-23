@@ -345,9 +345,9 @@ type StreamConfig struct {
 	Template     string          `json:"template_owner,omitempty"`
 	Duplicates   time.Duration   `json:"duplicate_window,omitempty"`
 	Placement    *Placement      `json:"placement,omitempty"`
-	Mirror       string          `json:"mirror,omitempty"`
-	Sources      []string        `json:"sources,omitempty"`
-	Syncs        []string        `json:"syncs,omitempty"`
+	Mirror       *StreamSource   `json:"mirror,omitempty"`
+	Sources      []*StreamSource `json:"sources,omitempty"`
+	Syncs        []*StreamSource `json:"syncs,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream
@@ -370,6 +370,14 @@ type LostStreamData struct {
 	Msgs []uint64 `json:"msgs"`
 	// How many bytes were lost
 	Bytes uint64 `json:"bytes"`
+}
+
+// StreamSource dictates how streams can source from other streams.
+type StreamSource struct {
+	Name          string     `json:"name"`
+	OptStartSeq   uint64     `json:"opt_start_seq,omitempty"`
+	OptStartTime  *time.Time `json:"opt_start_time,omitempty"`
+	FilterSubject string     `json:"filter_subject,omitempty"`
 }
 
 type StreamInfo struct {

@@ -324,7 +324,7 @@ func PlacementTags(tags ...string) StreamOption {
 	}
 }
 
-func Mirror(stream string) StreamOption {
+func Mirror(stream *api.StreamSource) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.Mirror = stream
 
@@ -332,7 +332,15 @@ func Mirror(stream string) StreamOption {
 	}
 }
 
-func Sources(streams ...string) StreamOption {
+func AppendSource(source *api.StreamSource) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Sources = append(o.Sources, source)
+
+		return nil
+	}
+}
+
+func Sources(streams ...*api.StreamSource) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.Sources = streams
 
@@ -340,7 +348,14 @@ func Sources(streams ...string) StreamOption {
 	}
 }
 
-func Syncs(streams ...string) StreamOption {
+func AppendSync(stream *api.StreamSource) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Syncs = append(o.Syncs, stream)
+		return nil
+	}
+}
+
+func Syncs(streams ...*api.StreamSource) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.Syncs = streams
 
@@ -577,7 +592,7 @@ func (s *Stream) LeaderStepDown() error {
 func (s *Stream) IsTemplateManaged() bool { return s.Template() != "" }
 
 // IsMirror determines if this stream is a mirror of another
-func (s *Stream) IsMirror() bool { return s.cfg.Mirror != "" }
+func (s *Stream) IsMirror() bool { return s.cfg.Mirror != nil }
 
 // IsSynced determines if this stream is pushing it's data to another stream
 func (s *Stream) IsSynced() bool { return len(s.cfg.Syncs) > 0 }
@@ -600,6 +615,6 @@ func (s *Stream) Replicas() int                   { return s.cfg.Replicas }
 func (s *Stream) NoAck() bool                     { return s.cfg.NoAck }
 func (s *Stream) Template() string                { return s.cfg.Template }
 func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }
-func (s *Stream) Mirror() string                  { return s.cfg.Mirror }
-func (s *Stream) Sources() []string               { return s.cfg.Sources }
-func (s *Stream) Syncs() []string                 { return s.cfg.Syncs }
+func (s *Stream) Mirror() *api.StreamSource       { return s.cfg.Mirror }
+func (s *Stream) Sources() []*api.StreamSource    { return s.cfg.Sources }
+func (s *Stream) Syncs() []*api.StreamSource      { return s.cfg.Syncs }

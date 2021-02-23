@@ -686,28 +686,32 @@ func TestPlacementTags(t *testing.T) {
 
 func TestSources(t *testing.T) {
 	cfg := testStreamConfig()
-	err := jsm.Sources("one", "two")(cfg)
+	expected := []*api.StreamSource{{Name: "one"}, {Name: "two"}}
+
+	err := jsm.Sources(expected...)(cfg)
 	checkErr(t, err, "failed")
-	if !cmp.Equal(cfg.Sources, []string{"one", "two"}) {
-		t.Fatalf("expected [one, two] got %q", cfg.Sources)
+	if !cmp.Equal(cfg.Sources, expected) {
+		t.Fatalf("expected [one, two] got %#v", cfg.Sources)
 	}
 }
 
 func TestMirror(t *testing.T) {
 	cfg := testStreamConfig()
-	err := jsm.Mirror("one")(cfg)
+	expected := &api.StreamSource{Name: "one"}
+	err := jsm.Mirror(expected)(cfg)
 	checkErr(t, err, "failed")
-	if cfg.Mirror != "one" {
+	if !cmp.Equal(cfg.Mirror, expected) {
 		t.Fatalf("expected 'one' got %q", cfg.Mirror)
 	}
 }
 
 func TestSyncs(t *testing.T) {
 	cfg := testStreamConfig()
-	err := jsm.Syncs("one", "two")(cfg)
+	expected := []*api.StreamSource{{Name: "one"}, {Name: "two"}}
+	err := jsm.Syncs(expected...)(cfg)
 	checkErr(t, err, "failed")
-	if !cmp.Equal(cfg.Syncs, []string{"one", "two"}) {
-		t.Fatalf("expected [one, two] got %q", cfg.Syncs)
+	if !cmp.Equal(cfg.Syncs, expected) {
+		t.Fatalf("expected [one, two] got %#v", cfg.Syncs)
 	}
 }
 
@@ -720,7 +724,7 @@ func TestStream_IsMirror(t *testing.T) {
 
 	_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
 	checkErr(t, err, "create failed")
-	s, err := mgr.NewStream("q2", jsm.FileStorage(), jsm.Mirror("other"))
+	s, err := mgr.NewStream("q2", jsm.FileStorage(), jsm.Mirror(&api.StreamSource{Name: "q1"}))
 	checkErr(t, err, "create failed")
 
 	if !s.IsMirror() {
@@ -739,7 +743,7 @@ func TestStream_IsSynced(t *testing.T) {
 	checkErr(t, err, "create failed")
 	_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.FileStorage())
 	checkErr(t, err, "create failed")
-	s, err := mgr.NewStream("q3", jsm.Subjects("in.q3"), jsm.FileStorage(), jsm.Syncs("q1", "q2"))
+	s, err := mgr.NewStream("q3", jsm.Subjects("in.q3"), jsm.FileStorage(), jsm.Syncs(&api.StreamSource{Name: "q1"}, &api.StreamSource{Name: "q2"}))
 	checkErr(t, err, "create failed")
 
 	if !s.IsSynced() {
@@ -758,7 +762,7 @@ func TestStream_IsSourced(t *testing.T) {
 	checkErr(t, err, "create failed")
 	_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.FileStorage())
 	checkErr(t, err, "create failed")
-	s, err := mgr.NewStream("q3", jsm.Subjects("in.q3"), jsm.FileStorage(), jsm.Sources("q1", "q2"))
+	s, err := mgr.NewStream("q3", jsm.Subjects("in.q3"), jsm.FileStorage(), jsm.Sources(&api.StreamSource{Name: "q1"}, &api.StreamSource{Name: "q2"}))
 	checkErr(t, err, "create failed")
 
 	if !s.IsSourced() {

@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -402,14 +403,24 @@ func (c *Consumer) Reset() error {
 }
 
 // NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
+func (m *Manager) NextSubject(stream string, consumer string) (string, error) {
+	s, err := NextSubject(stream, consumer)
+	if err != nil {
+		return "", err
+	}
+
+	return m.apiSubject(s), err
+}
+
+// NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
 func (c *Consumer) NextSubject() string {
 	if !c.IsPullMode() {
 		return ""
 	}
 
-	s, _ := NextSubject(c.stream, c.name)
+	s, _ := c.mgr.NextSubject(c.stream, c.name)
 
-	return c.mgr.apiSubject(s)
+	return s
 }
 
 // NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
@@ -449,7 +460,7 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 		return nil, fmt.Errorf("pull mode requires the use of UseOldRequestStyle() option")
 	}
 
-	s, err := NextSubject(stream, consumer)
+	s, err := m.NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err
 	}
@@ -462,12 +473,12 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 		return nil, err
 	}
 
-	return m.request(m.apiSubject(s), rj)
+	return m.request(s, rj)
 }
 
 // NextMsgRequest creates a request for a batch of messages on a consumer, data or control flow messages will be sent to inbox
 func (m *Manager) NextMsgRequest(stream string, consumer string, inbox string, req *api.JSApiConsumerGetNextRequest) error {
-	s, err := NextSubject(stream, consumer)
+	s, err := m.NextSubject(stream, consumer)
 	if err != nil {
 		return err
 	}
@@ -477,7 +488,11 @@ func (m *Manager) NextMsgRequest(stream string, consumer string, inbox string, r
 		return err
 	}
 
-	return m.nc.PublishMsg(&nats.Msg{Subject: m.apiSubject(s), Reply: inbox, Data: jreq})
+	if m.trace {
+		log.Printf(">>> %s:\n%s\n\n", s, string(jreq))
+	}
+
+	return m.nc.PublishMsg(&nats.Msg{Subject: s, Reply: inbox, Data: jreq})
 }
 
 // NextMsg requests the next message from the server. This request will wait for as long as the context is
@@ -487,12 +502,12 @@ func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer st
 		return nil, fmt.Errorf("pull mode requires the use of UseOldRequestStyle() option")
 	}
 
-	s, err := NextSubject(stream, consumer)
+	s, err := m.NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err
 	}
 
-	return m.requestWithContext(ctx, m.apiSubject(s), []byte(strconv.Itoa(1)))
+	return m.requestWithContext(ctx, s, []byte(strconv.Itoa(1)))
 }
 
 // NextMsgRequest creates a request for a batch of messages, data or control flow messages will be sent to inbox

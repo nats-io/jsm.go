@@ -453,7 +453,6 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 	if err != nil {
 		return nil, err
 	}
-	s = m.apiSubject(s)
 
 	rj, err := json.Marshal(&api.JSApiConsumerGetNextRequest{
 		Expires: time.Now().Add(m.timeout),
@@ -463,7 +462,7 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 		return nil, err
 	}
 
-	return m.request(s, rj)
+	return m.request(m.apiSubject(s), rj)
 }
 
 // NextMsgRequest creates a request for a batch of messages on a consumer, data or control flow messages will be sent to inbox
@@ -478,7 +477,7 @@ func (m *Manager) NextMsgRequest(stream string, consumer string, inbox string, r
 		return err
 	}
 
-	return m.nc.PublishMsg(&nats.Msg{Subject: s, Reply: inbox, Data: jreq})
+	return m.nc.PublishMsg(&nats.Msg{Subject: m.apiSubject(s), Reply: inbox, Data: jreq})
 }
 
 // NextMsg requests the next message from the server. This request will wait for as long as the context is
@@ -493,7 +492,7 @@ func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer st
 		return nil, err
 	}
 
-	return m.requestWithContext(ctx, s, []byte(strconv.Itoa(1)))
+	return m.requestWithContext(ctx, m.apiSubject(s), []byte(strconv.Itoa(1)))
 }
 
 // NextMsgRequest creates a request for a batch of messages, data or control flow messages will be sent to inbox

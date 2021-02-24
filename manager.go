@@ -98,16 +98,7 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 		}
 	}
 
-	if m.trace {
-		log.Printf(">>> %s\n%s\n\n", subj, string(body))
-	}
-
 	msg, err := m.request(m.apiSubject(subj), body)
-	if m.trace && msg != nil {
-		log.Printf("<<< %s\n%s\n\n", subj, string(msg.Data))
-	} else if m.trace {
-		log.Printf("<<< %s: %s\n\n", subj, err)
-	}
 	if err != nil {
 		return err
 	}
@@ -220,13 +211,30 @@ func (m *Manager) requestWithTimeout(subj string, data []byte, timeout time.Dura
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	return m.requestWithContext(ctx, subj, data)
+	res, err = m.requestWithContext(ctx, subj, data)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
 }
 
 func (m *Manager) requestWithContext(ctx context.Context, subj string, data []byte) (res *nats.Msg, err error) {
+	if m.trace {
+		log.Printf(">>> %s\n%s\n\n", subj, string(data))
+	}
+
 	res, err = m.nc.RequestWithContext(ctx, subj, data)
 	if err != nil {
+		if m.trace {
+			log.Printf("<<< %s: %s\n\n", subj, err.Error())
+		}
+
 		return res, err
+	}
+
+	if m.trace {
+		log.Printf("<<< %s\n%s\n\n", subj, string(res.Data))
 	}
 
 	return res, ParseErrorResponse(res)

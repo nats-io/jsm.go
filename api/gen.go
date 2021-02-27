@@ -199,6 +199,7 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/consumer_leader_elected.json", St: "jsadvisory.JSConsumerLeaderElectedV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/stream_quorum_lost.json", St: "jsadvisory.JSStreamQuorumLostV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/consumer_quorum_lost.json", St: "jsadvisory.JSConsumerQuorumLostV1"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/server_out_of_space.json", St: "jsadvisory.JSServerOutOfSpaceAdvisoryV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/metric/v1/consumer_ack.json", St: "jsmetric.ConsumerAckMetricV1"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},

@@ -290,9 +290,9 @@ type ConsumerInfo struct {
 //
 // NATS Schema Type io.nats.jetstream.api.v1.consumer_getnext_request
 type JSApiConsumerGetNextRequest struct {
-	Expires time.Time `json:"expires,omitempty"`
-	Batch   int       `json:"batch,omitempty"`
-	NoWait  bool      `json:"no_wait,omitempty"`
+	Expires time.Duration `json:"expires,omitempty"`
+	Batch   int           `json:"batch,omitempty"`
+	NoWait  bool          `json:"no_wait,omitempty"`
 }
 
 func jsonString(s string) string {

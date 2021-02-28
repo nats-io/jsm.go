@@ -466,7 +466,7 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 	}
 
 	rj, err := json.Marshal(&api.JSApiConsumerGetNextRequest{
-		Expires: time.Now().Add(m.timeout),
+		Expires: m.timeout,
 		Batch:   1,
 	})
 	if err != nil {

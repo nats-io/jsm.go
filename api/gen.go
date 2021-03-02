@@ -244,6 +244,8 @@ func main() {
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_leader_stepdown_request.json", St: "JSApiLeaderStepDownRequest"},
 		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_leader_stepdown_response.json", St: "JSApiLeaderStepDownResponse"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_server_remove_request.json", St: "JSApiMetaServerRemoveRequest"},
+		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_server_remove_response.json", St: "JSApiMetaServerRemoveResponse"},
 	}
 
 	for _, i := range s {

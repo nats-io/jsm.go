@@ -19,6 +19,7 @@ import (
 
 const (
 	JSApiLeaderStepDown = "$JS.API.META.LEADER.STEPDOWN"
+	JSApiRemoveServer   = "$JS.API.SERVER.REMOVE"
 )
 
 // io.nats.jetstream.api.v1.meta_leader_stepdown_request
@@ -28,6 +29,18 @@ type JSApiLeaderStepDownRequest struct {
 
 // io.nats.jetstream.api.v1.meta_leader_stepdown_response
 type JSApiLeaderStepDownResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.meta_server_remove_request
+type JSApiMetaServerRemoveRequest struct {
+	// Server ID of the peer to be removed.
+	Server string `json:"peer"`
+}
+
+// io.nats.jetstream.api.v1.meta_server_remove_response
+type JSApiMetaServerRemoveResponse struct {
 	JSApiResponse
 	Success bool `json:"success,omitempty"`
 }

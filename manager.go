@@ -446,3 +446,33 @@ func (m *Manager) Streams() (streams []*Stream, err error) {
 func (m *Manager) apiSubject(subject string) string {
 	return APISubject(subject, m.apiPrefix)
 }
+
+// MetaLeaderStandDown requests the meta group leader to stand down, must be initiated by a system user
+func (m *Manager) MetaLeaderStandDown(placement *api.Placement) error {
+	var resp api.JSApiLeaderStepDownResponse
+	err := m.jsonRequest(api.JSApiLeaderStepDown, api.JSApiLeaderStepDownRequest{Placement: placement}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while requesting leader step down")
+	}
+
+	return nil
+}
+
+// MetaPeerRemove removes a peer from the JetStream meta cluster, evicting all streams, consumer etc.  Use with extreme caution.
+func (m *Manager) MetaPeerRemove(id string) error {
+	var resp api.JSApiMetaServerRemoveResponse
+	err := m.jsonRequest(api.JSApiRemoveServer, api.JSApiMetaServerRemoveRequest{Server: id}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while requesting leader step down")
+	}
+
+	return nil
+}

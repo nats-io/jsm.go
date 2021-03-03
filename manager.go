@@ -463,9 +463,9 @@ func (m *Manager) MetaLeaderStandDown(placement *api.Placement) error {
 }
 
 // MetaPeerRemove removes a peer from the JetStream meta cluster, evicting all streams, consumer etc.  Use with extreme caution.
-func (m *Manager) MetaPeerRemove(id string) error {
+func (m *Manager) MetaPeerRemove(name string) error {
 	var resp api.JSApiMetaServerRemoveResponse
-	err := m.jsonRequest(api.JSApiRemoveServer, api.JSApiMetaServerRemoveRequest{Server: id}, &resp)
+	err := m.jsonRequest(api.JSApiRemoveServer, api.JSApiMetaServerRemoveRequest{Server: name}, &resp)
 	if err != nil {
 		return err
 	}

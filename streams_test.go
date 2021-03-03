@@ -701,7 +701,7 @@ func TestMirror(t *testing.T) {
 	err := jsm.Mirror(expected)(cfg)
 	checkErr(t, err, "failed")
 	if !cmp.Equal(cfg.Mirror, expected) {
-		t.Fatalf("expected 'one' got %q", cfg.Mirror)
+		t.Fatalf("expected 'one' got %#v", cfg.Mirror)
 	}
 }
 

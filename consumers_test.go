@@ -794,3 +794,11 @@ func TestMaxAckOutstanding(t *testing.T) {
 		t.Fatal("expected MaxAckPending==10")
 	}
 }
+
+func TestIdleHeartbeat(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.IdleHeartbeat(time.Second)(cfg)
+	if cfg.Heartbeat != time.Second {
+		t.Fatalf("expected Heartbeat==1s")
+	}
+}

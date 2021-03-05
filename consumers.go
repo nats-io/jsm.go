@@ -397,6 +397,14 @@ func MaxAckPending(pending uint) ConsumerOption {
 	}
 }
 
+// IdleHeartbeat sets the time before an idle consumer will send a empty message with Status header 100 indicating the consumer is still alive
+func IdleHeartbeat(hb time.Duration) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.Heartbeat = hb
+		return nil
+	}
+}
+
 // Reset reloads the Consumer configuration from the JetStream server
 func (c *Consumer) Reset() error {
 	return c.mgr.loadConfigForConsumer(c)

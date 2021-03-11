@@ -264,6 +264,7 @@ type ConsumerConfig struct {
 	RateLimit       uint64        `json:"rate_limit_bps,omitempty"`
 	MaxAckPending   int           `json:"max_ack_pending,omitempty"`
 	Heartbeat       time.Duration `json:"idle_heartbeat,omitempty"`
+	FlowControl     bool          `json:"flow_control,omitempty"`
 }
 
 // SequencePair is the consumer and stream sequence that uniquely identify a message

@@ -405,6 +405,14 @@ func IdleHeartbeat(hb time.Duration) ConsumerOption {
 	}
 }
 
+// PushFlowControl enables flow control for push based consumers
+func PushFlowControl() ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.FlowControl = true
+		return nil
+	}
+}
+
 // Reset reloads the Consumer configuration from the JetStream server
 func (c *Consumer) Reset() error {
 	return c.mgr.loadConfigForConsumer(c)
@@ -652,6 +660,8 @@ func (c *Consumer) ReplayPolicy() api.ReplayPolicy   { return c.cfg.ReplayPolicy
 func (c *Consumer) SampleFrequency() string          { return c.cfg.SampleFrequency }
 func (c *Consumer) RateLimit() uint64                { return c.cfg.RateLimit }
 func (c *Consumer) MaxAckPending() int               { return c.cfg.MaxAckPending }
+func (c *Consumer) FlowControl() bool                { return c.cfg.FlowControl }
+func (c *Consumer) Heartbeat() time.Duration         { return c.cfg.Heartbeat }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {
 		return time.Time{}

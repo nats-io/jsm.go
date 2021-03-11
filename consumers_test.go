@@ -802,3 +802,11 @@ func TestIdleHeartbeat(t *testing.T) {
 		t.Fatalf("expected Heartbeat==1s")
 	}
 }
+
+func TestPushFlowControl(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.PushFlowControl()(cfg)
+	if !cfg.FlowControl {
+		t.Fatalf("expected FlowControl==true")
+	}
+}

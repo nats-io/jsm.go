@@ -34,15 +34,16 @@ import (
 )
 
 type snapshotOptions struct {
-	dir       string
-	metaFile  string
-	dataFile  string
-	scb       func(SnapshotProgress)
-	rcb       func(RestoreProgress)
-	debug     bool
-	consumers bool
-	jsck      bool
-	chunkSz   int
+	dir           string
+	metaFile      string
+	dataFile      string
+	scb           func(SnapshotProgress)
+	rcb           func(RestoreProgress)
+	debug         bool
+	consumers     bool
+	jsck          bool
+	chunkSz       int
+	restoreConfig *api.StreamConfig
 }
 
 type SnapshotOption func(o *snapshotOptions)
@@ -79,6 +80,13 @@ func RestoreNotify(cb func(RestoreProgress)) SnapshotOption {
 func SnapshotDebug() SnapshotOption {
 	return func(o *snapshotOptions) {
 		o.debug = true
+	}
+}
+
+// RestoreConfiguration overrides the configuration used to restore
+func RestoreConfiguration(cfg api.StreamConfig) SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.restoreConfig = &cfg
 	}
 }
 
@@ -321,14 +329,24 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 		return nil, nil, err
 	}
 
+	req := api.JSApiStreamRestoreRequest{}
 	mj, err := ioutil.ReadFile(sopts.metaFile)
 	if err != nil {
 		return nil, nil, err
 	}
-	req := api.JSApiStreamRestoreRequest{}
 	err = json.Unmarshal(mj, &req)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// allow full config override
+	if sopts.restoreConfig != nil {
+		req.Config = *sopts.restoreConfig
+	}
+
+	// allow just stream name override
+	if req.Config.Name != stream {
+		req.Config.Name = stream
 	}
 
 	inf, err := os.Open(sopts.dataFile)
@@ -338,7 +356,7 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 	defer inf.Close()
 
 	var resp api.JSApiStreamRestoreResponse
-	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamRestoreT, stream), req, &resp)
+	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamRestoreT, req.Config.Name), req, &resp)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -355,7 +373,7 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 	go progress.trackBps(ctx)
 
 	if sopts.debug {
-		log.Printf("Starting restore of %q from %s using %d chunks", stream, sopts.dataFile, progress.chunksToSend)
+		log.Printf("Starting restore of %q from %s using %d chunks", req.Config.Name, sopts.dataFile, progress.chunksToSend)
 	}
 
 	// in debug notify ~20ish times

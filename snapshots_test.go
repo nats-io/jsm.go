@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/nats-io/jsm.go"
 )
 
@@ -46,12 +48,13 @@ func TestStream_Snapshot(t *testing.T) {
 	checkErr(t, err, "temp dir failed")
 	defer os.RemoveAll(td)
 
-	_, err = stream.SnapshotToDirectory(context.Background(), td, jsm.SnapshotConsumers(), jsm.SnapshotHealthCheck(), jsm.SnapshotDebug())
+	_, err = stream.SnapshotToDirectory(context.Background(), td, jsm.SnapshotConsumers(), jsm.SnapshotHealthCheck())
 	checkErr(t, err, "snapshot failed")
 
 	checkErr(t, stream.Delete(), "delete failed")
 
-	_, postRestoreState, err := mgr.RestoreSnapshotFromDirectory(context.Background(), "q1", td, jsm.SnapshotDebug())
+	// restore same
+	_, postRestoreState, err := mgr.RestoreSnapshotFromDirectory(context.Background(), "q1", td)
 	checkErr(t, err, "restore failed")
 	if postRestoreState == nil {
 		t.Fatalf("got a nil post restore state")
@@ -69,6 +72,52 @@ func TestStream_Snapshot(t *testing.T) {
 
 	if !reflect.DeepEqual(preState, postState) {
 		t.Fatalf("pre state does not match post state")
+	}
+	checkErr(t, stream.Delete(), "delete failed")
+
+	// restore to new stream name
+	_, postRestoreState, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "q2", td)
+	checkErr(t, err, "restore failed")
+	if postRestoreState == nil {
+		t.Fatalf("got a nil post restore state")
+	}
+	if !reflect.DeepEqual(preState, *postRestoreState) {
+		t.Fatalf("pre state does not match post restore state")
+	}
+
+	stream, err = mgr.LoadStream("q2")
+	checkErr(t, err, "load failed")
+
+	postState, err = stream.State()
+	checkErr(t, err, "state failed")
+	if !reflect.DeepEqual(preState, postState) {
+		t.Fatalf("pre state does not match post state")
+	}
+
+	// restore with new config
+	cfg := stream.Configuration()
+	cfg.Name = "q3"
+	cfg.Subjects = []string{"js.in.q3"}
+
+	_, postRestoreState, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "q3", td, jsm.RestoreConfiguration(cfg))
+	checkErr(t, err, "restore failed")
+	if postRestoreState == nil {
+		t.Fatalf("got a nil post restore state")
+	}
+	if !reflect.DeepEqual(preState, *postRestoreState) {
+		t.Fatalf("pre state does not match post restore state")
+	}
+
+	stream, err = mgr.LoadStream("q3")
+	checkErr(t, err, "load failed")
+
+	postState, err = stream.State()
+	checkErr(t, err, "state failed")
+	if !reflect.DeepEqual(preState, postState) {
+		t.Fatalf("pre state does not match post state")
+	}
+	if !cmp.Equal(stream.Subjects(), cfg.Subjects) {
+		t.Fatalf("stream config replace did not work")
 	}
 }
 

@@ -19,9 +19,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,6 +27,7 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go/api"
+	scfs "github.com/nats-io/jsm.go/schemas"
 )
 
 var schemasFileTemplate = `// auto generated {{.Now}}
@@ -42,9 +41,8 @@ import (
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
     jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
 	jsapi "github.com/nats-io/jsm.go/api/jetstream/api"
+    scfs "github.com/nats-io/jsm.go/schemas"
 )
-
-var schemas map[string][]byte
 
 var schemaTypes = map[string]func() interface{}{
 {{- range . }}
@@ -77,20 +75,16 @@ func (t {{ .St }}) SchemaID() string {
 }
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t {{ .St }}) Schema() []byte {
-	return schemas[t.SchemaType()]
+func (t {{ .St }}) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
 }
 
 {{- end }}
 {{- end }}
-
-func init() {
-	schemas = make(map[string][]byte)
-
-{{- range . }}
-	schemas["{{ .T }}"], _ = base64.StdEncoding.DecodeString("{{ .S }}")
-{{- end }}
-}
 `
 
 type validator interface {
@@ -103,7 +97,7 @@ type validator interface {
 type schema struct {
 	T  string // type
 	S  string // schema
-	U  string // url
+	P  string // path
 	St string // struct
 }
 
@@ -156,21 +150,11 @@ func goFmt(file string) error {
 
 func getSchame(u string) (title string, id string, body string, err error) {
 	log.Printf("Fetching %s", u)
-	result, err := http.Get(u)
-	if err != nil {
-		return "", "", "", err
-	}
 
-	if result.StatusCode != 200 {
-		return "", "", "", fmt.Errorf("got HTTP status: %d: %s", result.StatusCode, result.Status)
-	}
-
-	defer result.Body.Close()
-
-	data, err := ioutil.ReadAll(result.Body)
-	if err != nil {
-		return "", "", "", err
-	}
+	f, err := api.SchemaFileForType("io.nats." + strings.TrimSuffix(strings.ReplaceAll(u, "/", "."), ".json"))
+	panicIfErr(err)
+	data, err := scfs.Load(f)
+	panicIfErr(err)
 
 	idt := &idDetect{}
 	err = json.Unmarshal(data, idt)
@@ -182,74 +166,74 @@ func getSchame(u string) (title string, id string, body string, err error) {
 
 func main() {
 	s := schemas{
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_connect.json", St: "srvadvisory.ConnectEventMsgV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/client_disconnect.json", St: "srvadvisory.DisconnectEventMsgV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/advisory/v1/account_connections.json", St: "srvadvisory.AccountConnectionsV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/server/metric/v1/service_latency.json", St: "srvmetric.ServiceLatencyV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/api_audit.json", St: "jsadvisory.JetStreamAPIAuditV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/max_deliver.json", St: "jsadvisory.ConsumerDeliveryExceededAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/terminated.json", St: "jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/stream_action.json", St: "jsadvisory.JSStreamActionAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/consumer_action.json", St: "jsadvisory.JSConsumerActionAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/snapshot_create.json", St: "jsadvisory.JSSnapshotCreateAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/snapshot_complete.json", St: "jsadvisory.JSSnapshotCompleteAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/restore_create.json", St: "jsadvisory.JSRestoreCreateAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/restore_complete.json", St: "jsadvisory.JSRestoreCompleteAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/stream_leader_elected.json", St: "jsadvisory.JSStreamLeaderElectedV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/consumer_leader_elected.json", St: "jsadvisory.JSConsumerLeaderElectedV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/stream_quorum_lost.json", St: "jsadvisory.JSStreamQuorumLostV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/consumer_quorum_lost.json", St: "jsadvisory.JSConsumerQuorumLostV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/advisory/v1/server_out_of_space.json", St: "jsadvisory.JSServerOutOfSpaceAdvisoryV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/metric/v1/consumer_ack.json", St: "jsmetric.ConsumerAckMetricV1"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_configuration.json", St: "StreamTemplateConfig"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/account_info_response.json", St: "JSApiAccountInfoResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_create_request.json", St: "JSApiConsumerCreateRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_list_request.json", St: "JSApiConsumerListRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_list_response.json", St: "JSApiConsumerListResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_request.json", St: "JSApiConsumerNamesRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_names_response.json", St: "JSApiConsumerNamesResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/consumer_leader_stepdown_response.json", St: "JSApiConsumerLeaderStepDownResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_create_request.json", St: "JSApiStreamCreateRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_create_response.json", St: "JSApiStreamCreateResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_delete_response.json", St: "JSApiStreamDeleteResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_info_response.json", St: "JSApiStreamInfoResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_request.json", St: "JSApiStreamListRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_list_response.json", St: "JSApiStreamListResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_delete_response.json", St: "JSApiMsgDeleteResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_request.json", St: "JSApiMsgGetRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_msg_get_response.json", St: "JSApiMsgGetResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_names_request.json", St: "JSApiStreamNamesRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_names_response.json", St: "JSApiStreamNamesResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_purge_response.json", St: "JSApiStreamPurgeResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_snapshot_response.json", St: "JSApiStreamSnapshotResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_snapshot_request.json", St: "JSApiStreamSnapshotRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_restore_request.json", St: "JSApiStreamRestoreRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_restore_response.json", St: "JSApiStreamRestoreResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_create_request.json", St: "JSApiStreamTemplateCreateRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_create_response.json", St: "JSApiStreamTemplateCreateResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_delete_response.json", St: "JSApiStreamTemplateDeleteResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_info_response.json", St: "JSApiStreamTemplateInfoResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_response.json", St: "JSApiStreamTemplateNamesResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_template_names_request.json", St: "JSApiStreamTemplateNamesRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_update_response.json", St: "JSApiStreamUpdateResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_remove_peer_request.json", St: "JSApiStreamRemovePeerRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_remove_peer_response.json", St: "JSApiStreamRemovePeerResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/stream_leader_stepdown_response.json", St: "JSApiStreamLeaderStepDownResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_leader_stepdown_request.json", St: "JSApiLeaderStepDownRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_leader_stepdown_response.json", St: "JSApiLeaderStepDownResponse"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_server_remove_request.json", St: "JSApiMetaServerRemoveRequest"},
-		&schema{U: "https://raw.githubusercontent.com/nats-io/jetstream/master/schemas/jetstream/api/v1/meta_server_remove_response.json", St: "JSApiMetaServerRemoveResponse"},
+		&schema{P: "server/advisory/v1/client_connect.json", St: "srvadvisory.ConnectEventMsgV1"},
+		&schema{P: "server/advisory/v1/client_disconnect.json", St: "srvadvisory.DisconnectEventMsgV1"},
+		&schema{P: "server/advisory/v1/account_connections.json", St: "srvadvisory.AccountConnectionsV1"},
+		&schema{P: "server/metric/v1/service_latency.json", St: "srvmetric.ServiceLatencyV1"},
+		&schema{P: "jetstream/advisory/v1/api_audit.json", St: "jsadvisory.JetStreamAPIAuditV1"},
+		&schema{P: "jetstream/advisory/v1/max_deliver.json", St: "jsadvisory.ConsumerDeliveryExceededAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/terminated.json", St: "jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/stream_action.json", St: "jsadvisory.JSStreamActionAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/consumer_action.json", St: "jsadvisory.JSConsumerActionAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/snapshot_create.json", St: "jsadvisory.JSSnapshotCreateAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/snapshot_complete.json", St: "jsadvisory.JSSnapshotCompleteAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/restore_create.json", St: "jsadvisory.JSRestoreCreateAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/restore_complete.json", St: "jsadvisory.JSRestoreCompleteAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/stream_leader_elected.json", St: "jsadvisory.JSStreamLeaderElectedV1"},
+		&schema{P: "jetstream/advisory/v1/consumer_leader_elected.json", St: "jsadvisory.JSConsumerLeaderElectedV1"},
+		&schema{P: "jetstream/advisory/v1/stream_quorum_lost.json", St: "jsadvisory.JSStreamQuorumLostV1"},
+		&schema{P: "jetstream/advisory/v1/consumer_quorum_lost.json", St: "jsadvisory.JSConsumerQuorumLostV1"},
+		&schema{P: "jetstream/advisory/v1/server_out_of_space.json", St: "jsadvisory.JSServerOutOfSpaceAdvisoryV1"},
+		&schema{P: "jetstream/metric/v1/consumer_ack.json", St: "jsmetric.ConsumerAckMetricV1"},
+		&schema{P: "jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
+		&schema{P: "jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},
+		&schema{P: "jetstream/api/v1/stream_template_configuration.json", St: "StreamTemplateConfig"},
+		&schema{P: "jetstream/api/v1/account_info_response.json", St: "JSApiAccountInfoResponse"},
+		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "JSApiConsumerCreateRequest"},
+		&schema{P: "jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse"},
+		&schema{P: "jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse"},
+		&schema{P: "jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse"},
+		&schema{P: "jetstream/api/v1/consumer_list_request.json", St: "JSApiConsumerListRequest"},
+		&schema{P: "jetstream/api/v1/consumer_list_response.json", St: "JSApiConsumerListResponse"},
+		&schema{P: "jetstream/api/v1/consumer_names_request.json", St: "JSApiConsumerNamesRequest"},
+		&schema{P: "jetstream/api/v1/consumer_names_response.json", St: "JSApiConsumerNamesResponse"},
+		&schema{P: "jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest"},
+		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_response.json", St: "JSApiConsumerLeaderStepDownResponse"},
+		&schema{P: "jetstream/api/v1/stream_create_request.json", St: "JSApiStreamCreateRequest"},
+		&schema{P: "jetstream/api/v1/stream_create_response.json", St: "JSApiStreamCreateResponse"},
+		&schema{P: "jetstream/api/v1/stream_delete_response.json", St: "JSApiStreamDeleteResponse"},
+		&schema{P: "jetstream/api/v1/stream_info_response.json", St: "JSApiStreamInfoResponse"},
+		&schema{P: "jetstream/api/v1/stream_list_request.json", St: "JSApiStreamListRequest"},
+		&schema{P: "jetstream/api/v1/stream_list_response.json", St: "JSApiStreamListResponse"},
+		&schema{P: "jetstream/api/v1/stream_msg_delete_response.json", St: "JSApiMsgDeleteResponse"},
+		&schema{P: "jetstream/api/v1/stream_msg_get_request.json", St: "JSApiMsgGetRequest"},
+		&schema{P: "jetstream/api/v1/stream_msg_get_response.json", St: "JSApiMsgGetResponse"},
+		&schema{P: "jetstream/api/v1/stream_names_request.json", St: "JSApiStreamNamesRequest"},
+		&schema{P: "jetstream/api/v1/stream_names_response.json", St: "JSApiStreamNamesResponse"},
+		&schema{P: "jetstream/api/v1/stream_purge_response.json", St: "JSApiStreamPurgeResponse"},
+		&schema{P: "jetstream/api/v1/stream_snapshot_response.json", St: "JSApiStreamSnapshotResponse"},
+		&schema{P: "jetstream/api/v1/stream_snapshot_request.json", St: "JSApiStreamSnapshotRequest"},
+		&schema{P: "jetstream/api/v1/stream_restore_request.json", St: "JSApiStreamRestoreRequest"},
+		&schema{P: "jetstream/api/v1/stream_restore_response.json", St: "JSApiStreamRestoreResponse"},
+		&schema{P: "jetstream/api/v1/stream_template_create_request.json", St: "JSApiStreamTemplateCreateRequest"},
+		&schema{P: "jetstream/api/v1/stream_template_create_response.json", St: "JSApiStreamTemplateCreateResponse"},
+		&schema{P: "jetstream/api/v1/stream_template_delete_response.json", St: "JSApiStreamTemplateDeleteResponse"},
+		&schema{P: "jetstream/api/v1/stream_template_info_response.json", St: "JSApiStreamTemplateInfoResponse"},
+		&schema{P: "jetstream/api/v1/stream_template_names_response.json", St: "JSApiStreamTemplateNamesResponse"},
+		&schema{P: "jetstream/api/v1/stream_template_names_request.json", St: "JSApiStreamTemplateNamesRequest"},
+		&schema{P: "jetstream/api/v1/stream_update_response.json", St: "JSApiStreamUpdateResponse"},
+		&schema{P: "jetstream/api/v1/stream_remove_peer_request.json", St: "JSApiStreamRemovePeerRequest"},
+		&schema{P: "jetstream/api/v1/stream_remove_peer_response.json", St: "JSApiStreamRemovePeerResponse"},
+		&schema{P: "jetstream/api/v1/stream_leader_stepdown_response.json", St: "JSApiStreamLeaderStepDownResponse"},
+		&schema{P: "jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse"},
+		&schema{P: "jetstream/api/v1/meta_leader_stepdown_request.json", St: "JSApiLeaderStepDownRequest"},
+		&schema{P: "jetstream/api/v1/meta_leader_stepdown_response.json", St: "JSApiLeaderStepDownResponse"},
+		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "JSApiMetaServerRemoveRequest"},
+		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "JSApiMetaServerRemoveResponse"},
 	}
 
 	for _, i := range s {
-		title, _, body, err := getSchame(i.U)
+		title, _, body, err := getSchame(i.P)
 		panicIfErr(err)
 
 		i.S = body

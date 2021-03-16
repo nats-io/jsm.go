@@ -1,11 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"testing"
 
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
+	scfs "github.com/nats-io/jsm.go/schemas"
 )
 
 const jetStreamAPIAuditEvent = `{
@@ -155,5 +157,26 @@ func TestSchemaSearch(t *testing.T) {
 
 	if found[0] != "io.nats.jetstream.api.v1.consumer_create_request" || found[1] != "io.nats.jetstream.api.v1.consumer_create_response" {
 		t.Fatalf("Expected [io.nats.jetstream.api.v1.consumer_create_request io.nats.jetstream.api.v1.consumer_create_response] got %v", found)
+	}
+}
+
+func TestSchema(t *testing.T) {
+	schema, err := Schema("io.nats.jetstream.api.v1.stream_template_names_request")
+	checkErr(t, err, "failed")
+
+	dat, err := scfs.Load("jetstream/api/v1/stream_template_names_request.json")
+	checkErr(t, err, "failed")
+
+	if !bytes.Equal(schema, dat) {
+		t.Fatalf("schemas did not match")
+	}
+}
+
+func TestSchemaFileForType(t *testing.T) {
+	p, err := SchemaFileForType("io.nats.jetstream.metric.v1.consumer_ack")
+	checkErr(t, err, "parse failed")
+
+	if p != "jetstream/metric/v1/consumer_ack.json" {
+		t.Fatalf("invalid path %s", p)
 	}
 }

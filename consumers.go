@@ -247,7 +247,8 @@ func StartAtTime(t time.Time) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
 		resetDeliverPolicy(o)
 		o.DeliverPolicy = api.DeliverByStartTime
-		o.OptStartTime = &t
+		ut := t.UTC()
+		o.OptStartTime = &ut
 		return nil
 	}
 }
@@ -284,7 +285,7 @@ func StartAtTimeDelta(d time.Duration) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
 		resetDeliverPolicy(o)
 
-		t := time.Now().Add(-1 * d)
+		t := time.Now().UTC().Add(-1 * d)
 		o.DeliverPolicy = api.DeliverByStartTime
 		o.OptStartTime = &t
 		return nil

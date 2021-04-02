@@ -20,6 +20,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -49,10 +50,13 @@ type ConsumerOption func(o *api.ConsumerConfig) error
 
 // Consumer represents a JetStream consumer
 type Consumer struct {
-	name   string
-	stream string
-	cfg    *api.ConsumerConfig
-	mgr    *Manager
+	name     string
+	stream   string
+	cfg      *api.ConsumerConfig
+	mgr      *Manager
+	lastInfo *api.ConsumerInfo
+
+	sync.Mutex
 }
 
 // NewConsumerFromDefault creates a new consumer based on a template config that gets modified by opts
@@ -92,8 +96,10 @@ func (m *Manager) NewConsumerFromDefault(stream string, dflt api.ConsumerConfig,
 		return nil, fmt.Errorf("expected a consumer name but none were generated")
 	}
 
-	// TODO: we have the info, avoid this round trip
-	return m.LoadConsumer(stream, createdInfo.Name)
+	c := m.consumerFromCfg(stream, createdInfo.Name, &createdInfo.Config)
+	c.lastInfo = createdInfo
+
+	return c, nil
 }
 
 func (m *Manager) createDurableConsumer(req api.JSApiConsumerCreateRequest) (info *api.ConsumerInfo, err error) {
@@ -197,7 +203,10 @@ func (m *Manager) loadConfigForConsumer(consumer *Consumer) (err error) {
 		return err
 	}
 
+	consumer.Lock()
 	consumer.cfg = &info.Config
+	consumer.lastInfo = &info
+	consumer.Unlock()
 
 	return nil
 }
@@ -602,9 +611,31 @@ func (c *Consumer) RedeliveryCount() (int, error) {
 	return info.NumRedelivered, nil
 }
 
+// LastState returns the most recently loaded state
+func (c *Consumer) LastState() (api.ConsumerInfo, error) {
+	c.Lock()
+	s := c.lastInfo
+	c.Unlock()
+
+	if s != nil {
+		return *s, nil
+	}
+
+	return c.State()
+}
+
 // State loads a snapshot of consumer state including delivery counts, retries and more
 func (c *Consumer) State() (api.ConsumerInfo, error) {
-	return c.mgr.loadConsumerInfo(c.stream, c.name)
+	s, err := c.mgr.loadConsumerInfo(c.stream, c.name)
+	if err != nil {
+		return api.ConsumerInfo{}, err
+	}
+
+	c.Lock()
+	c.lastInfo = &s
+	c.Unlock()
+
+	return s, nil
 }
 
 // Configuration is the Consumer configuration

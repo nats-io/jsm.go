@@ -611,8 +611,8 @@ func (c *Consumer) RedeliveryCount() (int, error) {
 	return info.NumRedelivered, nil
 }
 
-// LastState returns the most recently loaded state
-func (c *Consumer) LastState() (api.ConsumerInfo, error) {
+// LatestState returns the most recently loaded state
+func (c *Consumer) LatestState() (api.ConsumerInfo, error) {
 	c.Lock()
 	s := c.lastInfo
 	c.Unlock()

@@ -292,13 +292,18 @@
                   "description": "The timestamp of the last message in the Stream"
                 },
                 "deleted": {
-                  "description": "IDs of messages that were deleted using the Message Delete API",
+                  "description": "IDs of messages that were deleted using the Message Delete API or Interest based streams removing messages out of order",
                   "type": "array",
                   "minLength": 0,
                   "items": {
                     "type": "integer",
                     "minimum": 0
                   }
+                },
+                "num_deleted": {
+                  "description": "The number of deleted messages",
+                  "type": "integer",
+                  "minimum": 0
                 },
                 "lost": {
                   "type": "object",

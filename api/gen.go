@@ -202,6 +202,7 @@ func main() {
 		&schema{P: "jetstream/api/v1/stream_create_request.json", St: "JSApiStreamCreateRequest"},
 		&schema{P: "jetstream/api/v1/stream_create_response.json", St: "JSApiStreamCreateResponse"},
 		&schema{P: "jetstream/api/v1/stream_delete_response.json", St: "JSApiStreamDeleteResponse"},
+		&schema{P: "jetstream/api/v1/stream_info_request.json", St: "JSApiStreamInfoRequest"},
 		&schema{P: "jetstream/api/v1/stream_info_response.json", St: "JSApiStreamInfoResponse"},
 		&schema{P: "jetstream/api/v1/stream_list_request.json", St: "JSApiStreamListRequest"},
 		&schema{P: "jetstream/api/v1/stream_list_response.json", St: "JSApiStreamListResponse"},

@@ -322,8 +322,12 @@
               "description": "Records messages that were damaged and unrecoverable",
               "properties": {
                 "msgs": {
-                  "type": "array",
+                  "type": [
+                    "array",
+                    "null"
+                  ],
                   "description": "The messages that were lost",
+                  "required": "false",
                   "items": {
                     "type": "integer",
                     "minimum": 0

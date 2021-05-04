@@ -298,7 +298,6 @@
                 "null"
               ],
               "description": "The messages that were lost",
-              "required": "false",
               "items": {
                 "type": "integer",
                 "minimum": 0

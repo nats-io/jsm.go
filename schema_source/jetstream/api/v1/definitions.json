@@ -33,7 +33,7 @@
       }
     },
     "external_stream_source": {
-      "required": ["api","deliver"],
+      "required": ["api"],
       "type": "object",
       "description": "Configuration referencing a stream source in another account",
       "properties": {

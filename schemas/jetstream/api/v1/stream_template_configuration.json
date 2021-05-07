@@ -179,8 +179,7 @@
             },
             "external": {
               "required": [
-                "api",
-                "deliver"
+                "api"
               ],
               "type": "object",
               "description": "Configuration referencing a stream source in another account",
@@ -228,8 +227,7 @@
               },
               "external": {
                 "required": [
-                  "api",
-                  "deliver"
+                  "api"
                 ],
                 "type": "object",
                 "description": "Configuration referencing a stream source in another account",

@@ -29,6 +29,27 @@ func checkErr(t *testing.T, err error, m string) {
 	t.Fatal(m + ": " + err.Error())
 }
 
+func TestAPISubject(t *testing.T) {
+	cases := []struct {
+		subject string
+		prefix  string
+		domain  string
+		res     string
+	}{
+		{"$JS.API.FOO", "", "", "$JS.API.FOO"},
+		{"$JS.API.FOO", "js.foreign", "", "js.foreign.FOO"},
+		{"$JS.API.FOO", "js.foreign", "domain", "$JS.domain.API.FOO"},
+		{"$JS.API.FOO", "", "domain", "$JS.domain.API.FOO"},
+	}
+
+	for _, tc := range cases {
+		res := jsm.APISubject(tc.subject, tc.prefix, tc.domain)
+		if res != tc.res {
+			t.Fatalf("expected %s got %s", tc.res, res)
+		}
+	}
+}
+
 func TestIsErrorResponse(t *testing.T) {
 	if jsm.IsErrorResponse(&nats.Msg{Data: []byte("+OK")}) {
 		t.Fatalf("OK is Error")

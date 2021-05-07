@@ -549,7 +549,9 @@ func (c *Context) Path() string { return c.path }
 // WithJSAPIPrefix sets the prefix to use for JetStream API
 func WithJSAPIPrefix(p string) Option {
 	return func(s *settings) {
-		s.JSAPIPrefix = p
+		if p != "" {
+			s.JSAPIPrefix = p
+		}
 	}
 }
 
@@ -559,7 +561,9 @@ func (c *Context) JSAPIPrefix() string { return c.config.JSAPIPrefix }
 // WithJSEventPrefix sets the prefix to use for JetStream Events
 func WithJSEventPrefix(p string) Option {
 	return func(s *settings) {
-		s.JSEventPrefix = p
+		if p != "" {
+			s.JSEventPrefix = p
+		}
 	}
 }
 
@@ -568,7 +572,9 @@ func (c *Context) JSEventPrefix() string { return c.config.JSEventPrefix }
 
 func WithJSDomain(domain string) Option {
 	return func(s *settings) {
-		s.JSDomain = domain
+		if domain != "" {
+			s.JSDomain = domain
+		}
 	}
 }
 

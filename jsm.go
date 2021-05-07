@@ -112,7 +112,11 @@ func IsValidName(n string) bool {
 }
 
 // APISubject returns API subject with prefix applied
-func APISubject(subject string, prefix string) string {
+func APISubject(subject string, prefix string, domain string) string {
+	if domain != "" {
+		return fmt.Sprintf("$JS.%s.API", domain)
+	}
+
 	if prefix == "" {
 		return subject
 	}

@@ -55,6 +55,7 @@ type settings struct {
 	Key           string `json:"key"`
 	CA            string `json:"ca"`
 	NSCLookup     string `json:"nsc"`
+	JSDomain      string `json:"jetstream_domain"`
 	JSAPIPrefix   string `json:"jetstream_api_prefix"`
 	JSEventPrefix string `json:"jetstream_event_prefix"`
 }
@@ -553,7 +554,13 @@ func WithJSAPIPrefix(p string) Option {
 }
 
 // JSAPIPrefix is the subject prefix to use when accessing JetStream API
-func (c *Context) JSAPIPrefix() string { return c.config.JSAPIPrefix }
+func (c *Context) JSAPIPrefix() string {
+	if c.config.JSDomain != "" {
+		return fmt.Sprintf("$JS.%s.API", c.config.JSDomain)
+	}
+
+	return c.config.JSAPIPrefix
+}
 
 // WithJSEventPrefix sets the prefix to use for JetStream Events
 func WithJSEventPrefix(p string) Option {
@@ -564,3 +571,14 @@ func WithJSEventPrefix(p string) Option {
 
 // JSEventPrefix is the subject prefix to use when accessing JetStream events
 func (c *Context) JSEventPrefix() string { return c.config.JSEventPrefix }
+
+func WithJSDomain(domain string) Option {
+	return func(s *settings) {
+		s.JSDomain = domain
+	}
+}
+
+// JSDomain is the configured JetStream domain
+func (c *Context) JSDomain() string {
+	return c.config.JSDomain
+}

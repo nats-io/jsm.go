@@ -35,6 +35,7 @@ type Manager struct {
 	validator   api.StructValidator
 	apiPrefix   string
 	eventPrefix string
+	domain      string
 
 	sync.Mutex
 }
@@ -444,7 +445,7 @@ func (m *Manager) Streams() (streams []*Stream, err error) {
 }
 
 func (m *Manager) apiSubject(subject string) string {
-	return APISubject(subject, m.apiPrefix)
+	return APISubject(subject, m.apiPrefix, m.domain)
 }
 
 // MetaLeaderStandDown requests the meta group leader to stand down, must be initiated by a system user

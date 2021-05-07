@@ -554,13 +554,7 @@ func WithJSAPIPrefix(p string) Option {
 }
 
 // JSAPIPrefix is the subject prefix to use when accessing JetStream API
-func (c *Context) JSAPIPrefix() string {
-	if c.config.JSDomain != "" {
-		return fmt.Sprintf("$JS.%s.API", c.config.JSDomain)
-	}
-
-	return c.config.JSAPIPrefix
-}
+func (c *Context) JSAPIPrefix() string { return c.config.JSAPIPrefix }
 
 // WithJSEventPrefix sets the prefix to use for JetStream Events
 func WithJSEventPrefix(p string) Option {

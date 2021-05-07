@@ -56,3 +56,10 @@ func WithEventPrefix(s string) Option {
 		o.eventPrefix = s
 	}
 }
+
+// WithDomain sets a JetStream domain, incompatible with WithApiPrefix()
+func WithDomain(d string) Option {
+	return func(o *Manager) {
+		o.domain = d
+	}
+}

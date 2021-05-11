@@ -154,6 +154,10 @@
           "type": "integer",
           "minimum": 0,
           "description": "If the Consumer is idle for more than this many nano seconds a empty message with Status header 100 will be sent indicating the consumer is still alive"
+        },
+        "flow_control": {
+          "type": "boolean",
+          "description": "For push consumers this will regularly send an empty mess with Status header 100 and a reply subject, consumers must reply to these messages to control the rate of message delivery"
         }
       }
     }

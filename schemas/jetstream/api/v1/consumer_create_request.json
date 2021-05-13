@@ -126,7 +126,8 @@
           "minimum": 1
         },
         "max_deliver": {
-          "type": "integer"
+          "type": "integer",
+          "description": "The number of times a message will be redelivered to consumers if not acknowledged in time"
         },
         "filter_subject": {
           "type": "string"
@@ -158,6 +159,12 @@
         "flow_control": {
           "type": "boolean",
           "description": "For push consumers this will regularly send an empty mess with Status header 100 and a reply subject, consumers must reply to these messages to control the rate of message delivery"
+        },
+        "max_waiting": {
+          "type": "integer",
+          "description": "The number of pulls that can be outstanding on a pull consumer, pulls received after this is reached are ignored",
+          "minimum": 0,
+          "default": 512
         }
       }
     }

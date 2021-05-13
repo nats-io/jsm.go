@@ -250,21 +250,22 @@ func (p DeliverPolicy) MarshalJSON() ([]byte, error) {
 //
 // NATS Schema Type io.nats.jetstream.api.v1.consumer_configuration
 type ConsumerConfig struct {
-	Durable         string        `json:"durable_name,omitempty"`
-	DeliverSubject  string        `json:"deliver_subject,omitempty"`
-	DeliverPolicy   DeliverPolicy `json:"deliver_policy"`
-	OptStartSeq     uint64        `json:"opt_start_seq,omitempty"`
-	OptStartTime    *time.Time    `json:"opt_start_time,omitempty"`
 	AckPolicy       AckPolicy     `json:"ack_policy"`
 	AckWait         time.Duration `json:"ack_wait,omitempty"`
-	MaxDeliver      int           `json:"max_deliver,omitempty"`
+	DeliverPolicy   DeliverPolicy `json:"deliver_policy"`
+	DeliverSubject  string        `json:"deliver_subject,omitempty"`
+	Durable         string        `json:"durable_name,omitempty"`
 	FilterSubject   string        `json:"filter_subject,omitempty"`
+	FlowControl     bool          `json:"flow_control,omitempty"`
+	Heartbeat       time.Duration `json:"idle_heartbeat,omitempty"`
+	MaxAckPending   int           `json:"max_ack_pending,omitempty"`
+	MaxDeliver      int           `json:"max_deliver,omitempty"`
+	MaxWaiting      int           `json:"max_waiting,omitempty"`
+	OptStartSeq     uint64        `json:"opt_start_seq,omitempty"`
+	OptStartTime    *time.Time    `json:"opt_start_time,omitempty"`
+	RateLimit       uint64        `json:"rate_limit_bps,omitempty"`
 	ReplayPolicy    ReplayPolicy  `json:"replay_policy"`
 	SampleFrequency string        `json:"sample_freq,omitempty"`
-	RateLimit       uint64        `json:"rate_limit_bps,omitempty"`
-	MaxAckPending   int           `json:"max_ack_pending,omitempty"`
-	Heartbeat       time.Duration `json:"idle_heartbeat,omitempty"`
-	FlowControl     bool          `json:"flow_control,omitempty"`
 }
 
 // SequencePair is the consumer and stream sequence that uniquely identify a message

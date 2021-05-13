@@ -810,3 +810,11 @@ func TestPushFlowControl(t *testing.T) {
 		t.Fatalf("expected FlowControl==true")
 	}
 }
+
+func TestMaxWaiting(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.MaxWaiting(10)(cfg)
+	if cfg.MaxWaiting != 10 {
+		t.Fatalf("expected MaxWaiting==10")
+	}
+}

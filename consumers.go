@@ -399,6 +399,14 @@ func RateLimitBitsPerSecond(bps uint64) ConsumerOption {
 	}
 }
 
+// MaxWaiting is the number of outstanding pulls that are allowed on any one consumer.  Pulls made that exceeds this limit are discarded.
+func MaxWaiting(pulls uint) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.MaxWaiting = int(pulls)
+		return nil
+	}
+}
+
 // MaxAckPending maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended
 func MaxAckPending(pending uint) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {

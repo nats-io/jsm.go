@@ -168,11 +168,11 @@
                 "api"
               ],
               "type": "object",
-              "description": "Configuration referencing a stream source in another account",
+              "description": "Configuration referencing a stream source in another account or JetStream domain",
               "properties": {
                 "api": {
                   "type": "string",
-                  "description": "The subject prefix that imports the other account $JS.API.CONSUMER.> subjects"
+                  "description": "The subject prefix that imports the other account/domain $JS.API.CONSUMER.> subjects"
                 },
                 "deliver": {
                   "type": "string",
@@ -216,11 +216,11 @@
                   "api"
                 ],
                 "type": "object",
-                "description": "Configuration referencing a stream source in another account",
+                "description": "Configuration referencing a stream source in another account or JetStream domain",
                 "properties": {
                   "api": {
                     "type": "string",
-                    "description": "The subject prefix that imports the other account $JS.API.CONSUMER.> subjects"
+                    "description": "The subject prefix that imports the other account/domain $JS.API.CONSUMER.> subjects"
                   },
                   "deliver": {
                     "type": "string",

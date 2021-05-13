@@ -362,10 +362,11 @@ type Placement struct {
 
 // StreamSourceInfo shows information about an upstream stream source.
 type StreamSourceInfo struct {
-	Name   string        `json:"name"`
-	Lag    uint64        `json:"lag"`
-	Active time.Duration `json:"active"`
-	Error  *ApiError     `json:"error,omitempty"`
+	Name     string          `json:"name"`
+	External *ExternalStream `json:"external,omitempty"`
+	Lag      uint64          `json:"lag"`
+	Active   time.Duration   `json:"active"`
+	Error    *ApiError       `json:"error,omitempty"`
 }
 
 // LostStreamData indicates msgs that have been lost during file checks and recover due to corruption

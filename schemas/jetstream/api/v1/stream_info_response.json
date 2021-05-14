@@ -179,11 +179,11 @@
                         "api"
                       ],
                       "type": "object",
-                      "description": "Configuration referencing a stream source in another account",
+                      "description": "Configuration referencing a stream source in another account or JetStream domain",
                       "properties": {
                         "api": {
                           "type": "string",
-                          "description": "The subject prefix that imports the other account $JS.API.CONSUMER.> subjects"
+                          "description": "The subject prefix that imports the other account/domain $JS.API.CONSUMER.> subjects"
                         },
                         "deliver": {
                           "type": "string",
@@ -227,11 +227,11 @@
                           "api"
                         ],
                         "type": "object",
-                        "description": "Configuration referencing a stream source in another account",
+                        "description": "Configuration referencing a stream source in another account or JetStream domain",
                         "properties": {
                           "api": {
                             "type": "string",
-                            "description": "The subject prefix that imports the other account $JS.API.CONSUMER.> subjects"
+                            "description": "The subject prefix that imports the other account/domain $JS.API.CONSUMER.> subjects"
                           },
                           "deliver": {
                             "type": "string",
@@ -411,6 +411,23 @@
               "description": "When last the mirror had activity, in nanoseconds",
               "minimum": 0
             },
+            "external": {
+              "required": [
+                "api"
+              ],
+              "type": "object",
+              "description": "Configuration referencing a stream source in another account or JetStream domain",
+              "properties": {
+                "api": {
+                  "type": "string",
+                  "description": "The subject prefix that imports the other account/domain $JS.API.CONSUMER.> subjects"
+                },
+                "deliver": {
+                  "type": "string",
+                  "description": "The delivery subject to use for the push consumer"
+                }
+              }
+            },
             "error": {
               "type": "object",
               "required": [
@@ -456,6 +473,23 @@
                 "type": "number",
                 "description": "When last the mirror had activity, in nanoseconds",
                 "minimum": 0
+              },
+              "external": {
+                "required": [
+                  "api"
+                ],
+                "type": "object",
+                "description": "Configuration referencing a stream source in another account or JetStream domain",
+                "properties": {
+                  "api": {
+                    "type": "string",
+                    "description": "The subject prefix that imports the other account/domain $JS.API.CONSUMER.> subjects"
+                  },
+                  "deliver": {
+                    "type": "string",
+                    "description": "The delivery subject to use for the push consumer"
+                  }
+                }
               },
               "error": {
                 "type": "object",

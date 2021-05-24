@@ -46,6 +46,7 @@ type settings struct {
 	Description   string `json:"description"`
 	URL           string `json:"url"`
 	nscUrl        string
+	Token         string `json:"token"`
 	User          string `json:"user"`
 	Password      string `json:"password"`
 	Creds         string `json:"creds"`
@@ -228,35 +229,36 @@ func knownContext(parent string, name string) bool {
 }
 
 // NATSOptions creates NATS client configuration based on the contents of the context
-func (c *Context) NATSOptions() ([]nats.Option, error) {
-	var opts []nats.Option
+func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
+	var nopts []nats.Option
 
-	if c.User() != "" {
-		opts = append(opts, nats.UserInfo(c.User(), c.Password()))
-	}
-
-	if c.Creds() != "" {
-		opts = append(opts, nats.UserCredentials(c.Creds()))
-	}
-
-	if c.NKey() != "" {
+	switch {
+	case c.User() != "":
+		nopts = append(nopts, nats.UserInfo(c.User(), c.Password()))
+	case c.Creds() != "":
+		nopts = append(nopts, nats.UserCredentials(c.Creds()))
+	case c.NKey() != "":
 		nko, err := nats.NkeyOptionFromSeed(c.NKey())
 		if err != nil {
 			return nil, err
 		}
 
-		opts = append(opts, nko)
+		nopts = append(nopts, nko)
+	case c.Token() != "":
+		nopts = append(nopts, nats.Token(c.Token()))
 	}
 
 	if c.Certificate() != "" && c.Key() != "" {
-		opts = append(opts, nats.ClientCert(c.Certificate(), c.Key()))
+		nopts = append(nopts, nats.ClientCert(c.Certificate(), c.Key()))
 	}
 
 	if c.CA() != "" {
-		opts = append(opts, nats.RootCAs(c.CA()))
+		nopts = append(nopts, nats.RootCAs(c.CA()))
 	}
 
-	return opts, nil
+	nopts = append(nopts, opts...)
+
+	return nopts, nil
 }
 
 func (c *Context) loadActiveContext() error {
@@ -478,6 +480,18 @@ func WithNKey(n string) Option {
 	return func(s *settings) {
 		if n != "" {
 			s.NKey = n
+		}
+	}
+}
+
+// Token retrieves the configured token, empty if not set
+func (c *Context) Token() string { return c.config.Token }
+
+// WithToken sets the token to use for authentication
+func WithToken(t string) Option {
+	return func(s *settings) {
+		if t != "" {
+			s.Token = t
 		}
 	}
 }

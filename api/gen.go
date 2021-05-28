@@ -19,7 +19,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -148,7 +150,24 @@ func goFmt(file string) error {
 	return err
 }
 
-func getSchame(u string) (title string, id string, body string, err error) {
+func fetchErrors() error {
+	resp, err := http.Get("https://raw.githubusercontent.com/nats-io/nats-server/master/server/errors.json")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	out, err := os.Create("schemas/server/errors.json")
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func getSchema(u string) (title string, id string, body string, err error) {
 	log.Printf("Fetching %s", u)
 
 	f, err := api.SchemaFileForType("io.nats." + strings.TrimSuffix(strings.ReplaceAll(u, "/", "."), ".json"))
@@ -234,7 +253,7 @@ func main() {
 	}
 
 	for _, i := range s {
-		title, _, body, err := getSchame(i.P)
+		title, _, body, err := getSchema(i.P)
 		panicIfErr(err)
 
 		i.S = body
@@ -255,4 +274,6 @@ func main() {
 	out.Close()
 	err = goFmt(out.Name())
 	panicIfErr(err)
+
+	panicIfErr(fetchErrors())
 }

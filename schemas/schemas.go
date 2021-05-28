@@ -6,6 +6,7 @@ import (
 
 //go:embed jetstream
 //go:embed server
+
 var schemas embed.FS
 
 func Load(schema string) ([]byte, error) {

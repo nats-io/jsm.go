@@ -28,6 +28,7 @@ var DefaultStream = api.StreamConfig{
 	Discard:      api.DiscardOld,
 	MaxConsumers: -1,
 	MaxMsgs:      -1,
+	MaxMsgsPer:   -1,
 	MaxBytes:     -1,
 	MaxAge:       24 * 365 * time.Hour,
 	MaxMsgSize:   -1,
@@ -41,6 +42,7 @@ var DefaultWorkQueue = api.StreamConfig{
 	Discard:      api.DiscardOld,
 	MaxConsumers: -1,
 	MaxMsgs:      -1,
+	MaxMsgsPer:   -1,
 	MaxBytes:     -1,
 	MaxAge:       24 * 365 * time.Hour,
 	MaxMsgSize:   -1,
@@ -226,6 +228,13 @@ func MaxConsumers(m int) StreamOption {
 func MaxMessages(m int64) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.MaxMsgs = m
+		return nil
+	}
+}
+
+func MaxMessagesPerSubject(m int64) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.MaxMsgsPer = m
 		return nil
 	}
 }
@@ -589,6 +598,7 @@ func (s *Stream) Subjects() []string              { return s.cfg.Subjects }
 func (s *Stream) Retention() api.RetentionPolicy  { return s.cfg.Retention }
 func (s *Stream) MaxConsumers() int               { return s.cfg.MaxConsumers }
 func (s *Stream) MaxMsgs() int64                  { return s.cfg.MaxMsgs }
+func (s *Stream) MaxMsgsPerSubject() int64        { return s.cfg.MaxMsgsPer }
 func (s *Stream) MaxBytes() int64                 { return s.cfg.MaxBytes }
 func (s *Stream) MaxAge() time.Duration           { return s.cfg.MaxAge }
 func (s *Stream) MaxMsgSize() int32               { return s.cfg.MaxMsgSize }

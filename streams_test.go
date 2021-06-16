@@ -564,6 +564,15 @@ func TestMaxMessages(t *testing.T) {
 	}
 }
 
+func TestMaxMessagesPerSubject(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.MaxMessagesPerSubject(1024)(cfg)
+	checkErr(t, err, "failed")
+	if cfg.MaxMsgsPer != 1024 {
+		t.Fatalf("expected 1024")
+	}
+}
+
 func TestMaxObservables(t *testing.T) {
 	cfg := testStreamConfig()
 	err := jsm.MaxConsumers(1024)(cfg)

@@ -339,6 +339,7 @@ type StreamConfig struct {
 	Subjects     []string        `json:"subjects,omitempty"`
 	Retention    RetentionPolicy `json:"retention"`
 	MaxConsumers int             `json:"max_consumers"`
+	MaxMsgsPer   int64           `json:"max_msgs_per_subject"`
 	MaxMsgs      int64           `json:"max_msgs"`
 	MaxBytes     int64           `json:"max_bytes"`
 	MaxAge       time.Duration   `json:"max_age"`

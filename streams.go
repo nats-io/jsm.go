@@ -500,10 +500,19 @@ func (s *Stream) Delete() error {
 	return nil
 }
 
-// Purge deletes all messages from the Stream
-func (s *Stream) Purge() error {
+// Purge deletes messages from the Stream, an optional JSApiStreamPurgeRequest can be supplied to limit the purge to a subset of messages
+func (s *Stream) Purge(opts ...*api.JSApiStreamPurgeRequest) error {
+	if len(opts) > 1 {
+		return fmt.Errorf("only one purge option allowed")
+	}
+
+	var req *api.JSApiStreamPurgeRequest
+	if len(opts) == 1 {
+		req = opts[0]
+	}
+
 	var resp api.JSApiStreamPurgeResponse
-	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamPurgeT, s.Name()), nil, &resp)
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamPurgeT, s.Name()), req, &resp)
 	if err != nil {
 		return err
 	}

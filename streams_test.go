@@ -428,30 +428,38 @@ func TestStream_Purge(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
+	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test.>"), jsm.MaxMessagesPerSubject(100))
 	checkErr(t, err, "create failed")
 
-	for i := 0; i < 4; i++ {
-		m := nats.NewMsg(stream.Subjects()[0])
-		m.Data = []byte(fmt.Sprintf("message %d", i))
-		m.Header.Add("Msg-Id", strconv.Itoa(i))
-		nc.PublishMsg(m)
+	for i := 0; i < 100; i++ {
+		subj := fmt.Sprintf("test.%d", i%2)
+		_, err := nc.Request(subj, []byte(fmt.Sprintf("message %d", i)), time.Second)
+		checkErr(t, err, "publish failed")
 	}
 
-	stats, err := stream.State()
-	checkErr(t, err, "stats failed")
-	if stats.Msgs != 4 {
-		t.Fatalf("expected 4 messages got %d", stats.Msgs)
+	checkCnt := func(t *testing.T, count uint64) {
+		t.Helper()
+		stats, err := stream.State()
+		checkErr(t, err, "stats failed")
+		if stats.Msgs != count {
+			t.Fatalf("expected %d messages got %d", count, stats.Msgs)
+		}
 	}
+
+	checkCnt(t, 100)
+
+	err = stream.Purge(&api.JSApiStreamPurgeRequest{Subject: "test.1", Keep: 4})
+	checkErr(t, err, "purge failed")
+	checkCnt(t, 54)
+
+	err = stream.Purge(&api.JSApiStreamPurgeRequest{Subject: "test.0", Keep: 4})
+	checkErr(t, err, "purge failed")
+	checkCnt(t, 8)
 
 	err = stream.Purge()
 	checkErr(t, err, "purge failed")
 
-	stats, err = stream.State()
-	checkErr(t, err, "stats failed")
-	if stats.Msgs != 0 {
-		t.Fatalf("expected 0 messages got %d", stats.Msgs)
-	}
+	checkCnt(t, 0)
 }
 
 func TestStream_ReadMessage(t *testing.T) {

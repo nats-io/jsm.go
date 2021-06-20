@@ -64,7 +64,7 @@ func (i *MsgInfo) TimeStamp() time.Time {
 	return i.ts
 }
 
-// Pending is the number of messages left to consumer, -1 when the number is not reported
+// Pending is the number of messages left to consume, -1 when the number is not reported
 func (i *MsgInfo) Pending() uint64 {
 	return i.pending
 }

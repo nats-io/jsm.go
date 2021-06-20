@@ -183,6 +183,17 @@ func (m *Manager) DeleteStreamMessage(stream string, seq uint64, noErase bool) e
 	return nil
 }
 
+// ReadLastMessageForSubject reads the last message stored in the stream for a specific subject
+func (m *Manager) ReadLastMessageForSubject(stream string, sub string) (msg *api.StoredMsg, err error) {
+	var resp api.JSApiMsgGetResponse
+	err = m.jsonRequest(fmt.Sprintf(api.JSApiMsgGetT, stream), api.JSApiMsgGetRequest{LastFor: sub}, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Message, nil
+}
+
 func (m *Manager) iterableRequest(subj string, req apiIterableRequest, response apiIterableResponse, cb func(interface{}) error) (err error) {
 	offset := 0
 	for {

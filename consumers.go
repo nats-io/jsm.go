@@ -45,7 +45,7 @@ var SampledDefaultConsumer = api.ConsumerConfig{
 	SampleFrequency: "100%",
 }
 
-// ConsumerOptions configures consumers
+// ConsumerOption configures consumers
 type ConsumerOption func(o *api.ConsumerConfig) error
 
 // Consumer represents a JetStream consumer

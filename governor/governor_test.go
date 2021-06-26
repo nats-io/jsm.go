@@ -48,7 +48,7 @@ func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 
 	// s.ConfigureLogger()
 
-	nc, err := nats.Connect(s.ClientURL(), nats.UseOldRequestStyle(), nats.MaxReconnects(100))
+	nc, err := nats.Connect(s.ClientURL(), nats.UseOldRequestStyle(), nats.MaxReconnects(-1))
 	if err != nil {
 		t.Fatalf("client start failed: %s", err)
 	}
@@ -89,7 +89,7 @@ func TestJsGovernor(t *testing.T) {
 		t.Fatalf("Stream had wrong name: %s", gmgr.Stream().Name())
 	}
 
-	if !cmp.Equal(gmgr.Stream().Subjects(), []string{"$GOVERNOR.TEST"}) {
+	if !cmp.Equal(gmgr.Stream().Subjects(), []string{"$GOVERNOR.campaign.TEST"}) {
 		t.Fatalf("Stream had wrong subjects: %v", gmgr.Stream().Subjects())
 	}
 
@@ -109,7 +109,7 @@ func TestJsGovernor(t *testing.T) {
 		go func(t *testing.T, i int) {
 			defer wg.Done()
 
-			g := NewJSGovernor("TEST", mgr)
+			g := NewJSGovernor("TEST", mgr, WithInterval(10*time.Millisecond))
 
 			name := fmt.Sprintf("worker %d", i)
 			finisher, err := g.Start(ctx, name)
@@ -129,7 +129,7 @@ func TestJsGovernor(t *testing.T) {
 			mu.Unlock()
 
 			// give the scheduler a chance
-			time.Sleep(2 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 
 			// before finish because its very quick and another one starts before this happens if its after finished call
 			mu.Lock()

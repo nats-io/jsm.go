@@ -7,11 +7,17 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/backoff"
 	"github.com/nats-io/nats.go"
 )
 
+// DefaultInterval default sleep between tries, set with WithInterval()
+const DefaultInterval = 250 * time.Millisecond
+
+// Finisher signals that work is completed releasing the slot on the stack
 type Finisher func() error
 
+// Governor controls concurrency of distributed processes using a named governor stream
 type Governor interface {
 	// Start attempts to get a spot in the Governor, gives up on context, call Finisher to signal end of work
 	Start(ctx context.Context, name string) (Finisher, error)
@@ -40,20 +46,25 @@ type jsGMgr struct {
 	replicas int
 	running  bool
 
+	cint time.Duration
+	bo   *backoff.Policy
+
 	mu sync.Mutex
 }
 
 func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, replicas uint, mgr *jsm.Manager, update bool) (Manager, error) {
 	gov := &jsGMgr{
 		name:     name,
-		stream:   fmt.Sprintf("GOVERNOR_%s", name),
-		subj:     fmt.Sprintf("$GOVERNOR.%s", name),
 		maxAge:   maxAge,
 		limit:    limit,
 		mgr:      mgr,
 		nc:       mgr.NatsConn(),
 		replicas: int(replicas),
+		cint:     DefaultInterval,
 	}
+
+	gov.stream = gov.streamName()
+	gov.subj = gov.streamSubject()
 
 	err := gov.loadOrCreate(update)
 	if err != nil {
@@ -63,16 +74,54 @@ func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, repli
 	return gov, nil
 }
 
-func NewJSGovernor(name string, mgr *jsm.Manager) Governor {
+type option func(mgr *jsGMgr)
+
+// WithBackoff sets a backoff policy for gradually reducing try interval
+func WithBackoff(p backoff.Policy) option {
+	return func(mgr *jsGMgr) {
+		mgr.bo = &p
+	}
+}
+
+// WithInterval sets the interval between tries
+func WithInterval(i time.Duration) option {
+	return func(mgr *jsGMgr) {
+		mgr.cint = i
+	}
+}
+
+func NewJSGovernor(name string, mgr *jsm.Manager, opts ...option) Governor {
 	gov := &jsGMgr{
-		name:   name,
-		stream: fmt.Sprintf("GOVERNOR_%s", name),
-		subj:   fmt.Sprintf("$GOVERNOR.%s", name),
-		mgr:    mgr,
-		nc:     mgr.NatsConn(),
+		name: name,
+		mgr:  mgr,
+		nc:   mgr.NatsConn(),
+		cint: DefaultInterval,
 	}
 
+	for _, o := range opts {
+		o(gov)
+	}
+
+	gov.stream = gov.streamName()
+	gov.subj = gov.streamSubject()
+
 	return gov
+}
+
+func (g *jsGMgr) streamSubject() string {
+	if g.subj != "" {
+		return g.subj
+	}
+
+	return fmt.Sprintf("$GOVERNOR.campaign.%s", g.name)
+}
+
+func (g *jsGMgr) streamName() string {
+	if g.stream != "" {
+		return g.stream
+	}
+
+	return fmt.Sprintf("GOVERNOR_%s", g.name)
 }
 
 func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
@@ -81,8 +130,12 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 
 	g.running = true
 	seq := uint64(0)
+	tries := 0
 
 	try := func() error {
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+
 		m, err := g.nc.RequestWithContext(ctx, g.subj, []byte(name))
 		if err != nil {
 			return err
@@ -116,14 +169,19 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 		return closer, nil
 	}
 
-	ticker := time.NewTicker(50 * time.Millisecond)
+	ticker := time.NewTicker(g.cint)
 
 	for {
 		select {
 		case <-ticker.C:
+			tries++
 			err = try()
 			if err == nil {
 				return closer, nil
+			}
+
+			if g.bo != nil {
+				ticker.Reset(g.bo.Duration(tries))
 			}
 
 		case <-ctx.Done():

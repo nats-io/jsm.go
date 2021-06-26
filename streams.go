@@ -535,8 +535,23 @@ func (s *Stream) ReadMessage(seq int) (msg *api.StoredMsg, err error) {
 	return resp.Message, nil
 }
 
-// DeleteMessage deletes a specific message from the Stream by overwriting it with random data
-func (s *Stream) DeleteMessage(seq int) (err error) {
+// FastDeleteMessage deletes a specific message from the Stream without erasing the data, see DeleteMessage() for a safe delete
+func (s *Stream) FastDeleteMessage(seq uint64) error {
+	var resp api.JSApiMsgDeleteResponse
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), api.JSApiMsgDeleteRequest{Seq: seq, NoErase: true}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while deleting message %d", seq)
+	}
+
+	return nil
+}
+
+// DeleteMessage deletes a specific message from the Stream by overwriting it with random data, see FastDeleteMessage() to remove the message without over writing data
+func (s *Stream) DeleteMessage(seq uint64) (err error) {
 	var resp api.JSApiMsgDeleteResponse
 	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), api.JSApiMsgDeleteRequest{Seq: uint64(seq)}, &resp)
 	if err != nil {

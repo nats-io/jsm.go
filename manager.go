@@ -168,6 +168,21 @@ func (m *Manager) StreamNames(filter *StreamNamesFilter) (names []string, err er
 	return names, nil
 }
 
+// DeleteStreamMessage deletes a specific message from the Stream without erasing the data, see DeleteMessage() for a safe delete
+func (m *Manager) DeleteStreamMessage(stream string, seq uint64, noErase bool) error {
+	var resp api.JSApiMsgDeleteResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, stream), api.JSApiMsgDeleteRequest{Seq: seq, NoErase: noErase}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while deleting message %d", seq)
+	}
+
+	return nil
+}
+
 func (m *Manager) iterableRequest(subj string, req apiIterableRequest, response apiIterableResponse, cb func(interface{}) error) (err error) {
 	offset := 0
 	for {
@@ -476,4 +491,12 @@ func (m *Manager) MetaPeerRemove(name string) error {
 	}
 
 	return nil
+}
+
+// NatsConn gives access to the underlying NATS Connection
+func (m *Manager) NatsConn() *nats.Conn {
+	m.Lock()
+	defer m.Unlock()
+
+	return m.nc
 }

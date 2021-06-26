@@ -132,3 +132,23 @@ func EventSubject(subject string, prefix string) string {
 
 	return prefix + strings.TrimPrefix(subject, "$JS.EVENT")
 }
+
+// ParsePubAck parses a stream publish response and returns an error if the publish failed or parsing failed
+func ParsePubAck(m *nats.Msg) (*api.PubAck, error) {
+	if m == nil {
+		return nil, fmt.Errorf("no message supplied")
+	}
+
+	err := ParseErrorResponse(m)
+	if err != nil {
+		return nil, err
+	}
+
+	res := api.PubAck{}
+	err = json.Unmarshal(m.Data, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}

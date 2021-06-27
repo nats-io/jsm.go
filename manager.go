@@ -375,7 +375,7 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, err error) {
 	}
 
 	sort.Slice(cinfo, func(i int, j int) bool {
-		return resp.Consumers[i].Name < resp.Consumers[j].Name
+		return cinfo[i].Name < cinfo[j].Name
 	})
 
 	for _, c := range cinfo {

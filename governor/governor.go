@@ -74,23 +74,23 @@ func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, repli
 	return gov, nil
 }
 
-type option func(mgr *jsGMgr)
+type Option func(mgr *jsGMgr)
 
 // WithBackoff sets a backoff policy for gradually reducing try interval
-func WithBackoff(p backoff.Policy) option {
+func WithBackoff(p backoff.Policy) Option {
 	return func(mgr *jsGMgr) {
 		mgr.bo = &p
 	}
 }
 
 // WithInterval sets the interval between tries
-func WithInterval(i time.Duration) option {
+func WithInterval(i time.Duration) Option {
 	return func(mgr *jsGMgr) {
 		mgr.cint = i
 	}
 }
 
-func NewJSGovernor(name string, mgr *jsm.Manager, opts ...option) Governor {
+func NewJSGovernor(name string, mgr *jsm.Manager, opts ...Option) Governor {
 	gov := &jsGMgr{
 		name: name,
 		mgr:  mgr,
@@ -121,7 +121,11 @@ func (g *jsGMgr) streamName() string {
 		return g.stream
 	}
 
-	return fmt.Sprintf("GOVERNOR_%s", g.name)
+	return StreamName(g.name)
+}
+
+func StreamName(governor string) string {
+	return fmt.Sprintf("GOVERNOR_%s", governor)
 }
 
 func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {

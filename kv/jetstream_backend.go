@@ -280,6 +280,7 @@ func (j *jetStreamStorage) CreateBucket() error {
 	opts := []jsm.StreamOption{
 		jsm.MaxMessagesPerSubject(int64(j.opts.history)),
 		jsm.LimitsRetention(),
+		jsm.MaxAge(j.opts.ttl),
 	}
 
 	if j.opts.replicas > 1 {
@@ -292,10 +293,6 @@ func (j *jetStreamStorage) CreateBucket() error {
 
 	// TODO: mirrors
 	opts = append(opts, jsm.Subjects(j.bucketSubject))
-
-	if j.opts.ttl > 0 {
-		opts = append(opts, jsm.MaxAge(j.opts.ttl))
-	}
 
 	stream, err := j.mgr.LoadOrNewStream(j.streamName, opts...)
 	if err != nil {

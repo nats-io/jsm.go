@@ -447,7 +447,7 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		t.Fatalf("expected not to share ip, got %q", val.OriginClient())
 	}
 
-	_, err = store.Put("hello", "world", OnlyIfLastKeySequence(seq-1))
+	_, err = store.Put("hello", "world", OnlyIfLastValueSequence(seq-1))
 	if err != nil {
 		apiErr, ok := err.(api.ApiError)
 		if ok {
@@ -459,7 +459,7 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		}
 	}
 
-	_, err = store.Put("hello", "world", OnlyIfLastKeySequence(seq))
+	_, err = store.Put("hello", "world", OnlyIfLastValueSequence(seq))
 	if err != nil {
 		t.Fatalf("Expected correct sequence put to succeed: %s", err)
 	}

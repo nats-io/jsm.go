@@ -760,8 +760,6 @@ func TestMirror(t *testing.T) {
 }
 
 func TestStream_IsMirror(t *testing.T) {
-	t.Skip("Waiting for feature to merge")
-
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()
 	defer nc.Flush()
@@ -777,8 +775,6 @@ func TestStream_IsMirror(t *testing.T) {
 }
 
 func TestStream_IsSourced(t *testing.T) {
-	t.Skip("Waiting for feature to merge")
-
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()
 	defer nc.Flush()

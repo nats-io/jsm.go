@@ -153,6 +153,11 @@
       "description": "The number of pulls that can be outstanding on a pull consumer, pulls received after this is reached are ignored",
       "minimum": 0,
       "default": 512
+    },
+    "direct": {
+      "type": "boolean",
+      "description": "Creates a special consumer that does not touch the Raft layers, not for general use by clients, internal use only",
+      "default": false
     }
   }
 }

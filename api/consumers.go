@@ -266,6 +266,9 @@ type ConsumerConfig struct {
 	RateLimit       uint64        `json:"rate_limit_bps,omitempty"`
 	ReplayPolicy    ReplayPolicy  `json:"replay_policy"`
 	SampleFrequency string        `json:"sample_freq,omitempty"`
+
+	// Don't add to general clients.
+	Direct bool `json:"direct,omitempty"`
 }
 
 // SequencePair is the consumer and stream sequence that uniquely identify a message

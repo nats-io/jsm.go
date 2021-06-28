@@ -123,7 +123,7 @@ func (m *Manager) NewStream(name string, opts ...StreamOption) (stream *Stream, 
 	return m.NewStreamFromDefault(name, DefaultStream, opts...)
 }
 
-// LoadOrNewStreamFromDefault loads an existing stream or creates a new one matching opts
+// LoadOrNewStream loads an existing stream or creates a new one matching opts
 func (m *Manager) LoadOrNewStream(name string, opts ...StreamOption) (stream *Stream, err error) {
 	return m.LoadOrNewStreamFromDefault(name, DefaultStream, opts...)
 }
@@ -525,20 +525,14 @@ func (s *Stream) Purge(opts ...*api.JSApiStreamPurgeRequest) error {
 }
 
 // ReadLastMessageForSubject reads the last message stored in the stream for a specific subject
-func (s *Stream) ReadLastMessageForSubject(sub string) (msg *api.StoredMsg, err error) {
-	var resp api.JSApiMsgGetResponse
-	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgGetT, s.Name()), api.JSApiMsgGetRequest{LastFor: sub}, &resp)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Message, nil
+func (s *Stream) ReadLastMessageForSubject(subj string) (*api.StoredMsg, error) {
+	return s.mgr.ReadLastMessageForSubject(s.Name(), subj)
 }
 
 // ReadMessage loads a message from the stream by its sequence number
-func (s *Stream) ReadMessage(seq int) (msg *api.StoredMsg, err error) {
+func (s *Stream) ReadMessage(seq uint64) (msg *api.StoredMsg, err error) {
 	var resp api.JSApiMsgGetResponse
-	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgGetT, s.Name()), api.JSApiMsgGetRequest{Seq: uint64(seq)}, &resp)
+	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgGetT, s.Name()), api.JSApiMsgGetRequest{Seq: seq}, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -548,23 +542,13 @@ func (s *Stream) ReadMessage(seq int) (msg *api.StoredMsg, err error) {
 
 // FastDeleteMessage deletes a specific message from the Stream without erasing the data, see DeleteMessage() for a safe delete
 func (s *Stream) FastDeleteMessage(seq uint64) error {
-	var resp api.JSApiMsgDeleteResponse
-	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), api.JSApiMsgDeleteRequest{Seq: seq, NoErase: true}, &resp)
-	if err != nil {
-		return err
-	}
-
-	if !resp.Success {
-		return fmt.Errorf("unknown error while deleting message %d", seq)
-	}
-
-	return nil
+	return s.mgr.DeleteStreamMessage(s.Name(), seq, true)
 }
 
 // DeleteMessage deletes a specific message from the Stream by overwriting it with random data, see FastDeleteMessage() to remove the message without over writing data
 func (s *Stream) DeleteMessage(seq uint64) (err error) {
 	var resp api.JSApiMsgDeleteResponse
-	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), api.JSApiMsgDeleteRequest{Seq: uint64(seq)}, &resp)
+	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), api.JSApiMsgDeleteRequest{Seq: seq}, &resp)
 	if err != nil {
 		return err
 	}

@@ -462,6 +462,43 @@ func TestStream_Purge(t *testing.T) {
 	checkCnt(t, 0)
 }
 
+func TestStream_ReadLastMessageForSubject(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test.*"))
+	checkErr(t, err, "create failed")
+
+	for i := 0; i < 10; i++ {
+		_, err := nc.Request(fmt.Sprintf("test.%d", i%3), []byte(fmt.Sprintf("message %d", i)), time.Second)
+		if err != nil {
+			t.Fatalf("request failed: %s", err)
+		}
+	}
+
+	get := func(t *testing.T, subj string, expect string) {
+		t.Helper()
+
+		msg, err := stream.ReadLastMessageForSubject(subj)
+		if err != nil {
+			t.Fatalf("read failed: %s", err)
+		}
+
+		if msg.Subject != subj {
+			t.Fatalf("wrong subject %q expected %q", msg.Subject, subj)
+		}
+
+		if string(msg.Data) != expect {
+			t.Fatalf("wrong body %q expected %q", string(msg.Data), expect)
+		}
+	}
+
+	get(t, "test.0", "message 9")
+	get(t, "test.1", "message 7")
+	get(t, "test.2", "message 8")
+}
+
 func TestStream_ReadMessage(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

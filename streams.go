@@ -524,6 +524,17 @@ func (s *Stream) Purge(opts ...*api.JSApiStreamPurgeRequest) error {
 	return nil
 }
 
+// ReadLastMessageForSubject reads the last message stored in the stream for a specific subject
+func (s *Stream) ReadLastMessageForSubject(sub string) (msg *api.StoredMsg, err error) {
+	var resp api.JSApiMsgGetResponse
+	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgGetT, s.Name()), api.JSApiMsgGetRequest{LastFor: sub}, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Message, nil
+}
+
 // ReadMessage loads a message from the stream by its sequence number
 func (s *Stream) ReadMessage(seq int) (msg *api.StoredMsg, err error) {
 	var resp api.JSApiMsgGetResponse

@@ -81,6 +81,7 @@ type JetStreamAccountLimits struct {
 
 type ApiError struct {
 	Code        int    `json:"code"`
+	ErrCode     uint16 `json:"err_code,omitempty"`
 	Description string `json:"description,omitempty"`
 }
 
@@ -90,9 +91,9 @@ func (e ApiError) Error() string {
 	case e.Description == "" && e.Code == 0:
 		return "unknown JetStream Error"
 	case e.Description == "" && e.Code > 0:
-		return fmt.Sprintf("unknown JetStream %d Error", e.Code)
+		return fmt.Sprintf("unknown JetStream %d Error (%d)", e.Code, e.ErrCode)
 	default:
-		return e.Description
+		return fmt.Sprintf("%s (%d)", e.Description, e.ErrCode)
 	}
 }
 
@@ -107,6 +108,9 @@ func (e ApiError) UserError() bool { return e.Code >= 400 && e.Code < 500 }
 
 // ErrorCode is the JetStream error code
 func (e ApiError) ErrorCode() int { return e.Code }
+
+// NatsErrorCode is the unique nats error code, see `nats errors` command
+func (e ApiError) NatsErrorCode() uint16 { return e.ErrCode }
 
 type JSApiResponse struct {
 	Type  string    `json:"type"`

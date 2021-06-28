@@ -59,6 +59,21 @@ This will inevitably result in breaking the read-after-write promises and should
 
 Local read caches to be build from the primary bucket not the replica. 
 
+To assist with configuring and discovery of replicas I think once we implement them we should add some values
+into the bucket:
+
+```
+_kv/replicas: [bob_sfo, bob_lon]
+_kv/replicas/cluster/sfo/read: bob_sfo
+_kv/replicas/cluster/lon/read: bob_lon
+```
+
+So a kv client in `sfo` can quickly discover if there is a Read replica in his cluster by doing a single lookup.
+
+The `_kv/replicas` is there to help tooling also manage all replicas when acting on the main. Maintaining this list
+is tricky as there can be a race, but we just have to confirm read after write.  Eventually there will be a per subject
+aware `Nats-Expected-Last-Sequence` which we can use to update the list only if the list has not changed since reading it.
+
 ### Local Cache
 
 A local cache wraps the JetStream storage with one that passes most calls to the JetStream one but will store results

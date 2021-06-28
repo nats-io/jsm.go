@@ -139,6 +139,11 @@ func (w *jsWatch) consumerHealthManager() {
 	// todo: use a backoff
 	ticker := time.NewTicker(500 * time.Millisecond)
 
+	// give the first check some time
+	w.mu.Lock()
+	w.lastSeen = time.Now()
+	w.mu.Unlock()
+
 	recreate := func() error {
 		w.mu.Lock()
 		w.sub.Unsubscribe()

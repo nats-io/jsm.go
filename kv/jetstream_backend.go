@@ -82,7 +82,16 @@ func (j *jetStreamStorage) Status() (Status, error) {
 		return nil, err
 	}
 
-	return &jsStatus{state: state, config: stream.Configuration()}, nil
+	info, err := stream.Information()
+	if err != nil {
+		return nil, err
+	}
+
+	return &jsStatus{
+		name:  j.name,
+		state: state,
+		info:  *info,
+	}, nil
 }
 
 func (j *jetStreamStorage) Close() error {

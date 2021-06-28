@@ -27,15 +27,15 @@ var (
 	validBucketRe = regexp.MustCompile(`\A[a-zA-Z0-9_-]+\z`)
 )
 
-func NewBucket(nc *nats.Conn, bucket string, opts ...option) (KV, error) {
+func NewBucket(nc *nats.Conn, bucket string, opts ...Option) (KV, error) {
 	return newOrLoad(nc, bucket, true, opts...)
 }
 
-func NewClient(nc *nats.Conn, bucket string, opts ...option) (KV, error) {
+func NewClient(nc *nats.Conn, bucket string, opts ...Option) (KV, error) {
 	return newOrLoad(nc, bucket, false, opts...)
 }
 
-func newOrLoad(nc *nats.Conn, bucket string, create bool, opts ...option) (KV, error) {
+func newOrLoad(nc *nats.Conn, bucket string, create bool, opts ...Option) (KV, error) {
 	o, err := newOpts(opts...)
 	if err != nil {
 		return nil, err
@@ -167,6 +167,9 @@ type Watch interface {
 }
 
 type Status interface {
+	// Bucket the name of the bucket
+	Bucket() string
+
 	// Values is how many messages are in the bucket, including historical values
 	Values() uint64
 
@@ -177,10 +180,13 @@ type Status interface {
 	Cluster() string
 
 	// Replicas returns how many times data in the bucket is replicated at storage
-	Replicas() int
+	Replicas() (ok int, failed int)
 
 	// Keys returns a list of all keys in the bucket - not possible now
 	Keys() ([]string, error)
+
+	// BackingStore is a backend specific name for the underlying storage - eg. stream name
+	BackingStore() string
 
 	// MirrorStatus is the status of a read replica, error when not accessing a replica
 	MirrorStatus() (lag int64, active bool, err error)

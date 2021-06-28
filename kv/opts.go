@@ -43,9 +43,10 @@ type options struct {
 	overrideSubjectPrefix string
 }
 
-type option func(o *options) error
+// Option configures the KV client
+type Option func(o *options) error
 
-func newOpts(opts ...option) (*options, error) {
+func newOpts(opts ...Option) (*options, error) {
 	o := &options{
 		replicas: 1,
 		history:  DefaultHistory,
@@ -64,7 +65,7 @@ func newOpts(opts ...option) (*options, error) {
 }
 
 // WithOutSharingClientIP disables sharing the IP of the producing client when putting values
-func WithOutSharingClientIP() option {
+func WithOutSharingClientIP() Option {
 	return func(o *options) error {
 		o.noShare = false
 		return nil
@@ -72,7 +73,7 @@ func WithOutSharingClientIP() option {
 }
 
 // WithHistory sets the number of historic values to keep for a key
-func WithHistory(h uint) option {
+func WithHistory(h uint) Option {
 	return func(o *options) error {
 		o.history = h
 		return nil
@@ -80,7 +81,7 @@ func WithHistory(h uint) option {
 }
 
 // WithReplicas sets the number of replicas to keep for a bucket
-func WithReplicas(r uint) option {
+func WithReplicas(r uint) Option {
 	return func(o *options) error {
 		o.replicas = r
 		return nil
@@ -88,7 +89,7 @@ func WithReplicas(r uint) option {
 }
 
 // WithPlacementCluster places the bucket in a specific cluster
-func WithPlacementCluster(c string) option {
+func WithPlacementCluster(c string) Option {
 	return func(o *options) error {
 		o.placementCluster = c
 		return nil
@@ -96,7 +97,7 @@ func WithPlacementCluster(c string) option {
 }
 
 // WithMirroredBucket creates a read replica that mirrors a specified bucket
-func WithMirroredBucket(b string) option {
+func WithMirroredBucket(b string) Option {
 	return func(o *options) error {
 		// TODO: validate
 		o.mirrorBucket = b
@@ -105,7 +106,7 @@ func WithMirroredBucket(b string) option {
 }
 
 // WithTTL sets the maximum time a value will be kept in the bucket
-func WithTTL(ttl time.Duration) option {
+func WithTTL(ttl time.Duration) Option {
 	return func(o *options) error {
 		o.ttl = ttl
 		return nil
@@ -113,7 +114,7 @@ func WithTTL(ttl time.Duration) option {
 }
 
 // WithLocalCache creates a local in-memory cache of the entire bucket thats kept up to date in real time using a watch
-func WithLocalCache() option {
+func WithLocalCache() Option {
 	return func(o *options) error {
 		o.localCache = true
 		return nil
@@ -121,7 +122,7 @@ func WithLocalCache() option {
 }
 
 // WithEncoderFunc sets an encoder function
-func WithEncoderFunc(f func(string) string) option {
+func WithEncoderFunc(f func(string) string) Option {
 	return func(o *options) error {
 		o.enc = f
 		return nil
@@ -129,7 +130,7 @@ func WithEncoderFunc(f func(string) string) option {
 }
 
 // WithEncoder sets a value encoder, multiple encoders can be set and will be called in order, programs that just write values can use this to avoid the configuring decoders
-func WithEncoder(e Encoder) option {
+func WithEncoder(e Encoder) Option {
 	return func(o *options) error {
 		o.enc = e.Encode
 		return nil
@@ -137,7 +138,7 @@ func WithEncoder(e Encoder) option {
 }
 
 // WithDecoderFunc sets an encoder function
-func WithDecoderFunc(f func(string) string) option {
+func WithDecoderFunc(f func(string) string) Option {
 	return func(o *options) error {
 		o.dec = f
 		return nil
@@ -145,7 +146,7 @@ func WithDecoderFunc(f func(string) string) option {
 }
 
 // WithDecoder sets a value decoder, multiple decoders can be set and will be called in order, programs that just read values can use this to avoid the configuring encoders
-func WithDecoder(d Decoder) option {
+func WithDecoder(d Decoder) Option {
 	return func(o *options) error {
 		o.dec = d.Decode
 		return nil
@@ -153,7 +154,7 @@ func WithDecoder(d Decoder) option {
 }
 
 // WithCodec sets a value encode/decoder, multiple codecs can be set and will be called in order, programs that read and write values can set this to do bi-directional encoding and decoding
-func WithCodec(c Codec) option {
+func WithCodec(c Codec) Option {
 	return func(o *options) error {
 		o.enc = c.(Encoder).Encode
 		o.dec = c.(Decoder).Decode
@@ -162,7 +163,7 @@ func WithCodec(c Codec) option {
 }
 
 // WithLogger sets a logger to use, STDOUT logging otherwise
-func WithLogger(log Logger) option {
+func WithLogger(log Logger) Option {
 	return func(o *options) error {
 		o.log = log
 		return nil
@@ -170,7 +171,7 @@ func WithLogger(log Logger) option {
 }
 
 // WithTimeout sets the timeout for calls to the storage layer
-func WithTimeout(t time.Duration) option {
+func WithTimeout(t time.Duration) Option {
 	return func(o *options) error {
 		o.timeout = t
 		return nil
@@ -178,7 +179,7 @@ func WithTimeout(t time.Duration) option {
 }
 
 // WithStreamName overrides the usual stream name that is formed as KV_<BUCKET>
-func WithStreamName(n string) option {
+func WithStreamName(n string) Option {
 	return func(o *options) error {
 		if strings.Contains(n, ">") || strings.Contains(n, "*") || strings.Contains(n, ".") {
 			return fmt.Errorf("invalid stream name")
@@ -190,7 +191,7 @@ func WithStreamName(n string) option {
 }
 
 // WithStreamSubjectPrefix overrides the usual stream subject changing the `kv.*.*` to `<prefix>.*.*`
-func WithStreamSubjectPrefix(p string) option {
+func WithStreamSubjectPrefix(p string) Option {
 	return func(o *options) error {
 		if strings.Contains(p, ">") || strings.Contains(p, "*") {
 			return fmt.Errorf("invalid prefix")

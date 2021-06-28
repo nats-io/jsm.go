@@ -20,19 +20,37 @@ import (
 )
 
 type jsStatus struct {
-	state  api.StreamState
-	config api.StreamConfig
+	name  string
+	state api.StreamState
+	info  api.StreamInfo
 }
 
+func (j *jsStatus) Bucket() string { return j.name }
 func (j *jsStatus) Values() uint64 { return j.state.Msgs }
-func (j *jsStatus) History() int64 { return j.config.MaxMsgsPer }
+func (j *jsStatus) History() int64 { return j.info.Config.MaxMsgsPer }
 func (j *jsStatus) Cluster() string {
-	if j.config.Placement == nil {
-		return ""
+	if j.info.Cluster != nil {
+		return j.info.Cluster.Name
 	}
-	return j.config.Placement.Cluster
+
+	return "unknown"
 }
-func (j *jsStatus) Replicas() int           { return j.config.Replicas }
+
+func (j *jsStatus) Replicas() (ok int, failed int) {
+	if j.info.Cluster != nil {
+		for _, peer := range j.info.Cluster.Replicas {
+			if peer.Current {
+				ok++
+			} else {
+				failed++
+			}
+		}
+
+	}
+
+	return ok, failed
+}
+func (j *jsStatus) BackingStore() string    { return j.info.Config.Name }
 func (j *jsStatus) Keys() ([]string, error) { return nil, fmt.Errorf("unsupported") }
 func (j *jsStatus) MirrorStatus() (lag int64, active bool, err error) {
 	return 0, false, fmt.Errorf("unsupported")

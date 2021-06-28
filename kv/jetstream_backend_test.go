@@ -33,7 +33,7 @@ type BOrT interface {
 	Fatalf(format string, args ...interface{})
 }
 
-func setupBasicTestBucket(t BOrT, so ...option) (*jetStreamStorage, *natsd.Server, *nats.Conn, *jsm.Manager) {
+func setupBasicTestBucket(t BOrT, so ...Option) (*jetStreamStorage, *natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 
 	srv, nc, mgr := startJSServer(t)
@@ -361,11 +361,11 @@ func TestJetStreamStorage_Status(t *testing.T) {
 		t.Fatalf("invalid values %d", status.Values())
 	}
 
-	if status.Replicas() != 1 {
-		t.Fatalf("invalid replicas %d", status.Replicas())
+	if ok, failed := status.Replicas(); ok != 0 || failed != 0 {
+		t.Fatalf("invalid replicas ok: %d failed: %d", ok, failed)
 	}
 
-	if status.Cluster() != "" {
+	if status.Cluster() != "unknown" {
 		t.Fatalf("invalid cluster %q", status.Cluster())
 	}
 

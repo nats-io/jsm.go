@@ -29,8 +29,26 @@ const (
 const (
 	// OK response
 	OK = "+OK"
-	// ERR prefix response
+	// ErrPrefix is the ERR prefix response
 	ErrPrefix = "-ERR"
+)
+
+// Headers for publishing
+const (
+	// JSMsgId used for tracking duplicates
+	JSMsgId = "Nats-Msg-Id"
+
+	// JSExpectedStream only store the message in this stream
+	JSExpectedStream = "Nats-Expected-Stream"
+
+	// JSExpectedLastSeq only store the message if stream last sequence matched
+	JSExpectedLastSeq = "Nats-Expected-Last-Sequence"
+
+	// JSExpectedLastSubjSeq only stores the message if last sequence for this subject matched
+	JSExpectedLastSubjSeq = "Nats-Expected-Last-Subject-Sequence"
+
+	// JSExpectedLastMsgId only stores the message if previous Nats-Msg-Id header value matches this
+	JSExpectedLastMsgId = "Nats-Expected-Last-Msg-Id"
 )
 
 type JSApiIterableRequest struct {

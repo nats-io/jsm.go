@@ -118,7 +118,7 @@ func TestJetStreamStorage_WithStreamName(t *testing.T) {
 }
 
 func TestJetStreamStorage_Codec(t *testing.T) {
-	store, srv, nc, _ := setupBasicTestBucket(t)
+	store, srv, nc, _ := setupBasicTestBucket(t, WithTTL(time.Minute))
 	defer srv.Shutdown()
 	defer nc.Close()
 	defer store.Close()
@@ -144,8 +144,12 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 		t.Fatalf("stream load failed: %s", err)
 	}
 
-	if stream.MaxAge() != 0 {
-		t.Fatalf("age was not 0")
+	if stream.MaxAge() != time.Minute {
+		t.Fatalf("age was not 60s: %v", stream.MaxAge())
+	}
+
+	if stream.DuplicateWindow() != time.Minute {
+		t.Fatalf("duplicate window is not 60s: %v", stream.DuplicateWindow())
 	}
 
 	msg, err := stream.ReadMessage(seq)

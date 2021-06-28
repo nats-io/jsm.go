@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
@@ -289,6 +290,10 @@ func (j *jetStreamStorage) CreateBucket() error {
 
 	if j.opts.placementCluster != "" {
 		opts = append(opts, jsm.PlacementCluster(j.opts.placementCluster))
+	}
+
+	if j.opts.ttl < 2*time.Minute {
+		opts = append(opts, jsm.DuplicateWindow(j.opts.ttl))
 	}
 
 	// TODO: mirrors

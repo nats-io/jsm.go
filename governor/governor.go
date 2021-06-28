@@ -251,6 +251,7 @@ func (g *jsGMgr) streamOpts() []jsm.StreamOption {
 		jsm.LimitsRetention(),
 		jsm.FileStorage(),
 		jsm.DiscardNew(),
+		jsm.DuplicateWindow(0),
 	}
 
 	if g.replicas > 0 {

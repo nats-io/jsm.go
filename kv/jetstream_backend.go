@@ -51,7 +51,7 @@ func newJetStreamStorage(name string, nc *nats.Conn, opts *options) (Storage, er
 		name:          name,
 		nc:            nc,
 		mgr:           mgr,
-		subjectPrefix: "kv",
+		subjectPrefix: "$KV",
 		log:           opts.log,
 		opts:          opts,
 	}

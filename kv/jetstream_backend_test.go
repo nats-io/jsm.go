@@ -153,7 +153,7 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 		t.Fatalf("encoded string was not stored")
 	}
 
-	if msg.Subject != "kv.TEST.olleh" {
+	if msg.Subject != "$KV.TEST.olleh" {
 		t.Fatalf("subject was not encoded: %s", msg.Subject)
 	}
 

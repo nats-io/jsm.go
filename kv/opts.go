@@ -46,6 +46,13 @@ type options struct {
 // Option configures the KV client
 type Option func(o *options) error
 
+// PutOption is a option passed to put, reserved for future work like put only if last value had sequence x
+type PutOption func(o *putOptions)
+
+type putOptions struct {
+	jsPreviousSeq uint64
+}
+
 func newOpts(opts ...Option) (*options, error) {
 	o := &options{
 		replicas: 1,
@@ -59,6 +66,16 @@ func newOpts(opts ...Option) (*options, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	return o, nil
+}
+
+func newPutOpts(opts ...PutOption) (*putOptions, error) {
+	o := &putOptions{}
+
+	for _, opt := range opts {
+		opt(o)
 	}
 
 	return o, nil
@@ -201,5 +218,12 @@ func WithStreamSubjectPrefix(p string) Option {
 
 		o.overrideSubjectPrefix = p
 		return nil
+	}
+}
+
+// OnlyIfLastKeySequence the put will only succeed if the last set value for the key had this sequence
+func OnlyIfLastKeySequence(seq uint64) PutOption {
+	return func(o *putOptions) {
+		o.jsPreviousSeq = seq
 	}
 }

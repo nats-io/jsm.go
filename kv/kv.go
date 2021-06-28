@@ -68,9 +68,6 @@ type Storage interface {
 	CreateBucket() error
 }
 
-// PutOption is a option passed to put, reserved for future work like put only if last value had sequence x
-type PutOption func()
-
 // KV is for accessing the data, this is an interface so we can have
 // caching KVs, encrypting KVs etc
 type KV interface {

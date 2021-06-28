@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -125,11 +126,20 @@ func (j *jetStreamStorage) Put(key string, val string, opts ...PutOption) (seq u
 		return 0, fmt.Errorf("invalid key")
 	}
 
+	popts, err := newPutOpts(opts...)
+	if err != nil {
+		return 0, err
+	}
+
 	msg := nats.NewMsg(j.subjectForKey(ek))
 	msg.Data = []byte(j.encode(val))
 
 	msg.Header.Add("KV-Origin-Server", j.nc.ConnectedServerName())
 	msg.Header.Add("KV-Origin-Cluster", j.nc.ConnectedClusterName())
+
+	if popts.jsPreviousSeq != 0 {
+		msg.Header.Add(api.JSExpectedLastSubjSeq, strconv.Itoa(int(popts.jsPreviousSeq)))
+	}
 
 	if !j.opts.noShare {
 		ip, err := j.nc.GetClientIP()

@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/api"
 	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -444,6 +445,23 @@ func TestJetStreamStorage_Put(t *testing.T) {
 	}
 	if val.OriginClient() != "" {
 		t.Fatalf("expected not to share ip, got %q", val.OriginClient())
+	}
+
+	_, err = store.Put("hello", "world", OnlyIfLastKeySequence(seq-1))
+	if err != nil {
+		apiErr, ok := err.(api.ApiError)
+		if ok {
+			if apiErr.NatsErrorCode() != 10071 {
+				t.Fatalf("Expected error 10071, got %v", apiErr)
+			}
+		} else {
+			t.Fatalf("Expected err 10071 got, got generic error: %v", err)
+		}
+	}
+
+	_, err = store.Put("hello", "world", OnlyIfLastKeySequence(seq))
+	if err != nil {
+		t.Fatalf("Expected correct sequence put to succeed: %s", err)
 	}
 }
 

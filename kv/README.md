@@ -27,10 +27,9 @@ specific interfaces focussed on performance and end user.
 
 Given a bucket `CONFIGURATION` we will have:
 
- * A stream called `KV_CONFIGURATION` with subjects `kv.CONFIGURATION.*`
+ * A stream called `KV_CONFIGURATION` with subjects `$KV.CONFIGURATION.*`
  * The stream has Max Messages Per Subject limit set to history with optional placement, R and max age for TTL
- * Getting a value is an ephemeral consumer with filter subject for the key (`kv.CONFIGURATION.foo`), last received in `Direct` mode
- * A state of `NumPending+Delivered.Consumer` being 0 means the key does not exist
+ * Getting a value uses the new `JSApiMsgGetRequest` feature to get the last message for a subject
  * We store headers as per the table below
 
 ### Headers

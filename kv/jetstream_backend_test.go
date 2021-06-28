@@ -144,6 +144,10 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 		t.Fatalf("stream load failed: %s", err)
 	}
 
+	if stream.MaxAge() != 0 {
+		t.Fatalf("age was not 0")
+	}
+
 	msg, err := stream.ReadMessage(seq)
 	if err != nil {
 		t.Fatalf("read failed: %s", err)

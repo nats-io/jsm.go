@@ -221,8 +221,8 @@ func WithStreamSubjectPrefix(p string) Option {
 	}
 }
 
-// OnlyIfLastKeySequence the put will only succeed if the last set value for the key had this sequence
-func OnlyIfLastKeySequence(seq uint64) PutOption {
+// OnlyIfLastValueSequence the put will only succeed if the last set value for the key had this sequence
+func OnlyIfLastValueSequence(seq uint64) PutOption {
 	return func(o *putOptions) {
 		o.jsPreviousSeq = seq
 	}

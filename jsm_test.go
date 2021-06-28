@@ -71,13 +71,20 @@ func TestIsErrorResponse(t *testing.T) {
 func TestParseErrorResponse(t *testing.T) {
 	checkErr(t, jsm.ParseErrorResponse(&nats.Msg{Data: []byte("+OK")}), "expected nil got error")
 
-	for _, d := range []string{"-ERR 'test error", `{"error":{"code":404,"description":"test error"}}`} {
-		err := jsm.ParseErrorResponse(&nats.Msg{Data: []byte(d)})
+	cases := []struct {
+		err    string
+		expect string
+	}{
+		{"-ERR 'test error", "test error"},
+		{`{"error":{"code":404,"description":"test error", "err_code":123}}`, "test error (123)"},
+	}
+	for _, c := range cases {
+		err := jsm.ParseErrorResponse(&nats.Msg{Data: []byte(c.err)})
 		if err == nil {
 			t.Fatalf("expected an error got nil")
 		}
 
-		if err.Error() != "test error" {
+		if err.Error() != c.expect {
 			t.Fatalf("expected 'test error' got '%v'", err)
 		}
 	}

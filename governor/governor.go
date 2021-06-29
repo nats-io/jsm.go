@@ -11,6 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package governor controls the concurrency of a network wide process
+//
+// Using this one can, for example, create CRON jobs that can trigger
+// 100s or 1000s concurrently but where most will wait for a set limit
+// to complete.  In effect limiting the overall concurrency of these
+// execution.
+//
+// To do this a Stream is created that has a maximum message limit and
+// that will reject new entries when full.
+//
+// Workers will try to place themselves in the Stream, they do their work
+// if they succeed and remove themselves from the Stream once they are done.
+//
+// As a fail safe the stack will evict entries after a set time based on
+// Stream max age.
+//
+// A manager is included to create, observe and edit these streams and the
+// nats CLI has a new command build on this library: nats governor
 package governor
 
 import (

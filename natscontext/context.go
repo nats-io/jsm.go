@@ -94,6 +94,16 @@ func New(name string, load bool, opts ...Option) (*Context, error) {
 	return c, nil
 }
 
+// Connect connects to the NATS server configured by the named context, empty name connects to selected context
+func Connect(name string, opts ...nats.Option) (*nats.Conn, error) {
+	nctx, err := New(name, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return nctx.Connect(opts...)
+}
+
 func parentDir() (string, error) {
 	parent := os.Getenv("XDG_CONFIG_HOME")
 	if parent != "" {
@@ -226,6 +236,16 @@ func knownContext(parent string, name string) bool {
 
 	_, err := os.Stat(filepath.Join(ctxDir(parent), name+".json"))
 	return !os.IsNotExist(err)
+}
+
+// Connect connects to the configured NATS server
+func (c *Context) Connect(opts ...nats.Option) (*nats.Conn, error) {
+	nopts, err := c.NATSOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return nats.Connect(c.ServerURL(), nopts...)
 }
 
 // NATSOptions creates NATS client configuration based on the contents of the context

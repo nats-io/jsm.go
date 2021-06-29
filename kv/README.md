@@ -36,9 +36,7 @@ Given a bucket `CONFIGURATION` we will have:
 
 |Header|Description|
 |------|-----------|
-|KV-Origin-Server|The server name where the client was connected to that created the value|
 |KV-Origin-Cluster|The cluster where the client was connected to that created the value|
-|KV-Origin|If the client opts into this, the IP that created the value|
 
 ### Watchers
 

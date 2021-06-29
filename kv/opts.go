@@ -38,7 +38,6 @@ type options struct {
 	dec                   func(string) string
 	log                   Logger
 	timeout               time.Duration
-	noShare               bool
 	overrideStreamName    string
 	overrideSubjectPrefix string
 }
@@ -79,14 +78,6 @@ func newPutOpts(opts ...PutOption) (*putOptions, error) {
 	}
 
 	return o, nil
-}
-
-// WithOutSharingClientIP disables sharing the IP of the producing client when putting values
-func WithOutSharingClientIP() Option {
-	return func(o *options) error {
-		o.noShare = false
-		return nil
-	}
 }
 
 // WithHistory sets the number of historic values to keep for a key

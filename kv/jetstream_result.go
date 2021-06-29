@@ -35,8 +35,6 @@ type jsResult struct {
 	seq     uint64
 	pending uint64
 
-	oclient  string
-	oserver  string
 	ocluster string
 }
 
@@ -46,8 +44,6 @@ func (j *jsResult) Value() string         { return j.val }
 func (j *jsResult) Created() time.Time    { return j.ts }
 func (j *jsResult) Sequence() uint64      { return j.seq }
 func (j *jsResult) Delta() uint64         { return j.pending }
-func (j *jsResult) OriginClient() string  { return j.oclient }
-func (j *jsResult) OriginServer() string  { return j.oserver }
 func (j *jsResult) OriginCluster() string { return j.ocluster }
 func (j *jsResult) MarshalJSON() ([]byte, error) {
 	return json.Marshal(j.genericResult())
@@ -60,8 +56,6 @@ func (j *jsResult) genericResult() *GenericResult {
 		Val:           j.val,
 		Created:       j.ts.UnixNano(),
 		Seq:           j.seq,
-		OriginClient:  j.oclient,
-		OriginServer:  j.oserver,
 		OriginCluster: j.ocluster,
 	}
 }
@@ -81,8 +75,6 @@ func jsResultFromStoredMessage(bucket, key string, m *api.StoredMsg, dec func(st
 		if err != nil {
 			return nil, err
 		}
-		res.oclient = hdrs.Get("KV-Origin")
-		res.oserver = hdrs.Get("KV-Origin-Server")
 		res.ocluster = hdrs.Get("KV-Origin-Cluster")
 	}
 
@@ -102,8 +94,6 @@ func jsResultFromMessage(bucket, key string, m *nats.Msg, dec func(string) strin
 		ts:       meta.TimeStamp(),
 		seq:      meta.StreamSequence(),
 		pending:  meta.Pending(),
-		oclient:  m.Header.Get("KV-Origin"),
-		oserver:  m.Header.Get("KV-Origin-Server"),
 		ocluster: m.Header.Get("KV-Origin-Cluster"),
 	}, nil
 }

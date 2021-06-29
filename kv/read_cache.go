@@ -104,6 +104,10 @@ func (c *readCache) Delete(key string) error {
 	return c.backend.Delete(key)
 }
 
+func (c *readCache) History(ctx context.Context, key string) ([]Result, error) {
+	return c.backend.History(ctx, key)
+}
+
 func (c *readCache) Get(key string) (Result, error) {
 	c.mu.Lock()
 	entry, ok := c.cache[key]

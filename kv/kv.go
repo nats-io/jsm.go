@@ -74,6 +74,9 @@ type KV interface {
 	// Get gets a key from the store
 	Get(key string) (Result, error)
 
+	// History retrieves historic values for a key
+	History(ctx context.Context, key string) ([]Result, error)
+
 	// Put saves a value into a key
 	Put(key string, val string, opts ...PutOption) (seq uint64, err error)
 
@@ -134,10 +137,6 @@ type Result interface {
 	Sequence() uint64
 	// Delta is distance from the latest value. If history is enabled this is effectively the index of the historical value, 0 for latest, 1 for most recent etc.
 	Delta() uint64
-	// OriginClient is the IP address of the writer of this data, may be empty if sharing was not enabled
-	OriginClient() string
-	// OriginServer is the NATS server where this data was written, may be empty if sharing was not enabled
-	OriginServer() string
 	// OriginCluster is the cluster where this data originate from, may be empty if sharing was not enabled
 	OriginCluster() string
 }
@@ -149,8 +148,6 @@ type GenericResult struct {
 	Val           string `json:"val"`
 	Created       int64  `json:"created"`
 	Seq           uint64 `json:"seq"`
-	OriginClient  string `json:"origin_client"`
-	OriginServer  string `json:"origin_server"`
 	OriginCluster string `json:"origin_cluster"`
 }
 

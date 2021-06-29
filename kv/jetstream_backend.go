@@ -134,18 +134,10 @@ func (j *jetStreamStorage) Put(key string, val string, opts ...PutOption) (seq u
 	msg := nats.NewMsg(j.subjectForKey(ek))
 	msg.Data = []byte(j.encode(val))
 
-	msg.Header.Add("KV-Origin-Server", j.nc.ConnectedServerName())
 	msg.Header.Add("KV-Origin-Cluster", j.nc.ConnectedClusterName())
 
 	if popts.jsPreviousSeq != 0 {
 		msg.Header.Add(api.JSExpectedLastSubjSeq, strconv.Itoa(int(popts.jsPreviousSeq)))
-	}
-
-	if !j.opts.noShare {
-		ip, err := j.nc.GetClientIP()
-		if err == nil {
-			msg.Header.Add("KV-Origin", ip.String())
-		}
 	}
 
 	res, err := j.nc.RequestMsg(msg, j.opts.timeout)
@@ -179,6 +171,49 @@ func (j *jetStreamStorage) JSON(ctx context.Context) ([]byte, error) {
 	}
 
 	return json.MarshalIndent(kv, "", "  ")
+}
+
+func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, error) {
+	ek := j.encode(key)
+	if !IsValidKey(ek) {
+		return nil, fmt.Errorf("invalid key")
+	}
+
+	stream, err := j.getOrLoadStream()
+	if err != nil {
+		return nil, err
+	}
+
+	sub, err := j.nc.SubscribeSync(nats.NewInbox())
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = stream.NewConsumer(jsm.FilterStreamBySubject(j.subjectForKey(ek)), jsm.DeliverySubject(sub.Subject), jsm.DeliverAllAvailable())
+	if err != nil {
+		return nil, err
+	}
+
+	var results []Result
+	for {
+		msg, err := sub.NextMsgWithContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		r, err := jsResultFromMessage(j.name, key, msg, j.decode)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, r)
+
+		if r.Delta() == 0 {
+			break
+		}
+	}
+
+	return results, nil
 }
 
 func (j *jetStreamStorage) Get(key string) (Result, error) {

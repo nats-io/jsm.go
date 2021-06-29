@@ -501,12 +501,6 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		if res.OriginCluster() != "gotest" {
 			t.Fatalf("incorrect cluster name: %v", res.OriginCluster())
 		}
-		if res.OriginServer() != "test.example.net" {
-			t.Fatalf("incorrect server name: %v", res.OriginServer())
-		}
-		if res.OriginClient() != "127.0.0.1" && res.OriginClient() != "::1" {
-			t.Fatalf("incorrect client: %v", res.OriginClient())
-		}
 
 		// within reasonable grace period
 		if res.Created().Before(time.Now().Add(-1 * time.Second)) {
@@ -514,20 +508,9 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		}
 	}
 
-	store.opts.noShare = true
 	seq, err := store.Put("hello", "world")
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
-	}
-	val, err := store.Get("hello")
-	if err != nil {
-		t.Fatalf("get failed: %s", err)
-	}
-	if val.Sequence() != seq {
-		t.Fatalf("got wrong value %d", seq)
-	}
-	if val.OriginClient() != "" {
-		t.Fatalf("expected not to share ip, got %q", val.OriginClient())
 	}
 
 	_, err = store.Put("hello", "world", OnlyIfLastValueSequence(seq-1))
@@ -545,6 +528,36 @@ func TestJetStreamStorage_Put(t *testing.T) {
 	_, err = store.Put("hello", "world", OnlyIfLastValueSequence(seq))
 	if err != nil {
 		t.Fatalf("Expected correct sequence put to succeed: %s", err)
+	}
+}
+
+func TestJetStreamStorage_History(t *testing.T) {
+	store, srv, nc, _ := setupBasicTestBucket(t, WithHistory(5))
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	publish := uint64(5)
+
+	for i := uint64(1); i <= publish; i++ {
+		_, err := store.Put("k", fmt.Sprintf("val%d", i))
+		if err != nil {
+			t.Fatalf("put failed: %s", err)
+		}
+	}
+
+	hist, err := store.History(context.Background(), "k")
+	if err != nil {
+		t.Fatalf("history failed: %s", err)
+	}
+
+	if len(hist) != int(publish) {
+		t.Fatalf("expected %d history got %d", publish, len(hist))
+	}
+
+	for i, r := range hist {
+		if r.Value() != fmt.Sprintf("val%d", i+1) {
+			t.Fatalf("expected value %d got %s", i+1, r.Value())
+		}
 	}
 }
 

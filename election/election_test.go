@@ -61,6 +61,12 @@ func TestElection(t *testing.T) {
 			mu.Unlock()
 		}
 
+		nc, err := nats.Connect(srv.ClientURL(), nats.MaxReconnects(-1))
+		if err != nil {
+			t.Fatalf("nc failed: %s", err)
+		}
+		mgr, _ := jsm.New(nc)
+
 		elect, err := NewElection("TEST_"+strconv.Itoa(i), winCb, lostCb, "ELECTION", mgr)
 		if err != nil {
 			t.Fatalf("election start failed: %s", err)

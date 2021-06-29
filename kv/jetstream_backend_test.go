@@ -176,6 +176,88 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 	}
 }
 
+func TestJetStreamStorage_WatchBucket(t *testing.T) {
+	store, srv, nc, _ := setupBasicTestBucket(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	for m := 0; m < 10; m++ {
+		_, err := store.Put("key", strconv.Itoa(m))
+		if err != nil {
+			t.Fatalf("put failed: %s", err)
+		}
+	}
+
+	status, _ := store.Status()
+	if status.Values() != 5 {
+		t.Fatalf("expected 5 messages got %d", status.Values())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	watch, err := store.WatchBucket(ctx)
+	if err != nil {
+		t.Fatalf("watch failed: %s", err)
+	}
+
+	cnt := 5
+	kills := 0
+	var latest Result
+
+	// similar to the Watch() test but now we make sure we get old values and new values and that
+	// even after a consumer outage we do not get duplicate messages over the channel
+	for {
+		select {
+		case r, ok := <-watch.Channel():
+			if !ok {
+				// channel is closed: check we got the last message we sent
+				if latest.Value() != strconv.Itoa(cnt) {
+					t.Fatalf("got invalid message value: %v!=%d", latest.Value(), cnt)
+				}
+
+				if kills == 0 {
+					t.Fatalf("did not kill the consumer during the test")
+				}
+
+				return
+			}
+
+			latest = r
+
+			// value should be that from the last pass through the watch loop or the initial from the warm up for loop
+			if r.Value() != strconv.Itoa(cnt) {
+				t.Fatalf("got invalid message value: %v!=%d", r.Value(), cnt)
+			}
+
+			// after 10 the test is done, close the watch, channel close handler
+			// will verify we got what we needed
+			if cnt == 20 {
+				watch.Close()
+				continue
+			}
+
+			cnt++
+
+			if cnt > 9 {
+				_, err = store.Put("key", strconv.Itoa(cnt))
+				if err != nil {
+					t.Fatalf("put failed: %s", err)
+				}
+			}
+
+			// after a few we kill the consumer to test recover
+			if cnt == 15 {
+				kills++
+				watch.(*jsWatch).cons.Delete()
+			}
+
+		case <-ctx.Done():
+			t.Fatalf("timeout running test")
+		}
+	}
+}
+
 func TestJetStreamStorage_Watch(t *testing.T) {
 	store, srv, nc, _ := setupBasicTestBucket(t)
 	defer srv.Shutdown()
@@ -204,6 +286,7 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 	cnt := 9
 	kills := 0
 	var latest Result
+
 	for {
 		select {
 		case r, ok := <-watch.Channel():

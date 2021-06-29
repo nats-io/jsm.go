@@ -33,6 +33,7 @@ type jsWatch struct {
 	sub        *nats.Subscription
 	nc         *nats.Conn
 	lastSeen   time.Time
+	lastSeq    uint64
 	outCh      chan Result
 	ctx        context.Context
 	dec        func(string) string
@@ -124,12 +125,15 @@ func (w *jsWatch) handler(m *nats.Msg) {
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
 	if !w.running {
 		return
 	}
 
 	select {
 	case w.outCh <- res:
+		w.lastSeq = res.Sequence()
+
 		m.Ack()
 	default:
 	}
@@ -199,8 +203,12 @@ func (w *jsWatch) createConsumer() error {
 		jsm.AcknowledgeExplicit(),
 	}
 
-	if w.latestOnly {
+	if w.lastSeq != 0 {
+		opts = append(opts, jsm.StartAtSequence(w.lastSeq+1))
+	} else if w.latestOnly {
 		opts = append(opts, jsm.StartWithLastReceived())
+	} else {
+		opts = append(opts, jsm.DeliverAllAvailable())
 	}
 
 	w.cons, err = w.mgr.NewConsumer(w.streamName, opts...)

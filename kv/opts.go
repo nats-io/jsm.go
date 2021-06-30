@@ -24,12 +24,20 @@ const (
 	DefaultTimeout = 2 * time.Second
 
 	// DefaultHistory is how many historical values are kept per key
-	DefaultHistory uint = 1
+	DefaultHistory uint64 = 1
+
+	// DefaultMaxBucketSize maximum size for the entire bucket, -1 for unlimited
+	DefaultMaxBucketSize int64 = -1
+
+	// DefaultMaxValueSize maximum size for individual values
+	DefaultMaxValueSize int32 = -1
 )
 
 type options struct {
-	history               uint
+	history               uint64
 	replicas              uint
+	maxBucketSize         int64
+	maxValueSize          int32
 	placementCluster      string
 	mirrorBucket          string
 	ttl                   time.Duration
@@ -54,10 +62,12 @@ type putOptions struct {
 
 func newOpts(opts ...Option) (*options, error) {
 	o := &options{
-		replicas: 1,
-		history:  DefaultHistory,
-		timeout:  DefaultTimeout,
-		log:      &stdLogger{},
+		replicas:      1,
+		history:       DefaultHistory,
+		timeout:       DefaultTimeout,
+		maxBucketSize: DefaultMaxBucketSize,
+		maxValueSize:  DefaultMaxValueSize,
+		log:           &stdLogger{},
 	}
 
 	for _, opt := range opts {
@@ -81,9 +91,33 @@ func newPutOpts(opts ...PutOption) (*putOptions, error) {
 }
 
 // WithHistory sets the number of historic values to keep for a key
-func WithHistory(h uint) Option {
+func WithHistory(h uint64) Option {
 	return func(o *options) error {
 		o.history = h
+		return nil
+	}
+}
+
+// WithMaxValueSize is the biggest size value that can be placed in the bucket including some header overhead
+func WithMaxValueSize(s int32) Option {
+	return func(o *options) error {
+		if s < -1 {
+			return fmt.Errorf("minimum value for WithMaxValueSize is -1")
+		}
+
+		o.maxValueSize = s
+		return nil
+	}
+}
+
+// WithMaxBucketSize limits the entire bucket to a specific size
+func WithMaxBucketSize(s int64) Option {
+	return func(o *options) error {
+		if s < -1 {
+			return fmt.Errorf("minimum value for WithMaxBucketSize is -1")
+		}
+
+		o.maxBucketSize = s
 		return nil
 	}
 }
@@ -121,7 +155,7 @@ func WithTTL(ttl time.Duration) Option {
 	}
 }
 
-// WithLocalCache creates a local in-memory cache of the entire bucket thats kept up to date in real time using a watch
+// WithLocalCache creates a local in-memory cache of the entire bucket that's kept up to date in real time using a watch
 func WithLocalCache() Option {
 	return func(o *options) error {
 		o.localCache = true

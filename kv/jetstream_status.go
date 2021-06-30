@@ -32,6 +32,8 @@ func (j *jsStatus) Keys() ([]string, error) { return nil, fmt.Errorf("unsupporte
 func (j *jsStatus) Bucket() string          { return j.name }
 func (j *jsStatus) Values() uint64          { return j.state.Msgs }
 func (j *jsStatus) History() int64          { return j.info.Config.MaxMsgsPer }
+func (j *jsStatus) MaxBucketSize() int64    { return j.info.Config.MaxBytes }
+func (j *jsStatus) MaxValueSize() int32     { return j.info.Config.MaxMsgSize }
 func (j *jsStatus) Cluster() string {
 	if j.info.Cluster != nil {
 		return j.info.Cluster.Name

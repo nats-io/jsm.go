@@ -143,6 +143,22 @@ func TestReadCache_Delete(t *testing.T) {
 	if err == nil {
 		t.Fatalf("get succeeded")
 	}
+
+	_, err = cache.Get("y")
+	if err != nil {
+		t.Fatalf("'y' get failed: %s", err)
+	}
+
+	// now do a delete from the backend directly and wait for watch to
+	// deliver the delete operation, the cache should then not have this value
+	err = cache.backend.Delete("y")
+	if err != nil {
+		t.Fatalf("delete failed: %s", err)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+
+	expectCache(t, 0)
 }
 
 func TestReadCache_Purge(t *testing.T) {

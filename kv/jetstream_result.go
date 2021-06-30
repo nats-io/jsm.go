@@ -28,14 +28,14 @@ import (
 )
 
 type jsResult struct {
-	bucket  string
-	key     string
-	val     string
-	ts      time.Time
-	seq     uint64
-	pending uint64
-
-	ocluster string
+	bucket    string
+	key       string
+	val       string
+	ts        time.Time
+	seq       uint64
+	pending   uint64
+	operation Operation
+	ocluster  string
 }
 
 func (j *jsResult) Bucket() string        { return j.bucket }
@@ -45,6 +45,7 @@ func (j *jsResult) Created() time.Time    { return j.ts }
 func (j *jsResult) Sequence() uint64      { return j.seq }
 func (j *jsResult) Delta() uint64         { return j.pending }
 func (j *jsResult) OriginCluster() string { return j.ocluster }
+func (j *jsResult) Operation() Operation  { return j.operation }
 func (j *jsResult) MarshalJSON() ([]byte, error) {
 	return json.Marshal(j.genericResult())
 }
@@ -56,18 +57,20 @@ func (j *jsResult) genericResult() *GenericResult {
 		Val:           j.val,
 		Created:       j.ts.UnixNano(),
 		Seq:           j.seq,
+		Operation:     string(j.operation),
 		OriginCluster: j.ocluster,
 	}
 }
 
 func jsResultFromStoredMessage(bucket, key string, m *api.StoredMsg, dec func(string) string) (*jsResult, error) {
 	res := &jsResult{
-		bucket:  bucket,
-		key:     key,
-		val:     dec(string(m.Data)),
-		ts:      m.Time,
-		seq:     m.Sequence,
-		pending: 0, // we dont know from StoredMsg and we only use this in get last for subject, so 0 is right
+		bucket:    bucket,
+		key:       key,
+		val:       dec(string(m.Data)),
+		ts:        m.Time,
+		seq:       m.Sequence,
+		operation: PutOperation,
+		pending:   0, // we dont know from StoredMsg and we only use this in get last for subject, so 0 is right
 	}
 
 	if m.Header != nil || len(m.Header) > 0 {
@@ -75,7 +78,11 @@ func jsResultFromStoredMessage(bucket, key string, m *api.StoredMsg, dec func(st
 		if err != nil {
 			return nil, err
 		}
-		res.ocluster = hdrs.Get("KV-Origin-Cluster")
+		res.ocluster = hdrs.Get(kvOriginClusterHeader)
+
+		if op := hdrs.Get(kvOperationHeader); op == delOperationString {
+			res.operation = DeleteOperation
+		}
 	}
 
 	return res, nil
@@ -87,15 +94,24 @@ func jsResultFromMessage(bucket, key string, m *nats.Msg, dec func(string) strin
 		return nil, err
 	}
 
-	return &jsResult{
-		bucket:   bucket,
-		key:      key,
-		val:      dec(string(m.Data)),
-		ts:       meta.TimeStamp(),
-		seq:      meta.StreamSequence(),
-		pending:  meta.Pending(),
-		ocluster: m.Header.Get("KV-Origin-Cluster"),
-	}, nil
+	res := &jsResult{
+		bucket:    bucket,
+		key:       key,
+		val:       dec(string(m.Data)),
+		ts:        meta.TimeStamp(),
+		seq:       meta.StreamSequence(),
+		pending:   meta.Pending(),
+		operation: PutOperation,
+		ocluster:  m.Header.Get(kvOriginClusterHeader),
+	}
+
+	if op := m.Header.Get(kvOperationHeader); op != "" {
+		if op == delOperationString {
+			res.operation = DeleteOperation
+		}
+	}
+
+	return res, nil
 }
 
 const (

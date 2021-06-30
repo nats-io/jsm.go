@@ -373,13 +373,8 @@ func TestJetStreamStorage_CompactAndPurge(t *testing.T) {
 	}
 
 	checkCount(t, store.subjectForKey("x"), 5)
-	err := store.Compact("x", 2)
-	if err != nil {
-		t.Fatalf("compact failed: %s", err)
-	}
-	checkCount(t, store.subjectForKey("x"), 2)
 
-	err = store.Purge()
+	err := store.Purge()
 	if err != nil {
 		t.Fatalf("purge failed: %s", err)
 	}
@@ -414,8 +409,8 @@ func TestJetStreamStorage_Delete(t *testing.T) {
 	}
 
 	_, err = store.Get("x")
-	if err.Error() != "unknown key: x" {
-		t.Fatalf("expected error got: %v", err)
+	if err != ErrUnknownKey {
+		t.Fatalf("expected unknown key error: %v", err)
 	}
 
 	res, err = store.Get("z")
@@ -691,19 +686,22 @@ func TestJetStreamStorage_JSON(t *testing.T) {
 	defer nc.Close()
 	defer store.Close()
 
-	_, err := store.Put("x", "y")
-	if err != nil {
-		t.Fatalf("put failed: %s", err)
+	mustPut := func(t *testing.T, key, val string) {
+		t.Helper()
+		_, err := store.Put(key, val)
+		if err != nil {
+			t.Fatalf("put failed: %s", err)
+		}
 	}
 
-	_, err = store.Put("x", "z")
-	if err != nil {
-		t.Fatalf("put failed: %s", err)
-	}
+	mustPut(t, "x", "y")
+	mustPut(t, "x", "z")
+	mustPut(t, "y", "y")
+	mustPut(t, "z", "z")
 
-	_, err = store.Put("y", "y")
+	err := store.Delete("z")
 	if err != nil {
-		t.Fatalf("put failed: %s", err)
+		t.Fatalf("delete failed: %s", err)
 	}
 
 	j, err := store.JSON(context.Background())
@@ -727,6 +725,11 @@ func TestJetStreamStorage_JSON(t *testing.T) {
 
 	if kv["y"].Val != "y" {
 		t.Fatalf("key y != y")
+	}
+
+	_, ok := kv["z"]
+	if ok {
+		t.Fatalf("should not have z key")
 	}
 }
 

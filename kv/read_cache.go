@@ -56,11 +56,10 @@ func newReadCache(b Storage, log Logger) (*readCache, error) {
 	return cache, nil
 }
 
-func (c *readCache) Bucket() string                        { return c.backend.Bucket() }
-func (c *readCache) BucketSubject() string                 { return c.backend.BucketSubject() }
-func (c *readCache) CreateBucket() error                   { return c.backend.CreateBucket() }
-func (c *readCache) Status() (Status, error)               { return c.backend.Status() }
-func (c *readCache) Compact(key string, keep uint64) error { return c.backend.Compact(key, keep) }
+func (c *readCache) Bucket() string          { return c.backend.Bucket() }
+func (c *readCache) BucketSubject() string   { return c.backend.BucketSubject() }
+func (c *readCache) CreateBucket() error     { return c.backend.CreateBucket() }
+func (c *readCache) Status() (Status, error) { return c.backend.Status() }
 func (c *readCache) WatchBucket(ctx context.Context) (Watch, error) {
 	return c.backend.WatchBucket(ctx)
 }
@@ -184,7 +183,14 @@ func (c *readCache) watcher() {
 
 			} else {
 				c.mu.Lock()
-				c.cache[result.Key()] = result
+
+				switch result.Operation() {
+				case DeleteOperation:
+					delete(c.cache, result.Key())
+				case PutOperation:
+					c.cache[result.Key()] = result
+				}
+
 				ready := c.ready
 				c.mu.Unlock()
 

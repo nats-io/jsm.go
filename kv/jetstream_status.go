@@ -15,6 +15,7 @@ package kv
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/nats-io/jsm.go/api"
 )
@@ -25,9 +26,12 @@ type jsStatus struct {
 	info  api.StreamInfo
 }
 
-func (j *jsStatus) Bucket() string { return j.name }
-func (j *jsStatus) Values() uint64 { return j.state.Msgs }
-func (j *jsStatus) History() int64 { return j.info.Config.MaxMsgsPer }
+func (j *jsStatus) TTL() time.Duration      { return j.info.Config.MaxAge }
+func (j *jsStatus) BackingStore() string    { return j.info.Config.Name }
+func (j *jsStatus) Keys() ([]string, error) { return nil, fmt.Errorf("unsupported") }
+func (j *jsStatus) Bucket() string          { return j.name }
+func (j *jsStatus) Values() uint64          { return j.state.Msgs }
+func (j *jsStatus) History() int64          { return j.info.Config.MaxMsgsPer }
 func (j *jsStatus) Cluster() string {
 	if j.info.Cluster != nil {
 		return j.info.Cluster.Name
@@ -50,8 +54,6 @@ func (j *jsStatus) Replicas() (ok int, failed int) {
 
 	return ok, failed
 }
-func (j *jsStatus) BackingStore() string    { return j.info.Config.Name }
-func (j *jsStatus) Keys() ([]string, error) { return nil, fmt.Errorf("unsupported") }
 func (j *jsStatus) MirrorStatus() (lag int64, active bool, err error) {
 	return 0, false, fmt.Errorf("unsupported")
 }

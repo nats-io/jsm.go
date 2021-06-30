@@ -281,6 +281,8 @@ func (j *jetStreamStorage) Delete(key string) error {
 
 	msg := nats.NewMsg(j.subjectForKey(ek))
 	msg.Header.Add(kvOperationHeader, delOperationString)
+	msg.Header.Add(kvOriginClusterHeader, j.nc.ConnectedClusterName())
+
 	res, err := j.nc.RequestMsg(msg, j.opts.timeout)
 	if err != nil {
 		return err

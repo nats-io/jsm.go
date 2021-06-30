@@ -218,6 +218,9 @@ type Status interface {
 	// History returns the configured history kept per key
 	History() int64
 
+	// TTL is how long the bucket keeps values for
+	TTL() time.Duration
+
 	// Cluster returns the name of the cluster holding the read replica of the data
 	Cluster() string
 

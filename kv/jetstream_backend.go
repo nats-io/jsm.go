@@ -26,6 +26,11 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+const (
+	kvOriginClusterHeader = "KV-Origin-Cluster"
+	kvOperationHeader     = "KV-Operation"
+)
+
 type jetStreamStorage struct {
 	name          string
 	streamName    string
@@ -41,7 +46,7 @@ type jetStreamStorage struct {
 
 func newJetStreamStorage(name string, nc *nats.Conn, opts *options) (Storage, error) {
 	if !IsValidBucket(name) {
-		return nil, fmt.Errorf("invalid bucket name")
+		return nil, ErrInvalidBucketName
 	}
 
 	mgr, err := jsm.New(nc, jsm.WithTimeout(opts.timeout))
@@ -123,7 +128,7 @@ func (j *jetStreamStorage) decode(val string) string {
 func (j *jetStreamStorage) Put(key string, val string, opts ...PutOption) (seq uint64, err error) {
 	ek := j.encode(key)
 	if !IsValidKey(ek) {
-		return 0, fmt.Errorf("invalid key")
+		return 0, ErrInvalidKey
 	}
 
 	popts, err := newPutOpts(opts...)
@@ -134,7 +139,7 @@ func (j *jetStreamStorage) Put(key string, val string, opts ...PutOption) (seq u
 	msg := nats.NewMsg(j.subjectForKey(ek))
 	msg.Data = []byte(j.encode(val))
 
-	msg.Header.Add("KV-Origin-Cluster", j.nc.ConnectedClusterName())
+	msg.Header.Add(kvOriginClusterHeader, j.nc.ConnectedClusterName())
 
 	if popts.jsPreviousSeq != 0 {
 		msg.Header.Add(api.JSExpectedLastSubjSeq, strconv.Itoa(int(popts.jsPreviousSeq)))
@@ -164,7 +169,13 @@ func (j *jetStreamStorage) JSON(ctx context.Context) ([]byte, error) {
 	kv := make(map[string]Result)
 
 	for r := range watch.Channel() {
-		kv[r.Key()] = r
+		switch r.Operation() {
+		case DeleteOperation:
+			delete(kv, r.Key())
+		case PutOperation:
+			kv[r.Key()] = r
+		}
+
 		if r.Delta() == 0 {
 			cancel()
 		}
@@ -176,7 +187,7 @@ func (j *jetStreamStorage) JSON(ctx context.Context) ([]byte, error) {
 func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, error) {
 	ek := j.encode(key)
 	if !IsValidKey(ek) {
-		return nil, fmt.Errorf("invalid key")
+		return nil, ErrInvalidKey
 	}
 
 	stream, err := j.getOrLoadStream()
@@ -219,21 +230,30 @@ func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, e
 func (j *jetStreamStorage) Get(key string) (Result, error) {
 	ek := j.encode(key)
 	if !IsValidKey(ek) {
-		return nil, fmt.Errorf("invalid key")
+		return nil, ErrInvalidKey
 	}
 
 	msg, err := j.mgr.ReadLastMessageForSubject(j.streamName, j.subjectForKey(ek))
 	if err != nil {
 		if apiErr, ok := err.(api.ApiError); ok {
 			if apiErr.NatsErrorCode() == 10037 {
-				return nil, fmt.Errorf("unknown key: %s", key)
+				return nil, ErrUnknownKey
 			}
 		}
 
 		return nil, err
 	}
 
-	return jsResultFromStoredMessage(j.name, key, msg, j.decode)
+	res, err := jsResultFromStoredMessage(j.name, key, msg, j.decode)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.Operation() == DeleteOperation {
+		return nil, ErrUnknownKey
+	}
+
+	return res, nil
 }
 
 func (j *jetStreamStorage) Bucket() string        { return j.name }
@@ -246,7 +266,7 @@ func (j *jetStreamStorage) WatchBucket(ctx context.Context) (Watch, error) {
 func (j *jetStreamStorage) Watch(ctx context.Context, key string) (Watch, error) {
 	ek := j.encode(key)
 	if !IsValidKey(ek) {
-		return nil, fmt.Errorf("invalid key")
+		return nil, ErrInvalidKey
 	}
 
 	return newJSWatch(ctx, j.streamName, j.name, j.subjectForKey(j.encode(key)), j.opts.dec, j.nc, j.mgr, j.log)
@@ -256,29 +276,18 @@ func (j *jetStreamStorage) Watch(ctx context.Context, key string) (Watch, error)
 func (j *jetStreamStorage) Delete(key string) error {
 	ek := j.encode(key)
 	if !IsValidKey(ek) {
-		return fmt.Errorf("invalid key")
+		return ErrInvalidKey
 	}
 
-	stream, err := j.getOrLoadStream()
+	msg := nats.NewMsg(j.subjectForKey(ek))
+	msg.Header.Add(kvOperationHeader, delOperationString)
+	res, err := j.nc.RequestMsg(msg, j.opts.timeout)
 	if err != nil {
 		return err
 	}
 
-	return stream.Purge(&api.JSApiStreamPurgeRequest{Subject: j.subjectForKey(ek)})
-}
-
-func (j *jetStreamStorage) Compact(key string, keep uint64) error {
-	ek := j.encode(key)
-	if !IsValidKey(ek) {
-		return fmt.Errorf("invalid key")
-	}
-
-	stream, err := j.getOrLoadStream()
-	if err != nil {
-		return err
-	}
-
-	return stream.Purge(&api.JSApiStreamPurgeRequest{Subject: j.subjectForKey(ek), Keep: keep})
+	_, err = jsm.ParsePubAck(res)
+	return err
 }
 
 func (j *jetStreamStorage) Purge() error {

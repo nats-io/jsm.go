@@ -235,6 +235,12 @@ type Status interface {
 
 	// MirrorStatus is the status of a read replica, error when not accessing a replica
 	MirrorStatus() (lag int64, active bool, err error)
+
+	// MaxBucketSize is the configured maximum size of the bucket in bytes
+	MaxBucketSize() int64
+
+	// MaxValueSize is the configured maximum size of a single value in bytes
+	MaxValueSize() int32
 }
 
 // IsReservedKey determines if key is a reserved key

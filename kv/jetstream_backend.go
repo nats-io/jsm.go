@@ -391,13 +391,13 @@ func (j *jetStreamStorage) getOrLoadStream() (*jsm.Stream, error) {
 		return nil, err
 	}
 
-	if stream == nil {
-		return nil, fmt.Errorf("no stream found")
-	}
-
 	j.mu.Lock()
 	stream = j.stream
 	j.mu.Unlock()
+
+	if stream == nil {
+		return nil, fmt.Errorf("no stream found")
+	}
 
 	return stream, nil
 }

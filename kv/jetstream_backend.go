@@ -338,6 +338,8 @@ func (j *jetStreamStorage) CreateBucket() error {
 		jsm.MaxMessagesPerSubject(int64(j.opts.history)),
 		jsm.LimitsRetention(),
 		jsm.MaxAge(j.opts.ttl),
+		jsm.MaxMessageSize(j.opts.maxValueSize),
+		jsm.MaxBytes(j.opts.maxBucketSize),
 	}
 
 	if j.opts.replicas > 1 {

@@ -151,7 +151,7 @@ func goFmt(file string) error {
 }
 
 func fetchErrors() error {
-	resp, err := http.Get("https://raw.githubusercontent.com/nats-io/nats-server/master/server/errors.json")
+	resp, err := http.Get("https://raw.githubusercontent.com/nats-io/nats-server/main/server/errors.json")
 	if err != nil {
 		return err
 	}

@@ -36,7 +36,7 @@ type jsWatch struct {
 	lastSeq    uint64
 	outCh      chan Result
 	ctx        context.Context
-	dec        func(string) string
+	dec        Decoder
 	cancel     func()
 	log        Logger
 	running    bool
@@ -44,7 +44,7 @@ type jsWatch struct {
 	mu         sync.Mutex
 }
 
-func newJSWatch(ctx context.Context, stramName string, bucket string, subj string, dec func(string) string, nc *nats.Conn, mgr *jsm.Manager, log Logger) (*jsWatch, error) {
+func newJSWatch(ctx context.Context, stramName string, bucket string, subj string, dec Decoder, nc *nats.Conn, mgr *jsm.Manager, log Logger) (*jsWatch, error) {
 	w := &jsWatch{
 		streamName: stramName,
 		bucket:     bucket,
@@ -88,12 +88,12 @@ func (w *jsWatch) Close() error {
 	return nil
 }
 
-func (w *jsWatch) decode(v string) string {
+func (w *jsWatch) decode(v []byte) ([]byte, error) {
 	if w.dec == nil {
-		return v
+		return v, nil
 	}
 
-	return w.dec(v)
+	return w.dec.Decode(v)
 }
 
 func (w *jsWatch) handler(m *nats.Msg) {

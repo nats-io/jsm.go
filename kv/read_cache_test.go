@@ -66,7 +66,7 @@ func TestReadCache_GetPut(t *testing.T) {
 	expectCache(t, 0)
 	assertCacheReady(t)
 
-	_, err = cache.Put("hello", "world")
+	_, err = cache.Put("hello", []byte("world"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
@@ -91,7 +91,7 @@ func TestReadCache_GetPut(t *testing.T) {
 
 	expectCache(t, 1)
 
-	_, err = cache.Put("hello", "wrld")
+	_, err = cache.Put("hello", []byte("wrld"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
@@ -106,9 +106,7 @@ func TestReadCache_GetPut(t *testing.T) {
 		t.Fatalf("get failed: %s", err)
 	}
 
-	if val.Value() != "wrld" {
-		t.Fatalf("got wrong value")
-	}
+	assertResultHasStringValue(t, val, "wrld")
 }
 
 func TestReadCache_Delete(t *testing.T) {
@@ -129,8 +127,8 @@ func TestReadCache_Delete(t *testing.T) {
 		}
 	}
 
-	cache.Put("x", "y")
-	cache.Put("y", "y")
+	cache.Put("x", []byte("y"))
+	cache.Put("y", []byte("y"))
 
 	time.Sleep(20 * time.Millisecond)
 
@@ -178,8 +176,8 @@ func TestReadCache_Purge(t *testing.T) {
 		}
 	}
 
-	cache.Put("x", "y")
-	cache.Put("y", "y")
+	cache.Put("x", []byte("y"))
+	cache.Put("y", []byte("y"))
 
 	time.Sleep(20 * time.Millisecond)
 
@@ -211,8 +209,8 @@ func TestReadCache_Destroy(t *testing.T) {
 		}
 	}
 
-	cache.Put("x", "y")
-	cache.Put("y", "y")
+	cache.Put("x", []byte("y"))
+	cache.Put("y", []byte("y"))
 
 	time.Sleep(20 * time.Millisecond)
 

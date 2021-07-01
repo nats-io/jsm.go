@@ -14,7 +14,9 @@
 package kv
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -32,6 +34,30 @@ import (
 type BOrT interface {
 	Helper()
 	Fatalf(format string, args ...interface{})
+}
+
+type base64Codec struct{}
+
+func (r base64Codec) Encode(v []byte) ([]byte, error) {
+	bres := make([]byte, base64.StdEncoding.EncodedLen(len(v)))
+	base64.StdEncoding.Encode(bres, v)
+	return bres, nil
+}
+
+func (r base64Codec) Decode(v []byte) ([]byte, error) {
+	dbuff := make([]byte, base64.StdEncoding.DecodedLen(len(v)))
+	n, err := base64.StdEncoding.Decode(dbuff, v)
+	return dbuff[:n], err
+}
+
+func assertResultHasStringValue(t *testing.T, res Result, val string) {
+	t.Helper()
+
+	if bytes.Equal(res.Value(), []byte(val)) {
+		return
+	}
+
+	t.Fatalf("%s should have value %s", res.Key(), val)
 }
 
 func setupBasicTestBucket(t BOrT, so ...Option) (*jetStreamStorage, *natsd.Server, *nats.Conn, *jsm.Manager) {
@@ -59,7 +85,7 @@ func TestJetStreamStorage_WithStreamSubjectPrefix(t *testing.T) {
 	defer nc.Close()
 	defer store.Close()
 
-	_, err := store.Put("hello", "world")
+	_, err := store.Put("hello", []byte("world"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
@@ -68,9 +94,8 @@ func TestJetStreamStorage_WithStreamSubjectPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get failed: %s", err)
 	}
-	if val.Value() != "world" {
-		t.Fatalf("invalid value")
-	}
+
+	assertResultHasStringValue(t, val, "world")
 
 	str, err := store.getOrLoadStream()
 	if err != nil {
@@ -88,7 +113,7 @@ func TestJetStreamStorage_WithStreamName(t *testing.T) {
 	defer nc.Close()
 	defer store.Close()
 
-	_, err := store.Put("hello", "world")
+	_, err := store.Put("hello", []byte("world"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
@@ -97,9 +122,8 @@ func TestJetStreamStorage_WithStreamName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get failed: %s", err)
 	}
-	if val.Value() != "world" {
-		t.Fatalf("invalid value")
-	}
+
+	assertResultHasStringValue(t, val, "world")
 
 	assertStream := func(t *testing.T, stream string, should bool) {
 		known, err := mgr.IsKnownStream(stream)
@@ -119,23 +143,12 @@ func TestJetStreamStorage_WithStreamName(t *testing.T) {
 }
 
 func TestJetStreamStorage_Codec(t *testing.T) {
-	store, srv, nc, _ := setupBasicTestBucket(t, WithTTL(time.Minute))
+	store, srv, nc, _ := setupBasicTestBucket(t, WithTTL(time.Minute), WithCodec(base64Codec{}))
 	defer srv.Shutdown()
 	defer nc.Close()
 	defer store.Close()
 
-	reverse := func(s string) string {
-		runes := []rune(s)
-		for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-			runes[i], runes[j] = runes[j], runes[i]
-		}
-		return string(runes)
-	}
-
-	store.opts.enc = reverse
-	store.opts.dec = reverse
-
-	seq, err := store.Put("hello", "world")
+	seq, err := store.Put("hello", []byte("world"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
@@ -158,11 +171,11 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 		t.Fatalf("read failed: %s", err)
 	}
 
-	if string(msg.Data) != "dlrow" {
-		t.Fatalf("encoded string was not stored")
+	if !bytes.Equal(msg.Data, []byte("d29ybGQ=")) {
+		t.Fatalf("encoded string was not stored: %q", msg.Data)
 	}
 
-	if msg.Subject != "$KV.TEST.olleh" {
+	if msg.Subject != "$KV.TEST.aGVsbG8=" {
 		t.Fatalf("subject was not encoded: %s", msg.Subject)
 	}
 
@@ -171,9 +184,7 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 		t.Fatalf("get failed: %s", err)
 	}
 
-	if val.Value() != "world" {
-		t.Fatalf("value didnt decode")
-	}
+	assertResultHasStringValue(t, val, "world")
 }
 
 func TestJetStreamStorage_WatchBucket(t *testing.T) {
@@ -182,7 +193,7 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 	defer nc.Close()
 
 	for m := 0; m < 10; m++ {
-		_, err := store.Put("key", strconv.Itoa(m))
+		_, err := store.Put("key", []byte(strconv.Itoa(m)))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
@@ -212,9 +223,7 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 		case r, ok := <-watch.Channel():
 			if !ok {
 				// channel is closed: check we got the last message we sent
-				if latest.Value() != strconv.Itoa(cnt) {
-					t.Fatalf("got invalid message value: %v!=%d", latest.Value(), cnt)
-				}
+				assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
 
 				if kills == 0 {
 					t.Fatalf("did not kill the consumer during the test")
@@ -226,9 +235,7 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 			latest = r
 
 			// value should be that from the last pass through the watch loop or the initial from the warm up for loop
-			if r.Value() != strconv.Itoa(cnt) {
-				t.Fatalf("got invalid message value: %v!=%d", r.Value(), cnt)
-			}
+			assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
 
 			// after 10 the test is done, close the watch, channel close handler
 			// will verify we got what we needed
@@ -240,7 +247,7 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 			cnt++
 
 			if cnt > 9 {
-				_, err = store.Put("key", strconv.Itoa(cnt))
+				_, err = store.Put("key", []byte(strconv.Itoa(cnt)))
 				if err != nil {
 					t.Fatalf("put failed: %s", err)
 				}
@@ -264,7 +271,7 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 	defer nc.Close()
 
 	for m := 0; m < 10; m++ {
-		_, err := store.Put("key", strconv.Itoa(m))
+		_, err := store.Put("key", []byte(strconv.Itoa(m)))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
@@ -292,9 +299,7 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 		case r, ok := <-watch.Channel():
 			if !ok {
 				// channel is closed: check we got the last message we sent
-				if latest.Value() != strconv.Itoa(cnt) {
-					t.Fatalf("got invalid message value: %v!=%d", latest.Value(), cnt)
-				}
+				assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
 
 				if kills == 0 {
 					t.Fatalf("did not kill the consumer during the test")
@@ -306,9 +311,7 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 			latest = r
 
 			// value should be that from the last pass through the watch loop or the initial from the warm up for loop
-			if r.Value() != strconv.Itoa(cnt) {
-				t.Fatalf("got invalid message value: %v!=%d", r.Value(), cnt)
-			}
+			assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
 
 			// we should always only get the latest value
 			if r.Delta() != 0 {
@@ -324,7 +327,7 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 
 			cnt++
 
-			_, err = store.Put("key", strconv.Itoa(cnt))
+			_, err = store.Put("key", []byte(strconv.Itoa(cnt)))
 			if err != nil {
 				t.Fatalf("put failed: %s", err)
 			}
@@ -347,12 +350,12 @@ func TestJetStreamStorage_CompactAndPurge(t *testing.T) {
 	defer nc.Close()
 
 	for i := 0; i < 5; i++ {
-		_, err := store.Put("x", strconv.Itoa(i))
+		_, err := store.Put("x", []byte(strconv.Itoa(i)))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
 
-		_, err = store.Put("y", strconv.Itoa(i))
+		_, err = store.Put("y", []byte(strconv.Itoa(i)))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
@@ -389,19 +392,17 @@ func TestJetStreamStorage_Delete(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Close()
 
-	store.Put("x", "x")
-	store.Put("x", "y")
-	store.Put("x", "z")
-	store.Put("y", "y")
-	store.Put("z", "y")
+	store.Put("x", []byte("x"))
+	store.Put("x", []byte("y"))
+	store.Put("x", []byte("z"))
+	store.Put("y", []byte("y"))
+	store.Put("z", []byte("y"))
 
 	res, err := store.Get("x")
 	if err != nil {
 		t.Fatalf("get failed: %s", err)
 	}
-	if res.Value() != "z" {
-		t.Fatalf("wrong value, expected 'x' got %q", res.Value())
-	}
+	assertResultHasStringValue(t, res, "z")
 
 	err = store.Delete("x")
 	if err != nil {
@@ -417,17 +418,13 @@ func TestJetStreamStorage_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	if res.Value() != "y" {
-		t.Fatalf("expected z==y got %q", res.Value())
-	}
+	assertResultHasStringValue(t, res, "y")
 
 	res, err = store.Get("y")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	if res.Value() != "y" {
-		t.Fatalf("expected y==y got %q", res.Value())
-	}
+	assertResultHasStringValue(t, res, "y")
 }
 
 func TestJetStreamStorage_Status(t *testing.T) {
@@ -435,9 +432,9 @@ func TestJetStreamStorage_Status(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Close()
 
-	store.Put("x", "y")
-	store.Put("y", "y")
-	store.Put("z", "y")
+	store.Put("x", []byte("y"))
+	store.Put("y", []byte("y"))
+	store.Put("z", []byte("y"))
 
 	status, err := store.Status()
 	if err != nil {
@@ -467,7 +464,7 @@ func TestJetStreamStorage_Put(t *testing.T) {
 	defer nc.Close()
 
 	for i := uint64(1); i <= 100; i++ {
-		seq, err := store.Put("hello", "world")
+		seq, err := store.Put("hello", []byte("world"))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
@@ -484,9 +481,7 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		if res.Key() != "hello" {
 			t.Fatalf("incorrect key: %s", res.Key())
 		}
-		if res.Value() != "world" {
-			t.Fatalf("incorrect value: %s", res.Value())
-		}
+		assertResultHasStringValue(t, res, "world")
 		if res.Sequence() != seq {
 			t.Fatalf("incorrect seq: %d", res.Sequence())
 		}
@@ -503,12 +498,12 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		}
 	}
 
-	seq, err := store.Put("hello", "world")
+	seq, err := store.Put("hello", []byte("world"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
 
-	_, err = store.Put("hello", "world", OnlyIfLastValueSequence(seq-1))
+	_, err = store.Put("hello", []byte("world"), OnlyIfLastValueSequence(seq-1))
 	if err != nil {
 		apiErr, ok := err.(api.ApiError)
 		if ok {
@@ -520,7 +515,7 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		}
 	}
 
-	_, err = store.Put("hello", "world", OnlyIfLastValueSequence(seq))
+	_, err = store.Put("hello", []byte("world"), OnlyIfLastValueSequence(seq))
 	if err != nil {
 		t.Fatalf("Expected correct sequence put to succeed: %s", err)
 	}
@@ -534,7 +529,7 @@ func TestJetStreamStorage_History(t *testing.T) {
 	publish := uint64(5)
 
 	for i := uint64(1); i <= publish; i++ {
-		_, err := store.Put("k", fmt.Sprintf("val%d", i))
+		_, err := store.Put("k", []byte(fmt.Sprintf("val%d", i)))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
@@ -550,9 +545,7 @@ func TestJetStreamStorage_History(t *testing.T) {
 	}
 
 	for i, r := range hist {
-		if r.Value() != fmt.Sprintf("val%d", i+1) {
-			t.Fatalf("expected value %d got %s", i+1, r.Value())
-		}
+		assertResultHasStringValue(t, r, fmt.Sprintf("val%d", i+1))
 	}
 }
 
@@ -562,7 +555,7 @@ func TestJetStreamStorage_Get(t *testing.T) {
 	defer nc.Close()
 
 	for i := uint64(1); i <= 1000; i++ {
-		_, err := store.Put(fmt.Sprintf("k%d", i), fmt.Sprintf("val%d", i))
+		_, err := store.Put(fmt.Sprintf("k%d", i), []byte(fmt.Sprintf("val%d", i)))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
@@ -586,9 +579,7 @@ func TestJetStreamStorage_Get(t *testing.T) {
 		if res.Key() != key {
 			t.Fatalf("invalid key: %s", res.Key())
 		}
-		if res.Value() != fmt.Sprintf("val%d", i) {
-			t.Fatalf("invalid value: %s", res.Value())
-		}
+		assertResultHasStringValue(t, res, fmt.Sprintf("val%d", i))
 		if res.Sequence() != i {
 			t.Fatalf("invalid sequence: %d", res.Sequence())
 		}
@@ -688,7 +679,7 @@ func TestJetStreamStorage_JSON(t *testing.T) {
 
 	mustPut := func(t *testing.T, key, val string) {
 		t.Helper()
-		_, err := store.Put(key, val)
+		_, err := store.Put(key, []byte(val))
 		if err != nil {
 			t.Fatalf("put failed: %s", err)
 		}
@@ -719,11 +710,11 @@ func TestJetStreamStorage_JSON(t *testing.T) {
 		t.Fatalf("expected 2 entries got %d", len(kv))
 	}
 
-	if kv["x"].Val != "z" {
+	if !bytes.Equal(kv["x"].Val, []byte("z")) {
 		t.Fatalf("key x != z")
 	}
 
-	if kv["y"].Val != "y" {
+	if !bytes.Equal(kv["y"].Val, []byte("y")) {
 		t.Fatalf("key y != y")
 	}
 
@@ -744,7 +735,7 @@ func BenchmarkJetStreamPut(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		key := fmt.Sprintf("k%d", n%10)
 		val := strconv.Itoa(n)
-		_, err := store.Put(key, val)
+		_, err := store.Put(key, []byte(val))
 		if err != nil {
 			b.Fatalf("put failed: %s", err)
 		}
@@ -764,7 +755,7 @@ func BenchmarkReadCacheGet(b *testing.B) {
 	}
 	defer cached.Close()
 
-	seq, err := cached.Put("hello", "world")
+	seq, err := cached.Put("hello", []byte("world"))
 	if err != nil {
 		b.Fatalf("put failed: %s", err)
 	}
@@ -791,7 +782,7 @@ func BenchmarkJetStreamGet(b *testing.B) {
 	defer nc.Close()
 	defer store.Close()
 
-	seq, err := store.Put("hello", "world")
+	seq, err := store.Put("hello", []byte("world"))
 	if err != nil {
 		b.Fatalf("put failed: %s", err)
 	}
@@ -820,19 +811,14 @@ func BenchmarkJetStreamPutGet(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		key := fmt.Sprintf("k%d", n%10)
-		val := strconv.Itoa(n)
-		_, err := store.Put(key, val)
+		_, err := store.Put(key, []byte(strconv.Itoa(n)))
 		if err != nil {
 			b.Fatalf("put failed: %s", err)
 		}
 
-		res, err := store.Get(key)
+		_, err = store.Get(key)
 		if err != nil {
 			b.Fatalf("get failed: %s", err)
-		}
-
-		if res.Value() != val {
-			b.Fatalf("invalid value")
 		}
 	}
 }

@@ -109,26 +109,39 @@ func (j *jetStreamStorage) Close() error {
 	return nil
 }
 
-func (j *jetStreamStorage) encode(val string) string {
+func (j *jetStreamStorage) encode(val []byte) ([]byte, error) {
 	if j.opts.enc == nil {
-		return val
+		return val, nil
 	}
 
-	return j.opts.enc(val)
+	return j.opts.enc.Encode(val)
 }
 
-func (j *jetStreamStorage) decode(val string) string {
+func (j *jetStreamStorage) decode(val []byte) ([]byte, error) {
 	if j.opts.dec == nil {
-		return val
+		return val, nil
 	}
 
-	return j.opts.dec(val)
+	return j.opts.dec.Decode(val)
 }
 
-func (j *jetStreamStorage) Put(key string, val string, opts ...PutOption) (seq uint64, err error) {
-	ek := j.encode(key)
-	if !IsValidKey(ek) {
-		return 0, ErrInvalidKey
+func (j *jetStreamStorage) encodeKey(key string) (string, error) {
+	ek, err := j.encode([]byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	if !IsValidKey(string(ek)) {
+		return "", ErrInvalidKey
+	}
+
+	return string(ek), nil
+}
+
+func (j *jetStreamStorage) Put(key string, val []byte, opts ...PutOption) (seq uint64, err error) {
+	ek, err := j.encodeKey(key)
+	if err != nil {
+		return 0, err
 	}
 
 	popts, err := newPutOpts(opts...)
@@ -137,9 +150,11 @@ func (j *jetStreamStorage) Put(key string, val string, opts ...PutOption) (seq u
 	}
 
 	msg := nats.NewMsg(j.subjectForKey(ek))
-	msg.Data = []byte(j.encode(val))
-
 	msg.Header.Add(kvOriginClusterHeader, j.nc.ConnectedClusterName())
+	msg.Data, err = j.encode(val)
+	if err != nil {
+		return 0, err
+	}
 
 	if popts.jsPreviousSeq != 0 {
 		msg.Header.Add(api.JSExpectedLastSubjSeq, strconv.Itoa(int(popts.jsPreviousSeq)))
@@ -185,9 +200,9 @@ func (j *jetStreamStorage) JSON(ctx context.Context) ([]byte, error) {
 }
 
 func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, error) {
-	ek := j.encode(key)
-	if !IsValidKey(ek) {
-		return nil, ErrInvalidKey
+	ek, err := j.encodeKey(key)
+	if err != nil {
+		return nil, err
 	}
 
 	stream, err := j.getOrLoadStream()
@@ -228,9 +243,9 @@ func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, e
 }
 
 func (j *jetStreamStorage) Get(key string) (Result, error) {
-	ek := j.encode(key)
-	if !IsValidKey(ek) {
-		return nil, ErrInvalidKey
+	ek, err := j.encodeKey(key)
+	if err != nil {
+		return nil, err
 	}
 
 	msg, err := j.mgr.ReadLastMessageForSubject(j.streamName, j.subjectForKey(ek))
@@ -264,19 +279,19 @@ func (j *jetStreamStorage) WatchBucket(ctx context.Context) (Watch, error) {
 }
 
 func (j *jetStreamStorage) Watch(ctx context.Context, key string) (Watch, error) {
-	ek := j.encode(key)
-	if !IsValidKey(ek) {
-		return nil, ErrInvalidKey
+	ek, err := j.encodeKey(key)
+	if err != nil {
+		return nil, err
 	}
 
-	return newJSWatch(ctx, j.streamName, j.name, j.subjectForKey(j.encode(key)), j.opts.dec, j.nc, j.mgr, j.log)
+	return newJSWatch(ctx, j.streamName, j.name, j.subjectForKey(ek), j.opts.dec, j.nc, j.mgr, j.log)
 }
 
 // Delete deletes all values held for a key
 func (j *jetStreamStorage) Delete(key string) error {
-	ek := j.encode(key)
-	if !IsValidKey(ek) {
-		return ErrInvalidKey
+	ek, err := j.encodeKey(key)
+	if err != nil {
+		return err
 	}
 
 	msg := nats.NewMsg(j.subjectForKey(ek))

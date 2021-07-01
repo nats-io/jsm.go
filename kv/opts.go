@@ -42,8 +42,8 @@ type options struct {
 	mirrorBucket          string
 	ttl                   time.Duration
 	localCache            bool
-	enc                   func(string) string
-	dec                   func(string) string
+	enc                   Encoder
+	dec                   Decoder
 	log                   Logger
 	timeout               time.Duration
 	overrideStreamName    string
@@ -163,26 +163,10 @@ func WithLocalCache() Option {
 	}
 }
 
-// WithEncoderFunc sets an encoder function
-func WithEncoderFunc(f func(string) string) Option {
-	return func(o *options) error {
-		o.enc = f
-		return nil
-	}
-}
-
 // WithEncoder sets a value encoder, multiple encoders can be set and will be called in order, programs that just write values can use this to avoid the configuring decoders
 func WithEncoder(e Encoder) Option {
 	return func(o *options) error {
-		o.enc = e.Encode
-		return nil
-	}
-}
-
-// WithDecoderFunc sets an encoder function
-func WithDecoderFunc(f func(string) string) Option {
-	return func(o *options) error {
-		o.dec = f
+		o.enc = e
 		return nil
 	}
 }
@@ -190,7 +174,7 @@ func WithDecoderFunc(f func(string) string) Option {
 // WithDecoder sets a value decoder, multiple decoders can be set and will be called in order, programs that just read values can use this to avoid the configuring encoders
 func WithDecoder(d Decoder) Option {
 	return func(o *options) error {
-		o.dec = d.Decode
+		o.dec = d
 		return nil
 	}
 }
@@ -198,8 +182,8 @@ func WithDecoder(d Decoder) Option {
 // WithCodec sets a value encode/decoder, multiple codecs can be set and will be called in order, programs that read and write values can set this to do bi-directional encoding and decoding
 func WithCodec(c Codec) Option {
 	return func(o *options) error {
-		o.enc = c.(Encoder).Encode
-		o.dec = c.(Decoder).Decode
+		o.enc = c.(Encoder)
+		o.dec = c.(Decoder)
 		return nil
 	}
 }

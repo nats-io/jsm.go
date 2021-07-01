@@ -39,7 +39,7 @@ const (
 	DeleteOperation Operation = "DEL"
 
 	// ValidKeyPattern is a regular expression key should match, post encoding, to be valid
-	ValidKeyPattern = `\A[-/_a-zA-Z0-9]+\z`
+	ValidKeyPattern = `\A[-/_=a-zA-Z0-9]+\z`
 
 	// ValidBucketPattern is a regular expression bucket names should match
 	ValidBucketPattern = `\A[a-zA-Z0-9_-]+\z`
@@ -115,7 +115,7 @@ type Storage interface {
 // KV is a read-write interface to a single key-value store bucket
 type KV interface {
 	// Put saves a value into a key
-	Put(key string, val string, opts ...PutOption) (seq uint64, err error)
+	Put(key string, val []byte, opts ...PutOption) (seq uint64, err error)
 
 	// Delete purges the subject
 	Delete(key string) error
@@ -161,12 +161,12 @@ type Codec interface {
 
 // Encoder encodes values before saving
 type Encoder interface {
-	Encode(value string) string
+	Encode(value []byte) ([]byte, error)
 }
 
 // Decoder decodes values before saving
 type Decoder interface {
-	Decode(value string) string
+	Decode(value []byte) ([]byte, error)
 }
 
 type Result interface {
@@ -175,7 +175,7 @@ type Result interface {
 	// Key is the key that was retrieved
 	Key() string
 	// Value is the retrieved value
-	Value() string
+	Value() []byte
 	// Created is the time the data was received in the bucket
 	Created() time.Time
 	// Sequence is a unique sequence for this value
@@ -192,7 +192,7 @@ type Result interface {
 type GenericResult struct {
 	Bucket        string `json:"bucket"`
 	Key           string `json:"key"`
-	Val           string `json:"val"`
+	Val           []byte `json:"val"`
 	Created       int64  `json:"created"`
 	Seq           uint64 `json:"seq"`
 	Operation     string `json:"operation"`

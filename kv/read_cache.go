@@ -68,7 +68,7 @@ func (c *readCache) Watch(ctx context.Context, key string) (Watch, error) {
 	return c.backend.Watch(ctx, key)
 }
 
-func (c *readCache) Put(key string, val string, opts ...PutOption) (uint64, error) {
+func (c *readCache) Put(key string, val []byte, opts ...PutOption) (uint64, error) {
 	// put on the backend can fail making this invalidate not needed but
 	// put can also succeed and then error due to network timeouts etc, so
 	// safest possible thing is to always invalidate on put regardless of outcome

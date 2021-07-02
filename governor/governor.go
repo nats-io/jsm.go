@@ -37,6 +37,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/nats.go"
 )
@@ -57,11 +58,14 @@ type Governor interface {
 // a stream as a capped stack where workers reserve a slot and later release the slot
 type Manager interface {
 	Limit() int64
-	SetLimit(uint64) error
 	MaxAge() time.Duration
-	SetMaxAge(time.Duration) error
 	Name() string
+	Replicas() int
+	SetLimit(uint64) error
+	SetMaxAge(time.Duration) error
+	SetSubject(subj string) error
 	Stream() *jsm.Stream
+	Subject() string
 }
 
 // Backoff controls the interval of checks
@@ -88,7 +92,7 @@ type jsGMgr struct {
 	mu sync.Mutex
 }
 
-func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, replicas uint, mgr *jsm.Manager, update bool) (Manager, error) {
+func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, replicas uint, mgr *jsm.Manager, update bool, opts ...Option) (Manager, error) {
 	gov := &jsGMgr{
 		name:     name,
 		maxAge:   maxAge,
@@ -97,6 +101,10 @@ func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, repli
 		nc:       mgr.NatsConn(),
 		replicas: int(replicas),
 		cint:     DefaultInterval,
+	}
+
+	for _, opt := range opts {
+		opt(gov)
 	}
 
 	gov.stream = gov.streamName()
@@ -126,6 +134,13 @@ func WithInterval(i time.Duration) Option {
 	}
 }
 
+// WithSubject configures a specific subject for the governor to act on
+func WithSubject(s string) Option {
+	return func(mgr *jsGMgr) {
+		mgr.subj = s
+	}
+}
+
 func NewJSGovernor(name string, mgr *jsm.Manager, opts ...Option) Governor {
 	gov := &jsGMgr{
 		name: name,
@@ -134,8 +149,8 @@ func NewJSGovernor(name string, mgr *jsm.Manager, opts ...Option) Governor {
 		cint: DefaultInterval,
 	}
 
-	for _, o := range opts {
-		o(gov)
+	for _, opt := range opts {
+		opt(gov)
 	}
 
 	gov.stream = gov.streamName()
@@ -234,7 +249,17 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 func (g *jsGMgr) Stream() *jsm.Stream   { return g.str }
 func (g *jsGMgr) Limit() int64          { return g.str.MaxMsgs() }
 func (g *jsGMgr) MaxAge() time.Duration { return g.str.MaxAge() }
+func (g *jsGMgr) Subject() string       { return g.str.Subjects()[0] }
+func (g *jsGMgr) Replicas() int         { return g.str.Replicas() }
 func (g *jsGMgr) Name() string          { return g.name }
+func (g *jsGMgr) SetSubject(subj string) error {
+	g.mu.Lock()
+	g.subj = subj
+	g.mu.Unlock()
+
+	return g.updateConfig()
+}
+
 func (g *jsGMgr) SetLimit(limit uint64) error {
 	g.mu.Lock()
 	g.limit = limit
@@ -255,7 +280,7 @@ func (g *jsGMgr) updateConfig() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if g.str.MaxAge() != g.maxAge || g.str.MaxMsgs() != int64(g.limit) {
+	if g.str.MaxAge() != g.maxAge || g.str.MaxMsgs() != int64(g.limit) || !cmp.Equal([]string{g.streamSubject()}, g.str.Subjects()) {
 		err := g.str.UpdateConfiguration(g.str.Configuration(), g.streamOpts()...)
 		if err != nil {
 			return fmt.Errorf("stream update failed: %s", err)

@@ -106,6 +106,15 @@ func TestJsGovernor(t *testing.T) {
 		t.Fatalf("Stream had wrong subjects: %v", gmgr.Stream().Subjects())
 	}
 
+	gmgr, err = NewJSGovernorManager("TEST", uint64(limit), 2*time.Minute, 0, mgr, true, WithSubject("$BOB"))
+	if err != nil {
+		t.Fatalf("manager failed: %s", err)
+	}
+
+	if !cmp.Equal(gmgr.Stream().Subjects(), []string{"$BOB"}) {
+		t.Fatalf("Stream had wrong subjects: %v", gmgr.Stream().Subjects())
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -122,7 +131,7 @@ func TestJsGovernor(t *testing.T) {
 		go func(t *testing.T, i int) {
 			defer wg.Done()
 
-			g := NewJSGovernor("TEST", mgr, WithInterval(10*time.Millisecond))
+			g := NewJSGovernor("TEST", mgr, WithInterval(10*time.Millisecond), WithSubject("$BOB"))
 
 			name := fmt.Sprintf("worker %d", i)
 			finisher, err := g.Start(ctx, name)

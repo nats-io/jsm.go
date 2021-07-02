@@ -57,15 +57,30 @@ type Governor interface {
 // Manager controls concurrent executions of work distributed throughout a nats network by using
 // a stream as a capped stack where workers reserve a slot and later release the slot
 type Manager interface {
+	// Limit is the configured maximum entries in the Governor
 	Limit() int64
+	// MaxAge is the time after which entries will be evicted
 	MaxAge() time.Duration
+	// Name is the Governor name
 	Name() string
+	// Replicas is how many data replicas are kept of the data
 	Replicas() int
+	// SetLimit configures the maximum entries in the Governor and takes immediate effect
 	SetLimit(uint64) error
+	// SetMaxAge configures the maximum age of entries, takes immediate effect
 	SetMaxAge(time.Duration) error
+	// SetSubject configures the underlying NATS subject the Governor listens on for entry campaigns
 	SetSubject(subj string) error
+	// Stream is the underlying JetStream stream
 	Stream() *jsm.Stream
+	// Subject is the subject the Governor listens on for entry campaigns
 	Subject() string
+	// Reset resets the governor removing all current entries from it
+	Reset() error
+	// Active is the number of active entries in the Governor
+	Active() (uint64, error)
+	// Evict removes an entry from the Governor given its unique id
+	Evict(entry uint64) error
 }
 
 // Backoff controls the interval of checks
@@ -246,12 +261,26 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 	}
 }
 
+func (g *jsGMgr) Reset() error {
+	return g.str.Purge()
+}
 func (g *jsGMgr) Stream() *jsm.Stream   { return g.str }
 func (g *jsGMgr) Limit() int64          { return g.str.MaxMsgs() }
 func (g *jsGMgr) MaxAge() time.Duration { return g.str.MaxAge() }
 func (g *jsGMgr) Subject() string       { return g.str.Subjects()[0] }
 func (g *jsGMgr) Replicas() int         { return g.str.Replicas() }
 func (g *jsGMgr) Name() string          { return g.name }
+func (g *jsGMgr) Evict(entry uint64) error {
+	return g.str.DeleteMessage(entry)
+}
+func (g *jsGMgr) Active() (uint64, error) {
+	nfo, err := g.str.Information()
+	if err != nil {
+		return 0, err
+	}
+
+	return nfo.State.Msgs, nil
+}
 func (g *jsGMgr) SetSubject(subj string) error {
 	g.mu.Lock()
 	g.subj = subj

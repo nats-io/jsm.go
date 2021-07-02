@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"strconv"
@@ -668,59 +667,6 @@ func TestJetStreamStorage_Destroy(t *testing.T) {
 
 	if known {
 		t.Fatalf("stream existed after Destroy()")
-	}
-}
-
-func TestJetStreamStorage_JSON(t *testing.T) {
-	store, srv, nc, _ := setupBasicTestBucket(t)
-	defer srv.Shutdown()
-	defer nc.Close()
-	defer store.Close()
-
-	mustPut := func(t *testing.T, key, val string) {
-		t.Helper()
-		_, err := store.Put(key, []byte(val))
-		if err != nil {
-			t.Fatalf("put failed: %s", err)
-		}
-	}
-
-	mustPut(t, "x", "y")
-	mustPut(t, "x", "z")
-	mustPut(t, "y", "y")
-	mustPut(t, "z", "z")
-
-	err := store.Delete("z")
-	if err != nil {
-		t.Fatalf("delete failed: %s", err)
-	}
-
-	j, err := store.JSON(context.Background())
-	if err != nil {
-		t.Fatalf("json failed: %s", err)
-	}
-
-	kv := make(map[string]GenericResult)
-	err = json.Unmarshal(j, &kv)
-	if err != nil {
-		t.Fatalf("unmarshal failed: %s", err)
-	}
-
-	if len(kv) != 2 {
-		t.Fatalf("expected 2 entries got %d", len(kv))
-	}
-
-	if !bytes.Equal(kv["x"].Val, []byte("z")) {
-		t.Fatalf("key x != z")
-	}
-
-	if !bytes.Equal(kv["y"].Val, []byte("y")) {
-		t.Fatalf("key y != y")
-	}
-
-	_, ok := kv["z"]
-	if ok {
-		t.Fatalf("should not have z key")
 	}
 }
 

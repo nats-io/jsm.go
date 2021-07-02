@@ -15,7 +15,6 @@ package kv
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"sync"
@@ -170,33 +169,6 @@ func (j *jetStreamStorage) Put(key string, val []byte, opts ...PutOption) (seq u
 	}
 
 	return pa.Sequence, nil
-}
-
-func (j *jetStreamStorage) JSON(ctx context.Context) ([]byte, error) {
-	wctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	watch, err := j.WatchBucket(wctx)
-	if err != nil {
-		return nil, err
-	}
-
-	kv := make(map[string]Result)
-
-	for r := range watch.Channel() {
-		switch r.Operation() {
-		case DeleteOperation:
-			delete(kv, r.Key())
-		case PutOperation:
-			kv[r.Key()] = r
-		}
-
-		if r.Delta() == 0 {
-			cancel()
-		}
-	}
-
-	return json.MarshalIndent(kv, "", "  ")
 }
 
 func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, error) {

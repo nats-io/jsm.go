@@ -146,9 +146,6 @@ type RoKV interface {
 	// Close releases in-memory resources held by the KV, called automatically if the context used to create it is canceled
 	Close() error
 
-	// JSON dumps the entire KV as k=v values in JSON format
-	JSON(ctx context.Context) ([]byte, error)
-
 	// Status retrieves the status of the bucket
 	Status() (Status, error)
 }

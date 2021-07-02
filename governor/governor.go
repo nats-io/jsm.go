@@ -38,7 +38,6 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go"
-	"github.com/nats-io/jsm.go/backoff"
 	"github.com/nats-io/nats.go"
 )
 
@@ -65,6 +64,12 @@ type Manager interface {
 	Stream() *jsm.Stream
 }
 
+// Backoff controls the interval of checks
+type Backoff interface {
+	// Duration returns the time to sleep for the nth invocation
+	Duration(n int) time.Duration
+}
+
 type jsGMgr struct {
 	name     string
 	stream   string
@@ -78,7 +83,7 @@ type jsGMgr struct {
 	running  bool
 
 	cint time.Duration
-	bo   *backoff.Policy
+	bo   Backoff
 
 	mu sync.Mutex
 }
@@ -108,9 +113,9 @@ func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, repli
 type Option func(mgr *jsGMgr)
 
 // WithBackoff sets a backoff policy for gradually reducing try interval
-func WithBackoff(p backoff.Policy) Option {
+func WithBackoff(p Backoff) Option {
 	return func(mgr *jsGMgr) {
-		mgr.bo = &p
+		mgr.bo = p
 	}
 }
 

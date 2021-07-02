@@ -15,7 +15,6 @@ package kv
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 )
@@ -127,21 +126,6 @@ func (c *readCache) Get(key string) (Result, error) {
 	c.mu.Unlock()
 
 	return res, nil
-}
-
-func (c *readCache) JSON(ctx context.Context) ([]byte, error) {
-	c.mu.Lock()
-	ready := c.ready
-	c.mu.Unlock()
-
-	if ready {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-
-		return json.MarshalIndent(c.cache, "", "  ")
-	}
-
-	return c.backend.JSON(ctx)
 }
 
 func (c *readCache) Close() error {

@@ -89,6 +89,14 @@ type Backoff interface {
 	Duration(n int) time.Duration
 }
 
+// Logger is a custom logger
+type Logger interface {
+	Debugf(format string, a ...interface{})
+	Infof(format string, a ...interface{})
+	WarnF(format string, a ...interface{})
+	ErrorF(format string, a ...interface{})
+}
+
 type jsGMgr struct {
 	name     string
 	stream   string
@@ -101,8 +109,9 @@ type jsGMgr struct {
 	replicas int
 	running  bool
 
-	cint time.Duration
-	bo   Backoff
+	logger Logger
+	cint   time.Duration
+	bo     Backoff
 
 	mu sync.Mutex
 }
@@ -134,6 +143,13 @@ func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, repli
 }
 
 type Option func(mgr *jsGMgr)
+
+// WithLogger configures the logger to use, no logging when none is given
+func WithLogger(log Logger) Option {
+	return func(mgr *jsGMgr) {
+		mgr.logger = log
+	}
+}
 
 // WithBackoff sets a backoff policy for gradually reducing try interval
 func WithBackoff(p Backoff) Option {
@@ -206,17 +222,22 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 		ctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
 
+		g.Debugf("Publishing to %s", g.subj)
 		m, err := g.nc.RequestWithContext(ctx, g.subj, []byte(name))
 		if err != nil {
+			g.ErrorF("Publishing failed: %s", err)
 			return err
 		}
 
 		res, err := jsm.ParsePubAck(m)
 		if err != nil {
+			g.ErrorF("Invalid pub ack: %s", err)
 			return err
 		}
 
 		seq = res.Sequence
+
+		g.Infof("Got a slot on %s with sequence %d", g.name, seq)
 
 		return nil
 	}
@@ -226,13 +247,17 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 			return nil
 		}
 
+		g.Infof("Removing self from %s sequence %d", g.name, seq)
 		err := g.mgr.DeleteStreamMessage(g.stream, seq, true)
 		if err != nil {
+			g.ErrorF("Could not remove self from %d: %s", g.name, err)
 			return fmt.Errorf("could not remove seq %d: %s", seq, err)
 		}
 
 		return nil
 	}
+
+	g.Debugf("Starting to campaign every %v for a slot on %s using %s", g.cint, g.name, g.subj)
 
 	err := try()
 	if err == nil {
@@ -255,6 +280,7 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 			}
 
 		case <-ctx.Done():
+			g.Infof("Stopping campaigns against %s due to context timeout after %d tries", g.name, tries)
 			ticker.Stop()
 			return nil, ctx.Err()
 		}
@@ -353,4 +379,32 @@ func (g *jsGMgr) loadOrCreate(update bool) error {
 	}
 
 	return nil
+}
+
+func (g *jsGMgr) Debugf(format string, a ...interface{}) {
+	if g.logger == nil {
+		return
+	}
+	g.logger.Debugf(format, a...)
+}
+
+func (g *jsGMgr) Infof(format string, a ...interface{}) {
+	if g.logger == nil {
+		return
+	}
+	g.logger.Infof(format, a...)
+}
+
+func (g *jsGMgr) WarnF(format string, a ...interface{}) {
+	if g.logger == nil {
+		return
+	}
+	g.logger.Infof(format, a...)
+}
+
+func (g *jsGMgr) ErrorF(format string, a ...interface{}) {
+	if g.logger == nil {
+		return
+	}
+	g.logger.Infof(format, a...)
 }

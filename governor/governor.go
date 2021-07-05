@@ -93,8 +93,8 @@ type Backoff interface {
 type Logger interface {
 	Debugf(format string, a ...interface{})
 	Infof(format string, a ...interface{})
-	WarnF(format string, a ...interface{})
-	ErrorF(format string, a ...interface{})
+	Warnf(format string, a ...interface{})
+	Errorf(format string, a ...interface{})
 }
 
 type jsGMgr struct {
@@ -225,13 +225,13 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 		g.Debugf("Publishing to %s", g.subj)
 		m, err := g.nc.RequestWithContext(ctx, g.subj, []byte(name))
 		if err != nil {
-			g.ErrorF("Publishing failed: %s", err)
+			g.Errorf("Publishing failed: %s", err)
 			return err
 		}
 
 		res, err := jsm.ParsePubAck(m)
 		if err != nil {
-			g.ErrorF("Invalid pub ack: %s", err)
+			g.Errorf("Invalid pub ack: %s", err)
 			return err
 		}
 
@@ -250,7 +250,7 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 		g.Infof("Removing self from %s sequence %d", g.name, seq)
 		err := g.mgr.DeleteStreamMessage(g.stream, seq, true)
 		if err != nil {
-			g.ErrorF("Could not remove self from %d: %s", g.name, err)
+			g.Errorf("Could not remove self from %d: %s", g.name, err)
 			return fmt.Errorf("could not remove seq %d: %s", seq, err)
 		}
 
@@ -395,16 +395,17 @@ func (g *jsGMgr) Infof(format string, a ...interface{}) {
 	g.logger.Infof(format, a...)
 }
 
-func (g *jsGMgr) WarnF(format string, a ...interface{}) {
+func (g *jsGMgr) Warnf(format string, a ...interface{}) {
 	if g.logger == nil {
 		return
 	}
-	g.logger.Infof(format, a...)
+	g.logger.Warnf(format, a...)
 }
 
-func (g *jsGMgr) ErrorF(format string, a ...interface{}) {
+func (g *jsGMgr) Errorf(format string, a ...interface{}) {
 	if g.logger == nil {
 		return
 	}
-	g.logger.Infof(format, a...)
+
+	g.logger.Errorf(format, a...)
 }

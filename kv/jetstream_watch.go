@@ -166,11 +166,11 @@ func (w *jsWatch) consumerHealthManager() {
 			w.mu.Unlock()
 
 			if time.Since(seen) > 3*time.Second {
-				w.log.ErrorF("consumer failed, no heartbeats since %s", seen)
+				w.log.Errorf("consumer failed, no heartbeats since %s", seen)
 
 				err := recreate()
 				if err != nil {
-					w.log.ErrorF("recreating failed consumer failed: %s", err)
+					w.log.Errorf("recreating failed consumer failed: %s", err)
 				}
 			}
 

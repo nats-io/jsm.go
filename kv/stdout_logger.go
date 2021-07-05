@@ -21,8 +21,8 @@ import (
 type Logger interface {
 	Debugf(format string, a ...interface{})
 	Infof(format string, a ...interface{})
-	WarnF(format string, a ...interface{})
-	ErrorF(format string, a ...interface{})
+	Warnf(format string, a ...interface{})
+	Errorf(format string, a ...interface{})
 }
 
 type stdLogger struct{}
@@ -33,9 +33,9 @@ func (s *stdLogger) Debugf(format string, a ...interface{}) {
 func (s *stdLogger) Infof(format string, a ...interface{}) {
 	log.Printf(format, a...)
 }
-func (s *stdLogger) WarnF(format string, a ...interface{}) {
+func (s *stdLogger) Warnf(format string, a ...interface{}) {
 	log.Printf(format, a...)
 }
-func (s *stdLogger) ErrorF(format string, a ...interface{}) {
+func (s *stdLogger) Errorf(format string, a ...interface{}) {
 	log.Printf(format, a...)
 }

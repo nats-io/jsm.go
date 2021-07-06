@@ -53,6 +53,12 @@
             "description": {
               "type": "string",
               "description": "A human friendly description of the error"
+            },
+            "err_code": {
+              "type": "integer",
+              "description": "The NATS error code unique to each kind of error",
+              "minimum": 0,
+              "maximum": 65535
             }
           }
         }

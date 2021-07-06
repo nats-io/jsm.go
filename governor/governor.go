@@ -81,6 +81,8 @@ type Manager interface {
 	Active() (uint64, error)
 	// Evict removes an entry from the Governor given its unique id
 	Evict(entry uint64) error
+	// LastActive returns the the since entry was added to the Governor, can be zero time when no entries were added
+	LastActive() (time.Time, error)
 }
 
 // Backoff controls the interval of checks
@@ -310,6 +312,16 @@ func (g *jsGMgr) Active() (uint64, error) {
 
 	return nfo.State.Msgs, nil
 }
+
+func (g *jsGMgr) LastActive() (time.Time, error) {
+	nfo, err := g.str.Information()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return nfo.State.LastTime, nil
+}
+
 func (g *jsGMgr) SetSubject(subj string) error {
 	g.mu.Lock()
 	g.subj = subj

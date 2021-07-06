@@ -113,6 +113,15 @@ func TestJsGovernor(t *testing.T) {
 		t.Fatalf("Stream had wrong subjects: %v", gmgr.Stream().Subjects())
 	}
 
+	ts, err := gmgr.LastActive()
+	if err != nil {
+		t.Fatalf("last active failed: %s", err)
+	}
+
+	if !ts.IsZero() {
+		t.Fatalf("ts should be zero, got: %v", ts)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -179,6 +188,14 @@ func TestJsGovernor(t *testing.T) {
 			mu.Unlock()
 
 			wg.Wait()
+
+			ts, err := gmgr.LastActive()
+			if err != nil {
+				t.Fatalf("last active failed: %s", err)
+			}
+			if time.Since(ts) > time.Second {
+				t.Fatalf("Invalid last active, longer than a second ago: %v (%v)", ts, time.Since(ts))
+			}
 
 			if len(errs) > 0 {
 				t.Fatalf("Had errors in workers: %s", strings.Join(errs, ", "))

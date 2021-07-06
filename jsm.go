@@ -152,3 +152,16 @@ func ParsePubAck(m *nats.Msg) (*api.PubAck, error) {
 
 	return &res, nil
 }
+
+// IsNatsError checks if err is a ApiErr matching code
+func IsNatsError(err error, code uint16) bool {
+	if ae, ok := err.(*api.ApiError); ok {
+		return ae.NatsErrorCode() == code
+	}
+
+	if ae, ok := err.(api.ApiError); ok {
+		return ae.NatsErrorCode() == code
+	}
+
+	return false
+}

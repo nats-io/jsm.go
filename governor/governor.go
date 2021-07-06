@@ -231,7 +231,10 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 
 		res, err := jsm.ParsePubAck(m)
 		if err != nil {
-			g.Errorf("Invalid pub ack: %s", err)
+			if !jsm.IsNatsError(err, 10077) {
+				g.Errorf("Invalid pub ack: %s", err)
+			}
+
 			return err
 		}
 

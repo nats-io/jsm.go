@@ -141,7 +141,7 @@ func TestJsGovernor(t *testing.T) {
 			g := NewJSGovernor("TEST", mgr, WithInterval(10*time.Millisecond), WithSubject("$BOB"))
 
 			name := fmt.Sprintf("worker %d", i)
-			finisher, err := g.Start(ctx, name)
+			finisher, _, err := g.Start(ctx, name)
 			if err != nil {
 				mu.Lock()
 				errs = append(errs, fmt.Sprintf("%d did not start: %s", i, err))
@@ -169,6 +169,14 @@ func TestJsGovernor(t *testing.T) {
 			if err != nil {
 				mu.Lock()
 				errs = append(errs, fmt.Sprintf("%d finished failed: %s", i, err))
+				mu.Unlock()
+				return
+			}
+
+			err = finisher()
+			if err != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Sprintf("2nd finish errored: %s", err))
 				mu.Unlock()
 				return
 			}

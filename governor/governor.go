@@ -51,7 +51,7 @@ type Finisher func() error
 // Governor controls concurrency of distributed processes using a named governor stream
 type Governor interface {
 	// Start attempts to get a spot in the Governor, gives up on context, call Finisher to signal end of work
-	Start(ctx context.Context, name string) (Finisher, error)
+	Start(ctx context.Context, name string) (fin Finisher, seq uint64, err error)
 }
 
 // Manager controls concurrent executions of work distributed throughout a nats network by using
@@ -212,7 +212,7 @@ func StreamName(governor string) string {
 	return fmt.Sprintf("GOVERNOR_%s", governor)
 }
 
-func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
+func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, uint64, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -252,10 +252,18 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 			return nil
 		}
 
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if !g.running {
+			return nil
+		}
+
+		g.running = false
+
 		g.Infof("Removing self from %s sequence %d", g.name, seq)
 		err := g.mgr.DeleteStreamMessage(g.stream, seq, true)
 		if err != nil {
-			g.Errorf("Could not remove self from %d: %s", g.name, err)
+			g.Errorf("Could not remove self from %s: %s", g.name, err)
 			return fmt.Errorf("could not remove seq %d: %s", seq, err)
 		}
 
@@ -266,7 +274,7 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 
 	err := try()
 	if err == nil {
-		return closer, nil
+		return closer, seq, nil
 	}
 
 	ticker := time.NewTicker(g.cint)
@@ -277,7 +285,7 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 			tries++
 			err = try()
 			if err == nil {
-				return closer, nil
+				return closer, seq, nil
 			}
 
 			if g.bo != nil {
@@ -287,7 +295,7 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, error) {
 		case <-ctx.Done():
 			g.Infof("Stopping campaigns against %s due to context timeout after %d tries", g.name, tries)
 			ticker.Stop()
-			return nil, ctx.Err()
+			return nil, 0, ctx.Err()
 		}
 	}
 }

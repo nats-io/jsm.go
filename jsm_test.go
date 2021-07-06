@@ -14,8 +14,11 @@
 package jsm_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go"
@@ -118,5 +121,27 @@ func TestIsValidName(t *testing.T) {
 		if jsm.IsValidName(tc) {
 			t.Fatalf("did not detect %q as invalid", tc)
 		}
+	}
+}
+
+func TestIsNatsError(t *testing.T) {
+	pubAck := `{"error":{"code":503,"err_code":10077,"description":"maximum messages exceeded"},"stream":"GOVERNOR_TEST","seq":0}`
+
+	resp := api.JSApiResponse{}
+	err := json.Unmarshal([]byte(pubAck), &resp)
+	if err != nil {
+		t.Fatalf("unmarshal failed: %s", err)
+	}
+
+	if !jsm.IsNatsError(resp.ToError(), 10077) {
+		t.Fatalf("Expected response to be 10077")
+	}
+
+	if jsm.IsNatsError(resp.ToError(), 10076) {
+		t.Fatalf("Expected response to not be 10076")
+	}
+
+	if jsm.IsNatsError(fmt.Errorf("error"), 10077) {
+		t.Fatalf("Non api error is 10077")
 	}
 }

@@ -79,8 +79,8 @@ type Manager interface {
 	Reset() error
 	// Active is the number of active entries in the Governor
 	Active() (uint64, error)
-	// Evict removes an entry from the Governor given its unique id
-	Evict(entry uint64) error
+	// Evict removes an entry from the Governor given its unique id, returns the name that was on that entry
+	Evict(entry uint64) (name string, err error)
 	// LastActive returns the the since entry was added to the Governor, can be zero time when no entries were added
 	LastActive() (time.Time, error)
 }
@@ -216,6 +216,10 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, uint64, erro
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	if g.running {
+		return nil, 0, fmt.Errorf("already running")
+	}
+
 	g.running = true
 	seq := uint64(0)
 	tries := 0
@@ -309,9 +313,15 @@ func (g *jsGMgr) MaxAge() time.Duration { return g.str.MaxAge() }
 func (g *jsGMgr) Subject() string       { return g.str.Subjects()[0] }
 func (g *jsGMgr) Replicas() int         { return g.str.Replicas() }
 func (g *jsGMgr) Name() string          { return g.name }
-func (g *jsGMgr) Evict(entry uint64) error {
-	return g.str.DeleteMessage(entry)
+func (g *jsGMgr) Evict(entry uint64) (string, error) {
+	msg, err := g.str.ReadMessage(entry)
+	if err != nil {
+		return "", err
+	}
+
+	return string(msg.Data), g.str.DeleteMessage(entry)
 }
+
 func (g *jsGMgr) Active() (uint64, error) {
 	nfo, err := g.str.Information()
 	if err != nil {

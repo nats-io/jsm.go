@@ -133,6 +133,25 @@ func TestJsGovernor(t *testing.T) {
 	wg := sync.WaitGroup{}
 	var errs []string
 
+	// checks evict returns the valid name
+	g := NewJSGovernor("TEST", mgr, WithInterval(10*time.Millisecond), WithSubject("$BOB"))
+	fin, seq, err := g.Start(ctx, "testing.eviction")
+	if err != nil {
+		t.Fatalf("start failed: %s", err)
+	}
+	name, err := gmgr.Evict(seq)
+	if err != nil {
+		t.Fatalf("evict failed: %s", err)
+	}
+	if name != "testing.eviction" {
+		t.Fatalf("incorrect name: %s", name)
+	}
+	_, err = gmgr.Evict(seq)
+	if !jsm.IsNatsError(err, 10037) {
+		t.Fatalf("incorrect err: %s", err)
+	}
+	fin()
+
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func(t *testing.T, i int) {

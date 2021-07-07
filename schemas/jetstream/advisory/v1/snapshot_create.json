@@ -109,6 +109,14 @@
           "type": "string",
           "description": "The name extracted from the user JWT claim"
         },
+        "kind": {
+          "type": "string",
+          "description": "The kind of client. Can be Client/Leafnode/Router/Gateway/JetStream/Account/System"
+        },
+        "client_type": {
+          "type": "string",
+          "description": "The type of client. When kind is Client, this contains the type: mqtt/websocket/nats"
+        },
         "tags": {
           "type": "array",
           "items": {

@@ -46,6 +46,12 @@ func init() {
            Name Tag: {{ .Client.NameTag }}
                Tags: {{ .Client.Tags | JoinStrings }}
 {{- end }}
+{{- if .Client.Kind }}
+        Client Kind: {{ .Client.Kind }}
+{{- end }}
+{{- if .Client.ClientType }}
+        Client Type: {{ .Client.ClientType }}
+{{- end }}
 `)
 	if err != nil {
 		panic(err)

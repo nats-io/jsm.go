@@ -39,6 +39,7 @@ package election
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -53,10 +54,17 @@ type election struct {
 	nc       *nats.Conn
 	sub      *nats.Subscription
 	isLeader bool
+	tries    int
 	ctx      context.Context
 	cancel   func()
 	nuid     *nuid.NUID
 	mu       sync.Mutex
+}
+
+// Backoff controls the interval of campaigns
+type Backoff interface {
+	// Duration returns the time to sleep for the nth invocation
+	Duration(n int) time.Duration
 }
 
 // NewElection creates a leader election, it will either create/join a stream called streamName or use the pre-made stream passed as option
@@ -114,8 +122,10 @@ func (e *election) manageLeadership(wg *sync.WaitGroup) {
 		ticker.Stop()
 		e.mu.Lock()
 		e.sub.Unsubscribe()
+		e.sub = nil
 		e.isLeader = false
 		e.opts.lostCb()
+		e.tries = 0
 		e.mu.Unlock()
 	}
 
@@ -151,36 +161,45 @@ func ctxSleep(ctx context.Context, duration time.Duration) error {
 	return ctx.Err()
 }
 
+func (e *election) isLeaderUnlocked() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	return e.isLeader
+}
+
 func (e *election) campaign(wg *sync.WaitGroup) {
-	try := func() error {
+	try := func() (int, error) {
 		e.mu.Lock()
 		leader := e.isLeader
 		sub := e.sub
 		ctx := e.ctx
+		e.tries++
+		try := e.tries
 		e.mu.Unlock()
 
 		var err error
 
 		if leader {
-			return nil
+			return try, nil
 		}
 
 		if sub == nil {
 			sub, err = e.subscribe()
 			if err != nil {
-				return err
+				return try, err
 			}
 		}
 
 		_, err = e.opts.stream.NewConsumer(jsm.IdleHeartbeat(e.opts.hbInterval), jsm.DeliverySubject(sub.Subject))
 		if err != nil {
-			return err
+			return try, err
 		}
 
 		// give a bit of grace to the past leader to realize is not leader anymore
 		err = ctxSleep(ctx, time.Duration(e.opts.missedHBThreshold)*e.opts.hbInterval)
 		if err != nil {
-			return err
+			return try, err
 		}
 
 		e.mu.Lock()
@@ -191,20 +210,33 @@ func (e *election) campaign(wg *sync.WaitGroup) {
 
 		e.isLeader = true
 		e.opts.wonCb()
+		e.tries = 0
 		e.mu.Unlock()
 
-		return nil
+		return 0, nil
 	}
 
-	// time.Sleep(e.opts.campaignInterval)
-	// try()
+	time.Sleep(time.Duration(rand.Intn(int(e.opts.campaignInterval.Milliseconds()))))
+	try()
 
-	ticker := time.NewTicker(e.opts.campaignInterval)
+	var ticker *time.Ticker
+	if e.opts.bo != nil {
+		ticker = time.NewTicker(e.opts.bo.Duration(0))
+	} else {
+		ticker = time.NewTicker(e.opts.campaignInterval)
+	}
 
 	for {
 		select {
 		case <-ticker.C:
-			try()
+			if e.isLeaderUnlocked() {
+				continue
+			}
+
+			c, _ := try()
+			if e.opts.bo != nil {
+				ticker.Reset(e.opts.bo.Duration(c))
+			}
 
 		case <-e.ctx.Done():
 			ticker.Stop()
@@ -237,6 +269,7 @@ func (e *election) Stop() {
 
 	if e.sub != nil {
 		e.sub.Unsubscribe()
+		e.sub = nil
 	}
 
 	if e.opts.lostCb != nil {

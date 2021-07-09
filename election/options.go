@@ -39,6 +39,16 @@ type options struct {
 	hbInterval        time.Duration
 	missedHBThreshold int
 	stream            *jsm.Stream
+	bo                Backoff
+}
+
+// WithBackoff will use the provided Backoff timer source to decrease campaign intervals over time
+func WithBackoff(bo Backoff) Option {
+	return func(o *options) error {
+		o.bo = bo
+
+		return nil
+	}
 }
 
 // WithStream sets a specific stream as campaign target, must have max_consumers=1

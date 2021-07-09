@@ -34,7 +34,7 @@ type jsWatch struct {
 	nc         *nats.Conn
 	lastSeen   time.Time
 	lastSeq    uint64
-	outCh      chan Result
+	outCh      chan Entry
 	ctx        context.Context
 	dec        Decoder
 	cancel     func()
@@ -54,7 +54,7 @@ func newJSWatch(ctx context.Context, stramName string, bucket string, subj strin
 		log:        log,
 		dec:        dec,
 		latestOnly: !(strings.HasSuffix(subj, "*") || strings.HasSuffix(subj, ">")),
-		outCh:      make(chan Result, 1000),
+		outCh:      make(chan Entry, 1000),
 	}
 
 	w.ctx, w.cancel = context.WithCancel(ctx)
@@ -68,7 +68,7 @@ func newJSWatch(ctx context.Context, stramName string, bucket string, subj strin
 	return w, nil
 }
 
-func (w *jsWatch) Channel() chan Result {
+func (w *jsWatch) Channel() chan Entry {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -113,7 +113,7 @@ func (w *jsWatch) handler(m *nats.Msg) {
 
 	key := parts[len(parts)-1]
 
-	res, err := jsResultFromMessage(w.bucket, key, m, w.decode)
+	res, err := jsEntryFromMessage(w.bucket, key, m, w.decode)
 	if err != nil {
 		return
 	}

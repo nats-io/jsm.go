@@ -132,15 +132,15 @@ type KV interface {
 // RoKV is a read-only interface to a single key-value store bucket
 type RoKV interface {
 	// Get gets a key from the store
-	Get(key string) (Result, error)
+	Get(key string) (Entry, error)
 
 	// History retrieves historic values for a key
-	History(ctx context.Context, key string) ([]Result, error)
+	History(ctx context.Context, key string) ([]Entry, error)
 
 	// WatchBucket watches the entire bucket for changes, all keys and values will be traversed including all historic values
 	WatchBucket(ctx context.Context) (Watch, error)
 
-	// Watch a key for updates, the same Result might be delivered more than once
+	// Watch a key for updates, the same Entry might be delivered more than once
 	Watch(ctx context.Context, key string) (Watch, error)
 
 	// Close releases in-memory resources held by the KV, called automatically if the context used to create it is canceled
@@ -166,7 +166,7 @@ type Decoder interface {
 	Decode(value []byte) ([]byte, error)
 }
 
-type Result interface {
+type Entry interface {
 	// Bucket is the bucket the data was loaded from
 	Bucket() string
 	// Key is the key that was retrieved
@@ -179,27 +179,24 @@ type Result interface {
 	Sequence() uint64
 	// Delta is distance from the latest value. If history is enabled this is effectively the index of the historical value, 0 for latest, 1 for most recent etc.
 	Delta() uint64
-	// OriginCluster is the cluster where this data originate from, may be empty if sharing was not enabled
-	OriginCluster() string
 	// Operation is the kind of operation this result represents
 	Operation() Operation
 }
 
-// GenericResult is a generic, non implementation specific, representation of a Result
-type GenericResult struct {
-	Bucket        string `json:"bucket"`
-	Key           string `json:"key"`
-	Val           []byte `json:"val"`
-	Created       int64  `json:"created"`
-	Seq           uint64 `json:"seq"`
-	Operation     string `json:"operation"`
-	OriginCluster string `json:"origin_cluster"`
+// GenericEntry is a generic, non implementation specific, representation of a Entry
+type GenericEntry struct {
+	Bucket    string `json:"bucket"`
+	Key       string `json:"key"`
+	Val       []byte `json:"val"`
+	Created   int64  `json:"created"`
+	Seq       uint64 `json:"seq"`
+	Operation string `json:"operation"`
 }
 
 // Watch observes a bucket and report any changes via NextValue or Channel
 type Watch interface {
 	// Channel returns a channel to read changes from
-	Channel() chan Result
+	Channel() chan Entry
 
 	// Close must be called to dispose of resources, called if the context used to create the watch is canceled
 	Close() error
@@ -218,8 +215,8 @@ type Status interface {
 	// TTL is how long the bucket keeps values for
 	TTL() time.Duration
 
-	// Cluster returns the name of the cluster holding the read replica of the data
-	Cluster() string
+	// BucketLocation returns the name of the cluster holding the read replica of the data
+	BucketLocation() string
 
 	// Replicas returns how many times data in the bucket is replicated at storage
 	Replicas() (ok int, failed int)

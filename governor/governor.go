@@ -231,7 +231,7 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, uint64, erro
 		g.Debugf("Publishing to %s", g.subj)
 		m, err := g.nc.RequestWithContext(ctx, g.subj, []byte(name))
 		if err != nil {
-			g.Errorf("Publishing failed: %s", err)
+			g.Errorf("Publishing to governor %s via %s failed: %s", g.name, g.subj, err)
 			return err
 		}
 

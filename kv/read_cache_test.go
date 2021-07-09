@@ -106,7 +106,7 @@ func TestReadCache_GetPut(t *testing.T) {
 		t.Fatalf("get failed: %s", err)
 	}
 
-	assertResultHasStringValue(t, val, "wrld")
+	assertEntryHasStringValue(t, val, "wrld")
 }
 
 func TestReadCache_Delete(t *testing.T) {

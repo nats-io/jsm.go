@@ -27,7 +27,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type jsResult struct {
+type jsEntry struct {
 	bucket    string
 	key       string
 	val       []byte
@@ -35,35 +35,32 @@ type jsResult struct {
 	seq       uint64
 	pending   uint64
 	operation Operation
-	ocluster  string
 }
 
-func (j *jsResult) Bucket() string        { return j.bucket }
-func (j *jsResult) Key() string           { return j.key }
-func (j *jsResult) Value() []byte         { return j.val }
-func (j *jsResult) Created() time.Time    { return j.ts }
-func (j *jsResult) Sequence() uint64      { return j.seq }
-func (j *jsResult) Delta() uint64         { return j.pending }
-func (j *jsResult) OriginCluster() string { return j.ocluster }
-func (j *jsResult) Operation() Operation  { return j.operation }
-func (j *jsResult) MarshalJSON() ([]byte, error) {
-	return json.Marshal(j.genericResult())
+func (j *jsEntry) Bucket() string       { return j.bucket }
+func (j *jsEntry) Key() string          { return j.key }
+func (j *jsEntry) Value() []byte        { return j.val }
+func (j *jsEntry) Created() time.Time   { return j.ts }
+func (j *jsEntry) Sequence() uint64     { return j.seq }
+func (j *jsEntry) Delta() uint64        { return j.pending }
+func (j *jsEntry) Operation() Operation { return j.operation }
+func (j *jsEntry) MarshalJSON() ([]byte, error) {
+	return json.Marshal(j.genericEntry())
 }
 
-func (j *jsResult) genericResult() *GenericResult {
-	return &GenericResult{
-		Bucket:        j.bucket,
-		Key:           j.key,
-		Val:           j.val,
-		Created:       j.ts.UnixNano(),
-		Seq:           j.seq,
-		Operation:     string(j.operation),
-		OriginCluster: j.ocluster,
+func (j *jsEntry) genericEntry() *GenericEntry {
+	return &GenericEntry{
+		Bucket:    j.bucket,
+		Key:       j.key,
+		Val:       j.val,
+		Created:   j.ts.UnixNano(),
+		Seq:       j.seq,
+		Operation: string(j.operation),
 	}
 }
 
-func jsResultFromStoredMessage(bucket, key string, m *api.StoredMsg, dec func([]byte) ([]byte, error)) (*jsResult, error) {
-	res := &jsResult{
+func jsEntryFromStoredMessage(bucket, key string, m *api.StoredMsg, dec func([]byte) ([]byte, error)) (*jsEntry, error) {
+	res := &jsEntry{
 		bucket:    bucket,
 		key:       key,
 		ts:        m.Time,
@@ -83,7 +80,6 @@ func jsResultFromStoredMessage(bucket, key string, m *api.StoredMsg, dec func([]
 		if err != nil {
 			return nil, err
 		}
-		res.ocluster = hdrs.Get(kvOriginClusterHeader)
 
 		if op := hdrs.Get(kvOperationHeader); op == delOperationString {
 			res.operation = DeleteOperation
@@ -93,20 +89,19 @@ func jsResultFromStoredMessage(bucket, key string, m *api.StoredMsg, dec func([]
 	return res, nil
 }
 
-func jsResultFromMessage(bucket, key string, m *nats.Msg, dec func([]byte) ([]byte, error)) (*jsResult, error) {
+func jsEntryFromMessage(bucket, key string, m *nats.Msg, dec func([]byte) ([]byte, error)) (*jsEntry, error) {
 	meta, err := jsm.ParseJSMsgMetadata(m)
 	if err != nil {
 		return nil, err
 	}
 
-	res := &jsResult{
+	res := &jsEntry{
 		bucket:    bucket,
 		key:       key,
 		ts:        meta.TimeStamp(),
 		seq:       meta.StreamSequence(),
 		pending:   meta.Pending(),
 		operation: PutOperation,
-		ocluster:  m.Header.Get(kvOriginClusterHeader),
 	}
 
 	res.val, err = dec(m.Data)

@@ -49,7 +49,7 @@ func (r base64Codec) Decode(v []byte) ([]byte, error) {
 	return dbuff[:n], err
 }
 
-func assertResultHasStringValue(t *testing.T, res Result, val string) {
+func assertEntryHasStringValue(t *testing.T, res Entry, val string) {
 	t.Helper()
 
 	if bytes.Equal(res.Value(), []byte(val)) {
@@ -94,7 +94,7 @@ func TestJetStreamStorage_WithStreamSubjectPrefix(t *testing.T) {
 		t.Fatalf("get failed: %s", err)
 	}
 
-	assertResultHasStringValue(t, val, "world")
+	assertEntryHasStringValue(t, val, "world")
 
 	str, err := store.getOrLoadStream()
 	if err != nil {
@@ -122,7 +122,7 @@ func TestJetStreamStorage_WithStreamName(t *testing.T) {
 		t.Fatalf("get failed: %s", err)
 	}
 
-	assertResultHasStringValue(t, val, "world")
+	assertEntryHasStringValue(t, val, "world")
 
 	assertStream := func(t *testing.T, stream string, should bool) {
 		known, err := mgr.IsKnownStream(stream)
@@ -183,7 +183,7 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 		t.Fatalf("get failed: %s", err)
 	}
 
-	assertResultHasStringValue(t, val, "world")
+	assertEntryHasStringValue(t, val, "world")
 }
 
 func TestJetStreamStorage_WatchBucket(t *testing.T) {
@@ -213,7 +213,7 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 
 	cnt := 5
 	kills := 0
-	var latest Result
+	var latest Entry
 
 	// similar to the Watch() test but now we make sure we get old values and new values and that
 	// even after a consumer outage we do not get duplicate messages over the channel
@@ -222,7 +222,7 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 		case r, ok := <-watch.Channel():
 			if !ok {
 				// channel is closed: check we got the last message we sent
-				assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
+				assertEntryHasStringValue(t, latest, strconv.Itoa(cnt))
 
 				if kills == 0 {
 					t.Fatalf("did not kill the consumer during the test")
@@ -234,7 +234,7 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 			latest = r
 
 			// value should be that from the last pass through the watch loop or the initial from the warm up for loop
-			assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
+			assertEntryHasStringValue(t, latest, strconv.Itoa(cnt))
 
 			// after 10 the test is done, close the watch, channel close handler
 			// will verify we got what we needed
@@ -291,14 +291,14 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 
 	cnt := 9
 	kills := 0
-	var latest Result
+	var latest Entry
 
 	for {
 		select {
 		case r, ok := <-watch.Channel():
 			if !ok {
 				// channel is closed: check we got the last message we sent
-				assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
+				assertEntryHasStringValue(t, latest, strconv.Itoa(cnt))
 
 				if kills == 0 {
 					t.Fatalf("did not kill the consumer during the test")
@@ -310,7 +310,7 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 			latest = r
 
 			// value should be that from the last pass through the watch loop or the initial from the warm up for loop
-			assertResultHasStringValue(t, latest, strconv.Itoa(cnt))
+			assertEntryHasStringValue(t, latest, strconv.Itoa(cnt))
 
 			// we should always only get the latest value
 			if r.Delta() != 0 {
@@ -401,7 +401,7 @@ func TestJetStreamStorage_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get failed: %s", err)
 	}
-	assertResultHasStringValue(t, res, "z")
+	assertEntryHasStringValue(t, res, "z")
 
 	err = store.Delete("x")
 	if err != nil {
@@ -417,13 +417,13 @@ func TestJetStreamStorage_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertResultHasStringValue(t, res, "y")
+	assertEntryHasStringValue(t, res, "y")
 
 	res, err = store.Get("y")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertResultHasStringValue(t, res, "y")
+	assertEntryHasStringValue(t, res, "y")
 }
 
 func TestJetStreamStorage_Status(t *testing.T) {
@@ -448,8 +448,8 @@ func TestJetStreamStorage_Status(t *testing.T) {
 		t.Fatalf("invalid replicas ok: %d failed: %d", ok, failed)
 	}
 
-	if status.Cluster() != "unknown" {
-		t.Fatalf("invalid cluster %q", status.Cluster())
+	if status.BucketLocation() != "unknown" {
+		t.Fatalf("invalid cluster %q", status.BucketLocation())
 	}
 
 	if status.History() != 5 {
@@ -480,15 +480,12 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		if res.Key() != "hello" {
 			t.Fatalf("incorrect key: %s", res.Key())
 		}
-		assertResultHasStringValue(t, res, "world")
+		assertEntryHasStringValue(t, res, "world")
 		if res.Sequence() != seq {
 			t.Fatalf("incorrect seq: %d", res.Sequence())
 		}
 		if res.Delta() != 0 {
 			t.Fatalf("incorrect delta: %d", res.Delta())
-		}
-		if res.OriginCluster() != "gotest" {
-			t.Fatalf("incorrect cluster name: %v", res.OriginCluster())
 		}
 
 		// within reasonable grace period
@@ -544,7 +541,7 @@ func TestJetStreamStorage_History(t *testing.T) {
 	}
 
 	for i, r := range hist {
-		assertResultHasStringValue(t, r, fmt.Sprintf("val%d", i+1))
+		assertEntryHasStringValue(t, r, fmt.Sprintf("val%d", i+1))
 	}
 }
 
@@ -578,7 +575,7 @@ func TestJetStreamStorage_Get(t *testing.T) {
 		if res.Key() != key {
 			t.Fatalf("invalid key: %s", res.Key())
 		}
-		assertResultHasStringValue(t, res, fmt.Sprintf("val%d", i))
+		assertEntryHasStringValue(t, res, fmt.Sprintf("val%d", i))
 		if res.Sequence() != i {
 			t.Fatalf("invalid sequence: %d", res.Sequence())
 		}
@@ -706,7 +703,7 @@ func BenchmarkReadCacheGet(b *testing.B) {
 		b.Fatalf("put failed: %s", err)
 	}
 
-	var res Result
+	var res Entry
 
 	b.StartTimer()
 
@@ -734,7 +731,7 @@ func BenchmarkJetStreamGet(b *testing.B) {
 	}
 	b.StartTimer()
 
-	var res Result
+	var res Entry
 	for n := 0; n < b.N; n++ {
 		res, err = store.Get("hello")
 		if err != nil {

@@ -26,8 +26,7 @@ import (
 )
 
 const (
-	kvOriginClusterHeader = "KV-Origin-Cluster"
-	kvOperationHeader     = "KV-Operation"
+	kvOperationHeader = "KV-Operation"
 )
 
 type jetStreamStorage struct {
@@ -149,7 +148,6 @@ func (j *jetStreamStorage) Put(key string, val []byte, opts ...PutOption) (seq u
 	}
 
 	msg := nats.NewMsg(j.subjectForKey(ek))
-	msg.Header.Add(kvOriginClusterHeader, j.nc.ConnectedClusterName())
 	msg.Data, err = j.encode(val)
 	if err != nil {
 		return 0, err
@@ -171,7 +169,7 @@ func (j *jetStreamStorage) Put(key string, val []byte, opts ...PutOption) (seq u
 	return pa.Sequence, nil
 }
 
-func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, error) {
+func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Entry, error) {
 	ek, err := j.encodeKey(key)
 	if err != nil {
 		return nil, err
@@ -192,14 +190,14 @@ func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, e
 		return nil, err
 	}
 
-	var results []Result
+	var results []Entry
 	for {
 		msg, err := sub.NextMsgWithContext(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		r, err := jsResultFromMessage(j.name, key, msg, j.decode)
+		r, err := jsEntryFromMessage(j.name, key, msg, j.decode)
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +212,7 @@ func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Result, e
 	return results, nil
 }
 
-func (j *jetStreamStorage) Get(key string) (Result, error) {
+func (j *jetStreamStorage) Get(key string) (Entry, error) {
 	ek, err := j.encodeKey(key)
 	if err != nil {
 		return nil, err
@@ -231,7 +229,7 @@ func (j *jetStreamStorage) Get(key string) (Result, error) {
 		return nil, err
 	}
 
-	res, err := jsResultFromStoredMessage(j.name, key, msg, j.decode)
+	res, err := jsEntryFromStoredMessage(j.name, key, msg, j.decode)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +266,6 @@ func (j *jetStreamStorage) Delete(key string) error {
 
 	msg := nats.NewMsg(j.subjectForKey(ek))
 	msg.Header.Add(kvOperationHeader, delOperationString)
-	msg.Header.Add(kvOriginClusterHeader, j.nc.ConnectedClusterName())
 
 	res, err := j.nc.RequestMsg(msg, j.opts.timeout)
 	if err != nil {

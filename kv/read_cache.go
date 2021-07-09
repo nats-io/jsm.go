@@ -21,7 +21,7 @@ import (
 
 type readCache struct {
 	backend Storage
-	cache   map[string]Result
+	cache   map[string]Entry
 	watch   Watch
 	ctx     context.Context
 	cancel  func()
@@ -37,7 +37,7 @@ func newReadCache(b Storage, log Logger) (*readCache, error) {
 
 	cache := &readCache{
 		backend: b,
-		cache:   map[string]Result{},
+		cache:   map[string]Entry{},
 		log:     log,
 	}
 
@@ -80,7 +80,7 @@ func (c *readCache) Put(key string, val []byte, opts ...PutOption) (uint64, erro
 
 func (c *readCache) Destroy() error {
 	c.mu.Lock()
-	c.cache = map[string]Result{}
+	c.cache = map[string]Entry{}
 	c.mu.Unlock()
 
 	return c.backend.Destroy()
@@ -88,7 +88,7 @@ func (c *readCache) Destroy() error {
 
 func (c *readCache) Purge() error {
 	c.mu.Lock()
-	c.cache = map[string]Result{}
+	c.cache = map[string]Entry{}
 	c.mu.Unlock()
 
 	return c.backend.Purge()
@@ -102,11 +102,11 @@ func (c *readCache) Delete(key string) error {
 	return c.backend.Delete(key)
 }
 
-func (c *readCache) History(ctx context.Context, key string) ([]Result, error) {
+func (c *readCache) History(ctx context.Context, key string) ([]Entry, error) {
 	return c.backend.History(ctx, key)
 }
 
-func (c *readCache) Get(key string) (Result, error) {
+func (c *readCache) Get(key string) (Entry, error) {
 	c.mu.Lock()
 	entry, ok := c.cache[key]
 	ready := c.ready

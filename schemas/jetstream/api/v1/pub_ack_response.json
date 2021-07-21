@@ -42,7 +42,7 @@
       "type": "integer",
       "description": "If successful this will be the sequence the message is stored at",
       "minimum": 0,
-      "maximum": 18446744073709552000
+      "maximum": 18446744073709551615
     },
     "duplicate": {
       "type": "boolean",

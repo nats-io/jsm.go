@@ -6,13 +6,12 @@
   "type": "object",
   "definitions": {
     "golang_duration_nanos": {
-      "$comment": "nanoseconds depicting a duration in time",
+      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
       "$ref": "#/definitions/golang_int64"
     },
     "golang_int": {
       "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
-      "minimum": -9223372036854775808,
-      "maximum": 9223372036854775807
+      "$ref": "#/definitions/golang_int64"
     },
     "golang_uint64": {
       "$comment": "unsigned 64 bit integer",

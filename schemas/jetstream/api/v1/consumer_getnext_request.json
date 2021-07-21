@@ -7,16 +7,17 @@
   "properties": {
     "expires": {
       "description": "A duration from now when the pull should expire, stated in nanoseconds, 0 for no expiry",
-      "$comment": "nanoseconds depicting a duration in time",
+      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
       "type": "integer",
-      "maximum": 9223372036854776000,
-      "minimum": -9223372036854776000
+      "maximum": 9223372036854775807,
+      "minimum": -9223372036854775807
     },
     "batch": {
       "description": "How many messages the server should deliver to the requestor",
       "minimum": 0,
       "maximum": 256,
-      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit"
+      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+      "type": "integer"
     },
     "no_wait": {
       "type": "boolean",

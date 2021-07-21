@@ -23,7 +23,7 @@
       "description": "The size of data chunks to send to deliver_subject",
       "minimum": 1024,
       "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
-      "maximum": 9223372036854776000
+      "maximum": 9223372036854775807
     },
     "jsck": {
       "type": "boolean",

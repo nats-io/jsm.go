@@ -39,7 +39,9 @@ dereference_directory () {
 
     if [[ "${file: -5}" == ".json" ]];then
       json-dereference -s "${file}" -o "${target_dir}/${file}.temp.json"
-      jq < "${target_dir}/${file}.temp.json" > "${target_dir}/${file}"
+
+      # seds here is because go uint64 is too big for node and some overflows/confusion happen, so we put it back how it should be :(
+      jq < "${target_dir}/${file}.temp.json" |sed -e s/9223372036854776000/9223372036854775807/ | sed -e s/18446744073709552000/18446744073709551615/ > "${target_dir}/${file}"
       rm -f "${target_dir}/${file}.temp.json"
     fi
   done

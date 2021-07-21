@@ -6,11 +6,11 @@
   "type": "object",
   "properties": {
     "expires": {
-      "type": "integer",
+      "$ref": "definitions.json#/definitions/golang_duration_nanos",
       "description": "A duration from now when the pull should expire, stated in nanoseconds, 0 for no expiry"
     },
     "batch": {
-      "type": "integer",
+      "$ref": "definitions.json#/definitions/golang_int",
       "description": "How many messages the server should deliver to the requestor",
       "minimum": 0,
       "maximum": 256

@@ -83,39 +83,51 @@
             },
             "max_consumers": {
               "description": "How many Consumers can be defined for a given Stream. -1 for unlimited.",
-              "type": "integer",
               "minimum": -1,
-              "default": -1
+              "default": -1,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
             },
             "max_msgs": {
               "description": "How many messages may be in a Stream, oldest messages will be removed if the Stream exceeds this size. -1 for unlimited.",
-              "type": "integer",
               "minimum": -1,
-              "default": -1
+              "default": -1,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
             },
             "max_msgs_per_subject": {
               "description": "For wildcard streams ensure that for every unique subject this many messages are kept - a per subject retention limit",
-              "type": "integer",
               "minimum": -1,
-              "default": -1
+              "default": -1,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
             },
             "max_bytes": {
               "description": "How big the Stream may be, when the combined stream size exceeds this old messages are removed. -1 for unlimited.",
-              "type": "integer",
               "minimum": -1,
-              "default": -1
+              "default": -1,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
             },
             "max_age": {
               "description": "Maximum age of any message in the stream, expressed in nanoseconds. 0 for unlimited.",
-              "type": "integer",
               "minimum": 0,
-              "default": 0
+              "default": 0,
+              "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "type": "integer",
+              "maximum": 9223372036854775807
             },
             "max_msg_size": {
               "description": "The largest message that will be accepted by the Stream. -1 for unlimited.",
-              "type": "integer",
               "minimum": -1,
-              "default": -1
+              "default": -1,
+              "$comment": "signed 32 bit integer",
+              "type": "integer",
+              "maximum": 2147483647
             },
             "storage": {
               "description": "The storage backend to use for the Stream.",
@@ -128,10 +140,11 @@
             },
             "num_replicas": {
               "description": "How many replicas to keep for each message.",
-              "type": "integer",
               "minimum": 1,
               "default": 1,
-              "maximum": 5
+              "maximum": 5,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer"
             },
             "no_ack": {
               "description": "Disables acknowledging messages that are received by the Stream.",
@@ -153,9 +166,11 @@
             },
             "duplicate_window": {
               "description": "The time window to track duplicate messages for, expressed in nanoseconds. 0 for default",
-              "type": "integer",
               "minimum": 0,
-              "default": 0
+              "default": 0,
+              "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "type": "integer",
+              "maximum": 9223372036854775807
             },
             "placement": {
               "description": "Placement directives to consider when placing replicas of this stream, random placement when unset",
@@ -193,8 +208,10 @@
                 },
                 "opt_start_seq": {
                   "description": "Sequence to start replicating from",
+                  "$comment": "unsigned 64 bit integer",
                   "type": "integer",
-                  "minimum": 0
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
                 },
                 "opt_start_time": {
                   "description": "Time stamp to start replicating from",
@@ -241,8 +258,10 @@
                   },
                   "opt_start_seq": {
                     "description": "Sequence to start replicating from",
+                    "$comment": "unsigned 64 bit integer",
                     "type": "integer",
-                    "minimum": 0
+                    "minimum": 0,
+                    "maximum": 18446744073709551615
                   },
                   "opt_start_time": {
                     "description": "Time stamp to start replicating from",
@@ -286,28 +305,36 @@
           ],
           "properties": {
             "messages": {
-              "type": "integer",
               "description": "Number of messages stored in the Stream",
-              "minimum": 0
+              "minimum": 0,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
             },
             "bytes": {
-              "type": "integer",
               "description": "Combined size of all messages in the Stream",
-              "minimum": 0
+              "minimum": 0,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
             },
             "first_seq": {
-              "type": "integer",
               "description": "Sequence number of the first message in the Stream",
-              "minimum": 0
+              "minimum": 0,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
             },
             "first_ts": {
               "type": "string",
               "description": "The timestamp of the first message in the Stream"
             },
             "last_seq": {
-              "type": "integer",
               "description": "Sequence number of the last message in the Stream",
-              "minimum": 0
+              "minimum": 0,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
             },
             "last_ts": {
               "type": "string",
@@ -324,8 +351,10 @@
             },
             "num_deleted": {
               "description": "The number of deleted messages",
+              "minimum": 0,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
               "type": "integer",
-              "minimum": 0
+              "maximum": 9223372036854775807
             },
             "lost": {
               "type": "object",
@@ -338,20 +367,27 @@
                   ],
                   "description": "The messages that were lost",
                   "items": {
+                    "minimum": 0,
+                    "$comment": "unsigned 64 bit integer",
                     "type": "integer",
-                    "minimum": 0
+                    "maximum": 18446744073709551615
                   }
                 },
                 "bytes": {
                   "description": "The number of bytes that were lost",
-                  "type": "integer"
+                  "$comment": "unsigned 64 bit integer",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
                 }
               }
             },
             "consumer_count": {
-              "type": "integer",
               "description": "Number of Consumers attached to the Stream",
-              "minimum": 0
+              "minimum": 0,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
             }
           }
         }

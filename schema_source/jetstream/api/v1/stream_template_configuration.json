@@ -17,9 +17,9 @@
     },
     "max_streams": {
       "description": "The maximum number of Streams this Template can create, -1 for unlimited.",
-      "type": "integer",
       "minimum": -1,
-      "default": -1
+      "default": -1,
+      "$ref": "definitions.json#/definitions/golang_int32"
     },
     "config": {
       "$ref": "definitions.json#/definitions/stream_configuration"

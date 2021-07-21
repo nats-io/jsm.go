@@ -7,8 +7,8 @@
   "required": ["seq"],
   "properties": {
     "seq": {
-      "type": "integer",
-      "description": "Stream sequence number of the message to delete"
+      "description": "Stream sequence number of the message to delete",
+      "$ref": "definitions.json#/definitions/golang_uint64"
     },
     "no_erase": {
       "type": "boolean",

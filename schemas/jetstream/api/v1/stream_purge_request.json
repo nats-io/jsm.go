@@ -11,11 +11,17 @@
     },
     "seq": {
       "description": "Purge all messages up to but not including the message with this sequence. Can be combined with subject filter but not the keep option",
-      "type": "integer"
+      "$comment": "unsigned 64 bit integer",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709552000
     },
     "keep": {
       "description": "Ensures this many messages are present after the purge. Can be combined with the subject filter but not the sequence",
-      "type": "integer"
+      "$comment": "unsigned 64 bit integer",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709552000
     }
   }
 }

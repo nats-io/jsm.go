@@ -18,8 +18,7 @@
         },
         "purged": {
           "description": "Number of messages purged from the Stream",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "definitions.json#/definitions/golang_uint64"
         }
       }
     }

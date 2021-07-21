@@ -5,6 +5,33 @@
   "description": "Shared definitions for the JetStream API",
   "type": "object",
   "definitions": {
+    "golang_duration_nanos": {
+      "$comment": "nanoseconds depicting a duration in time",
+      "$ref": "#/definitions/golang_int64"
+    },
+    "golang_int": {
+      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+      "minimum": -9223372036854775808,
+      "maximum": 9223372036854775807
+    },
+    "golang_uint64": {
+      "$comment": "unsigned 64 bit integer",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "golang_int32": {
+      "$comment": "signed 32 bit integer",
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": -2147483648
+    },
+    "golang_int64": {
+      "$comment": "signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807,
+      "minimum": -9223372036854775808
+    },
     "stream_source": {
       "type": "object",
       "description": "Defines a source where streams should be replicated from",
@@ -16,8 +43,7 @@
         },
         "opt_start_seq": {
           "description": "Sequence to start replicating from",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "opt_start_time": {
           "description": "Time stamp to start replicating from",
@@ -57,12 +83,12 @@
           "description": "The name of the Stream being replicated"
         },
         "lag": {
-          "type": "number",
+          "$ref": "#/definitions/golang_uint64",
           "description": "How many messages behind the mirror operation is",
           "minimum": 0
         },
         "active": {
-          "type": "number",
+          "$ref": "#/definitions/golang_duration_nanos",
           "description": "When last the mirror had activity, in nanoseconds",
           "minimum": 0
         },
@@ -82,13 +108,13 @@
           "type": ["array","null"],
           "description": "The messages that were lost",
           "items": {
-            "type": "integer",
+            "$ref": "#/definitions/golang_uint64",
             "minimum": 0
           }
         },
         "bytes": {
           "description": "The number of bytes that were lost",
-          "type": "integer"
+          "$ref": "#/definitions/golang_uint64"
         }
       }
     },
@@ -247,9 +273,8 @@
           "minLength": 1
         },
         "seq": {
-          "type": "integer",
           "description": "The sequence number of the message in the Stream",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "data": {
           "type": "string",
@@ -375,7 +400,7 @@
           "enum": ["by_start_sequence"]
         },
         "opt_start_seq": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "minimum": 0
         }
       }
@@ -398,14 +423,12 @@
       "required": ["consumer_seq", "stream_seq"],
       "properties": {
         "consumer_seq": {
-          "type": "integer",
-          "description": "The sequence number of the Consumer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64",
+          "description": "The sequence number of the Consumer"
         },
         "stream_seq": {
-          "type": "integer",
-          "description": "The sequence number of the Stream",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64",
+          "description": "The sequence number of the Stream"
         }
       }
     },
@@ -437,22 +460,22 @@
         },
         "num_ack_pending": {
           "description": "The number of messages pending acknowledgement",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "num_redelivered": {
           "description": "The number of redeliveries that have been performed",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "num_waiting": {
           "description": "The number of pull consumers waiting for messages",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "num_pending": {
           "description": "The number of messages left unconsumed in this Consumer",
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "minimum": 0
         },
         "cluster": {
@@ -482,11 +505,11 @@
         },
         "ack_wait": {
           "description": "How long (in nanoseconds) to allow messages to remain un-acknowledged before attempting redelivery",
-          "type": "integer",
+          "$ref": "#/definitions/golang_duration_nanos",
           "minimum": 1
         },
         "max_deliver": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "description": "The number of times a message will be redelivered to consumers if not acknowledged in time"
         },
         "filter_subject": {
@@ -500,16 +523,16 @@
           "type": "string"
         },
         "rate_limit_bps": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "description": "The rate at which messages will be delivered to clients, expressed in bit per second",
           "minimum": 0
         },
         "max_ack_pending": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "description": "The maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended"
         },
         "idle_heartbeat": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_duration_nanos",
           "minimum": 0,
           "description": "If the Consumer is idle for more than this many nano seconds a empty message with Status header 100 will be sent indicating the consumer is still alive"
         },
@@ -518,7 +541,7 @@
           "description": "For push consumers this will regularly send an empty mess with Status header 100 and a reply subject, consumers must reply to these messages to control the rate of message delivery"
         },
         "max_waiting": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "description": "The number of pulls that can be outstanding on a pull consumer, pulls received after this is reached are ignored",
           "minimum": 0,
           "default": 512
@@ -573,17 +596,17 @@
       "required": ["messages", "bytes", "first_seq", "last_seq", "consumer_count"],
       "properties": {
         "messages": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "description": "Number of messages stored in the Stream",
           "minimum": 0
         },
         "bytes": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "description": "Combined size of all messages in the Stream",
           "minimum": 0
         },
         "first_seq": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "description": "Sequence number of the first message in the Stream",
           "minimum": 0
         },
@@ -592,7 +615,7 @@
           "description": "The timestamp of the first message in the Stream"
         },
         "last_seq": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "description": "Sequence number of the last message in the Stream",
           "minimum": 0
         },
@@ -611,14 +634,14 @@
         },
         "num_deleted": {
           "description": "The number of deleted messages",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "lost": {
           "$ref": "#/definitions/lost_stream_data"
         },
         "consumer_count": {
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "description": "Number of Consumers attached to the Stream",
           "minimum": 0
         }
@@ -659,37 +682,37 @@
         },
         "max_consumers": {
           "description": "How many Consumers can be defined for a given Stream. -1 for unlimited.",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": -1,
           "default": -1
         },
         "max_msgs": {
           "description": "How many messages may be in a Stream, oldest messages will be removed if the Stream exceeds this size. -1 for unlimited.",
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "minimum": -1,
           "default": -1
         },
         "max_msgs_per_subject": {
           "description": "For wildcard streams ensure that for every unique subject this many messages are kept - a per subject retention limit",
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "minimum": -1,
-          "default": -1,
+          "default": -1
         },
         "max_bytes": {
           "description": "How big the Stream may be, when the combined stream size exceeds this old messages are removed. -1 for unlimited.",
-          "type": "integer",
+          "$ref": "#/definitions/golang_uint64",
           "minimum": -1,
           "default": -1
         },
         "max_age": {
           "description": "Maximum age of any message in the stream, expressed in nanoseconds. 0 for unlimited.",
-          "type": "integer",
+          "$ref": "#/definitions/golang_duration_nanos",
           "minimum": 0,
-          "default": 0
+          "default": 0,
         },
         "max_msg_size": {
           "description": "The largest message that will be accepted by the Stream. -1 for unlimited.",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int32",
           "minimum": -1,
           "default": -1
         },
@@ -701,7 +724,7 @@
         },
         "num_replicas": {
           "description": "How many replicas to keep for each message.",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 1,
           "default": 1,
           "maximum": 5
@@ -723,7 +746,7 @@
         },
         "duplicate_window": {
           "description": "The time window to track duplicate messages for, expressed in nanoseconds. 0 for default",
-          "type": "integer",
+          "$ref": "#/definitions/golang_duration_nanos",
           "minimum": 0,
           "default": 0
         },

@@ -9,8 +9,11 @@
   ],
   "properties": {
     "seq": {
+      "description": "Stream sequence number of the message to delete",
+      "$comment": "unsigned 64 bit integer",
       "type": "integer",
-      "description": "Stream sequence number of the message to delete"
+      "minimum": 0,
+      "maximum": 18446744073709552000
     },
     "no_erase": {
       "type": "boolean",

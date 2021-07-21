@@ -62,9 +62,11 @@
               "minLength": 1
             },
             "seq": {
-              "type": "integer",
               "description": "The sequence number of the message in the Stream",
-              "minimum": 0
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 18446744073709552000
             },
             "data": {
               "type": "string",

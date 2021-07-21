@@ -64,8 +64,10 @@
               ]
             },
             "opt_start_seq": {
+              "minimum": 0,
+              "$comment": "unsigned 64 bit integer",
               "type": "integer",
-              "minimum": 0
+              "maximum": 18446744073709552000
             }
           }
         },
@@ -110,12 +112,16 @@
     },
     "ack_wait": {
       "description": "How long (in nanoseconds) to allow messages to remain un-acknowledged before attempting redelivery",
+      "minimum": 1,
+      "$comment": "nanoseconds depicting a duration in time",
       "type": "integer",
-      "minimum": 1
+      "maximum": 9223372036854776000
     },
     "max_deliver": {
-      "type": "integer",
-      "description": "The number of times a message will be redelivered to consumers if not acknowledged in time"
+      "description": "The number of times a message will be redelivered to consumers if not acknowledged in time",
+      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+      "minimum": -9223372036854776000,
+      "maximum": 9223372036854776000
     },
     "filter_subject": {
       "type": "string"
@@ -131,28 +137,35 @@
       "type": "string"
     },
     "rate_limit_bps": {
-      "type": "integer",
       "description": "The rate at which messages will be delivered to clients, expressed in bit per second",
-      "minimum": 0
+      "minimum": 0,
+      "$comment": "unsigned 64 bit integer",
+      "type": "integer",
+      "maximum": 18446744073709552000
     },
     "max_ack_pending": {
-      "type": "integer",
-      "description": "The maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended"
+      "description": "The maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended",
+      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+      "minimum": -9223372036854776000,
+      "maximum": 9223372036854776000
     },
     "idle_heartbeat": {
-      "type": "integer",
       "minimum": 0,
-      "description": "If the Consumer is idle for more than this many nano seconds a empty message with Status header 100 will be sent indicating the consumer is still alive"
+      "description": "If the Consumer is idle for more than this many nano seconds a empty message with Status header 100 will be sent indicating the consumer is still alive",
+      "$comment": "nanoseconds depicting a duration in time",
+      "type": "integer",
+      "maximum": 9223372036854776000
     },
     "flow_control": {
       "type": "boolean",
       "description": "For push consumers this will regularly send an empty mess with Status header 100 and a reply subject, consumers must reply to these messages to control the rate of message delivery"
     },
     "max_waiting": {
-      "type": "integer",
       "description": "The number of pulls that can be outstanding on a pull consumer, pulls received after this is reached are ignored",
       "minimum": 0,
-      "default": 512
+      "default": 512,
+      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+      "maximum": 9223372036854776000
     },
     "direct": {
       "type": "boolean",

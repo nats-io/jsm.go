@@ -52,8 +52,10 @@
         },
         "purged": {
           "description": "Number of messages purged from the Stream",
+          "$comment": "unsigned 64 bit integer",
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 18446744073709552000
         }
       }
     }

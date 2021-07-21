@@ -19,7 +19,8 @@
     "chunk_size": {
       "type": "integer",
       "description": "The size of data chunks to send to deliver_subject",
-      "minimum": 1024
+      "minimum": 1024,
+      "$ref": "definitions.json#/definitions/golang_int"
     },
     "jsck": {
       "type": "boolean",

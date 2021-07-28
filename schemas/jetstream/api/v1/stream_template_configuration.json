@@ -44,6 +44,11 @@
           "pattern": "^[^.*>]*$",
           "minLength": 0
         },
+        "description": {
+          "description": "A short description of the purpose of this stream",
+          "type": "string",
+          "maxLength": 4096
+        },
         "subjects": {
           "description": "A list of subjects to consume, supports wildcards. Must be empty when a mirror is configured. May be empty when sources are configured.",
           "type": "array",

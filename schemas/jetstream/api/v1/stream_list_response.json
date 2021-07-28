@@ -398,8 +398,10 @@
                             "type": "array",
                             "minLength": 0,
                             "items": {
+                              "minimum": 0,
+                              "$comment": "unsigned 64 bit integer",
                               "type": "integer",
-                              "minimum": 0
+                              "maximum": 18446744073709551615
                             }
                           },
                           "num_deleted": {

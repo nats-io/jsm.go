@@ -39,6 +39,11 @@
                   "pattern": "^[^.*>]*$",
                   "minLength": 0
                 },
+                "description": {
+                  "description": "A short description of the purpose of this stream",
+                  "type": "string",
+                  "maxLength": 4096
+                },
                 "subjects": {
                   "description": "A list of subjects to consume, supports wildcards. Must be empty when a mirror is configured. May be empty when sources are configured.",
                   "type": "array",
@@ -327,8 +332,10 @@
                   "type": "array",
                   "minLength": 0,
                   "items": {
+                    "minimum": 0,
+                    "$comment": "unsigned 64 bit integer",
                     "type": "integer",
-                    "minimum": 0
+                    "maximum": 18446744073709551615
                   }
                 },
                 "num_deleted": {

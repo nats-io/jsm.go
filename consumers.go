@@ -221,6 +221,14 @@ func (m *Manager) loadConsumerInfo(s string, c string) (info api.ConsumerInfo, e
 	return *resp.ConsumerInfo, nil
 }
 
+// ConsumerDescription is a textual description of this consumer to provide additional context
+func ConsumerDescription(d string) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.Description = d
+		return nil
+	}
+}
+
 // DeliverySubject is the subject where a Push consumer will deliver its messages
 func DeliverySubject(s string) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
@@ -690,6 +698,7 @@ func (c *Consumer) IsEphemeral() bool                { return !c.IsDurable() }
 func (c *Consumer) StreamName() string               { return c.stream }
 func (c *Consumer) DeliverySubject() string          { return c.cfg.DeliverSubject }
 func (c *Consumer) DurableName() string              { return c.cfg.Durable }
+func (c *Consumer) Description() string              { return c.cfg.Description }
 func (c *Consumer) StartSequence() uint64            { return c.cfg.OptStartSeq }
 func (c *Consumer) DeliverPolicy() api.DeliverPolicy { return c.cfg.DeliverPolicy }
 func (c *Consumer) AckPolicy() api.AckPolicy         { return c.cfg.AckPolicy }

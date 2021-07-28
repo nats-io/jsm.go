@@ -790,3 +790,22 @@ func TestStream_IsSourced(t *testing.T) {
 		t.Fatalf("Expected a synced")
 	}
 }
+
+func TestStreamDescription(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.StreamDescription("test description"))
+	checkErr(t, err, "create failed")
+	if s.Description() != "test description" {
+		t.Fatalf("invalid description %q", s.Description())
+	}
+
+	nfo, err := s.Information()
+	checkErr(t, err, "info failed")
+
+	if nfo.Config.Description != "test description" {
+		t.Fatalf("invalid description %q", s.Description())
+	}
+}

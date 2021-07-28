@@ -351,6 +351,7 @@ func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
 // NATS Schema Type io.nats.jetstream.api.v1.stream_configuration
 type StreamConfig struct {
 	Name         string          `json:"name"`
+	Description  string          `json:"description,omitempty"`
 	Subjects     []string        `json:"subjects,omitempty"`
 	Retention    RetentionPolicy `json:"retention"`
 	MaxConsumers int             `json:"max_consumers"`

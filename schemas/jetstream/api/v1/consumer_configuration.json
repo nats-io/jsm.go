@@ -98,6 +98,11 @@
       "pattern": "^[^.*>]+$",
       "minLength": 1
     },
+    "description": {
+      "description": "A short description of the purpose of this consumer",
+      "type": "string",
+      "maxLength": 4096
+    },
     "deliver_subject": {
       "type": "string",
       "minLength": 1

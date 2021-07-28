@@ -494,6 +494,11 @@
           "description": "A unique name for a durable consumer",
           "$ref": "#/definitions/basic_name"
         },
+        "description": {
+          "description": "A short description of the purpose of this consumer",
+          "type": "string",
+          "maxLength": 4096
+        },
         "deliver_subject": {
           "type": "string",
           "minLength": 1
@@ -664,6 +669,11 @@
           "type": "string",
           "pattern": "^[^.*>]*$",
           "minLength": 0
+        },
+        "description": {
+          "description": "A short description of the purpose of this stream",
+          "type": "string",
+          "maxLength": 4096
         },
         "subjects": {
           "description": "A list of subjects to consume, supports wildcards. Must be empty when a mirror is configured. May be empty when sources are configured.",

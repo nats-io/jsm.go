@@ -7,47 +7,70 @@
   "required": [
     "stream"
   ],
-  "additionalProperties": false,
-  "properties": {
-    "error": {
+  "oneOf": [
+    {
       "type": "object",
+      "description": "Defines a source where streams should be replicated from",
       "required": [
-        "code"
+        "stream"
       ],
       "properties": {
-        "code": {
-          "type": "integer",
-          "description": "HTTP like error code in the 300 to 500 range",
-          "minimum": 300,
-          "maximum": 699
-        },
-        "description": {
+        "stream": {
           "type": "string",
-          "description": "A human friendly description of the error"
+          "description": "The name of the stream that received the message",
+          "minLength": 1
         },
-        "err_code": {
+        "seq": {
           "type": "integer",
-          "description": "The NATS error code unique to each kind of error",
+          "description": "If successful this will be the sequence the message is stored at",
+          "$comment": "unsigned 64 bit integer",
           "minimum": 0,
-          "maximum": 65535
+          "maximum": 18446744073709551615
+        },
+        "duplicate": {
+          "type": "boolean",
+          "description": "Indicates that the message was not stored due to the Nats-Msg-Id header and duplicate tracking",
+          "default": false
         }
       }
     },
-    "stream": {
+    {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": [
+            "code"
+          ],
+          "properties": {
+            "code": {
+              "type": "integer",
+              "description": "HTTP like error code in the 300 to 500 range",
+              "minimum": 300,
+              "maximum": 699
+            },
+            "description": {
+              "type": "string",
+              "description": "A human friendly description of the error"
+            },
+            "err_code": {
+              "type": "integer",
+              "description": "The NATS error code unique to each kind of error",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "type": {
       "type": "string",
-      "description": "The name of the stream that received the message",
-      "minLength": 1
-    },
-    "seq": {
-      "type": "integer",
-      "description": "If successful this will be the sequence the message is stored at",
-      "minimum": 0,
-      "maximum": 18446744073709551615
-    },
-    "duplicate": {
-      "type": "boolean",
-      "description": "Indicates that the message was not stored due to the Nats-Msg-Id header and duplicate tracking",
-      "default": false
+      "const": "io.nats.jetstream.api.v1.pub_ack_response"
     }
   }
 }

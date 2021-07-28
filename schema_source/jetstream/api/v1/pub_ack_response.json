@@ -5,26 +5,18 @@
   "title": "io.nats.jetstream.api.v1.pub_ack_response",
   "type": "object",
   "required": ["stream"],
-  "additionalProperties": false,
+  "oneOf": [
+    {
+      "$ref": "definitions.json#/definitions/pub_ack"
+    },
+    {
+      "$ref": "definitions.json#/definitions/error_response"
+    }
+  ],
   "properties": {
-    "error": {
-      "$ref": "definitions.json#/definitions/api_error"
-    },
-    "stream": {
+    "type": {
       "type": "string",
-      "description": "The name of the stream that received the message",
-      "minLength": 1
-    },
-    "seq": {
-      "type": "integer",
-      "description": "If successful this will be the sequence the message is stored at",
-      "minimum": 0,
-      "maximum": 18446744073709551615
-    },
-    "duplicate":{
-      "type": "boolean",
-      "description": "Indicates that the message was not stored due to the Nats-Msg-Id header and duplicate tracking",
-      "default": false
+      "const": "io.nats.jetstream.api.v1.pub_ack_response"
     }
   }
 }

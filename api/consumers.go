@@ -250,6 +250,7 @@ func (p DeliverPolicy) MarshalJSON() ([]byte, error) {
 //
 // NATS Schema Type io.nats.jetstream.api.v1.consumer_configuration
 type ConsumerConfig struct {
+	Description     string        `json:"description,omitempty"`
 	AckPolicy       AckPolicy     `json:"ack_policy"`
 	AckWait         time.Duration `json:"ack_wait,omitempty"`
 	DeliverPolicy   DeliverPolicy `json:"deliver_policy"`

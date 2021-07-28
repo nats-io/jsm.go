@@ -818,3 +818,23 @@ func TestMaxWaiting(t *testing.T) {
 		t.Fatalf("expected MaxWaiting==10")
 	}
 }
+
+func TestConsumerDescription(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.StreamDescription("test description"), jsm.MemoryStorage())
+	checkErr(t, err, "create failed")
+	c, err := s.NewConsumer(jsm.ConsumerDescription("test consumer description"), jsm.DurableName("X"))
+	checkErr(t, err, "create failed")
+	if c.Description() != "test consumer description" {
+		t.Fatalf("invalid description %q", c.Description())
+	}
+
+	nfo, err := c.State()
+	checkErr(t, err, "state failed")
+	if nfo.Config.Description != "test consumer description" {
+		t.Fatalf("invalid description %q", c.Description())
+	}
+}

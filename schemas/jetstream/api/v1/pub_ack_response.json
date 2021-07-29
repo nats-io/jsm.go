@@ -41,6 +41,7 @@
     "seq": {
       "type": "integer",
       "description": "If successful this will be the sequence the message is stored at",
+      "$comment": "unsigned 64 bit integer",
       "minimum": 0,
       "maximum": 18446744073709551615
     },

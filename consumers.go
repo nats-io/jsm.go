@@ -279,6 +279,15 @@ func DeliverAllAvailable() ConsumerOption {
 	}
 }
 
+// DeliverLastPerSubject delivers the last message for each subject in a wildcard stream based on the filter subjects of the consumer
+func DeliverLastPerSubject() ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		resetDeliverPolicy(o)
+		o.DeliverPolicy = api.DeliverLastPerSubject
+		return nil
+	}
+}
+
 // StartWithLastReceived starts delivery at the last messages received in the stream
 func StartWithLastReceived() ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
@@ -537,7 +546,7 @@ func (m *Manager) NextMsgRequest(stream string, consumer string, inbox string, r
 	return m.nc.PublishMsg(&nats.Msg{Subject: s, Reply: inbox, Data: jreq})
 }
 
-// NextMsg requests the next message from the server. This request will wait for as long as the context is
+// NextMsgContext requests the next message from the server. This request will wait for as long as the context is
 // active. If repeated pulls will be made it's better to use NextMsgRequest()
 func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer string) (*nats.Msg, error) {
 	if !m.nc.Opts.UseOldRequestStyle {

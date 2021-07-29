@@ -82,6 +82,9 @@ func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
 
 	jsm.StartWithNextReceived()(c)
 	checkPolicy(c, 0, nil, api.DeliverNew)
+
+	jsm.DeliverLastPerSubject()(c)
+	checkPolicy(c, 0, nil, api.DeliverLastPerSubject)
 }
 
 func TestNextMsg(t *testing.T) {
@@ -764,6 +767,14 @@ func TestStartAtTimeDelta(t *testing.T) {
 	}
 }
 
+func TestDeliverLastPerSubject(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.DeliverLastPerSubject()(cfg)
+	if cfg.DeliverPolicy != api.DeliverLastPerSubject {
+		t.Fatal("expected DeliverLastPerSubject")
+	}
+}
+
 func TestStartWithLastReceived(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.StartWithLastReceived()(cfg)
@@ -771,6 +782,7 @@ func TestStartWithLastReceived(t *testing.T) {
 		t.Fatal("expected DeliverLast")
 	}
 }
+
 func TestStartWithNextReceived(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.StartWithNextReceived()(cfg)

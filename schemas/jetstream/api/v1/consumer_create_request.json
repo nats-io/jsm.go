@@ -99,6 +99,19 @@
                   "type": "string"
                 }
               }
+            },
+            {
+              "required": [
+                "deliver_policy"
+              ],
+              "properties": {
+                "deliver_policy": {
+                  "type": "string",
+                  "enum": [
+                    "last_per_subject"
+                  ]
+                }
+              }
             }
           ]
         }

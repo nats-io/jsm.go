@@ -5,9 +5,30 @@
   "title": "io.nats.jetstream.api.v1.stream_purge_response",
   "type": "object",
   "required": [
-    "type"
+    "success",
+    "purged"
   ],
   "oneOf": [
+    {
+      "type": "object",
+      "description": "Defines the response from a purge request",
+      "required": [
+        "success",
+        "purged"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "purged": {
+          "description": "Number of messages purged from the Stream",
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        }
+      }
+    },
     {
       "type": "object",
       "required": [
@@ -37,25 +58,6 @@
               "maximum": 65535
             }
           }
-        }
-      }
-    },
-    {
-      "required": [
-        "success",
-        "purged"
-      ],
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "purged": {
-          "description": "Number of messages purged from the Stream",
-          "$comment": "unsigned 64 bit integer",
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 18446744073709551615
         }
       }
     }

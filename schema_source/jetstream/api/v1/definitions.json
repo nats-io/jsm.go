@@ -804,7 +804,7 @@
     },
     "pub_ack": {
       "type": "object",
-      "description": "Defines a source where streams should be replicated from",
+      "description": "Defines the publish acknowledgement",
       "required": ["stream"],
       "properties": {
         "stream": {
@@ -813,7 +813,6 @@
           "minLength": 1
         },
         "seq": {
-          "type": "integer",
           "description": "If successful this will be the sequence the message is stored at",
           "$ref": "#/definitions/golang_uint64"
         },
@@ -821,6 +820,23 @@
           "type": "boolean",
           "description": "Indicates that the message was not stored due to the Nats-Msg-Id header and duplicate tracking",
           "default": false
+        }
+      }
+    },
+    "purge_response": {
+      "type": "object",
+      "description": "Defines the response from a purge request",
+      "required": [
+        "success",
+        "purged"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "purged": {
+          "description": "Number of messages purged from the Stream",
+          "$ref": "#/definitions/golang_uint64"
         }
       }
     }

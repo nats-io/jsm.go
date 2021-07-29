@@ -4,23 +4,16 @@
   "description": "A response from the JetStream $JS.API.STREAM.PURGE API",
   "title": "io.nats.jetstream.api.v1.stream_purge_response",
   "type": "object",
-  "required": ["type"],
+  "required": [
+    "success",
+    "purged"
+  ],
   "oneOf": [
     {
-      "$ref": "definitions.json#/definitions/error_response"
+      "$ref": "definitions.json#/definitions/purge_response"
     },
     {
-      "required": ["success", "purged"],
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "purged": {
-          "description": "Number of messages purged from the Stream",
-          "$ref": "definitions.json#/definitions/golang_uint64"
-        }
-      }
+      "$ref": "definitions.json#/definitions/error_response"
     }
   ],
   "properties": {

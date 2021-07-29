@@ -361,7 +361,8 @@
         {"$ref": "#/definitions/last_deliver_policy"},
         {"$ref": "#/definitions/new_deliver_policy"},
         {"$ref": "#/definitions/start_sequence_deliver_policy"},
-        {"$ref": "#/definitions/start_time_deliver_policy"}
+        {"$ref": "#/definitions/start_time_deliver_policy"},
+        {"$ref": "#/definitions/last_per_subject_deliver_policy"}
       ]
     },
     "all_deliver_policy": {
@@ -413,6 +414,15 @@
         },
         "opt_start_time": {
           "type": "string"
+        }
+      }
+    },
+    "last_per_subject_deliver_policy": {
+      "required": ["deliver_policy"],
+      "properties": {
+        "deliver_policy": {
+          "type": "string",
+          "enum": ["last_per_subject"]
         }
       }
     },

@@ -193,6 +193,7 @@ const (
 	DeliverNew
 	DeliverByStartSequence
 	DeliverByStartTime
+	DeliverLastPerSubject
 )
 
 func (p DeliverPolicy) String() string {
@@ -207,6 +208,8 @@ func (p DeliverPolicy) String() string {
 		return "By Start Sequence"
 	case DeliverByStartTime:
 		return "By Start Time"
+	case DeliverLastPerSubject:
+		return "Last Per Subject"
 	default:
 		return "Unknown Deliver Policy"
 	}
@@ -224,6 +227,8 @@ func (p *DeliverPolicy) UnmarshalJSON(data []byte) error {
 		*p = DeliverByStartSequence
 	case jsonString("by_start_time"):
 		*p = DeliverByStartTime
+	case jsonString("last_per_subject"):
+		*p = DeliverLastPerSubject
 	}
 
 	return nil
@@ -241,6 +246,8 @@ func (p DeliverPolicy) MarshalJSON() ([]byte, error) {
 		return json.Marshal("by_start_sequence")
 	case DeliverByStartTime:
 		return json.Marshal("by_start_time")
+	case DeliverLastPerSubject:
+		return json.Marshal("last_per_subject")
 	default:
 		return nil, fmt.Errorf("unknown deliver policy %v", p)
 	}

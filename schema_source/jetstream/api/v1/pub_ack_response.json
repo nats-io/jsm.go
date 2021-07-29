@@ -18,8 +18,7 @@
     "seq": {
       "type": "integer",
       "description": "If successful this will be the sequence the message is stored at",
-      "minimum": 0,
-      "maximum": 18446744073709551615
+      "$ref": "definitions.json#/definitions/golang_uint64"
     },
     "duplicate":{
       "type": "boolean",

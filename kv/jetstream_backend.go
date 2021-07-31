@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -124,16 +125,22 @@ func (j *jetStreamStorage) decode(val []byte) ([]byte, error) {
 }
 
 func (j *jetStreamStorage) encodeKey(key string) (string, error) {
-	ek, err := j.encode([]byte(key))
-	if err != nil {
-		return "", err
+	res := []string{}
+	for _, t := range strings.Split(key, ".") {
+		if t == ">" || t == "*" {
+			res = append(res, t)
+			continue
+		}
+
+		et, err := j.encode([]byte(t))
+		if err != nil {
+			return "", err
+		}
+
+		res = append(res, string(et))
 	}
 
-	if !IsValidKey(string(ek)) {
-		return "", ErrInvalidKey
-	}
-
-	return string(ek), nil
+	return strings.Join(res, "."), nil
 }
 
 func (j *jetStreamStorage) Put(key string, val []byte, opts ...PutOption) (seq uint64, err error) {
@@ -244,17 +251,17 @@ func (j *jetStreamStorage) Get(key string) (Entry, error) {
 func (j *jetStreamStorage) Bucket() string        { return j.name }
 func (j *jetStreamStorage) BucketSubject() string { return j.bucketSubject }
 
-func (j *jetStreamStorage) WatchBucket(ctx context.Context) (Watch, error) {
-	return newJSWatch(ctx, j.streamName, j.name, j.bucketSubject, j.opts.dec, j.nc, j.mgr, j.log)
-}
-
 func (j *jetStreamStorage) Watch(ctx context.Context, key string) (Watch, error) {
+	if key == "" {
+		return newJSWatch(ctx, ">", j)
+	}
+
 	ek, err := j.encodeKey(key)
 	if err != nil {
 		return nil, err
 	}
 
-	return newJSWatch(ctx, j.streamName, j.name, j.subjectForKey(ek), j.opts.dec, j.nc, j.mgr, j.log)
+	return newJSWatch(ctx, j.subjectForKey(ek), j)
 }
 
 // Delete deletes all values held for a key
@@ -348,6 +355,14 @@ func (j *jetStreamStorage) CreateBucket() error {
 
 	j.stream = stream
 
+	// upgrade for . in keys
+	if len(stream.Subjects()) == 1 && stream.Subjects()[0] != j.bucketSubject {
+		err = stream.UpdateConfiguration(stream.Configuration(), jsm.Subjects(j.bucketSubject))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -356,7 +371,7 @@ func (j *jetStreamStorage) streamForBucket(b string) string {
 }
 
 func (j *jetStreamStorage) subjectForBucket(b string) string {
-	return fmt.Sprintf("%s.%s.*", j.subjectPrefix, b)
+	return fmt.Sprintf("%s.%s.>", j.subjectPrefix, b)
 }
 
 func (j *jetStreamStorage) subjectForKey(k string) string {

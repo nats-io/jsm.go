@@ -56,7 +56,7 @@ func assertEntryHasStringValue(t *testing.T, res Entry, val string) {
 		return
 	}
 
-	t.Fatalf("%s should have value %s", res.Key(), val)
+	t.Fatalf("%s should have value %q got %q", res.Key(), val, res.Value())
 }
 
 func setupBasicTestBucket(t BOrT, so ...Option) (*jetStreamStorage, *natsd.Server, *nats.Conn, *jsm.Manager) {
@@ -101,7 +101,7 @@ func TestJetStreamStorage_WithStreamSubjectPrefix(t *testing.T) {
 		t.Fatalf("stream load failed: %s", err)
 	}
 
-	if !cmp.Equal(str.Subjects(), []string{"$BOB.TEST.*"}) {
+	if !cmp.Equal(str.Subjects(), []string{"$BOB.TEST.>"}) {
 		t.Fatalf("invalid stream subjects: %v", str.Subjects())
 	}
 }
@@ -147,7 +147,7 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 	defer nc.Close()
 	defer store.Close()
 
-	seq, err := store.Put("hello", []byte("world"))
+	seq, err := store.Put("hello.world", []byte("world"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
@@ -174,13 +174,17 @@ func TestJetStreamStorage_Codec(t *testing.T) {
 		t.Fatalf("encoded string was not stored: %q", msg.Data)
 	}
 
-	if msg.Subject != "$KV.TEST.aGVsbG8=" {
+	if msg.Subject != "$KV.TEST.aGVsbG8=.d29ybGQ=" {
 		t.Fatalf("subject was not encoded: %s", msg.Subject)
 	}
 
-	val, err := store.Get("hello")
+	val, err := store.Get("hello.world")
 	if err != nil {
 		t.Fatalf("get failed: %s", err)
+	}
+
+	if val.Key() != "hello.world" {
+		t.Fatalf("received invald key in entry: %v", val.Key())
 	}
 
 	assertEntryHasStringValue(t, val, "world")
@@ -206,12 +210,12 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	watch, err := store.WatchBucket(ctx)
+	watch, err := store.Watch(ctx, "")
 	if err != nil {
 		t.Fatalf("watch failed: %s", err)
 	}
 
-	cnt := 5
+	cnt := 9
 	kills := 0
 	var latest Entry
 
@@ -245,11 +249,9 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 
 			cnt++
 
-			if cnt > 9 {
-				_, err = store.Put("key", []byte(strconv.Itoa(cnt)))
-				if err != nil {
-					t.Fatalf("put failed: %s", err)
-				}
+			_, err = store.Put("key", []byte(strconv.Itoa(cnt)))
+			if err != nil {
+				t.Fatalf("put failed: %s", err)
 			}
 
 			// after a few we kill the consumer to test recover
@@ -261,6 +263,32 @@ func TestJetStreamStorage_WatchBucket(t *testing.T) {
 		case <-ctx.Done():
 			t.Fatalf("timeout running test")
 		}
+	}
+}
+
+func TestJetStreamStorage_WatchEndNotify(t *testing.T) {
+	store, srv, nc, _ := setupBasicTestBucket(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	watch, err := store.Watch(ctx, "x.y")
+	if err != nil {
+		t.Fatalf(": %s", err)
+	}
+	e := <-watch.Channel()
+	if e != nil {
+		t.Fatalf("expected nil value got %+v", e)
+	}
+	_, err = store.Put("x.y", []byte("hello"))
+	if err != nil {
+		t.Fatalf(": %s", err)
+	}
+	e = <-watch.Channel()
+	if string(e.Value()) != "hello" {
+		t.Fatalf("Expected hello got: %q", e.Value())
 	}
 }
 
@@ -276,17 +304,17 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 		}
 	}
 
-	status, _ := store.Status()
-	if status.Values() != 5 {
-		t.Fatalf("expected 5 messages got %d", status.Values())
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	watch, err := store.Watch(ctx, "key")
 	if err != nil {
 		t.Fatalf("watch failed: %s", err)
+	}
+
+	status, _ := store.Status()
+	if status.Values() != 5 {
+		t.Fatalf("expected 5 messages got %d", status.Values())
 	}
 
 	cnt := 9
@@ -494,11 +522,28 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		}
 	}
 
+	// test . in keys
+	_, err := store.Put("x.y.hello", []byte("world.world.world"))
+	if err != nil {
+		t.Fatalf("put failed: %s", err)
+	}
+	res, err := store.Get("x.y.hello")
+	if err != nil {
+		t.Fatalf("get failed: %s", err)
+	}
+	if string(res.Value()) != "world.world.world" {
+		t.Fatalf("got invalid value %q", res.Value())
+	}
+	if res.Key() != "x.y.hello" {
+		t.Fatalf("got invalid key %q", res.Key())
+	}
+
 	seq, err := store.Put("hello", []byte("world"))
 	if err != nil {
 		t.Fatalf("put failed: %s", err)
 	}
 
+	// test only if last value seq
 	_, err = store.Put("hello", []byte("world"), OnlyIfLastValueSequence(seq-1))
 	if err != nil {
 		apiErr, ok := err.(api.ApiError)

@@ -45,7 +45,7 @@ func TestReadCache_GetPut(t *testing.T) {
 		defer cache.mu.Unlock()
 
 		if len(cache.cache) > expect {
-			t.Fatalf("cache has %d expected %d", len(cache.cache), expect)
+			t.Fatalf("cache has %d expected %d: %+v", len(cache.cache), expect, cache.cache)
 		}
 	}
 
@@ -71,16 +71,16 @@ func TestReadCache_GetPut(t *testing.T) {
 		t.Fatalf("put failed: %s", err)
 	}
 
-	expectCache(t, 0)
+	// let the watch get from the consumer etc
+	time.Sleep(20 * time.Millisecond)
+
+	expectCache(t, 1)
 	assertCacheReady(t)
 
 	_, err = cache.Get("hello")
 	if err != nil {
 		t.Fatalf("get failed: %s", err)
 	}
-
-	// let the watch get from the consumer etc
-	time.Sleep(20 * time.Millisecond)
 
 	expectCache(t, 1)
 

@@ -44,7 +44,7 @@ func newReadCache(b Storage, log Logger) (*readCache, error) {
 	var err error
 	cache.ctx, cache.cancel = context.WithCancel(context.Background())
 
-	cache.watch, err = b.WatchBucket(cache.ctx)
+	cache.watch, err = b.Watch(cache.ctx, ">")
 	if err != nil {
 		cache.Close()
 		return nil, err
@@ -59,9 +59,6 @@ func (c *readCache) Bucket() string          { return c.backend.Bucket() }
 func (c *readCache) BucketSubject() string   { return c.backend.BucketSubject() }
 func (c *readCache) CreateBucket() error     { return c.backend.CreateBucket() }
 func (c *readCache) Status() (Status, error) { return c.backend.Status() }
-func (c *readCache) WatchBucket(ctx context.Context) (Watch, error) {
-	return c.backend.WatchBucket(ctx)
-}
 
 func (c *readCache) Watch(ctx context.Context, key string) (Watch, error) {
 	return c.backend.Watch(ctx, key)

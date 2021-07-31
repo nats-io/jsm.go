@@ -39,7 +39,7 @@ const (
 	DeleteOperation Operation = "DEL"
 
 	// ValidKeyPattern is a regular expression key should match, post encoding, to be valid
-	ValidKeyPattern = `\A[-/_=a-zA-Z0-9]+\z`
+	ValidKeyPattern = `\A[-/_=\.a-zA-Z0-9]+\z`
 
 	// ValidBucketPattern is a regular expression bucket names should match
 	ValidBucketPattern = `\A[a-zA-Z0-9_-]+\z`
@@ -137,10 +137,7 @@ type RoKV interface {
 	// History retrieves historic values for a key
 	History(ctx context.Context, key string) ([]Entry, error)
 
-	// WatchBucket watches the entire bucket for changes, all keys and values will be traversed including all historic values
-	WatchBucket(ctx context.Context) (Watch, error)
-
-	// Watch a key for updates, the same Entry might be delivered more than once
+	// Watch a key for updates, the same Entry might be delivered more than once, a nil entry means end of available data was reached
 	Watch(ctx context.Context, key string) (Watch, error)
 
 	// Close releases in-memory resources held by the KV, called automatically if the context used to create it is canceled
@@ -244,6 +241,10 @@ func IsReservedKey(key string) bool {
 
 // IsValidKey determines if key is a valid key
 func IsValidKey(key string) bool {
+	if strings.HasPrefix(key, ".") || strings.HasSuffix(key, ".") {
+		return false
+	}
+
 	return validKeyRe.MatchString(key)
 }
 

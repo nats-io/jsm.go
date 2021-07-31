@@ -15,13 +15,13 @@ func TestIsReservedKey(t *testing.T) {
 }
 
 func TestIsValidKey(t *testing.T) {
-	for _, k := range []string{" x y", "x ", "x!", "xx$", "*", ">", "x.>", "x.*"} {
+	for _, k := range []string{" x y", "x ", "x!", "xx$", "*", ">", "x.>", "x.*", ".", ".x", ".x.", "x."} {
 		if IsValidKey(k) {
 			t.Fatalf("%q was valid", k)
 		}
 	}
 
-	for _, k := range []string{"foo", "_foo", "-foo", "_kv_foo", "foo123", "123", "a/b/c"} {
+	for _, k := range []string{"foo", "_foo", "-foo", "_kv_foo", "foo123", "123", "a/b/c", "a.b.c"} {
 		if !IsValidKey(k) {
 			t.Fatalf("%q was invalid", k)
 		}

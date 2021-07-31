@@ -28,6 +28,7 @@ type jsWatch struct {
 	streamName string
 	bucket     string
 	subj       string
+	subjPrefix string
 	mgr        *jsm.Manager
 	cons       *jsm.Consumer
 	sub        *nats.Subscription
@@ -40,20 +41,23 @@ type jsWatch struct {
 	cancel     func()
 	log        Logger
 	running    bool
-	latestOnly bool
 	mu         sync.Mutex
 }
 
-func newJSWatch(ctx context.Context, stramName string, bucket string, subj string, dec Decoder, nc *nats.Conn, mgr *jsm.Manager, log Logger) (*jsWatch, error) {
+func newJSWatch(ctx context.Context, subj string, j *jetStreamStorage) (*jsWatch, error) {
+	if subj == "" {
+		subj = ">"
+	}
+
 	w := &jsWatch{
-		streamName: stramName,
-		bucket:     bucket,
+		streamName: j.streamName,
+		bucket:     j.name,
 		subj:       subj,
-		nc:         nc,
-		mgr:        mgr,
-		log:        log,
-		dec:        dec,
-		latestOnly: !(strings.HasSuffix(subj, "*") || strings.HasSuffix(subj, ">")),
+		subjPrefix: j.subjectPrefix + "." + j.name + ".",
+		nc:         j.nc,
+		mgr:        j.mgr,
+		log:        j.log,
+		dec:        j.opts.dec,
 		outCh:      make(chan Entry, 1000),
 	}
 
@@ -101,25 +105,21 @@ func (w *jsWatch) handler(m *nats.Msg) {
 	w.lastSeen = time.Now()
 	w.mu.Unlock()
 
-	parts := strings.Split(m.Subject, ".")
-	if m.Header.Get("Status") == "100" && m.Reply != "" {
+	hdr := m.Header.Get("Status")
+	if hdr == "100" && m.Reply != "" {
 		m.Respond(nil)
 		return
-	}
-
-	if len(parts) == 0 {
+	} else if hdr == "100" {
 		return
 	}
 
-	key := parts[len(parts)-1]
+	if !strings.HasPrefix(m.Subject, w.subjPrefix) {
+		return
+	}
 
+	key := strings.TrimPrefix(m.Subject, w.subjPrefix)
 	res, err := jsEntryFromMessage(w.bucket, key, m, w.decode)
 	if err != nil {
-		return
-	}
-
-	// only latest values
-	if w.latestOnly && res.Delta() != 0 {
 		return
 	}
 
@@ -201,14 +201,13 @@ func (w *jsWatch) createConsumer() error {
 		jsm.DeliverySubject(w.sub.Subject),
 		jsm.IdleHeartbeat(2 * time.Second),
 		jsm.AcknowledgeExplicit(),
+		jsm.ConsumerDescription(fmt.Sprintf("KV watch for subject %v", w.subj)),
 	}
 
 	if w.lastSeq != 0 {
 		opts = append(opts, jsm.StartAtSequence(w.lastSeq+1))
-	} else if w.latestOnly {
-		opts = append(opts, jsm.StartWithLastReceived())
 	} else {
-		opts = append(opts, jsm.DeliverAllAvailable())
+		opts = append(opts, jsm.DeliverLastPerSubject())
 	}
 
 	w.cons, err = w.mgr.NewConsumer(w.streamName, opts...)
@@ -223,7 +222,7 @@ func (w *jsWatch) createConsumer() error {
 
 	// if no messages are pending or delivered we should tell the watcher
 	// we have nothing and it should assume its up to date
-	if !w.latestOnly && state.NumPending+state.Delivered.Consumer == 0 {
+	if state.NumPending+state.Delivered.Consumer == 0 {
 		w.outCh <- nil
 	}
 

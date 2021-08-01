@@ -274,7 +274,7 @@ func TestJetStreamStorage_WatchEndNotify(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	watch, err := store.Watch(ctx, "x.y")
+	watch, err := store.Watch(ctx, "x.>")
 	if err != nil {
 		t.Fatalf(": %s", err)
 	}
@@ -289,6 +289,9 @@ func TestJetStreamStorage_WatchEndNotify(t *testing.T) {
 	e = <-watch.Channel()
 	if string(e.Value()) != "hello" {
 		t.Fatalf("Expected hello got: %q", e.Value())
+	}
+	if e.Key() != "x.y" {
+		t.Fatalf("Expected key x.y got: %v", e.Key())
 	}
 }
 
@@ -452,6 +455,11 @@ func TestJetStreamStorage_Delete(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 	assertEntryHasStringValue(t, res, "y")
+
+	err = store.Delete("x.>")
+	if err != ErrInvalidKey {
+		t.Fatalf("Expected invalid key error doing Delete() on wildcard: %v", err)
+	}
 }
 
 func TestJetStreamStorage_Status(t *testing.T) {
@@ -543,6 +551,11 @@ func TestJetStreamStorage_Put(t *testing.T) {
 		t.Fatalf("put failed: %s", err)
 	}
 
+	_, err = store.Put("x.>", []byte("world"))
+	if err == nil {
+		t.Fatalf("Expected error doing Put() on wildcard key")
+	}
+
 	// test only if last value seq
 	_, err = store.Put("hello", []byte("world"), OnlyIfLastValueSequence(seq-1))
 	if err != nil {
@@ -588,6 +601,19 @@ func TestJetStreamStorage_History(t *testing.T) {
 	for i, r := range hist {
 		assertEntryHasStringValue(t, r, fmt.Sprintf("val%d", i+1))
 	}
+
+	// invalid keys
+	_, err = store.History(context.Background(), ">")
+	if err != ErrInvalidKey {
+		t.Fatalf("Expected invalid key error doing History() for wildcard: %s", err)
+	}
+
+	// unknown key
+	_, err = store.History(context.Background(), "x.y")
+	if err != ErrUnknownKey {
+		t.Fatalf("Expected unknown key error doing History() for unknown key: %s", err)
+	}
+
 }
 
 func TestJetStreamStorage_Get(t *testing.T) {
@@ -624,6 +650,11 @@ func TestJetStreamStorage_Get(t *testing.T) {
 		if res.Sequence() != i {
 			t.Fatalf("invalid sequence: %d", res.Sequence())
 		}
+	}
+
+	_, err = store.Get(">")
+	if err == nil {
+		t.Fatalf("expected error dong Get() on wildcard")
 	}
 }
 

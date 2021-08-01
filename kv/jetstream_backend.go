@@ -149,6 +149,10 @@ func (j *jetStreamStorage) Put(key string, val []byte, opts ...PutOption) (seq u
 		return 0, err
 	}
 
+	if !IsValidKey(ek) {
+		return 0, ErrInvalidKey
+	}
+
 	popts, err := newPutOpts(opts...)
 	if err != nil {
 		return 0, err
@@ -182,6 +186,10 @@ func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Entry, er
 		return nil, err
 	}
 
+	if !IsValidKey(ek) {
+		return nil, ErrInvalidKey
+	}
+
 	stream, err := j.getOrLoadStream()
 	if err != nil {
 		return nil, err
@@ -192,9 +200,18 @@ func (j *jetStreamStorage) History(ctx context.Context, key string) ([]Entry, er
 		return nil, err
 	}
 
-	_, err = stream.NewConsumer(jsm.FilterStreamBySubject(j.subjectForKey(ek)), jsm.DeliverySubject(sub.Subject), jsm.DeliverAllAvailable())
+	c, err := stream.NewConsumer(jsm.FilterStreamBySubject(j.subjectForKey(ek)), jsm.DeliverySubject(sub.Subject), jsm.DeliverAllAvailable())
 	if err != nil {
 		return nil, err
+	}
+
+	state, err := c.State()
+	if err != nil {
+		return nil, err
+	}
+
+	if state.NumPending+state.Delivered.Consumer == 0 {
+		return nil, ErrUnknownKey
 	}
 
 	var results []Entry
@@ -223,6 +240,10 @@ func (j *jetStreamStorage) Get(key string) (Entry, error) {
 	ek, err := j.encodeKey(key)
 	if err != nil {
 		return nil, err
+	}
+
+	if !IsValidKey(ek) {
+		return nil, ErrInvalidKey
 	}
 
 	msg, err := j.mgr.ReadLastMessageForSubject(j.streamName, j.subjectForKey(ek))
@@ -269,6 +290,10 @@ func (j *jetStreamStorage) Delete(key string) error {
 	ek, err := j.encodeKey(key)
 	if err != nil {
 		return err
+	}
+
+	if !IsValidKey(ek) {
+		return ErrInvalidKey
 	}
 
 	msg := nats.NewMsg(j.subjectForKey(ek))

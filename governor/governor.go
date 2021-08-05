@@ -380,6 +380,7 @@ func (g *jsGMgr) updateConfig() error {
 
 func (g *jsGMgr) streamOpts() []jsm.StreamOption {
 	opts := []jsm.StreamOption{
+		jsm.StreamDescription(fmt.Sprintf("Concurrency Governor %s", g.name)),
 		jsm.MaxAge(g.maxAge),
 		jsm.MaxMessages(int64(g.limit)),
 		jsm.Subjects(g.subj),

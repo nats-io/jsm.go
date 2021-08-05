@@ -351,6 +351,7 @@ func (j *jetStreamStorage) CreateBucket() error {
 	defer j.mu.Unlock()
 
 	opts := []jsm.StreamOption{
+		jsm.StreamDescription(fmt.Sprintf("KV Bucket %s", j.name)),
 		jsm.MaxMessagesPerSubject(int64(j.opts.history)),
 		jsm.LimitsRetention(),
 		jsm.MaxAge(j.opts.ttl),

@@ -264,7 +264,7 @@
     "stored_message": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["subject", "seq", "data", "time"],
+      "required": ["subject", "seq", "time"],
       "properties": {
         "subject": {
           "type": "string",

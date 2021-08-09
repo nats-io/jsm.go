@@ -15,6 +15,7 @@ package election
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/nats-io/jsm.go"
@@ -32,15 +33,26 @@ const (
 )
 
 type options struct {
+	streamName        string
 	name              string
 	wonCb             func()
 	lostCb            func()
 	campaignInterval  time.Duration
 	hbInterval        time.Duration
 	missedHBThreshold int
+	storageType       storageType
 	stream            *jsm.Stream
 	bo                Backoff
+
+	sync.Mutex
 }
+
+type storageType int
+
+const (
+	fileStorage   storageType = 0
+	memoryStorage storageType = 1
+)
 
 // WithBackoff will use the provided Backoff timer source to decrease campaign intervals over time
 func WithBackoff(bo Backoff) Option {
@@ -104,11 +116,20 @@ func WithMissedHeartbeatThreshold(t int) Option {
 	}
 }
 
+// WithMemoryStorage campaigns using a memory based stream
+func WithMemoryStorage() Option {
+	return func(o *options) error {
+		o.storageType = memoryStorage
+		return nil
+	}
+}
+
 // Option configures the leader election system
 type Option func(*options) error
 
 func newOptions(opts ...Option) (*options, error) {
 	o := &options{
+		storageType:       fileStorage,
 		campaignInterval:  DefaultCampaignInterval,
 		hbInterval:        DefaultHeartBeatInterval,
 		missedHBThreshold: DefaultMissedHBThreshold,

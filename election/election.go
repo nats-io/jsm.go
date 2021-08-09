@@ -44,6 +44,7 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
 )
@@ -55,6 +56,7 @@ type election struct {
 	sub      *nats.Subscription
 	isLeader bool
 	tries    int
+	mgr      *jsm.Manager
 	ctx      context.Context
 	cancel   func()
 	nuid     *nuid.NUID
@@ -74,30 +76,61 @@ func NewElection(name string, wonCb func(), lostCb func(), streamName string, mg
 		return nil, err
 	}
 
+	o.streamName = streamName
 	o.name = name
 	o.wonCb = wonCb
 	o.lostCb = lostCb
 
-	if o.stream == nil {
-		if streamName == "" {
-			return nil, fmt.Errorf("stream name is required")
-		}
+	e := &election{
+		opts: o,
+		mgr:  mgr,
+		nc:   mgr.NatsConn(),
+		nuid: nuid.New(),
+	}
 
-		o.stream, err = mgr.LoadOrNewStream(streamName, jsm.FileStorage(), jsm.MaxConsumers(1), jsm.MaxMessages(1), jsm.DiscardOld(), jsm.LimitsRetention())
+	if o.stream == nil {
+		_, err := e.createStream()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &election{
-		opts: o,
-		nc:   mgr.NatsConn(),
-		nuid: nuid.New(),
-	}, nil
+	return e, nil
+}
+
+func (e *election) createStream() (*jsm.Stream, error) {
+	if e.opts.streamName == "" {
+		return nil, fmt.Errorf("stream name is required")
+	}
+
+	sopts := []jsm.StreamOption{
+		jsm.MaxConsumers(1),
+		jsm.MaxMessages(1),
+		jsm.DiscardOld(),
+		jsm.LimitsRetention(),
+	}
+	if e.opts.storageType == memoryStorage {
+		sopts = append(sopts, jsm.MemoryStorage())
+	} else {
+		sopts = append(sopts, jsm.FileStorage())
+	}
+
+	var err error
+
+	stream, err := e.mgr.LoadOrNewStream(e.opts.streamName, sopts...)
+	if err != nil {
+		return nil, err
+	}
+
+	e.opts.Lock()
+	e.opts.stream = stream
+	e.opts.Unlock()
+
+	return stream, nil
 }
 
 func (e *election) subscribe() (*nats.Subscription, error) {
-	sub, err := e.nc.Subscribe(fmt.Sprintf("$LE.m.%s.%s", e.nuid.Next(), e.opts.name), func(m *nats.Msg) {
+	sub, err := e.nc.Subscribe(fmt.Sprintf("$LE.m.%s", e.nuid.Next()), func(m *nats.Msg) {
 		e.mu.Lock()
 		e.last = time.Now()
 		e.mu.Unlock()
@@ -121,10 +154,10 @@ func (e *election) manageLeadership(wg *sync.WaitGroup) {
 	lost := func() {
 		ticker.Stop()
 		e.mu.Lock()
+		e.opts.lostCb()
 		e.sub.Unsubscribe()
 		e.sub = nil
 		e.isLeader = false
-		e.opts.lostCb()
 		e.tries = 0
 		e.mu.Unlock()
 	}
@@ -136,7 +169,7 @@ func (e *election) manageLeadership(wg *sync.WaitGroup) {
 			seen := e.last
 			e.mu.Unlock()
 
-			if time.Since(seen) > time.Duration(e.opts.missedHBThreshold)*e.opts.hbInterval {
+			if time.Since(seen) >= time.Duration(e.opts.missedHBThreshold)*e.opts.hbInterval {
 				lost()
 				return
 			}
@@ -168,6 +201,17 @@ func (e *election) isLeaderUnlocked() bool {
 	return e.isLeader
 }
 
+func (e *election) getStream() *jsm.Stream {
+	e.opts.Lock()
+	defer e.opts.Unlock()
+
+	return e.opts.stream
+}
+
+func (e *election) standDownGrace(ctx context.Context) error {
+	return ctxSleep(ctx, time.Duration(e.opts.missedHBThreshold)*e.opts.hbInterval)
+}
+
 func (e *election) campaign(wg *sync.WaitGroup) {
 	try := func() (int, error) {
 		e.mu.Lock()
@@ -191,23 +235,43 @@ func (e *election) campaign(wg *sync.WaitGroup) {
 			}
 		}
 
-		_, err = e.opts.stream.NewConsumer(jsm.IdleHeartbeat(e.opts.hbInterval), jsm.DeliverySubject(sub.Subject))
-		if err != nil {
-			return try, err
+		stream := e.getStream()
+		if stream == nil {
+			stream, err = e.createStream()
+			if err != nil {
+				return try, err
+			}
 		}
 
-		// give a bit of grace to the past leader to realize is not leader anymore
-		err = ctxSleep(ctx, time.Duration(e.opts.missedHBThreshold)*e.opts.hbInterval)
+		_, err = stream.NewConsumer(
+			jsm.IdleHeartbeat(e.opts.hbInterval),
+			jsm.DeliverySubject(sub.Subject),
+			jsm.ConsumerDescription(fmt.Sprintf("Candidate %s", e.opts.name)),
+		)
 		if err != nil {
+			if aerr, ok := err.(api.ApiError); ok {
+				if aerr.NatsErrorCode() == 10059 { // stream not found error
+					e.createStream()
+				}
+			}
+
 			return try, err
 		}
 
 		e.mu.Lock()
 		e.last = time.Now()
+		e.mu.Unlock()
+
+		// give a bit of grace to the past leader to realize is not leader anymore
+		err = e.standDownGrace(ctx)
+		if err != nil {
+			return try, err
+		}
 
 		wg.Add(1)
 		go e.manageLeadership(wg)
 
+		e.mu.Lock()
 		e.isLeader = true
 		e.opts.wonCb()
 		e.tries = 0

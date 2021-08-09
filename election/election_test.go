@@ -28,96 +28,126 @@ import (
 )
 
 func TestElection(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Close()
-
-	stream, err := mgr.NewStream("ELECTION", jsm.FileStorage(), jsm.MaxConsumers(1), jsm.MaxMessages(1), jsm.DiscardOld(), jsm.LimitsRetention())
-	if err != nil {
-		t.Fatalf("stream create failed:: %s", err)
+	cases := []struct {
+		kind string
+		opt  jsm.StreamOption
+	}{
+		{"memory", jsm.MemoryStorage()},
+		{"disk", jsm.FileStorage()},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	wg := sync.WaitGroup{}
-	mu := sync.Mutex{}
-	wins := 0
-	lost := 0
+	for _, store := range cases {
+		t.Run(store.kind, func(t *testing.T) {
+			srv, nc, mgr := startJSServer(t)
+			defer srv.Shutdown()
+			defer nc.Close()
 
-	worker := func(wg *sync.WaitGroup, i int) {
-		defer wg.Done()
-
-		winCb := func() {
-			log.Printf("%d became leader", i)
-			mu.Lock()
-			wins++
-			mu.Unlock()
-		}
-
-		lostCb := func() {
-			log.Printf("%d lost leadership", i)
-			mu.Lock()
-			lost++
-			mu.Unlock()
-		}
-
-		nc, err := nats.Connect(srv.ClientURL(), nats.MaxReconnects(-1))
-		if err != nil {
-			t.Fatalf("nc failed: %s", err)
-		}
-		mgr, _ := jsm.New(nc)
-
-		elect, err := NewElection("TEST_"+strconv.Itoa(i), winCb, lostCb, "ELECTION", mgr)
-		if err != nil {
-			t.Fatalf("election start failed: %s", err)
-		}
-		elect.Start(ctx)
-	}
-
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go worker(&wg, i)
-	}
-
-	kills := 0
-	// kills consumers off to simulate errors
-	for {
-		consumers, err := stream.ConsumerNames()
-		if err != nil {
-			t.Fatalf("could not get names: %s", err)
-		}
-
-		for _, c := range consumers {
-			consumer, _ := stream.LoadConsumer(c)
-			if consumer != nil {
-				log.Printf("simulating failure of consumer %s with delivery subject %s", c, consumer.DeliverySubject())
-				consumer.Delete()
-				kills++
+			stream, err := mgr.NewStream("ELECTION", store.opt, jsm.MaxConsumers(1), jsm.MaxMessages(1), jsm.DiscardOld(), jsm.LimitsRetention())
+			if err != nil {
+				t.Fatalf("stream create failed:: %s", err)
 			}
-		}
 
-		err = ctxSleep(ctx, 2*time.Second)
-		if err != nil {
-			break
-		}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			wg := sync.WaitGroup{}
+			mu := sync.Mutex{}
+			wins := 0
+			lost := 0
+			active := 0
+			maxActive := 0
+
+			worker := func(wg *sync.WaitGroup, i int) {
+				defer wg.Done()
+
+				winCb := func() {
+					mu.Lock()
+					wins++
+					active++
+					if active > maxActive {
+						maxActive = active
+					}
+					act := active
+					mu.Unlock()
+					log.Printf("%d became leader with %d active leaders", i, act)
+				}
+
+				lostCb := func() {
+					log.Printf("%d lost leadership", i)
+					mu.Lock()
+					lost++
+					active--
+					mu.Unlock()
+				}
+
+				nc, err := nats.Connect(srv.ClientURL(), nats.MaxReconnects(-1))
+				if err != nil {
+					t.Fatalf("nc failed: %s", err)
+				}
+				mgr, _ := jsm.New(nc)
+
+				elect, err := NewElection("TEST_"+strconv.Itoa(i), winCb, lostCb, "ELECTION", mgr)
+				if err != nil {
+					t.Fatalf("election start failed: %s", err)
+				}
+				elect.Start(ctx)
+			}
+
+			for i := 0; i < 10; i++ {
+				wg.Add(1)
+				go worker(&wg, i)
+			}
+
+			kills := 0
+			// kills consumers off to simulate errors
+			for {
+				consumers, err := stream.ConsumerNames()
+				if err != nil {
+					t.Fatalf("could not get names: %s", err)
+				}
+
+				for _, c := range consumers {
+					consumer, _ := stream.LoadConsumer(c)
+					if consumer != nil {
+						log.Printf("simulating failure of consumer %s", consumer.Description())
+						consumer.Delete()
+						kills++
+					}
+				}
+
+				if kills > 1 && kills%2 == 0 {
+					log.Printf("deleting stream %s", stream.Name())
+					err = stream.Delete()
+					if err != nil {
+						t.Fatalf("stream delete failed: %s", err)
+					}
+				}
+
+				err = ctxSleep(ctx, 2*time.Second)
+				if err != nil {
+					break
+				}
+			}
+
+			wg.Wait()
+
+			mu.Lock()
+			defer mu.Unlock()
+			if kills == 0 {
+				t.Fatalf("no kills were done")
+			}
+			if wins < kills {
+				t.Fatalf("did not win at least 10 elections")
+			}
+			if lost < kills {
+				t.Fatalf("did not loose at least 10 leaderships")
+			}
+			if maxActive > 1 {
+				t.Fatalf("had more than 1 active worker")
+			}
+			log.Printf("kills: %d, leaders elected: %d, leaderships lost: %d", kills, wins, lost)
+		})
 	}
-
-	wg.Wait()
-
-	mu.Lock()
-	defer mu.Unlock()
-	if kills == 0 {
-		t.Fatalf("no kills were done")
-	}
-	if wins < kills {
-		t.Fatalf("did not win at least 10 elections")
-	}
-	if lost < kills {
-		t.Fatalf("did not loose at least 10 leaderships")
-	}
-
-	log.Printf("kills: %d, leaders elected: %d, leaderships lost: %d", kills, wins, lost)
-
 }
 
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {

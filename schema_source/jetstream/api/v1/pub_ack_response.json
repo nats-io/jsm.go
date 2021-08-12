@@ -24,6 +24,10 @@
       "type": "boolean",
       "description": "Indicates that the message was not stored due to the Nats-Msg-Id header and duplicate tracking",
       "default": false
+    },
+    "domain": {
+      "type": "string",
+      "description": "If the Stream accepting the message is in a JetStream server configured for a domain this would be that domain"
     }
   }
 }

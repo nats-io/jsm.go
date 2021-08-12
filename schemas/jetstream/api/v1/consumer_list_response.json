@@ -416,6 +416,25 @@
                   }
                 }
               }
+            },
+            "active": {
+              "type": "object",
+              "description": "When present indicates current interest on the consumer",
+              "required": [
+                "subject"
+              ],
+              "properties": {
+                "subject": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The subject where messages are being delivered to, typically the deliver subject"
+                },
+                "queue": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "If the subscribers to the subject belongs to a queue group this would be the name of the first found group"
+                }
+              }
             }
           }
         }

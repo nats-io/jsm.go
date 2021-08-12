@@ -337,6 +337,9 @@ func (j *jetStreamStorage) loadBucket() error {
 
 	stream, err := j.mgr.LoadStream(j.streamName)
 	if err != nil {
+		if api.IsNatsErr(err, 10059) {
+			return ErrUnknownBucket
+		}
 		return err
 	}
 

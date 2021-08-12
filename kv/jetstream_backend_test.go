@@ -652,6 +652,14 @@ func TestJetStreamStorage_Get(t *testing.T) {
 		}
 	}
 
+	res, err := store.Get("UNKNOWN")
+	if err == nil {
+		t.Fatalf("expected an error")
+	}
+	if res != nil {
+		t.Fatalf("expected nil result")
+	}
+
 	_, err = store.Get(">")
 	if err == nil {
 		t.Fatalf("expected error dong Get() on wildcard")
@@ -674,6 +682,22 @@ func TestJetStreamStorage_Close(t *testing.T) {
 
 	if store.stream != nil {
 		t.Fatalf("close failed, stream is not nil")
+	}
+}
+
+func TestJetStreamStorage_UnknownBucket(t *testing.T) {
+	srv, nc, _ := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	kv, err := NewClient(nc, "MISSING")
+	if err != nil {
+		t.Fatalf("new failed: %s", err)
+	}
+
+	_, err = kv.Status()
+	if err != ErrUnknownBucket {
+		t.Fatalf("Unexpected error: %s", err)
 	}
 }
 

@@ -60,6 +60,9 @@ var (
 
 	// ErrInvalidBucketName is returned when trying to access buckets that do not match ValidBucketPattern
 	ErrInvalidBucketName = errors.New("invalid bucket name")
+
+	// ErrUnknownBucket is returned when a bucket could not be found
+	ErrUnknownBucket = errors.New("unknown bucket")
 )
 
 // NewBucket creates or load a bucket. If the bucket already exist the existing bucket configuration is not reconciled

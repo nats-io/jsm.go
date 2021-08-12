@@ -30,11 +30,15 @@ const (
 
 	// DefaultMissedHBThreshold how many heartbeats we can miss before we decide we lost leadership
 	DefaultMissedHBThreshold = 3
+
+	// DefaultSubjectPrefix is the prefix to use for election related subjects
+	DefaultSubjectPrefix = "$LE"
 )
 
 type options struct {
 	streamName        string
 	name              string
+	subjectPrefix     string
 	wonCb             func()
 	lostCb            func()
 	campaignInterval  time.Duration
@@ -43,6 +47,7 @@ type options struct {
 	storageType       storageType
 	stream            *jsm.Stream
 	bo                Backoff
+	debug             func(format string, a ...interface{})
 
 	sync.Mutex
 }
@@ -124,6 +129,22 @@ func WithMemoryStorage() Option {
 	}
 }
 
+// WithDebug sets a function to do debug logging with
+func WithDebug(cb func(format string, a ...interface{})) Option {
+	return func(o *options) error {
+		o.debug = cb
+		return nil
+	}
+}
+
+// WithSubjectPrefix sets the prefix to use for subjects used by the election
+func WithSubjectPrefix(p string) Option {
+	return func(o *options) error {
+		o.subjectPrefix = p
+		return nil
+	}
+}
+
 // Option configures the leader election system
 type Option func(*options) error
 
@@ -133,6 +154,7 @@ func newOptions(opts ...Option) (*options, error) {
 		campaignInterval:  DefaultCampaignInterval,
 		hbInterval:        DefaultHeartBeatInterval,
 		missedHBThreshold: DefaultMissedHBThreshold,
+		subjectPrefix:     DefaultSubjectPrefix,
 	}
 
 	for _, opt := range opts {

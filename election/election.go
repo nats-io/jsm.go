@@ -98,12 +98,21 @@ func NewElection(name string, wonCb func(), lostCb func(), streamName string, mg
 	return e, nil
 }
 
+func (e *election) debug(format string, a ...interface{}) {
+	if e.opts.debug == nil {
+		return
+	}
+
+	e.opts.debug(fmt.Sprintf(format, a...))
+}
+
 func (e *election) createStream() (*jsm.Stream, error) {
 	if e.opts.streamName == "" {
 		return nil, fmt.Errorf("stream name is required")
 	}
 
 	sopts := []jsm.StreamOption{
+		jsm.Subjects(fmt.Sprintf("%s.i", e.opts.subjectPrefix)),
 		jsm.MaxConsumers(1),
 		jsm.MaxMessages(1),
 		jsm.DiscardOld(),
@@ -126,14 +135,24 @@ func (e *election) createStream() (*jsm.Stream, error) {
 	e.opts.stream = stream
 	e.opts.Unlock()
 
+	e.debug("Created or loaded stream %s with configuration %+v", stream.Name(), stream.Configuration())
+
 	return stream, nil
 }
 
 func (e *election) subscribe() (*nats.Subscription, error) {
-	sub, err := e.nc.Subscribe(fmt.Sprintf("$LE.m.%s", e.nuid.Next()), func(m *nats.Msg) {
+	e.mu.Lock()
+	if e.sub != nil {
+		e.sub.Unsubscribe()
+		e.sub = nil
+	}
+	e.mu.Unlock()
+
+	sub, err := e.nc.Subscribe(fmt.Sprintf("%s.m.%s", e.opts.subjectPrefix, e.nuid.Next()), func(m *nats.Msg) {
 		e.mu.Lock()
 		e.last = time.Now()
 		e.mu.Unlock()
+		e.debug("Received heartbeat on %s", m.Sub.Subject)
 	})
 	if err != nil {
 		return nil, err
@@ -143,6 +162,8 @@ func (e *election) subscribe() (*nats.Subscription, error) {
 	e.sub = sub
 	e.mu.Unlock()
 
+	e.debug("Subscribed to %s", sub.Subject)
+
 	return sub, nil
 }
 
@@ -151,7 +172,8 @@ func (e *election) manageLeadership(wg *sync.WaitGroup) {
 
 	ticker := time.NewTicker(10 * time.Millisecond)
 
-	lost := func() {
+	lost := func(reason string) {
+		e.debug("Lost leadership: %s", reason)
 		ticker.Stop()
 		e.mu.Lock()
 		e.opts.lostCb()
@@ -170,12 +192,12 @@ func (e *election) manageLeadership(wg *sync.WaitGroup) {
 			e.mu.Unlock()
 
 			if time.Since(seen) >= time.Duration(e.opts.missedHBThreshold)*e.opts.hbInterval {
-				lost()
+				lost(fmt.Sprintf("heartbeat threshold missed, last seen: %v", time.Since(seen)))
 				return
 			}
 
 		case <-e.ctx.Done():
-			lost()
+			lost("context canceled")
 			return
 		}
 	}
@@ -222,6 +244,8 @@ func (e *election) campaign(wg *sync.WaitGroup) {
 		try := e.tries
 		e.mu.Unlock()
 
+		e.debug("Campaigning for leadership try %d", try)
+
 		var err error
 
 		if leader {
@@ -243,7 +267,7 @@ func (e *election) campaign(wg *sync.WaitGroup) {
 			}
 		}
 
-		_, err = stream.NewConsumer(
+		cons, err := stream.NewConsumer(
 			jsm.IdleHeartbeat(e.opts.hbInterval),
 			jsm.DeliverySubject(sub.Subject),
 			jsm.ConsumerDescription(fmt.Sprintf("Candidate %s", e.opts.name)),
@@ -257,6 +281,8 @@ func (e *election) campaign(wg *sync.WaitGroup) {
 
 			return try, err
 		}
+
+		e.debug("Became leader on consumer %s with hb interval %v", cons.Name(), cons.Heartbeat())
 
 		e.mu.Lock()
 		e.last = time.Now()
@@ -272,6 +298,7 @@ func (e *election) campaign(wg *sync.WaitGroup) {
 		go e.manageLeadership(wg)
 
 		e.mu.Lock()
+		e.debug("Became leader on try %d", try)
 		e.isLeader = true
 		e.opts.wonCb()
 		e.tries = 0

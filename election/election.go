@@ -112,7 +112,7 @@ func (e *election) createStream() (*jsm.Stream, error) {
 	}
 
 	sopts := []jsm.StreamOption{
-		jsm.Subjects(fmt.Sprintf("%s.i", e.opts.subjectPrefix)),
+		jsm.Subjects(fmt.Sprintf("%s.%s.i", e.opts.subjectPrefix, e.opts.streamName)),
 		jsm.MaxConsumers(1),
 		jsm.MaxMessages(1),
 		jsm.DiscardOld(),
@@ -148,7 +148,7 @@ func (e *election) subscribe() (*nats.Subscription, error) {
 	}
 	e.mu.Unlock()
 
-	sub, err := e.nc.Subscribe(fmt.Sprintf("%s.m.%s", e.opts.subjectPrefix, e.nuid.Next()), func(m *nats.Msg) {
+	sub, err := e.nc.Subscribe(fmt.Sprintf("%s.%s.m.%s", e.opts.subjectPrefix, e.opts.streamName, e.nuid.Next()), func(m *nats.Msg) {
 		e.mu.Lock()
 		e.last = time.Now()
 		e.mu.Unlock()

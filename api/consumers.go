@@ -285,6 +285,12 @@ type SequencePair struct {
 	Stream   uint64 `json:"stream_seq"`
 }
 
+// PushActive is information about the active interest on a Push subscriber
+type PushActive struct {
+	Subject string `json:"subject"`
+	Queue   string `json:"queue,omitempty"`
+}
+
 // ConsumerInfo reports the current state of a consumer
 type ConsumerInfo struct {
 	Stream         string         `json:"stream_name"`
@@ -297,6 +303,7 @@ type ConsumerInfo struct {
 	NumRedelivered int            `json:"num_redelivered"`
 	NumWaiting     int            `json:"num_waiting"`
 	NumPending     uint64         `json:"num_pending"`
+	Active         *PushActive    `json:"active,omitempty"`
 	Cluster        *ClusterInfo   `json:"cluster,omitempty"`
 }
 

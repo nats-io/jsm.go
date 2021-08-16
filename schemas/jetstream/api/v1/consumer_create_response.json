@@ -224,7 +224,10 @@
           }
         },
         "created": {
-          "type": "string"
+          "description": "The time the Consumer was created",
+          "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+          "type": "string",
+          "format": "date-time"
         },
         "delivered": {
           "description": "The last message delivered from this Consumer",
@@ -248,6 +251,12 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 18446744073709551615
+            },
+            "last_active": {
+              "description": "The last time a message was delivered or acknowledged (for ack_floor)",
+              "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+              "type": "string",
+              "format": "date-time"
             }
           }
         },
@@ -273,6 +282,12 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 18446744073709551615
+            },
+            "last_active": {
+              "description": "The last time a message was delivered or acknowledged (for ack_floor)",
+              "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+              "type": "string",
+              "format": "date-time"
             }
           }
         },
@@ -355,24 +370,9 @@
             }
           }
         },
-        "active": {
-          "type": "object",
-          "description": "When present indicates current interest on the consumer",
-          "required": [
-            "subject"
-          ],
-          "properties": {
-            "subject": {
-              "type": "string",
-              "minLength": 1,
-              "description": "The subject where messages are being delivered to, typically the deliver subject"
-            },
-            "queue": {
-              "type": "string",
-              "minLength": 1,
-              "description": "If the subscribers to the subject belongs to a queue group this would be the name of the first found group"
-            }
-          }
+        "push_bound": {
+          "description": "Indicates if any client is connected and receiving messages from a push consumer",
+          "type": "boolean"
         }
       }
     },

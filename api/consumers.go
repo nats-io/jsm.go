@@ -262,6 +262,7 @@ type ConsumerConfig struct {
 	AckWait         time.Duration `json:"ack_wait,omitempty"`
 	DeliverPolicy   DeliverPolicy `json:"deliver_policy"`
 	DeliverSubject  string        `json:"deliver_subject,omitempty"`
+	DeliverGroup    string        `json:"deliver_group,omitempty"`
 	Durable         string        `json:"durable_name,omitempty"`
 	FilterSubject   string        `json:"filter_subject,omitempty"`
 	FlowControl     bool          `json:"flow_control,omitempty"`
@@ -281,14 +282,9 @@ type ConsumerConfig struct {
 
 // SequencePair is the consumer and stream sequence that uniquely identify a message
 type SequencePair struct {
-	Consumer uint64 `json:"consumer_seq"`
-	Stream   uint64 `json:"stream_seq"`
-}
-
-// PushActive is information about the active interest on a Push subscriber
-type PushActive struct {
-	Subject string `json:"subject"`
-	Queue   string `json:"queue,omitempty"`
+	Consumer uint64     `json:"consumer_seq"`
+	Stream   uint64     `json:"stream_seq"`
+	Last     *time.Time `json:"last_active,omitempty"`
 }
 
 // ConsumerInfo reports the current state of a consumer
@@ -303,8 +299,8 @@ type ConsumerInfo struct {
 	NumRedelivered int            `json:"num_redelivered"`
 	NumWaiting     int            `json:"num_waiting"`
 	NumPending     uint64         `json:"num_pending"`
-	Active         *PushActive    `json:"active,omitempty"`
 	Cluster        *ClusterInfo   `json:"cluster,omitempty"`
+	PushBound      bool           `json:"push_bound,omitempty"`
 }
 
 // JSApiConsumerGetNextRequest is for getting next messages for pull based consumers

@@ -448,6 +448,14 @@ func PushFlowControl() ConsumerOption {
 	}
 }
 
+// DeliverGroup when set will only deliver messages to subscriptions matching that group
+func DeliverGroup(g string) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.DeliverGroup = g
+		return nil
+	}
+}
+
 // Reset reloads the Consumer configuration from the JetStream server
 func (c *Consumer) Reset() error {
 	return c.mgr.loadConfigForConsumer(c)
@@ -720,6 +728,7 @@ func (c *Consumer) RateLimit() uint64                { return c.cfg.RateLimit }
 func (c *Consumer) MaxAckPending() int               { return c.cfg.MaxAckPending }
 func (c *Consumer) FlowControl() bool                { return c.cfg.FlowControl }
 func (c *Consumer) Heartbeat() time.Duration         { return c.cfg.Heartbeat }
+func (c *Consumer) DeliverGroup() string             { return c.cfg.DeliverGroup }
 func (c *Consumer) MaxWaiting() int                  { return c.cfg.MaxWaiting }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {

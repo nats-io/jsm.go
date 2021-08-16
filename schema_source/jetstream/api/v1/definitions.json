@@ -31,6 +31,11 @@
       "maximum": 9223372036854775807,
       "minimum": -9223372036854775808
     },
+    "golang_time": {
+      "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+      "type": "string",
+      "format": "date-time"
+    },
     "stream_source": {
       "type": "object",
       "description": "Defines a source where streams should be replicated from",
@@ -163,23 +168,6 @@
           "description": "How many uncommitted operations this peer is behind the leader",
           "type": "integer",
           "minimum": 0
-        }
-      }
-    },
-    "consumer_active": {
-      "type": "object",
-      "description": "When present indicates current interest on the consumer",
-      "required": ["subject"],
-      "properties": {
-        "subject": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The subject where messages are being delivered to, typically the deliver subject"
-        },
-        "queue": {
-          "type": "string",
-          "minLength": 1,
-          "description": "If the subscribers to the subject belongs to a queue group this would be the name of the first found group"
         }
       }
     },
@@ -455,6 +443,10 @@
         "stream_seq": {
           "$ref": "#/definitions/golang_uint64",
           "description": "The sequence number of the Stream"
+        },
+        "last_active": {
+          "description": "The last time a message was delivered or acknowledged (for ack_floor)",
+          "$ref": "#/definitions/golang_time"
         }
       }
     },
@@ -474,7 +466,8 @@
           "$ref": "#/definitions/consumer_configuration"
         },
         "created": {
-          "type": "string"
+          "description": "The time the Consumer was created",
+          "$ref": "#/definitions/golang_time"
         },
         "delivered": {
           "description": "The last message delivered from this Consumer",
@@ -507,8 +500,9 @@
         "cluster": {
           "$ref": "#/definitions/cluster_info"
         },
-        "active": {
-          "$ref": "#/definitions/consumer_active"
+        "push_bound": {
+          "description": "Indicates if any client is connected and receiving messages from a push consumer",
+          "type": "boolean"
         }
       }
     },
@@ -607,7 +601,7 @@
         },
         "created": {
           "description": "Timestamp when the stream was created",
-          "type": "string"
+          "$ref": "#/definitions/golang_time"
         },
         "cluster": {
           "$ref": "#/definitions/cluster_info"

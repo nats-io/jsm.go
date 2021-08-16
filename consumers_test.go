@@ -823,6 +823,14 @@ func TestPushFlowControl(t *testing.T) {
 	}
 }
 
+func TestDeliverGroup(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.DeliverGroup("bob")(cfg)
+	if cfg.DeliverGroup != "bob" {
+		t.Fatalf("expected DeliverGroup==bob")
+	}
+}
+
 func TestMaxWaiting(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.MaxWaiting(10)(cfg)

@@ -262,7 +262,9 @@
                               },
                               "opt_start_time": {
                                 "description": "Time stamp to start replicating from",
-                                "type": "string"
+                                "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                                "type": "string",
+                                "format": "date-time"
                               },
                               "filter_subject": {
                                 "description": "Replicate only a subset of messages based on filter",
@@ -312,7 +314,9 @@
                                 },
                                 "opt_start_time": {
                                   "description": "Time stamp to start replicating from",
-                                  "type": "string"
+                                  "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                                  "type": "string",
+                                  "format": "date-time"
                                 },
                                 "filter_subject": {
                                   "description": "Replicate only a subset of messages based on filter",
@@ -450,7 +454,9 @@
                   },
                   "created": {
                     "description": "Timestamp when the stream was created",
-                    "type": "string"
+                    "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                    "type": "string",
+                    "format": "date-time"
                   },
                   "cluster": {
                     "type": "object",

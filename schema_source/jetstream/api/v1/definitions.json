@@ -51,7 +51,7 @@
         },
         "opt_start_time": {
           "description": "Time stamp to start replicating from",
-          "type": "string"
+          "$ref": "#/definitions/golang_time"
         },
         "filter_subject": {
           "description": "Replicate only a subset of messages based on filter",
@@ -418,7 +418,7 @@
           "enum": ["by_start_time"]
         },
         "opt_start_time": {
-          "type": "string"
+          "$ref": "#/definitions/golang_time"
         }
       }
     },

@@ -96,7 +96,9 @@
                   ]
                 },
                 "opt_start_time": {
-                  "type": "string"
+                  "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                  "type": "string",
+                  "format": "date-time"
                 }
               }
             },

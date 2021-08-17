@@ -112,8 +112,8 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 	pending := uint64(math.MaxUint64)
 	pending, _ = strconv.ParseUint(parts[8+offset], 10, 64)
 
-	domain := ""
-	account := ""
+	domain := _EMPTY_
+	account := _EMPTY_
 	if c == 11 {
 		domain = parts[2]
 		account = parts[3]

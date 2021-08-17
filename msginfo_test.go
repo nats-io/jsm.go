@@ -14,7 +14,6 @@
 package jsm_test
 
 import (
-	"math"
 	"testing"
 	"time"
 
@@ -25,11 +24,14 @@ import (
 
 func TestParseJSMsgMetadata_New(t *testing.T) {
 	cases := []struct {
-		meta    string
-		pending uint64
+		meta       string
+		pending    uint64
+		hasAccount bool
+		hasDomain  bool
 	}{
-		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000", math.MaxUint64},
-		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10},
+		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, false, false},
+		{"$JS.ACK.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, true, false},
+		{"$JS.ACK.DOMAIN.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, true, true},
 	}
 
 	for _, tc := range cases {
@@ -64,5 +66,14 @@ func TestParseJSMsgMetadata_New(t *testing.T) {
 		if i.Pending() != tc.pending {
 			t.Fatalf("expected %d got %d", tc.pending, i.Pending())
 		}
+
+		if tc.hasDomain && i.Domain() != "DOMAIN" {
+			t.Fatalf("expected DOMAIN got %q", i.Domain())
+		}
+
+		if tc.hasAccount && i.Account() != "ACCOUNT" {
+			t.Fatalf("expected ACCOUNT got %q", i.Account())
+		}
+
 	}
 }

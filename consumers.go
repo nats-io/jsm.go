@@ -585,20 +585,20 @@ func (c *Consumer) NextMsgContext(ctx context.Context) (*nats.Msg, error) {
 }
 
 // DeliveredState reports the messages sequences that were successfully delivered
-func (c *Consumer) DeliveredState() (api.SequencePair, error) {
+func (c *Consumer) DeliveredState() (api.SequenceInfo, error) {
 	info, err := c.State()
 	if err != nil {
-		return api.SequencePair{}, err
+		return api.SequenceInfo{}, err
 	}
 
 	return info.Delivered, nil
 }
 
 // AcknowledgedFloor reports the highest contiguous message sequences that were acknowledged
-func (c *Consumer) AcknowledgedFloor() (api.SequencePair, error) {
+func (c *Consumer) AcknowledgedFloor() (api.SequenceInfo, error) {
 	info, err := c.State()
 	if err != nil {
-		return api.SequencePair{}, err
+		return api.SequenceInfo{}, err
 	}
 
 	return info.AckFloor, nil

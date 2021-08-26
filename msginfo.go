@@ -33,7 +33,6 @@ type MsgInfo struct {
 	pending   uint64
 	ts        time.Time
 	domain    string
-	account   string
 }
 
 // Stream is the stream this message is stored in
@@ -71,11 +70,6 @@ func (i *MsgInfo) Domain() string {
 	return i.domain
 }
 
-// Account is the account where the message came from, can be empty
-func (i *MsgInfo) Account() string {
-	return i.account
-}
-
 // Pending is the number of messages left to consume, -1 when the number is not reported
 func (i *MsgInfo) Pending() uint64 {
 	return i.pending
@@ -90,17 +84,23 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 	}
 
 	parts := strings.Split(reply, ".")
+	c := len(parts)
+
+	if c < 9 || (c > 9 && c < 11) {
+		return nil, fmt.Errorf("message metadata does not appear to be an ACK")
+	}
 
 	if parts[0] != "$JS" || parts[1] != "ACK" {
 		return nil, fmt.Errorf("message metadata does not appear to be an ACK")
 	}
 
-	// $JS.ACK.<account hash>.<stream>.<consumer>...
-	// $JS.ACK.<domain>.<account hash>.<stream>.<consumer>...
+	// $JS.ACK.<domain>.<account hash>.<stream>.<consumer>...<random>
 	// $JS.ACK.<stream>.<consumer>...
 
-	c := len(parts)
-	offset := c - 9
+	offset := 0
+	if c == 12 {
+		offset = 2
+	}
 
 	stream := parts[2+offset]
 	consumer := parts[3+offset]
@@ -113,15 +113,11 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 	pending, _ = strconv.ParseUint(parts[8+offset], 10, 64)
 
 	domain := _EMPTY_
-	account := _EMPTY_
-	if c == 11 {
+	if c == 12 {
 		domain = parts[2]
-		account = parts[3]
-	} else if c == 10 {
-		account = parts[2]
 	}
 
-	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, pending, ts, domain, account}, nil
+	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, pending, ts, domain}, nil
 }
 
 // ParseJSMsgMetadata parse the reply subject metadata to determine message metadata

@@ -14,6 +14,7 @@
 package jsm_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -24,19 +25,17 @@ import (
 
 func TestParseJSMsgMetadata_New(t *testing.T) {
 	cases := []struct {
-		meta       string
-		pending    uint64
-		hasAccount bool
-		hasDomain  bool
+		meta      string
+		pending   uint64
+		hasDomain bool
 	}{
-		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, false, false},
-		{"$JS.ACK.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, true, false},
-		{"$JS.ACK.DOMAIN.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, true, true},
+		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, false},
+		{"$JS.ACK.DOMAIN.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10.random", 10, true},
 	}
 
 	for _, tc := range cases {
 		i, err := jsm.ParseJSMsgMetadata(&nats.Msg{Reply: tc.meta})
-		checkErr(t, err, "msg parse failed")
+		checkErr(t, err, fmt.Sprintf("msg parse failed for '%s'", tc.meta))
 
 		if i.Stream() != "ORDERS" {
 			t.Fatalf("expected ORDERS got %s", i.Stream())
@@ -70,10 +69,5 @@ func TestParseJSMsgMetadata_New(t *testing.T) {
 		if tc.hasDomain && i.Domain() != "DOMAIN" {
 			t.Fatalf("expected DOMAIN got %q", i.Domain())
 		}
-
-		if tc.hasAccount && i.Account() != "ACCOUNT" {
-			t.Fatalf("expected ACCOUNT got %q", i.Account())
-		}
-
 	}
 }

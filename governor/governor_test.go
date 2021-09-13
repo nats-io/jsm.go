@@ -77,6 +77,10 @@ func TestJsGovernor(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Close()
 
+	_, err := NewJSGovernorManager("TEST", 0, 0, 0, mgr, true)
+	if err.Error() != "unknown governor" {
+		t.Fatalf("expected not exist error: %v", err)
+	}
 	limit := 100
 
 	gmgr, err := NewJSGovernorManager("TEST", uint64(limit), 2*time.Minute, 0, mgr, true)

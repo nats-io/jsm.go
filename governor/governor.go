@@ -110,6 +110,7 @@ type jsGMgr struct {
 	subj     string
 	replicas int
 	running  bool
+	noCreate bool
 
 	logger Logger
 	cint   time.Duration
@@ -131,6 +132,10 @@ func NewJSGovernorManager(name string, limit uint64, maxAge time.Duration, repli
 
 	for _, opt := range opts {
 		opt(gov)
+	}
+
+	if limit == 0 {
+		gov.noCreate = true
 	}
 
 	gov.stream = gov.streamName()
@@ -400,6 +405,17 @@ func (g *jsGMgr) streamOpts() []jsm.StreamOption {
 
 func (g *jsGMgr) loadOrCreate(update bool) error {
 	opts := g.streamOpts()
+
+	if g.noCreate {
+		has, err := g.mgr.IsKnownStream(g.stream)
+		if err != nil {
+			return err
+		}
+
+		if !has {
+			return fmt.Errorf("unknown governor")
+		}
+	}
 
 	str, err := g.mgr.LoadOrNewStream(g.stream, opts...)
 	if err != nil {

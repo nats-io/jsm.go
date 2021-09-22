@@ -362,6 +362,12 @@ func (j *jetStreamStorage) CreateBucket() error {
 		jsm.MaxBytes(j.opts.maxBucketSize),
 	}
 
+	if j.opts.storageType == 1 {
+		opts = append(opts, jsm.FileStorage())
+	} else {
+		opts = append(opts, jsm.MemoryStorage())
+	}
+
 	if j.opts.replicas > 1 {
 		opts = append(opts, jsm.Replicas(int(j.opts.replicas)))
 	}

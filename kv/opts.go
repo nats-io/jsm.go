@@ -33,6 +33,13 @@ const (
 	DefaultMaxValueSize int32 = -1
 )
 
+type storageType int
+
+const (
+	memoryStorage storageType = 0
+	fileStorage   storageType = 1
+)
+
 type options struct {
 	history               uint64
 	replicas              uint
@@ -48,6 +55,7 @@ type options struct {
 	timeout               time.Duration
 	overrideStreamName    string
 	overrideSubjectPrefix string
+	storageType           storageType
 }
 
 // Option configures the KV client
@@ -68,6 +76,7 @@ func newOpts(opts ...Option) (*options, error) {
 		maxBucketSize: DefaultMaxBucketSize,
 		maxValueSize:  DefaultMaxValueSize,
 		log:           &stdLogger{},
+		storageType:   memoryStorage,
 	}
 
 	for _, opt := range opts {
@@ -234,5 +243,13 @@ func WithStreamSubjectPrefix(p string) Option {
 func OnlyIfLastValueSequence(seq uint64) PutOption {
 	return func(o *putOptions) {
 		o.jsPreviousSeq = seq
+	}
+}
+
+// WithFileStorage campaigns using a file based stream
+func WithFileStorage() Option {
+	return func(o *options) error {
+		o.storageType = fileStorage
+		return nil
 	}
 }

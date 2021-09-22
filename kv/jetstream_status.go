@@ -43,6 +43,9 @@ func (j *jsStatus) BucketLocation() string {
 }
 
 func (j *jsStatus) Replicas() (ok int, failed int) {
+	// the leader isnt listed as a peer, so we start with 1
+	ok = 1
+
 	if j.info.Cluster != nil {
 		for _, peer := range j.info.Cluster.Replicas {
 			if peer.Current {

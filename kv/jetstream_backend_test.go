@@ -480,7 +480,7 @@ func TestJetStreamStorage_Status(t *testing.T) {
 		t.Fatalf("invalid values %d", status.Values())
 	}
 
-	if ok, failed := status.Replicas(); ok != 0 || failed != 0 {
+	if ok, failed := status.Replicas(); ok != 1 || failed != 0 {
 		t.Fatalf("invalid replicas ok: %d failed: %d", ok, failed)
 	}
 

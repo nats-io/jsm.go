@@ -1,4 +1,4 @@
-// auto generated 2021-09-28 14:52:56.259206 +0200 CEST m=+0.025423131
+// auto generated 2021-09-29 11:22:35.918591 +0200 CEST m=+0.676093472
 
 package api
 
@@ -56,6 +56,7 @@ var schemaTypes = map[string]func() interface{}{
 	"io.nats.jetstream.api.v1.stream_msg_get_response":           func() interface{} { return &JSApiMsgGetResponse{} },
 	"io.nats.jetstream.api.v1.stream_names_request":              func() interface{} { return &JSApiStreamNamesRequest{} },
 	"io.nats.jetstream.api.v1.stream_names_response":             func() interface{} { return &JSApiStreamNamesResponse{} },
+	"io.nats.jetstream.api.v1.stream_purge_request":              func() interface{} { return &JSApiStreamPurgeRequest{} },
 	"io.nats.jetstream.api.v1.stream_purge_response":             func() interface{} { return &JSApiStreamPurgeResponse{} },
 	"io.nats.jetstream.api.v1.stream_snapshot_response":          func() interface{} { return &JSApiStreamSnapshotResponse{} },
 	"io.nats.jetstream.api.v1.stream_snapshot_request":           func() interface{} { return &JSApiStreamSnapshotRequest{} },
@@ -800,6 +801,34 @@ func (t JSApiStreamNamesResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiStreamNamesResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamPurgeRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_purge_request
+func (t JSApiStreamPurgeRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_purge_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamPurgeRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_purge_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamPurgeRequest) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

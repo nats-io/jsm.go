@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build ignore
 // +build ignore
 
 package main
@@ -230,6 +231,7 @@ func main() {
 		&schema{P: "jetstream/api/v1/stream_msg_get_response.json", St: "JSApiMsgGetResponse"},
 		&schema{P: "jetstream/api/v1/stream_names_request.json", St: "JSApiStreamNamesRequest"},
 		&schema{P: "jetstream/api/v1/stream_names_response.json", St: "JSApiStreamNamesResponse"},
+		&schema{P: "jetstream/api/v1/stream_purge_request.json", St: "JSApiStreamPurgeRequest"},
 		&schema{P: "jetstream/api/v1/stream_purge_response.json", St: "JSApiStreamPurgeResponse"},
 		&schema{P: "jetstream/api/v1/stream_snapshot_response.json", St: "JSApiStreamSnapshotResponse"},
 		&schema{P: "jetstream/api/v1/stream_snapshot_request.json", St: "JSApiStreamSnapshotRequest"},

@@ -83,12 +83,12 @@ func (c *readCache) Destroy() error {
 	return c.backend.Destroy()
 }
 
-func (c *readCache) Purge() error {
+func (c *readCache) Purge(key string) error {
 	c.mu.Lock()
-	c.cache = map[string]Entry{}
+	delete(c.cache, key) // possible race here if a update is enroute from the watched bucket that, probably ok
 	c.mu.Unlock()
 
-	return c.backend.Purge()
+	return c.backend.Purge(key)
 }
 
 func (c *readCache) Delete(key string) error {

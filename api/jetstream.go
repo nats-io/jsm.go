@@ -53,6 +53,12 @@ const (
 	// JSRollup is a header indicating the message being sent should be stored and all past messags should be discarded
 	// the value can be either `all` or `subject`
 	JSRollup = "Nats-Rollup"
+
+	// JSRollupAll is the value for JSRollup header to replace the entire stream
+	JSRollupAll = "all"
+
+	// JSRollupSubject is the value for JSRollup header to replace the a single subject
+	JSRollupSubject = "sub"
 )
 
 type JSApiIterableRequest struct {

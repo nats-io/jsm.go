@@ -365,6 +365,14 @@ func Sources(streams ...*api.StreamSource) StreamOption {
 	}
 }
 
+// Sealed seals a stream so that messages can not be deleted by API or limits, sealed streams can not be unsealed
+func Sealed() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Sealed = true
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -637,3 +645,4 @@ func (s *Stream) Template() string                { return s.cfg.Template }
 func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }
 func (s *Stream) Mirror() *api.StreamSource       { return s.cfg.Mirror }
 func (s *Stream) Sources() []*api.StreamSource    { return s.cfg.Sources }
+func (s *Stream) Sealed() bool                    { return s.cfg.Sealed }

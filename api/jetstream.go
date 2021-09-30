@@ -49,6 +49,10 @@ const (
 
 	// JSExpectedLastMsgId only stores the message if previous Nats-Msg-Id header value matches this
 	JSExpectedLastMsgId = "Nats-Expected-Last-Msg-Id"
+
+	// JSRollup is a header indicating the message being sent should be stored and all past messags should be discarded
+	// the value can be either `all` or `subject`
+	JSRollup = "Nats-Rollup"
 )
 
 type JSApiIterableRequest struct {

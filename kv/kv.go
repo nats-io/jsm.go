@@ -120,14 +120,14 @@ type KV interface {
 	// Put saves a value into a key
 	Put(key string, val []byte, opts ...PutOption) (seq uint64, err error)
 
-	// Delete purges the subject
+	// Delete marks the key as deleted, history is retained subject to configured history limit
 	Delete(key string) error
+
+	// Purge marks the key as deleted and removes history, after this operation 1 historic value is kept - the purge
+	Purge(key string) error
 
 	// Destroy removes the entire bucket and all data, KV cannot be used after
 	Destroy() error
-
-	// Purge removes all data from the bucket but leaves the bucket
-	Purge() error
 
 	RoKV
 }

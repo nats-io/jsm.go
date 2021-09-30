@@ -374,7 +374,7 @@ func TestJetStreamStorage_Watch(t *testing.T) {
 	}
 }
 
-func TestJetStreamStorage_CompactAndPurge(t *testing.T) {
+func TestJetStreamStorage_Purge(t *testing.T) {
 	store, srv, nc, _ := setupBasicTestBucket(t)
 	defer srv.Shutdown()
 	defer nc.Close()
@@ -392,6 +392,8 @@ func TestJetStreamStorage_CompactAndPurge(t *testing.T) {
 	}
 
 	checkCount := func(t *testing.T, subj string, expect uint64) {
+		t.Helper()
+
 		c, err := store.stream.NewConsumer(jsm.DurableName("X"), jsm.FilterStreamBySubject(subj))
 		if err != nil {
 			t.Fatalf("consumer failed: %s", err)
@@ -406,15 +408,21 @@ func TestJetStreamStorage_CompactAndPurge(t *testing.T) {
 	}
 
 	checkCount(t, store.subjectForKey("x"), 5)
+	checkCount(t, store.subjectForKey("y"), 5)
 
-	err := store.Purge()
+	err := store.Purge("x")
 	if err != nil {
 		t.Fatalf("purge failed: %s", err)
 	}
 
-	checkCount(t, store.subjectForKey("x"), 0)
-	checkCount(t, store.subjectForKey("y"), 0)
+	checkCount(t, store.subjectForKey("x"), 1)
+	checkCount(t, store.subjectForKey("y"), 5)
 	checkCount(t, store.subjectForKey("z"), 0)
+
+	_, err = store.Get("x")
+	if err != ErrUnknownKey {
+		t.Fatalf("get failed: %s", err)
+	}
 }
 
 func TestJetStreamStorage_Delete(t *testing.T) {

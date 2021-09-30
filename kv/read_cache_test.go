@@ -183,12 +183,17 @@ func TestReadCache_Purge(t *testing.T) {
 
 	expectCache(t, 2)
 
-	cache.Purge()
-	expectCache(t, 0)
+	cache.Purge("x")
+	expectCache(t, 1)
 
 	_, err := cache.Get("x")
 	if err == nil {
 		t.Fatalf("get succeeded")
+	}
+
+	_, err = cache.Get("y")
+	if err != nil {
+		t.Fatalf("get failed: %s", err)
 	}
 }
 

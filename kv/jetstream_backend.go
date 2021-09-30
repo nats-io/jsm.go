@@ -287,6 +287,10 @@ func (j *jetStreamStorage) Watch(ctx context.Context, key string) (Watch, error)
 
 // Delete deletes all values held for a key
 func (j *jetStreamStorage) Delete(key string) error {
+	return j.deleteWithHdr(key, nil)
+}
+
+func (j *jetStreamStorage) deleteWithHdr(key string, hdrs [][2]string) error {
 	ek, err := j.encodeKey(key)
 	if err != nil {
 		return err
@@ -299,6 +303,10 @@ func (j *jetStreamStorage) Delete(key string) error {
 	msg := nats.NewMsg(j.subjectForKey(ek))
 	msg.Header.Add(kvOperationHeader, delOperationString)
 
+	for _, h := range hdrs {
+		msg.Header.Add(h[0], h[1])
+	}
+
 	res, err := j.nc.RequestMsg(msg, j.opts.timeout)
 	if err != nil {
 		return err
@@ -308,13 +316,10 @@ func (j *jetStreamStorage) Delete(key string) error {
 	return err
 }
 
-func (j *jetStreamStorage) Purge() error {
-	stream, err := j.getOrLoadStream()
-	if err != nil {
-		return err
-	}
-
-	return stream.Purge()
+func (j *jetStreamStorage) Purge(key string) error {
+	return j.deleteWithHdr(key, [][2]string{
+		{api.JSRollup, api.JSRollupSubject},
+	})
 }
 
 func (j *jetStreamStorage) Destroy() error {

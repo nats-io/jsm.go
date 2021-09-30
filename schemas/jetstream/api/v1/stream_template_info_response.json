@@ -284,6 +284,10 @@
                       }
                     }
                   }
+                },
+                "sealed": {
+                  "type": "boolean",
+                  "description": "Sealed streams do not allow messages to be deleted via limits or API, sealed streams can not be unsealed via configuration update. Can only be set on already created streams via the Update API"
                 }
               }
             },

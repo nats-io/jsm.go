@@ -370,6 +370,7 @@ type StreamConfig struct {
 	Placement    *Placement      `json:"placement,omitempty"`
 	Mirror       *StreamSource   `json:"mirror,omitempty"`
 	Sources      []*StreamSource `json:"sources,omitempty"`
+	Sealed       bool            `json:"sealed,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream

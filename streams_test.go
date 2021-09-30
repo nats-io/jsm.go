@@ -809,3 +809,30 @@ func TestStreamDescription(t *testing.T) {
 		t.Fatalf("invalid description %q", s.Description())
 	}
 }
+
+func TestStreamSealed(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test"))
+	checkErr(t, err, "create failed")
+
+	_, err = nc.Request("test", []byte("1"), time.Second)
+	checkErr(t, err, "publish failed")
+
+	err = s.UpdateConfiguration(s.Configuration(), jsm.Sealed())
+	checkErr(t, err, "seal update failed")
+
+	nfo, err := s.LatestInformation()
+	checkErr(t, err, "info failed")
+
+	if !nfo.Config.Sealed {
+		t.Fatalf("expected a sealed stream")
+	}
+
+	err = s.DeleteMessage(1)
+	if !jsm.IsNatsError(err, 10109) {
+		t.Fatalf("expected err 10109 got %v", err)
+	}
+}

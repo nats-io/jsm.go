@@ -365,14 +365,6 @@ func Sources(streams ...*api.StreamSource) StreamOption {
 	}
 }
 
-// Sealed seals a stream so that messages can not be deleted by API or limits, sealed streams can not be unsealed
-func Sealed() StreamOption {
-	return func(o *api.StreamConfig) error {
-		o.Sealed = true
-		return nil
-	}
-}
-
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -514,6 +506,14 @@ func (s *Stream) Delete() error {
 	}
 
 	return nil
+}
+
+// Seal updates a stream so that messages can not be added or removed using the API and limits will not be processed - messages will never age out.
+// A sealed stream can not be unsealed.
+func (s *Stream) Seal() error {
+	cfg := s.Configuration()
+	cfg.Sealed = true
+	return s.UpdateConfiguration(cfg)
 }
 
 // Purge deletes messages from the Stream, an optional JSApiStreamPurgeRequest can be supplied to limit the purge to a subset of messages

@@ -821,13 +821,17 @@ func TestStreamSealed(t *testing.T) {
 	_, err = nc.Request("test", []byte("1"), time.Second)
 	checkErr(t, err, "publish failed")
 
-	err = s.UpdateConfiguration(s.Configuration(), jsm.Sealed())
+	err = s.Seal()
 	checkErr(t, err, "seal update failed")
 
 	nfo, err := s.LatestInformation()
 	checkErr(t, err, "info failed")
 
 	if !nfo.Config.Sealed {
+		t.Fatalf("expected a sealed stream")
+	}
+
+	if !s.Sealed() {
 		t.Fatalf("expected a sealed stream")
 	}
 

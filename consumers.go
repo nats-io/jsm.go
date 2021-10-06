@@ -318,6 +318,14 @@ func StartAtTimeDelta(d time.Duration) ConsumerOption {
 	}
 }
 
+// DeliverHeadersOnly configures the consumer to only deliver existing header and the `Nats-Msg-Size` header, no bodies
+func DeliverHeadersOnly() ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.HeadersOnly = true
+		return nil
+	}
+}
+
 func resetDeliverPolicy(o *api.ConsumerConfig) {
 	o.DeliverPolicy = api.DeliverAll
 	o.OptStartSeq = 0

@@ -351,26 +351,29 @@ func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
 //
 // NATS Schema Type io.nats.jetstream.api.v1.stream_configuration
 type StreamConfig struct {
-	Name         string          `json:"name"`
-	Description  string          `json:"description,omitempty"`
-	Subjects     []string        `json:"subjects,omitempty"`
-	Retention    RetentionPolicy `json:"retention"`
-	MaxConsumers int             `json:"max_consumers"`
-	MaxMsgsPer   int64           `json:"max_msgs_per_subject"`
-	MaxMsgs      int64           `json:"max_msgs"`
-	MaxBytes     int64           `json:"max_bytes"`
-	MaxAge       time.Duration   `json:"max_age"`
-	MaxMsgSize   int32           `json:"max_msg_size,omitempty"`
-	Storage      StorageType     `json:"storage"`
-	Discard      DiscardPolicy   `json:"discard"`
-	Replicas     int             `json:"num_replicas"`
-	NoAck        bool            `json:"no_ack,omitempty"`
-	Template     string          `json:"template_owner,omitempty"`
-	Duplicates   time.Duration   `json:"duplicate_window,omitempty"`
-	Placement    *Placement      `json:"placement,omitempty"`
-	Mirror       *StreamSource   `json:"mirror,omitempty"`
-	Sources      []*StreamSource `json:"sources,omitempty"`
-	Sealed       bool            `json:"sealed,omitempty"`
+	Name          string          `json:"name"`
+	Description   string          `json:"description,omitempty"`
+	Subjects      []string        `json:"subjects,omitempty"`
+	Retention     RetentionPolicy `json:"retention"`
+	MaxConsumers  int             `json:"max_consumers"`
+	MaxMsgsPer    int64           `json:"max_msgs_per_subject"`
+	MaxMsgs       int64           `json:"max_msgs"`
+	MaxBytes      int64           `json:"max_bytes"`
+	MaxAge        time.Duration   `json:"max_age"`
+	MaxMsgSize    int32           `json:"max_msg_size,omitempty"`
+	Storage       StorageType     `json:"storage"`
+	Discard       DiscardPolicy   `json:"discard"`
+	Replicas      int             `json:"num_replicas"`
+	NoAck         bool            `json:"no_ack,omitempty"`
+	Template      string          `json:"template_owner,omitempty"`
+	Duplicates    time.Duration   `json:"duplicate_window,omitempty"`
+	Placement     *Placement      `json:"placement,omitempty"`
+	Mirror        *StreamSource   `json:"mirror,omitempty"`
+	Sources       []*StreamSource `json:"sources,omitempty"`
+	Sealed        bool            `json:"sealed,omitempty"`
+	DenyDelete    bool            `json:"deny_delete,omitempty"`
+	DenyPurge     bool            `json:"deny_purge,omitempty"`
+	RollupAllowed bool            `json:"allow_rollup_hdrs,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream

@@ -199,6 +199,11 @@
       "type": "boolean",
       "description": "Creates a special consumer that does not touch the Raft layers, not for general use by clients, internal use only",
       "default": false
+    },
+    "headers_only": {
+      "type": "boolean",
+      "default": false,
+      "description": "Delivers only the headers of messages in the stream and not the bodies. Additionally adds Nats-Msg-Size header to indicate the size of the removed payload"
     }
   }
 }

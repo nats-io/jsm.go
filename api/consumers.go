@@ -275,6 +275,7 @@ type ConsumerConfig struct {
 	RateLimit       uint64        `json:"rate_limit_bps,omitempty"`
 	ReplayPolicy    ReplayPolicy  `json:"replay_policy"`
 	SampleFrequency string        `json:"sample_freq,omitempty"`
+	HeadersOnly     bool          `json:"headers_only,omitempty"`
 
 	// Don't add to general clients.
 	Direct bool `json:"direct,omitempty"`

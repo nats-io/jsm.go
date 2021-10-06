@@ -365,6 +365,7 @@ func (j *jetStreamStorage) CreateBucket() error {
 		jsm.MaxAge(j.opts.ttl),
 		jsm.MaxMessageSize(j.opts.maxValueSize),
 		jsm.MaxBytes(j.opts.maxBucketSize),
+		jsm.AllowRollup(),
 	}
 
 	if j.opts.replicas > 1 {
@@ -392,6 +393,14 @@ func (j *jetStreamStorage) CreateBucket() error {
 	// upgrade for . in keys
 	if len(stream.Subjects()) == 1 && stream.Subjects()[0] != j.bucketSubject {
 		err = stream.UpdateConfiguration(stream.Configuration(), jsm.Subjects(j.bucketSubject))
+		if err != nil {
+			return err
+		}
+	}
+
+	// upgrade for next server version
+	if !stream.RollupAllowed() {
+		err = stream.UpdateConfiguration(stream.Configuration(), jsm.AllowRollup())
 		if err != nil {
 			return err
 		}

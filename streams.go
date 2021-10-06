@@ -365,6 +365,29 @@ func Sources(streams ...*api.StreamSource) StreamOption {
 	}
 }
 
+func DenyDelete() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.DenyDelete = true
+
+		return nil
+	}
+}
+
+func DenyPurge() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.DenyPurge = true
+
+		return nil
+	}
+}
+
+func AllowRollup() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.RollupAllowed = true
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -646,3 +669,6 @@ func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }
 func (s *Stream) Mirror() *api.StreamSource       { return s.cfg.Mirror }
 func (s *Stream) Sources() []*api.StreamSource    { return s.cfg.Sources }
 func (s *Stream) Sealed() bool                    { return s.cfg.Sealed }
+func (s *Stream) DeleteAllow() bool               { return !s.cfg.DenyDelete }
+func (s *Stream) PurgeAllowed() bool              { return !s.cfg.DenyPurge }
+func (s *Stream) RollupAllowed() bool             { return s.cfg.RollupAllowed }

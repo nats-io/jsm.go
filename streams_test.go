@@ -759,6 +759,39 @@ func TestMirror(t *testing.T) {
 	}
 }
 
+func TestDenyDelete(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.DenyDelete()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if !cfg.DenyDelete {
+		t.Fatalf("DenyDelete was not set")
+	}
+}
+
+func TestDenyPurge(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.DenyPurge()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if !cfg.DenyPurge {
+		t.Fatalf("DenyPurge was not set")
+	}
+}
+
+func TestAllowRollup(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.AllowRollup()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if !cfg.RollupAllowed {
+		t.Fatalf("RollupAllowed was not set")
+	}
+}
+
 func TestStream_IsMirror(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

@@ -839,6 +839,14 @@ func TestMaxWaiting(t *testing.T) {
 	}
 }
 
+func TestDeliverHeadersOnly(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.DeliverHeadersOnly()(cfg)
+	if !cfg.HeadersOnly {
+		t.Fatalf("expected headers only to be set")
+	}
+}
+
 func TestConsumerDescription(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

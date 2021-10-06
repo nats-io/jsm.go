@@ -720,6 +720,7 @@ func (c *Consumer) IsPullMode() bool                 { return c.cfg.DeliverSubje
 func (c *Consumer) IsPushMode() bool                 { return !c.IsPullMode() }
 func (c *Consumer) IsDurable() bool                  { return c.cfg.Durable != "" }
 func (c *Consumer) IsEphemeral() bool                { return !c.IsDurable() }
+func (c *Consumer) IsHeadersOnly() bool              { return c.cfg.HeadersOnly }
 func (c *Consumer) StreamName() string               { return c.stream }
 func (c *Consumer) DeliverySubject() string          { return c.cfg.DeliverSubject }
 func (c *Consumer) DurableName() string              { return c.cfg.Durable }

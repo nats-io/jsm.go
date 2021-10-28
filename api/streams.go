@@ -370,10 +370,10 @@ type StreamConfig struct {
 	Placement     *Placement      `json:"placement,omitempty"`
 	Mirror        *StreamSource   `json:"mirror,omitempty"`
 	Sources       []*StreamSource `json:"sources,omitempty"`
-	Sealed        bool            `json:"sealed,omitempty"`
-	DenyDelete    bool            `json:"deny_delete,omitempty"`
-	DenyPurge     bool            `json:"deny_purge,omitempty"`
-	RollupAllowed bool            `json:"allow_rollup_hdrs,omitempty"`
+	Sealed        bool            `json:"sealed"`
+	DenyDelete    bool            `json:"deny_delete"`
+	DenyPurge     bool            `json:"deny_purge"`
+	RollupAllowed bool            `json:"allow_rollup_hdrs"`
 }
 
 // Placement describes stream placement requirements for a stream

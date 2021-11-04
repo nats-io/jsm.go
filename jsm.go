@@ -165,3 +165,24 @@ func IsNatsError(err error, code uint16) bool {
 
 	return false
 }
+
+// IsInternalStream indicates if a stream is considered 'internal' by the NATS team,
+// that is, it's a backing stream for KV, Object or MQTT state
+func IsInternalStream(s string) bool {
+	return IsKVBucketStream(s) || IsObjectBucketStream(s) || IsMQTTStateStream(s)
+}
+
+// IsKVBucketStream determines if a stream is a KV bucket
+func IsKVBucketStream(s string) bool {
+	return strings.HasPrefix(s, "KV_")
+}
+
+// IsObjectBucketStream determines if a stream is a Object bucket
+func IsObjectBucketStream(s string) bool {
+	return strings.HasPrefix(s, "OBJ_")
+}
+
+// IsMQTTStateStream determines if a stream holds internal MQTT state
+func IsMQTTStateStream(s string) bool {
+	return strings.HasPrefix(s, "$MQTT_")
+}

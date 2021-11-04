@@ -653,22 +653,22 @@ func (s *Stream) IsSourced() bool { return len(s.cfg.Sources) > 0 }
 // IsInternal indicates if a stream is considered 'internal' by the NATS team,
 // that is, it's a backing stream for KV, Object or MQTT state
 func (s *Stream) IsInternal() bool {
-	return s.IsKVBucket() || s.IsObjectBucket() || s.IsMQTTState()
+	return IsInternalStream(s.Name())
 }
 
 // IsKVBucket determines if a stream is a KV bucket
 func (s *Stream) IsKVBucket() bool {
-	return strings.HasPrefix(s.Name(), "KV_")
+	return IsKVBucketStream(s.Name())
 }
 
 // IsObjectBucket determines if a stream is a Object bucket
 func (s *Stream) IsObjectBucket() bool {
-	return strings.HasPrefix(s.Name(), "OBJ_")
+	return IsObjectBucketStream(s.Name())
 }
 
 // IsMQTTState determines if a stream holds internal MQTT state
 func (s *Stream) IsMQTTState() bool {
-	return strings.HasPrefix(s.Name(), "$MQTT_")
+	return IsMQTTStateStream(s.Name())
 }
 
 func (s *Stream) Configuration() api.StreamConfig { return *s.cfg }

@@ -613,6 +613,24 @@ func TestConsumer_IsSampled(t *testing.T) {
 	}
 }
 
+func TestConsumer_UpdateConfiguration(t *testing.T) {
+	srv, nc, _, mgr := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	update, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("UPDATE"))
+	checkErr(t, err, "create failed")
+	if update.Description() != "" {
+		t.Fatalf("expected empty description got %q", update.Description())
+	}
+
+	err = update.UpdateConfiguration(jsm.ConsumerDescription("updated"))
+	checkErr(t, err, "update failed")
+	if update.Description() != "updated" {
+		t.Fatalf("expected updated description got %q", update.Description())
+	}
+}
+
 func testConsumerConfig() *api.ConsumerConfig {
 	return &api.ConsumerConfig{
 		AckWait:       0,

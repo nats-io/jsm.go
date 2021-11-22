@@ -441,7 +441,7 @@ func (s *Stream) NewConsumerFromDefault(dflt api.ConsumerConfig, opts ...Consume
 	return s.mgr.NewConsumerFromDefault(s.Name(), dflt, opts...)
 }
 
-// LoadOrNewConsumer loads or creates a consumer based on these options that adjust supplied template
+// LoadOrNewConsumerFromDefault loads or creates a consumer based on these options that adjust supplied template
 func (s *Stream) LoadOrNewConsumerFromDefault(name string, deflt api.ConsumerConfig, opts ...ConsumerOption) (consumer *Consumer, err error) {
 	return s.mgr.LoadOrNewConsumerFromDefault(s.Name(), name, deflt, opts...)
 }

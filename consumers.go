@@ -464,6 +464,26 @@ func DeliverGroup(g string) ConsumerOption {
 	}
 }
 
+// UpdateConfiguration updates the consumer configuration
+// At present the description, ack wait, max deliver, sample frequency, max ack pending, max waiting and header only settings can be changed
+func (c *Consumer) UpdateConfiguration(opts ...ConsumerOption) error {
+	if !c.IsDurable() {
+		return fmt.Errorf("only durable consumers can be updated")
+	}
+
+	ncfg, err := NewConsumerConfiguration(*c.cfg, opts...)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.mgr.NewConsumerFromDefault(c.stream, *ncfg)
+	if err != nil {
+		return err
+	}
+
+	return c.Reset()
+}
+
 // Reset reloads the Consumer configuration from the JetStream server
 func (c *Consumer) Reset() error {
 	return c.mgr.loadConfigForConsumer(c)

@@ -66,18 +66,22 @@ var (
 )
 
 // NewBucket creates or load a bucket. If the bucket already exist the existing bucket configuration is not reconciled
+//
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 func NewBucket(nc *nats.Conn, bucket string, opts ...Option) (KV, error) {
 	return newOrLoad(nc, bucket, true, opts...)
 }
 
 // NewClient creates a new read-write client
+//
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 func NewClient(nc *nats.Conn, bucket string, opts ...Option) (KV, error) {
 	return newOrLoad(nc, bucket, false, opts...)
 }
 
 // NewRoClient creates a read only key value store.
 //
-// NOTE: for now this is just a client, but this is reserved for read replicas use cases
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 func NewRoClient(nc *nats.Conn, bucket string, opts ...Option) (RoKV, error) {
 	return NewClient(nc, bucket, opts...)
 }
@@ -107,6 +111,7 @@ func newOrLoad(nc *nats.Conn, bucket string, create bool, opts ...Option) (KV, e
 	return store, nil
 }
 
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 type Storage interface {
 	KV
 
@@ -116,6 +121,8 @@ type Storage interface {
 }
 
 // KV is a read-write interface to a single key-value store bucket
+//
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 type KV interface {
 	// Put saves a value into a key
 	Put(key string, val []byte, opts ...PutOption) (seq uint64, err error)
@@ -133,6 +140,8 @@ type KV interface {
 }
 
 // RoKV is a read-only interface to a single key-value store bucket
+//
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 type RoKV interface {
 	// Get gets a key from the store
 	Get(key string) (Entry, error)
@@ -166,6 +175,7 @@ type Decoder interface {
 	Decode(value []byte) ([]byte, error)
 }
 
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 type Entry interface {
 	// Bucket is the bucket the data was loaded from
 	Bucket() string
@@ -194,6 +204,8 @@ type GenericEntry struct {
 }
 
 // Watch observes a bucket and report any changes via NextValue or Channel
+//
+// Deprecated: this is now deprecated, please use the KV feature in nats.go
 type Watch interface {
 	// Channel returns a channel to read changes from
 	Channel() chan Entry

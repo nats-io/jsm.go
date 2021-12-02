@@ -102,7 +102,7 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 	msg, err := m.request(m.apiSubject(subj), body)
 	if err != nil {
 		// error, unless the error code for incomplete is set
-		if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+		if !IsNatsError(err, 10004) {
 			return err
 		}
 	}
@@ -201,7 +201,7 @@ func (m *Manager) iterableRequest(subj string, req apiIterableRequest, response 
 
 		err = m.jsonRequest(subj, req, response)
 		if err != nil {
-			if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+			if !IsNatsError(err, 10004) {
 				return err
 			}
 			errLast = err
@@ -351,7 +351,7 @@ func (m *Manager) EachStreamTemplate(cb func(*StreamTemplate)) (err error) {
 func (m *Manager) EachStream(cb func(*Stream)) (err error) {
 	streams, err := m.Streams()
 	if err != nil {
-		if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+		if !IsNatsError(err, 10004) {
 			return err
 		}
 	}

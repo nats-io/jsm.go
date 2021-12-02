@@ -455,7 +455,7 @@ func (s *Stream) ConsumerNames() (names []string, err error) {
 func (s *Stream) EachConsumer(cb func(consumer *Consumer)) error {
 	consumers, err := s.mgr.Consumers(s.Name())
 	if err != nil {
-		if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+		if !IsNatsError(err, 10004) {
 			return err
 		}
 	}

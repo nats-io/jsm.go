@@ -97,7 +97,7 @@ func (p *StreamPager) start(stream string, mgr *Manager, opts ...PagerOption) er
 
 	var err error
 	p.q = make(chan *nats.Msg, p.pageSize)
-	p.sub, err = mgr.nc.ChanSubscribe(nats.NewInbox(), p.q)
+	p.sub, err = mgr.nc.ChanSubscribe(mgr.nc.NewRespInbox(), p.q)
 	if err != nil {
 		p.close()
 		return err

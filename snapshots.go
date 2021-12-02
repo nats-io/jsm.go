@@ -491,7 +491,7 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 	}
 	defer df.Close()
 
-	ib := nats.NewInbox()
+	ib := s.mgr.nc.NewRespInbox()
 	req := api.JSApiStreamSnapshotRequest{
 		DeliverSubject: ib,
 		NoConsumers:    !sopts.consumers,

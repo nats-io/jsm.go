@@ -101,7 +101,10 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 
 	msg, err := m.request(m.apiSubject(subj), body)
 	if err != nil {
-		return err
+		// error, unless the error code for incomplete is set
+		if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+			return err
+		}
 	}
 
 	err = json.Unmarshal(msg.Data, response)
@@ -111,15 +114,11 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 
 	jsr, ok := response.(jetStreamResponseError)
 	if !ok {
-		return nil
-	}
-
-	if jsr.ToError() != nil {
 		return jsr.ToError()
 	}
 
-	if m.validator == nil {
-		return nil
+	if m.validator == nil || true {
+		return jsr.ToError()
 	}
 
 	jv, ok := response.(apiValidatable)
@@ -129,7 +128,7 @@ func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}
 
 	valid, errs := jv.Validate(m.validator)
 	if valid {
-		return nil
+		return jsr.ToError()
 	}
 
 	return fmt.Errorf("server response is not a valid %q message: %s", jv.SchemaType(), strings.Join(errs, "\n"))
@@ -196,12 +195,16 @@ func (m *Manager) ReadLastMessageForSubject(stream string, sub string) (msg *api
 
 func (m *Manager) iterableRequest(subj string, req apiIterableRequest, response apiIterableResponse, cb func(interface{}) error) (err error) {
 	offset := 0
+	var errLast error
 	for {
 		req.SetOffset(offset)
 
 		err = m.jsonRequest(subj, req, response)
 		if err != nil {
-			return err
+			if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+				return err
+			}
+			errLast = err
 		}
 
 		err = cb(response)
@@ -216,7 +219,7 @@ func (m *Manager) iterableRequest(subj string, req apiIterableRequest, response 
 		offset += response.ItemsLimit()
 	}
 
-	return nil
+	return errLast
 }
 
 func (m *Manager) request(subj string, data []byte) (res *nats.Msg, err error) {
@@ -238,12 +241,7 @@ func (m *Manager) requestWithTimeout(subj string, data []byte, timeout time.Dura
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	res, err = m.requestWithContext(ctx, subj, data)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, err
+	return m.requestWithContext(ctx, subj, data)
 }
 
 func (m *Manager) requestWithContext(ctx context.Context, subj string, data []byte) (res *nats.Msg, err error) {
@@ -353,14 +351,16 @@ func (m *Manager) EachStreamTemplate(cb func(*StreamTemplate)) (err error) {
 func (m *Manager) EachStream(cb func(*Stream)) (err error) {
 	streams, err := m.Streams()
 	if err != nil {
-		return err
+		if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+			return err
+		}
 	}
 
 	for _, s := range streams {
 		cb(s)
 	}
 
-	return nil
+	return err
 }
 
 // Consumers is a sorted list of all known Consumers within a Stream
@@ -381,9 +381,6 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, err error) {
 		cinfo = append(cinfo, apiresp.Consumers...)
 		return nil
 	})
-	if err != nil {
-		return consumers, err
-	}
 
 	sort.Slice(cinfo, func(i int, j int) bool {
 		return cinfo[i].Name < cinfo[j].Name
@@ -393,7 +390,7 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, err error) {
 		consumers = append(consumers, m.consumerFromCfg(c.Stream, c.Name, &c.Config))
 	}
 
-	return consumers, nil
+	return consumers, err
 }
 
 // StreamTemplateNames is a sorted list of all known StreamTemplates
@@ -463,11 +460,8 @@ func (m *Manager) Streams() (streams []*Stream, err error) {
 
 		return nil
 	})
-	if err != nil {
-		return streams, err
-	}
 
-	return streams, nil
+	return streams, err
 }
 
 func (m *Manager) apiSubject(subject string) string {

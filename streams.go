@@ -455,14 +455,16 @@ func (s *Stream) ConsumerNames() (names []string, err error) {
 func (s *Stream) EachConsumer(cb func(consumer *Consumer)) error {
 	consumers, err := s.mgr.Consumers(s.Name())
 	if err != nil {
-		return err
+		if err, ok := err.(api.ApiError); !ok || err.ErrCode != 10004 {
+			return err
+		}
 	}
 
 	for _, c := range consumers {
 		cb(c)
 	}
 
-	return nil
+	return err
 }
 
 // LatestInformation returns the most recently fetched stream information

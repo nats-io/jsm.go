@@ -18,8 +18,19 @@
       "type": "object",
       "required": ["consumers"],
       "properties": {
-        "consumer": {
-          "$ref": "definitions.json#/definitions/consumer_info"
+        "consumers": {
+          "description": "Full Consumer information for each known Consumer",
+          "type": "array",
+          "items": {
+            "$ref": "definitions.json#/definitions/consumer_info"
+          },
+          "missing": {
+            "description": "In clustered environments gathering Consumer info might time out, this list would be a list of Consumers for which information was not obtainable",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       }
     }

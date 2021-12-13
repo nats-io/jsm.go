@@ -475,6 +475,7 @@
                 "description": "Timestamp when the stream was created",
                 "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
                 "type": "string",
+                "format": "date-time"
               },
               "cluster": {
                 "type": "object",

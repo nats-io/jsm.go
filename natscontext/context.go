@@ -59,6 +59,7 @@ type settings struct {
 	JSDomain      string `json:"jetstream_domain"`
 	JSAPIPrefix   string `json:"jetstream_api_prefix"`
 	JSEventPrefix string `json:"jetstream_event_prefix"`
+	InboxPrefix   string `json:"inbox_prefix"`
 }
 
 type Context struct {
@@ -274,6 +275,10 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 
 	if c.CA() != "" {
 		nopts = append(nopts, nats.RootCAs(c.CA()))
+	}
+
+	if c.InboxPrefix() != "" {
+		nopts = append(nopts, nats.CustomInboxPrefix(c.InboxPrefix()))
 	}
 
 	nopts = append(nopts, opts...)
@@ -615,4 +620,18 @@ func WithJSDomain(domain string) Option {
 // JSDomain is the configured JetStream domain
 func (c *Context) JSDomain() string {
 	return c.config.JSDomain
+}
+
+// WithInboxPrefix sets a custom prefix for request-reply inboxes
+func WithInboxPrefix(p string) Option {
+	return func(s *settings) {
+		if p != "" {
+			s.InboxPrefix = p
+		}
+	}
+}
+
+// InboxPrefix is the configured inbox prefix for request-reply inboxes
+func (c *Context) InboxPrefix() string {
+	return c.config.InboxPrefix
 }

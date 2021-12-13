@@ -88,6 +88,7 @@ type JSApiStreamListResponse struct {
 	JSApiResponse
 	JSApiIterableResponse
 	Streams []*StreamInfo `json:"streams"`
+	Missing []string      `json:"missing,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_list_request

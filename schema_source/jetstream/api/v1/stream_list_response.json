@@ -18,12 +18,18 @@
       "type": "object",
       "required": ["streams"],
       "properties": {
-        "consumers": {
+        "streams": {
+          "description": "Full Stream information for each known Stream",
           "type": "array",
           "items": {
-            "allOf": [
-              {"$ref": "definitions.json#/definitions/stream_info"}
-            ]
+            "$ref": "definitions.json#/definitions/stream_info"
+          }
+        },
+        "missing": {
+          "description": "In clustered environments gathering Stream info might time out, this list would be a list of Streams for which information was not obtainable",
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }

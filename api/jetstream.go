@@ -101,10 +101,11 @@ type JetStreamAPIStats struct {
 }
 
 type JetStreamAccountLimits struct {
-	MaxMemory    int64 `json:"max_memory"`
-	MaxStore     int64 `json:"max_storage"`
-	MaxStreams   int   `json:"max_streams"`
-	MaxConsumers int   `json:"max_consumers"`
+	MaxMemory        int64 `json:"max_memory"`
+	MaxStore         int64 `json:"max_storage"`
+	MaxStreams       int   `json:"max_streams"`
+	MaxConsumers     int   `json:"max_consumers"`
+	MaxBytesRequired bool  `json:"max_bytes_required"`
 }
 
 type ApiError struct {

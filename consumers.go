@@ -464,6 +464,39 @@ func DeliverGroup(g string) ConsumerOption {
 	}
 }
 
+// MaxRequestBatch is the largest batch that can be specified when doing pulls against the consumer
+func MaxRequestBatch(max uint) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.MaxRequestBatch = int(max)
+		return nil
+	}
+}
+
+// MaxRequestExpires is the longest pull request expire the server will allow
+func MaxRequestExpires(max time.Duration) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if max != 0 && max < time.Millisecond {
+			return fmt.Errorf("must be larger than 1ms")
+		}
+
+		o.MaxRequestExpires = max
+		return nil
+	}
+}
+
+// InactiveThreshold is the idle time an ephemeral consumer allows before it is removed
+func InactiveThreshold(t time.Duration) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if t < 0 {
+			return fmt.Errorf("inactive threshold must be positive")
+		}
+
+		o.InactiveThreshold = t
+
+		return nil
+	}
+}
+
 // UpdateConfiguration updates the consumer configuration
 // At present the description, ack wait, max deliver, sample frequency, max ack pending, max waiting and header only settings can be changed
 func (c *Consumer) UpdateConfiguration(opts ...ConsumerOption) error {
@@ -759,6 +792,9 @@ func (c *Consumer) FlowControl() bool                { return c.cfg.FlowControl 
 func (c *Consumer) Heartbeat() time.Duration         { return c.cfg.Heartbeat }
 func (c *Consumer) DeliverGroup() string             { return c.cfg.DeliverGroup }
 func (c *Consumer) MaxWaiting() int                  { return c.cfg.MaxWaiting }
+func (c *Consumer) MaxRequestBatch() int             { return c.cfg.MaxRequestBatch }
+func (c *Consumer) MaxRequestExpires() time.Duration { return c.cfg.MaxRequestExpires }
+func (c *Consumer) InactiveThreshold() time.Duration { return c.cfg.InactiveThreshold }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {
 		return time.Time{}

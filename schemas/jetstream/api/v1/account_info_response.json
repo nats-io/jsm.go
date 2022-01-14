@@ -68,6 +68,11 @@
               "type": "integer",
               "description": "The maximum number of Consumer an account can create",
               "minimum": -1
+            },
+            "max_bytes_required": {
+              "type": "boolean",
+              "description": "Indicates if Streams created in this account requires the max_bytes property set",
+              "default": false
             }
           }
         },

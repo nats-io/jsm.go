@@ -216,6 +216,27 @@
           "type": "boolean",
           "default": false,
           "description": "Delivers only the headers of messages in the stream and not the bodies. Additionally adds Nats-Msg-Size header to indicate the size of the removed payload"
+        },
+        "max_batch": {
+          "type": "integer",
+          "description": "The largest batch property that may be specified when doing a pull on a Pull Consumer",
+          "default": 0
+        },
+        "max_expires": {
+          "description": "The maximum expires value that may be set when doing a pull on a Pull Consumer",
+          "default": 0,
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
+        },
+        "inactive_threshold": {
+          "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
+          "default": 0,
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
         }
       }
     }

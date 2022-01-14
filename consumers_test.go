@@ -865,6 +865,48 @@ func TestDeliverHeadersOnly(t *testing.T) {
 	}
 }
 
+func TestMaxRequestBatch(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.MaxRequestBatch(10)(cfg)
+	if cfg.MaxRequestBatch != 10 {
+		t.Fatalf("expected max request batch of 10: %v", cfg.MaxRequestBatch)
+	}
+}
+
+func TestMaxRequestExpires(t *testing.T) {
+	cfg := testConsumerConfig()
+	err := jsm.MaxRequestExpires(10 * time.Microsecond)(cfg)
+	if err == nil || err.Error() != "must be larger than 1ms" {
+		t.Fatalf("expected 1ms error got: %v", err)
+	}
+
+	err = jsm.MaxRequestExpires(time.Minute)(cfg)
+	if err != nil {
+		t.Fatalf("exptected no error: %v", err)
+	}
+
+	if cfg.MaxRequestExpires != time.Minute {
+		t.Fatalf("expected max request expires of 1 minute: %v", cfg.MaxRequestExpires)
+	}
+}
+
+func TestInactiveThreshold(t *testing.T) {
+	cfg := testConsumerConfig()
+	err := jsm.InactiveThreshold(-1 * time.Minute)(cfg)
+	if err == nil || err.Error() != "inactive threshold must be positive" {
+		t.Fatalf("expected positive threshold error: %v", err)
+	}
+
+	err = jsm.InactiveThreshold(time.Minute)(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InactiveThreshold != time.Minute {
+		t.Fatalf("expected 1 minute threshold: %v", cfg.InactiveThreshold)
+	}
+}
+
 func TestConsumerDescription(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

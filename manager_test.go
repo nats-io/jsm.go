@@ -129,6 +129,34 @@ func TestJetStreamAccountInfo(t *testing.T) {
 	}
 }
 
+func TestStreams(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	numStreams := 2500
+	for i := 0; i < numStreams; i++ {
+		_, err := mgr.NewStreamFromDefault(fmt.Sprintf("ORDERS_%d", i), jsm.DefaultStream, jsm.Subjects(fmt.Sprintf("ORDERS_%d.>", i)), jsm.MemoryStorage())
+		checkErr(t, err, "create failed")
+	}
+
+	streams, err := mgr.Streams()
+	checkErr(t, err, "streams failed")
+	if len(streams) != numStreams {
+		t.Fatalf("expected %d orders got %d", numStreams, len(streams))
+	}
+
+	names := map[string]struct{}{}
+	for _, s := range streams {
+		_, ok := names[s.Name()]
+		if ok {
+			t.Fatalf("Duplicate record for %s", s.Name())
+		}
+
+		names[s.Name()] = struct{}{}
+	}
+}
+
 func TestStreamNames(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()
@@ -141,7 +169,8 @@ func TestStreamNames(t *testing.T) {
 		t.Fatalf("expected 0 streams got: %v", names)
 	}
 
-	for i := 0; i < 510; i++ {
+	numStreams := 2500
+	for i := 0; i < numStreams; i++ {
 		_, err = mgr.NewStreamFromDefault(fmt.Sprintf("ORDERS_%d", i), jsm.DefaultStream, jsm.Subjects(fmt.Sprintf("ORDERS_%d.>", i)), jsm.MemoryStorage())
 		checkErr(t, err, "create failed")
 	}
@@ -149,14 +178,23 @@ func TestStreamNames(t *testing.T) {
 	names, err = mgr.StreamNames(nil)
 	checkErr(t, err, "lookup failed")
 
-	if len(names) != 510 || names[0] != "ORDERS_0" && names[509] != "ORDERS_99" {
-		t.Fatalf("expected 510 orders got %d", len(names))
+	if len(names) != numStreams || names[0] != "ORDERS_0" || names[numStreams-1] != "ORDERS_999" {
+		t.Fatalf("expected %d orders got %d", numStreams, len(names))
+	}
+
+	unames := map[string]struct{}{}
+	for _, s := range names {
+		_, ok := unames[s]
+		if ok {
+			t.Fatalf("Duplicate received for %s", s)
+		}
+		unames[s] = struct{}{}
 	}
 
 	names, err = mgr.StreamNames(&jsm.StreamNamesFilter{Subject: ">"})
 	checkErr(t, err, "names failed")
-	if len(names) != 510 {
-		t.Fatalf("expected 510 streams got %d", len(names))
+	if len(names) != numStreams {
+		t.Fatalf("expected %d streams got %d", numStreams, len(names))
 	}
 
 	names, err = mgr.StreamNames(&jsm.StreamNamesFilter{Subject: "ORDERS_10.foo"})
@@ -170,7 +208,6 @@ func TestStreamNames(t *testing.T) {
 	if len(names) != 0 {
 		t.Fatalf("expected 0 streams got %d", len(names))
 	}
-
 }
 
 func TestConsumerNames(t *testing.T) {

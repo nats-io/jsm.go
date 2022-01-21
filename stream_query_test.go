@@ -14,7 +14,6 @@
 package jsm_test
 
 import (
-	"regexp"
 	"testing"
 	"time"
 
@@ -23,10 +22,10 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-func checkStreamQueryMatched(t *testing.T, expect int, mgr *jsm.Manager, q jsm.StreamQuery) {
+func checkStreamQueryMatched(t *testing.T, mgr *jsm.Manager, expect int, opts ...jsm.StreamQueryOpt) {
 	t.Helper()
 
-	matched, err := mgr.QueryStreams(q)
+	matched, err := mgr.QueryStreams(opts...)
 	checkErr(t, err, "query failed")
 	if len(matched) != expect {
 		t.Fatalf("expected %d matched, got %d", expect, len(matched))
@@ -38,14 +37,13 @@ func TestStreamQueryCreatePeriod(t *testing.T) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
-		p := time.Hour
-		checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{CreatedPeriod: &p})
-		checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, CreatedPeriod: &p})
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryOlderThan(time.Hour))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryOlderThan(time.Hour), jsm.StreamQueryInvert())
 
 		time.Sleep(50 * time.Millisecond)
-		p = 10 * time.Millisecond
-		checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{CreatedPeriod: &p})
-		checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Invert: true, CreatedPeriod: &p})
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryOlderThan(10*time.Millisecond))
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryOlderThan(10*time.Millisecond), jsm.StreamQueryInvert())
 	})
 }
 
@@ -60,15 +58,13 @@ func TestStreamQueryIdlePeriod(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond)
 
-			p := time.Millisecond
 			// nothing is idle for less than a milli
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{IdlePeriod: &p})
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Invert: true, IdlePeriod: &p})
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(time.Millisecond))
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(time.Millisecond), jsm.StreamQueryInvert())
 
-			p = 10 * time.Second
 			// but they are idle for less than 10 seconds
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{IdlePeriod: &p})
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, IdlePeriod: &p})
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(10*time.Second))
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(10*time.Second), jsm.StreamQueryInvert())
 		})
 
 		t.Run("With consumers", func(t *testing.T) {
@@ -78,24 +74,22 @@ func TestStreamQueryIdlePeriod(t *testing.T) {
 			_, err = nc.Request("in.q1", []byte("hello"), time.Second)
 			checkErr(t, err, "req failed")
 
-			p := 100 * time.Millisecond
-
 			// its not idle but consumers are idle, so should still not match
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{IdlePeriod: &p})
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, IdlePeriod: &p})
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(100*time.Millisecond))
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(100*time.Millisecond), jsm.StreamQueryInvert())
 
 			time.Sleep(500 * time.Millisecond)
 
 			// now its all idle
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{IdlePeriod: &p})
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Invert: true, IdlePeriod: &p})
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(100*time.Millisecond))
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(100*time.Millisecond), jsm.StreamQueryInvert())
 
 			_, err = cons.NextMsg()
 			checkErr(t, err, "next failed")
 
 			// now its not idle again
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{IdlePeriod: &p})
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, IdlePeriod: &p})
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(100*time.Millisecond))
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(100*time.Millisecond), jsm.StreamQueryInvert())
 		})
 	})
 }
@@ -105,16 +99,14 @@ func TestStreamQueryEmpty(t *testing.T) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
-		tf := true
-
-		checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Empty: &tf})
-		checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Invert: true, Empty: &tf})
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryWithoutMessages())
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryWithoutMessages(), jsm.StreamQueryInvert())
 
 		_, err = nc.Request("in.q1", []byte("hello"), time.Second)
 		checkErr(t, err, "req failed")
 
-		checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Empty: &tf})
-		checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, Empty: &tf})
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryWithoutMessages())
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryWithoutMessages(), jsm.StreamQueryInvert())
 	})
 }
 
@@ -123,11 +115,9 @@ func TestStreamQueryConsumersLimit(t *testing.T) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
-		limit := 10
-
 		t.Run("Less than n consumers", func(t *testing.T) {
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{ConsumersLimit: &limit})
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Invert: true, ConsumersLimit: &limit})
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryFewerConsumersThan(10))
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryFewerConsumersThan(10), jsm.StreamQueryInvert())
 		})
 	})
 }
@@ -138,18 +128,18 @@ func TestStreamQueryCluster(t *testing.T) {
 		checkErr(t, err, "create failed")
 
 		t.Run("does not match the cluster", func(t *testing.T) {
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Cluster: regexp.MustCompile("foo")})
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, Cluster: regexp.MustCompile("foo")})
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryClusterName("foo"))
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryClusterName("foo"), jsm.StreamQueryInvert())
 		})
 
 		t.Run("Regex match the clusteR", func(t *testing.T) {
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Cluster: regexp.MustCompile("T.+T")})
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Invert: true, Cluster: regexp.MustCompile("T.+T")})
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryClusterName("T.+T"))
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryClusterName("T.+T"), jsm.StreamQueryInvert())
 		})
 
 		t.Run("Combining matchers, 1 excluding all results", func(t *testing.T) {
-			checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Server: regexp.MustCompile("s1"), Cluster: regexp.MustCompile("OTHER")})
-			checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, Server: regexp.MustCompile("o1"), Cluster: regexp.MustCompile("OTHER")})
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryServerName("s1"), jsm.StreamQueryClusterName("OTHER"))
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryInvert(), jsm.StreamQueryServerName("o1"), jsm.StreamQueryClusterName("OTHER"))
 		})
 	})
 }
@@ -162,10 +152,10 @@ func TestStreamQueryServer(t *testing.T) {
 		nfo, err := stream.LatestInformation()
 		checkErr(t, err, "info failed")
 
-		checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Server: regexp.MustCompile("foo")})
-		checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Invert: true, Server: regexp.MustCompile("foo")})
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryServerName("foo"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryServerName("foo"), jsm.StreamQueryInvert())
 
-		checkStreamQueryMatched(t, 1, mgr, jsm.StreamQuery{Server: regexp.MustCompile(nfo.Cluster.Leader)})
-		checkStreamQueryMatched(t, 0, mgr, jsm.StreamQuery{Invert: true, Server: regexp.MustCompile(nfo.Cluster.Leader)})
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryServerName(nfo.Cluster.Leader))
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryServerName(nfo.Cluster.Leader), jsm.StreamQueryInvert())
 	})
 }

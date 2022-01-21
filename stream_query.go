@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-type StreamQuery struct {
+type streamQuery struct {
 	Server         *regexp.Regexp
 	Cluster        *regexp.Regexp
 	ConsumersLimit *int
@@ -28,7 +28,86 @@ type StreamQuery struct {
 	Invert         bool
 }
 
-func (m *Manager) QueryStreams(q StreamQuery) ([]*Stream, error) {
+type StreamQueryOpt func(query *streamQuery) error
+
+// StreamQueryServerName limits results to servers matching a regular expression
+func StreamQueryServerName(s string) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return err
+		}
+		q.Server = re
+
+		return nil
+	}
+}
+
+// StreamQueryClusterName limits results to servers within a cluster matched by a regular expression
+func StreamQueryClusterName(c string) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		re, err := regexp.Compile(c)
+		if err != nil {
+			return err
+		}
+		q.Cluster = re
+
+		return nil
+	}
+}
+
+// StreamQueryFewerConsumersThan limits results to streams with fewer than or equal consumers than c
+func StreamQueryFewerConsumersThan(c uint) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		i := int(c)
+		q.ConsumersLimit = &i
+		return nil
+	}
+}
+
+// StreamQueryWithoutMessages limits results to streams with no messages
+func StreamQueryWithoutMessages() StreamQueryOpt {
+	return func(q *streamQuery) error {
+		t := true
+		q.Empty = &t
+		return nil
+	}
+}
+
+// StreamQueryIdleLongerThan limits results to streams that has not received messages or delivered messages to any consumers for a period longer than p
+func StreamQueryIdleLongerThan(p time.Duration) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.IdlePeriod = &p
+		return nil
+	}
+}
+
+// StreamQueryOlderThan limits the results to streams older than p
+func StreamQueryOlderThan(p time.Duration) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.CreatedPeriod = &p
+		return nil
+	}
+}
+
+// StreamQueryInvert inverts the logic of filters, older than becomes newer than and so forth
+func StreamQueryInvert() StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.Invert = true
+		return nil
+	}
+}
+
+// QueryStreams filters the streams found in JetStream using various filter options
+func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
+	q := &streamQuery{}
+	for _, opt := range opts {
+		err := opt(q)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	streams, err := m.Streams()
 	if err != nil {
 		return nil, err
@@ -37,7 +116,7 @@ func (m *Manager) QueryStreams(q StreamQuery) ([]*Stream, error) {
 	return q.Filter(streams)
 }
 
-func (q *StreamQuery) Filter(streams []*Stream) ([]*Stream, error) {
+func (q *streamQuery) Filter(streams []*Stream) ([]*Stream, error) {
 	return q.matchCreatedPeriod(
 		q.matchIdlePeriod(
 			q.matchEmpty(
@@ -51,7 +130,7 @@ func (q *StreamQuery) Filter(streams []*Stream) ([]*Stream, error) {
 	)
 }
 
-func (q *StreamQuery) matchCreatedPeriod(streams []*Stream, err error) ([]*Stream, error) {
+func (q *streamQuery) matchCreatedPeriod(streams []*Stream, err error) ([]*Stream, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +154,7 @@ func (q *StreamQuery) matchCreatedPeriod(streams []*Stream, err error) ([]*Strea
 	return matched, nil
 }
 
-func (q *StreamQuery) matchIdlePeriod(streams []*Stream, err error) ([]*Stream, error) {
+func (q *streamQuery) matchIdlePeriod(streams []*Stream, err error) ([]*Stream, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +201,7 @@ func (q *StreamQuery) matchIdlePeriod(streams []*Stream, err error) ([]*Stream, 
 	return matched, nil
 }
 
-func (q *StreamQuery) matchEmpty(streams []*Stream, err error) ([]*Stream, error) {
+func (q *streamQuery) matchEmpty(streams []*Stream, err error) ([]*Stream, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +225,7 @@ func (q *StreamQuery) matchEmpty(streams []*Stream, err error) ([]*Stream, error
 	return matched, nil
 }
 
-func (q *StreamQuery) matchConsumerLimit(streams []*Stream, err error) ([]*Stream, error) {
+func (q *streamQuery) matchConsumerLimit(streams []*Stream, err error) ([]*Stream, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +248,7 @@ func (q *StreamQuery) matchConsumerLimit(streams []*Stream, err error) ([]*Strea
 	return matched, nil
 }
 
-func (q *StreamQuery) matchCluster(streams []*Stream, err error) ([]*Stream, error) {
+func (q *streamQuery) matchCluster(streams []*Stream, err error) ([]*Stream, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +277,7 @@ func (q *StreamQuery) matchCluster(streams []*Stream, err error) ([]*Stream, err
 	return matched, nil
 }
 
-func (q *StreamQuery) matchServer(streams []*Stream, err error) ([]*Stream, error) {
+func (q *streamQuery) matchServer(streams []*Stream, err error) ([]*Stream, error) {
 	if err != nil {
 		return nil, err
 	}

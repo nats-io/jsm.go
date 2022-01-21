@@ -1,8 +1,12 @@
 package jsm_test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/url"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,6 +15,91 @@ import (
 	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
+
+func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn, *jsm.Manager)) {
+	t.Helper()
+
+	d, err := ioutil.TempDir("", "jstest")
+	if err != nil {
+		t.Fatalf("temp dir could not be made: %s", err)
+	}
+
+	var (
+		servers []*natsd.Server
+	)
+
+	for i := 1; i <= 3; i++ {
+		opts := &natsd.Options{
+			JetStream:  true,
+			StoreDir:   filepath.Join(d, fmt.Sprintf("s%d", i)),
+			Port:       -1,
+			Host:       "localhost",
+			ServerName: fmt.Sprintf("s%d", i),
+			LogFile:    "/dev/null",
+			Cluster: natsd.ClusterOpts{
+				Name: "TEST",
+				Port: 12000 + i,
+			},
+			Routes: []*url.URL{
+				{Host: "localhost:12001"},
+				{Host: "localhost:12002"},
+				{Host: "localhost:12003"},
+			},
+		}
+
+		s, err := natsd.NewServer(opts)
+		if err != nil {
+			t.Fatalf("server %d start failed: %v", i, err)
+		}
+		s.ConfigureLogger()
+		go s.Start()
+		if !s.ReadyForConnections(10 * time.Second) {
+			t.Errorf("nats server %d did not start", i)
+		}
+		defer func() {
+			s.Shutdown()
+		}()
+
+		servers = append(servers, s)
+	}
+
+	if len(servers) != 3 {
+		t.Fatalf("servers did not start")
+	}
+
+	nc, err := nats.Connect(servers[0].ClientURL(), nats.UseOldRequestStyle())
+	if err != nil {
+		t.Fatalf("client start failed: %s", err)
+	}
+	defer nc.Close()
+
+	mgr, err := jsm.New(nc, jsm.WithTimeout(time.Second))
+	if err != nil {
+		t.Fatalf("manager creation failed: %s", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			_, err := mgr.JetStreamAccountInfo()
+			if err != nil {
+				log.Printf("err: %v", err)
+				continue
+			}
+
+			cb(t, servers, nc, mgr)
+
+			return
+		case <-ctx.Done():
+			t.Fatalf("jetstream did not become available")
+		}
+	}
+}
 
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()

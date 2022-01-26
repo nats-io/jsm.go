@@ -23,9 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nats-io/nats.go"
-
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go"
 )
 
 // DefaultConsumer is the configuration that will be used to create new Consumers in NewConsumer
@@ -497,6 +496,45 @@ func InactiveThreshold(t time.Duration) ConsumerOption {
 	}
 }
 
+// BackoffIntervals sets a series of intervals by which retries will be attempted for this consumr
+func BackoffIntervals(i ...time.Duration) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if len(i) == 0 {
+			return fmt.Errorf("at least one interval is required")
+		}
+
+		o.BackOff = i
+
+		return nil
+	}
+}
+
+// LinearBackoffPolicy creates a backoff policy with linearly increasing steps between min and max
+func LinearBackoffPolicy(steps uint, min time.Duration, max time.Duration) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if steps == 0 {
+			return fmt.Errorf("steps must be more than 0")
+		}
+		if min == 0 {
+			return fmt.Errorf("minimum retry can not be 0")
+		}
+		if max == 0 {
+			return fmt.Errorf("maximum retry can not be 0")
+		}
+
+		if max < min {
+			max, min = min, max
+		}
+
+		stepSize := uint(max-min) / steps
+		for i := uint(1); i <= steps; i += 1 {
+			o.BackOff = append(o.BackOff, time.Duration(i*stepSize).Round(time.Millisecond))
+		}
+
+		return nil
+	}
+}
+
 // UpdateConfiguration updates the consumer configuration
 // At present the description, ack wait, max deliver, sample frequency, max ack pending, max waiting and header only settings can be changed
 func (c *Consumer) UpdateConfiguration(opts ...ConsumerOption) error {
@@ -783,6 +821,7 @@ func (c *Consumer) DeliverPolicy() api.DeliverPolicy { return c.cfg.DeliverPolic
 func (c *Consumer) AckPolicy() api.AckPolicy         { return c.cfg.AckPolicy }
 func (c *Consumer) AckWait() time.Duration           { return c.cfg.AckWait }
 func (c *Consumer) MaxDeliver() int                  { return c.cfg.MaxDeliver }
+func (c *Consumer) Backoff() []time.Duration         { return c.cfg.BackOff }
 func (c *Consumer) FilterSubject() string            { return c.cfg.FilterSubject }
 func (c *Consumer) ReplayPolicy() api.ReplayPolicy   { return c.cfg.ReplayPolicy }
 func (c *Consumer) SampleFrequency() string          { return c.cfg.SampleFrequency }

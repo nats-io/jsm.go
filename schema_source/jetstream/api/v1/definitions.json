@@ -623,6 +623,13 @@
           "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
           "$ref": "#/definitions/golang_duration_nanos",
           "default": 0
+        },
+        "backoff": {
+          "description": "List of durations in Go format that represents a retry time scale for NaK'd messages or those being normaly retried",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/golang_duration_nanos"
+          }
         }
       }
     },

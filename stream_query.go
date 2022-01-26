@@ -33,6 +33,10 @@ type StreamQueryOpt func(query *streamQuery) error
 // StreamQueryServerName limits results to servers matching a regular expression
 func StreamQueryServerName(s string) StreamQueryOpt {
 	return func(q *streamQuery) error {
+		if s == "" {
+			return nil
+		}
+
 		re, err := regexp.Compile(s)
 		if err != nil {
 			return err
@@ -46,6 +50,10 @@ func StreamQueryServerName(s string) StreamQueryOpt {
 // StreamQueryClusterName limits results to servers within a cluster matched by a regular expression
 func StreamQueryClusterName(c string) StreamQueryOpt {
 	return func(q *streamQuery) error {
+		if c == "" {
+			return nil
+		}
+
 		re, err := regexp.Compile(c)
 		if err != nil {
 			return err
@@ -74,7 +82,7 @@ func StreamQueryWithoutMessages() StreamQueryOpt {
 	}
 }
 
-// StreamQueryIdleLongerThan limits results to streams that has not received messages or delivered messages to any consumers for a period longer than p
+// StreamQueryIdleLongerThan limits results to streams that has not received messages for a period longer than p
 func StreamQueryIdleLongerThan(p time.Duration) StreamQueryOpt {
 	return func(q *streamQuery) error {
 		q.IdlePeriod = &p
@@ -154,6 +162,8 @@ func (q *streamQuery) matchCreatedPeriod(streams []*Stream, err error) ([]*Strea
 	return matched, nil
 }
 
+// note: ideally we match in addition for ones where no consumer had any messages in this period
+// but today that means doing a consumer info on every consumer on every stream thats not viable
 func (q *streamQuery) matchIdlePeriod(streams []*Stream, err error) ([]*Stream, error) {
 	if err != nil {
 		return nil, err
@@ -172,26 +182,6 @@ func (q *streamQuery) matchIdlePeriod(streams []*Stream, err error) ([]*Stream, 
 
 		lt := time.Since(state.LastTime)
 		should := lt > *q.IdlePeriod
-		var cerr error
-		err = stream.EachConsumer(func(c *Consumer) {
-			if cerr != nil {
-				return
-			}
-
-			state, err := c.LatestState()
-			if err != nil {
-				cerr = err
-				return
-			}
-
-			should = should && (state.Delivered.Last == nil || time.Since(*state.Delivered.Last) > *q.IdlePeriod)
-		})
-		if err != nil {
-			return nil, err
-		}
-		if cerr != nil {
-			return nil, err
-		}
 
 		if (!q.Invert && should) || (q.Invert && !should) {
 			matched = append(matched, stream)

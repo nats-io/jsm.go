@@ -68,13 +68,10 @@ func TestStreamQueryIdlePeriod(t *testing.T) {
 		})
 
 		t.Run("With consumers", func(t *testing.T) {
-			cons, err := mgr.NewConsumer("q1", jsm.DurableName("PULL"))
-			checkErr(t, err, "create failed")
-
 			_, err = nc.Request("in.q1", []byte("hello"), time.Second)
 			checkErr(t, err, "req failed")
 
-			// its not idle but consumers are idle, so should still not match
+			// its not idle as its had a message now
 			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(100*time.Millisecond))
 			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(100*time.Millisecond), jsm.StreamQueryInvert())
 
@@ -84,10 +81,8 @@ func TestStreamQueryIdlePeriod(t *testing.T) {
 			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(100*time.Millisecond))
 			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(100*time.Millisecond), jsm.StreamQueryInvert())
 
-			_, err = cons.NextMsg()
-			checkErr(t, err, "next failed")
-
-			// now its not idle again
+			_, err = nc.Request("in.q1", []byte("hello"), time.Second)
+			checkErr(t, err, "req failed")
 			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIdleLongerThan(100*time.Millisecond))
 			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(100*time.Millisecond), jsm.StreamQueryInvert())
 		})

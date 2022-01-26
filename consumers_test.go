@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/nats-server/v2/server"
 
 	"github.com/nats-io/jsm.go/api"
@@ -907,6 +908,42 @@ func TestInactiveThreshold(t *testing.T) {
 	}
 }
 
+func TestBackoffIntervals(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.MemoryStorage())
+	checkErr(t, err, "create failed")
+
+	policy := []time.Duration{time.Second, 2 * time.Second, 3 * time.Second}
+	c, err := s.NewConsumer(jsm.BackoffIntervals(policy...), jsm.DurableName("X"), jsm.MaxDeliveryAttempts(len(policy)+1))
+	checkErr(t, err, "create failed")
+	if !cmp.Equal(c.Backoff(), policy) {
+		t.Fatalf("invalid backoff %q", c.Backoff())
+	}
+}
+
+func TestLinearBackoffPolicy(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.MemoryStorage())
+	checkErr(t, err, "create failed")
+
+	c, err := s.NewConsumer(jsm.LinearBackoffPolicy(10, time.Second, time.Minute), jsm.DurableName("X"), jsm.MaxDeliveryAttempts(11))
+	checkErr(t, err, "create failed")
+
+	expected := []time.Duration{
+		5900 * time.Millisecond, 11800 * time.Millisecond, 17700 * time.Millisecond, 23600 * time.Millisecond, 29500 * time.Millisecond,
+		35400 * time.Millisecond, 41300 * time.Millisecond, 47200 * time.Millisecond, 53100 * time.Millisecond, 59000 * time.Millisecond,
+	}
+
+	if !cmp.Equal(c.Backoff(), expected) {
+		t.Fatalf("invalid backoff %v expected %v", c.Backoff(), expected)
+	}
+}
 func TestConsumerDescription(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

@@ -512,24 +512,12 @@ func BackoffIntervals(i ...time.Duration) ConsumerOption {
 // LinearBackoffPolicy creates a backoff policy with linearly increasing steps between min and max
 func LinearBackoffPolicy(steps uint, min time.Duration, max time.Duration) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
-		if steps == 0 {
-			return fmt.Errorf("steps must be more than 0")
-		}
-		if min == 0 {
-			return fmt.Errorf("minimum retry can not be 0")
-		}
-		if max == 0 {
-			return fmt.Errorf("maximum retry can not be 0")
+		p, err := LinearBackoffPeriods(steps, min, max)
+		if err != nil {
+			return err
 		}
 
-		if max < min {
-			max, min = min, max
-		}
-
-		stepSize := uint(max-min) / steps
-		for i := uint(0); i < steps; i += 1 {
-			o.BackOff = append(o.BackOff, min+time.Duration(i*stepSize).Round(time.Millisecond))
-		}
+		o.BackOff = p
 
 		return nil
 	}

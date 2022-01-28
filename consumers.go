@@ -527,8 +527,8 @@ func LinearBackoffPolicy(steps uint, min time.Duration, max time.Duration) Consu
 		}
 
 		stepSize := uint(max-min) / steps
-		for i := uint(1); i <= steps; i += 1 {
-			o.BackOff = append(o.BackOff, time.Duration(i*stepSize).Round(time.Millisecond))
+		for i := uint(0); i < steps; i += 1 {
+			o.BackOff = append(o.BackOff, min+time.Duration(i*stepSize).Round(time.Millisecond))
 		}
 
 		return nil

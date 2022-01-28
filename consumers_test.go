@@ -936,8 +936,8 @@ func TestLinearBackoffPolicy(t *testing.T) {
 	checkErr(t, err, "create failed")
 
 	expected := []time.Duration{
-		5900 * time.Millisecond, 11800 * time.Millisecond, 17700 * time.Millisecond, 23600 * time.Millisecond, 29500 * time.Millisecond,
-		35400 * time.Millisecond, 41300 * time.Millisecond, 47200 * time.Millisecond, 53100 * time.Millisecond, 59000 * time.Millisecond,
+		time.Second, 6900 * time.Millisecond, 12800 * time.Millisecond, 18700 * time.Millisecond, 24600 * time.Millisecond,
+		30500 * time.Millisecond, 36400 * time.Millisecond, 42300 * time.Millisecond, 48200 * time.Millisecond, 54100 * time.Millisecond,
 	}
 
 	if !cmp.Equal(c.Backoff(), expected) {

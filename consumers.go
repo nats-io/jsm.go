@@ -509,6 +509,14 @@ func BackoffIntervals(i ...time.Duration) ConsumerOption {
 	}
 }
 
+// BackoffPolicy sets a consumer policy
+func BackoffPolicy(policy []time.Duration) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.BackOff = policy
+		return nil
+	}
+}
+
 // LinearBackoffPolicy creates a backoff policy with linearly increasing steps between min and max
 func LinearBackoffPolicy(steps uint, min time.Duration, max time.Duration) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {

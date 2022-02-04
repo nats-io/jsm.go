@@ -712,6 +712,13 @@
             "minimum": 0
           }
         },
+        "subjects": {
+          "description": "Subjects and their message counts when a subjects_filter was set",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/golang_uint64"
+          }
+        },
         "num_deleted": {
           "description": "The number of deleted messages",
           "$ref": "#/definitions/golang_int",

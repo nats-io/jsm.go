@@ -362,6 +362,16 @@
                     "maximum": 18446744073709551615
                   }
                 },
+                "subjects": {
+                  "description": "Subjects and their message counts when a subjects_filter was set",
+                  "type": "object",
+                  "additionalProperties": {
+                    "$comment": "unsigned 64 bit integer",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 18446744073709551615
+                  }
+                },
                 "num_deleted": {
                   "description": "The number of deleted messages",
                   "minimum": 0,

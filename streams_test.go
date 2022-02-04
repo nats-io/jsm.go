@@ -351,12 +351,26 @@ func TestStream_State(t *testing.T) {
 		t.Fatalf("expected 0 messages got %d", stats.Msgs)
 	}
 
-	nc.Publish(stream.Subjects()[0], []byte("message 1"))
+	sub := stream.Subjects()[0]
+	nc.Publish(sub, []byte("message 1"))
+	nc.Publish(sub, []byte("message 2"))
 
 	stats, err = stream.State()
 	checkErr(t, err, "stats failed")
-	if stats.Msgs != 1 {
+	if stats.Msgs != 2 {
 		t.Fatalf("expected 1 messages got %d", stats.Msgs)
+	}
+
+	stats, err = stream.State(api.JSApiStreamInfoRequest{SubjectsFilter: ">"})
+	checkErr(t, err, "stats failed")
+	if stats.Msgs != 2 {
+		t.Fatalf("expected 1 messages got %d", stats.Msgs)
+	}
+	if len(stats.Subjects) == 0 {
+		t.Fatalf("did not receive subject info")
+	}
+	if stats.Subjects[sub] != 2 {
+		t.Fatalf("received wrong subject stats")
 	}
 }
 

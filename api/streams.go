@@ -61,7 +61,8 @@ type PubAck struct {
 
 // io.nats.jetstream.api.v1.stream_info_request
 type JSApiStreamInfoRequest struct {
-	DeletedDetails bool `json:"deleted_details,omitempty"`
+	DeletedDetails bool   `json:"deleted_details,omitempty"`
+	SubjectsFilter string `json:"subjects_filter,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_create_request
@@ -425,14 +426,15 @@ type StreamInfo struct {
 }
 
 type StreamState struct {
-	Msgs       uint64          `json:"messages"`
-	Bytes      uint64          `json:"bytes"`
-	FirstSeq   uint64          `json:"first_seq"`
-	FirstTime  time.Time       `json:"first_ts"`
-	LastSeq    uint64          `json:"last_seq"`
-	LastTime   time.Time       `json:"last_ts"`
-	NumDeleted int             `json:"num_deleted,omitempty"`
-	Deleted    []uint64        `json:"deleted,omitempty"`
-	Lost       *LostStreamData `json:"lost,omitempty"`
-	Consumers  int             `json:"consumer_count"`
+	Msgs       uint64            `json:"messages"`
+	Bytes      uint64            `json:"bytes"`
+	FirstSeq   uint64            `json:"first_seq"`
+	FirstTime  time.Time         `json:"first_ts"`
+	LastSeq    uint64            `json:"last_seq"`
+	LastTime   time.Time         `json:"last_ts"`
+	NumDeleted int               `json:"num_deleted,omitempty"`
+	Deleted    []uint64          `json:"deleted,omitempty"`
+	Subjects   map[string]uint64 `json:"subjects,omitempty"`
+	Lost       *LostStreamData   `json:"lost,omitempty"`
+	Consumers  int               `json:"consumer_count"`
 }

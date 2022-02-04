@@ -77,7 +77,7 @@ type Context struct {
 func New(name string, load bool, opts ...Option) (*Context, error) {
 	c := &Context{
 		Name:   name,
-		config: &settings{URL: nats.DefaultURL},
+		config: &settings{},
 	}
 
 	if load {
@@ -90,6 +90,10 @@ func New(name string, load bool, opts ...Option) (*Context, error) {
 	// apply supplied overrides
 	for _, opt := range opts {
 		opt(c.config)
+	}
+
+	if c.config.NSCLookup == "" && c.config.URL == "" && c.config.nscUrl == "" {
+		c.config.URL = nats.DefaultURL
 	}
 
 	return c, nil

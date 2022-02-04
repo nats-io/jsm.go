@@ -167,7 +167,7 @@ func NewStreamConfiguration(template api.StreamConfig, opts ...StreamOption) (*a
 }
 
 func (m *Manager) loadConfigForStream(stream *Stream) (err error) {
-	info, err := m.loadStreamInfo(stream.cfg.Name)
+	info, err := m.loadStreamInfo(stream.cfg.Name, nil)
 	if err != nil {
 		return err
 	}
@@ -180,9 +180,9 @@ func (m *Manager) loadConfigForStream(stream *Stream) (err error) {
 	return nil
 }
 
-func (m *Manager) loadStreamInfo(stream string) (info *api.StreamInfo, err error) {
+func (m *Manager) loadStreamInfo(stream string, req *api.JSApiStreamInfoRequest) (info *api.StreamInfo, err error) {
 	var resp api.JSApiStreamInfoResponse
-	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamInfoT, stream), nil, &resp)
+	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamInfoT, stream), req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -479,8 +479,17 @@ func (s *Stream) LatestInformation() (info *api.StreamInfo, err error) {
 }
 
 // Information loads the current stream information
-func (s *Stream) Information() (info *api.StreamInfo, err error) {
-	info, err = s.mgr.loadStreamInfo(s.Name())
+func (s *Stream) Information(req ...api.JSApiStreamInfoRequest) (info *api.StreamInfo, err error) {
+	if len(req) > 1 {
+		return nil, fmt.Errorf("only one request info is accepted")
+	}
+
+	var ireq api.JSApiStreamInfoRequest
+	if len(req) == 1 {
+		ireq = req[0]
+	}
+
+	info, err = s.mgr.loadStreamInfo(s.Name(), &ireq)
 	if err != nil {
 		return nil, err
 	}
@@ -503,15 +512,11 @@ func (s *Stream) LatestState() (state api.StreamState, err error) {
 }
 
 // State retrieves the Stream State
-func (s *Stream) State() (stats api.StreamState, err error) {
-	info, err := s.mgr.loadStreamInfo(s.Name())
+func (s *Stream) State(req ...api.JSApiStreamInfoRequest) (stats api.StreamState, err error) {
+	info, err := s.Information(req...)
 	if err != nil {
-		return stats, err
+		return api.StreamState{}, err
 	}
-
-	s.Lock()
-	s.lastInfo = info
-	s.Unlock()
 
 	return info.State, nil
 }

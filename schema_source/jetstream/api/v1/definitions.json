@@ -719,6 +719,11 @@
             "$ref": "#/definitions/golang_uint64"
           }
         },
+        "num_subjects": {
+          "description": "The number of unique subjects held in the stream",
+          "$ref": "#/definitions/golang_int",
+          "minimum": 0
+        },
         "num_deleted": {
           "description": "The number of deleted messages",
           "$ref": "#/definitions/golang_int",

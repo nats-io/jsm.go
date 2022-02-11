@@ -435,9 +435,6 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 	if err != nil {
 		return nil, nil, err
 	}
-	if IsErrorResponse(cresp) {
-		return nil, nil, fmt.Errorf("restore failed: %q", cresp.Data)
-	}
 
 	kind, finalr, err := api.ParseMessage(cresp.Data)
 	if err != nil {

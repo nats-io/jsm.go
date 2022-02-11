@@ -390,6 +390,13 @@
                 "maximum": 18446744073709551615
               }
             },
+            "num_subjects": {
+              "description": "The number of unique subjects held in the stream",
+              "minimum": 0,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
+            },
             "num_deleted": {
               "description": "The number of deleted messages",
               "minimum": 0,

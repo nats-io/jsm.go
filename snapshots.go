@@ -345,8 +345,12 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 	}
 
 	// allow just stream name override
+	//
+	// this used to be allowed but turns out the server support for this was
+	// not up to scratch and fixing it would mean having to rebuild and re-checksum
+	// every message, so for now we error here instead
 	if req.Config.Name != stream {
-		req.Config.Name = stream
+		return nil, nil, fmt.Errorf("stream name may not be changed during restore")
 	}
 
 	inf, err := os.Open(sopts.dataFile)

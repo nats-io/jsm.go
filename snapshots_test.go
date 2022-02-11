@@ -75,31 +75,16 @@ func TestStream_Snapshot(t *testing.T) {
 	}
 	checkErr(t, stream.Delete(), "delete failed")
 
-	// restore to new stream name
-	_, postRestoreState, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "q2", td)
-	checkErr(t, err, "restore failed")
-	if postRestoreState == nil {
-		t.Fatalf("got a nil post restore state")
-	}
-	if !reflect.DeepEqual(preState, *postRestoreState) {
-		t.Fatalf("pre state does not match post restore state")
-	}
-
-	stream, err = mgr.LoadStream("q2")
-	checkErr(t, err, "load failed")
-
-	postState, err = stream.State()
-	checkErr(t, err, "state failed")
-	if !reflect.DeepEqual(preState, postState) {
-		t.Fatalf("pre state does not match post state")
-	}
-
 	// restore with new config
 	cfg := stream.Configuration()
-	cfg.Name = "q3"
 	cfg.Subjects = []string{"js.in.q3"}
 
-	_, postRestoreState, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "q3", td, jsm.RestoreConfiguration(cfg))
+	_, _, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "q3", td, jsm.RestoreConfiguration(cfg))
+	if err.Error() != "stream name may not be changed during restore" {
+		t.Fatalf("expected rename error")
+	}
+
+	_, postRestoreState, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "q1", td, jsm.RestoreConfiguration(cfg))
 	checkErr(t, err, "restore failed")
 	if postRestoreState == nil {
 		t.Fatalf("got a nil post restore state")
@@ -108,7 +93,7 @@ func TestStream_Snapshot(t *testing.T) {
 		t.Fatalf("pre state does not match post restore state")
 	}
 
-	stream, err = mgr.LoadStream("q3")
+	stream, err = mgr.LoadStream("q1")
 	checkErr(t, err, "load failed")
 
 	postState, err = stream.State()

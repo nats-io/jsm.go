@@ -111,7 +111,7 @@ func (m *Manager) LoadOrNewStreamFromDefault(name string, dflt api.StreamConfig,
 		o(&dflt)
 	}
 	s, err := m.LoadStream(name)
-	if s == nil || err != nil {
+	if IsNatsError(err, 10059) {
 		return m.NewStreamFromDefault(name, dflt)
 	}
 

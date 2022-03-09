@@ -146,7 +146,7 @@ func (m *Manager) LoadOrNewConsumerFromDefault(stream string, name string, templ
 	}
 
 	c, err := m.LoadConsumer(stream, name)
-	if c == nil || err != nil {
+	if IsNatsError(err, 10014) {
 		return m.NewConsumerFromDefault(stream, template, opts...)
 	}
 

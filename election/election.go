@@ -70,6 +70,8 @@ type Backoff interface {
 }
 
 // NewElection creates a leader election, it will either create/join a stream called streamName or use the pre-made stream passed as option
+//
+// Deprecated: this is now deprecated, KV represents a better election backend than this implementation.
 func NewElection(name string, wonCb func(), lostCb func(), streamName string, mgr *jsm.Manager, opts ...Option) (*election, error) {
 	o, err := newOptions(opts...)
 	if err != nil {

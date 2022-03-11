@@ -149,7 +149,8 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 	case msg := <-p.q:
 		p.seen++
 
-		if msg.Header.Get("Status") == "404" {
+		status := msg.Header.Get("Status")
+		if status == "404" || status == "408" {
 			return nil, true, fmt.Errorf("last message reached")
 		}
 

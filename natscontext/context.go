@@ -348,7 +348,7 @@ func (c *Context) loadActiveContext() error {
 	if err != nil {
 		return err
 	}
-	
+
 	err = json.Unmarshal(ctxContent, c.config)
 	if err != nil {
 		return err

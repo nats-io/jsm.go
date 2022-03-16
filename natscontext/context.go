@@ -99,6 +99,34 @@ func New(name string, load bool, opts ...Option) (*Context, error) {
 	return c, nil
 }
 
+// NewFromFile loads a new configuration context from the given filename.
+//
+// When opts is supplied those settings will override what was loaded or supply
+// values for an empty context
+func NewFromFile(filename string, opts ...Option) (*Context, error) {
+	c := &Context{
+		Name:   strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filepath.Base(filename))),
+		config: &settings{},
+		path:   filename,
+	}
+
+	err := c.loadActiveContext()
+	if err != nil {
+		return nil, err
+	}
+
+	// apply supplied overrides
+	for _, opt := range opts {
+		opt(c.config)
+	}
+
+	if c.config.NSCLookup == "" && c.config.URL == "" && c.config.nscUrl == "" {
+		c.config.URL = nats.DefaultURL
+	}
+
+	return c, nil
+}
+
 // Connect connects to the NATS server configured by the named context, empty name connects to selected context
 func Connect(name string, opts ...nats.Option) (*nats.Conn, error) {
 	nctx, err := New(name, true)
@@ -291,33 +319,34 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 }
 
 func (c *Context) loadActiveContext() error {
-	parent, err := parentDir()
-	if err != nil {
-		return err
-	}
-
-	// none given, lets try to find it via the fs
-	if c.Name == "" {
-		c.Name = SelectedContext()
-		if c.Name == "" {
-			return nil
+	if c.path == "" {
+		parent, err := parentDir()
+		if err != nil {
+			return err
 		}
-	}
 
-	if !validName(c.Name) {
-		return fmt.Errorf("invalid context name %s", c.Name)
-	}
+		// none given, lets try to find it via the fs
+		if c.Name == "" {
+			c.Name = SelectedContext()
+			if c.Name == "" {
+				return nil
+			}
+		}
 
-	if !knownContext(parent, c.Name) {
-		return fmt.Errorf("unknown context %q", c.Name)
-	}
+		if !validName(c.Name) {
+			return fmt.Errorf("invalid context name %s", c.Name)
+		}
 
-	c.path = filepath.Join(parent, "nats", "context", c.Name+".json")
+		if !knownContext(parent, c.Name) {
+			return fmt.Errorf("unknown context %q", c.Name)
+		}
+
+		c.path = filepath.Join(parent, "nats", "context", c.Name+".json")
+	}
 	ctxContent, err := ioutil.ReadFile(c.path)
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(ctxContent, c.config)
 	if err != nil {
 		return err

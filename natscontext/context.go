@@ -343,10 +343,12 @@ func (c *Context) loadActiveContext() error {
 
 		c.path = filepath.Join(parent, "nats", "context", c.Name+".json")
 	}
+
 	ctxContent, err := ioutil.ReadFile(c.path)
 	if err != nil {
 		return err
 	}
+	
 	err = json.Unmarshal(ctxContent, c.config)
 	if err != nil {
 		return err

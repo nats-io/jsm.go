@@ -81,7 +81,7 @@ func TestContext(t *testing.T) {
 	}
 
 	config, err = natscontext.NewFromFile("./testdata/gotest.json")
-	if err != nil || (config.ServerURL() != "demo.nats.io" && config.Token() != "use-nkeys!") {
+	if err != nil || (config.Name != "gotest" && config.ServerURL() != "demo.nats.io" && config.Token() != "use-nkeys!") {
 		t.Fatalf("could not load context file: %s", err)
 	}
 }

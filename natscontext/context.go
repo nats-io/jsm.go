@@ -87,14 +87,7 @@ func New(name string, load bool, opts ...Option) (*Context, error) {
 		}
 	}
 
-	// apply supplied overrides
-	for _, opt := range opts {
-		opt(c.config)
-	}
-
-	if c.config.NSCLookup == "" && c.config.URL == "" && c.config.nscUrl == "" {
-		c.config.URL = nats.DefaultURL
-	}
+	c.configureNewContext(opts...)
 
 	return c, nil
 }
@@ -105,7 +98,7 @@ func New(name string, load bool, opts ...Option) (*Context, error) {
 // values for an empty context
 func NewFromFile(filename string, opts ...Option) (*Context, error) {
 	c := &Context{
-		Name:   strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filepath.Base(filename))),
+		Name:   strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)),
 		config: &settings{},
 		path:   filename,
 	}
@@ -115,6 +108,12 @@ func NewFromFile(filename string, opts ...Option) (*Context, error) {
 		return nil, err
 	}
 
+	c.configureNewContext(opts...)
+
+	return c, nil
+}
+
+func (c *Context) configureNewContext(opts ...Option) {
 	// apply supplied overrides
 	for _, opt := range opts {
 		opt(c.config)
@@ -123,8 +122,6 @@ func NewFromFile(filename string, opts ...Option) (*Context, error) {
 	if c.config.NSCLookup == "" && c.config.URL == "" && c.config.nscUrl == "" {
 		c.config.URL = nats.DefaultURL
 	}
-
-	return c, nil
 }
 
 // Connect connects to the NATS server configured by the named context, empty name connects to selected context

@@ -79,4 +79,9 @@ func TestContext(t *testing.T) {
 	if config.ServerURL() != nats.DefaultURL {
 		t.Fatalf("expected localhost got %s", config.ServerURL())
 	}
+
+	config, err = natscontext.NewFromFile("./testdata/gotest.json")
+	if err != nil || (config.Name != "gotest" && config.ServerURL() != "demo.nats.io" && config.Token() != "use-nkeys!") {
+		t.Fatalf("could not load context file: %s", err)
+	}
 }

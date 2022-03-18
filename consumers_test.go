@@ -402,8 +402,8 @@ func TestConsumer_PendingMessageCount(t *testing.T) {
 	if pending != 1 {
 		t.Fatalf("expected pending 1 got %d", pending)
 	}
-	m.Respond(nil)
-
+	m.Respond(api.AckAck)
+	time.Sleep(250 * time.Millisecond)
 	pending, err = durable.PendingAcknowledgement()
 	checkErr(t, err, "state failed")
 	if pending != 0 {

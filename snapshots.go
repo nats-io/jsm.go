@@ -312,7 +312,7 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 		dir:      dir,
 		dataFile: filepath.Join(dir, "stream.tar.s2"),
 		metaFile: filepath.Join(dir, "backup.json"),
-		chunkSz:  512 * 1024,
+		chunkSz:  64 * 1024,
 	}
 
 	for _, opt := range opts {
@@ -390,7 +390,7 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 	progress.notify()
 
 	nc := m.nc
-	var chunk [512 * 1024]byte
+	var chunk [64 * 1024]byte
 	var cresp *nats.Msg
 
 	for {
@@ -464,7 +464,7 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 		metaFile:  filepath.Join(dir, "backup.json"),
 		jsck:      false,
 		consumers: false,
-		chunkSz:   512 * 1024,
+		chunkSz:   128 * 1024,
 	}
 
 	for _, opt := range opts {

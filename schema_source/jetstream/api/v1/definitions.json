@@ -581,7 +581,7 @@
         "max_ack_pending": {
           "$ref": "#/definitions/golang_int",
           "description": "The maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended",
-          "default": 20000
+          "default": 1000
         },
         "idle_heartbeat": {
           "$ref": "#/definitions/golang_duration_nanos",

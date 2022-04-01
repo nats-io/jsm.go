@@ -182,7 +182,7 @@
         },
         "max_ack_pending": {
           "description": "The maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended",
-          "default": 20000,
+          "default": 1000,
           "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
           "type": "integer",
           "maximum": 9223372036854775807,

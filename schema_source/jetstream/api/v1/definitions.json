@@ -206,6 +206,41 @@
         }
       }
     },
+    "tier": {
+      "type": "object",
+      "required": [
+        "memory",
+        "storage",
+        "streams",
+        "limits",
+        "consumers"
+      ],
+      "properties": {
+        "memory": {
+          "description": "Memory Storage being used for Stream Message storage",
+          "type": "integer",
+          "minimum": 0
+        },
+        "storage": {
+          "description": "File Storage being used for Stream Message storage",
+          "type": "integer",
+          "minimum": 0
+        },
+        "streams": {
+          "description": "Number of active Streams",
+          "type": "integer",
+          "minimum": 0
+        },
+        "consumers": {
+          "description": "Number of active Consumers",
+          "type": "integer",
+          "minimum": 0
+        },
+        "limits": {
+          "$ref": "#/definitions/account_limits"
+        }
+      }
+    },
     "account_stats": {
       "type": "object",
       "required": ["memory", "storage", "streams", "limits", "api", "consumers"],
@@ -230,8 +265,20 @@
           "type": "integer",
           "minimum": 0
         },
+        "domain": {
+          "description": "The JetStream domain this account is in",
+          "type": "string"
+        },
         "limits": {
           "$ref": "#/definitions/account_limits"
+        },
+        "tiers": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "$ref": "#/definitions/tier"
+            }
+          }
         },
         "api": {
           "$ref": "#/definitions/api_stats"
@@ -267,6 +314,22 @@
           "type": "boolean",
           "description": "Indicates if Streams created in this account requires the max_bytes property set",
           "default": false
+        },
+        "max_ack_pending": {
+          "type": "integer",
+          "description": "The maximum number of outstanding ACKs any consumer may configure"
+        },
+        "memory_max_stream_bytes": {
+          "type": "integer",
+          "description": "The maximum size any single memory stream may be",
+          "minimum": 0,
+          "default": 0
+        },
+        "storage_max_stream_bytes": {
+          "type": "integer",
+          "description": "The maximum size any single storage based stream may be",
+          "minimum": 0,
+          "default": 0
         }
       }
     },

@@ -1178,5 +1178,35 @@
     "help": "",
     "url": "",
     "deprecates": ""
+  },
+  {
+    "constant": "JSNoLimitsErr",
+    "code": 400,
+    "error_code": 10120,
+    "description": "no JetStream default or applicable tiered limit present",
+    "comment": "",
+    "help": "",
+    "url": "",
+    "deprecates": ""
+  },
+  {
+    "constant": "JSConsumerMaxPendingAckExcess",
+    "code": 400,
+    "error_code": 10121,
+    "description": "consumer max ack pending exceeds server limit",
+    "comment": "",
+    "help": "",
+    "url": "",
+    "deprecates": ""
+  },
+  {
+    "constant": "JSStreamMaxStreamBytesExceeded",
+    "code": 400,
+    "error_code": 10122,
+    "description": "stream max bytes exceeds account limit max stream bytes",
+    "comment": "",
+    "help": "",
+    "url": "",
+    "deprecates": ""
   }
 ]

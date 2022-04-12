@@ -417,12 +417,19 @@ type ExternalStream struct {
 }
 
 type StreamInfo struct {
-	Config  StreamConfig        `json:"config"`
-	Created time.Time           `json:"created"`
-	State   StreamState         `json:"state"`
-	Cluster *ClusterInfo        `json:"cluster,omitempty"`
-	Mirror  *StreamSourceInfo   `json:"mirror,omitempty"`
-	Sources []*StreamSourceInfo `json:"sources,omitempty"`
+	Config     StreamConfig        `json:"config"`
+	Created    time.Time           `json:"created"`
+	State      StreamState         `json:"state"`
+	Cluster    *ClusterInfo        `json:"cluster,omitempty"`
+	Mirror     *StreamSourceInfo   `json:"mirror,omitempty"`
+	Sources    []*StreamSourceInfo `json:"sources,omitempty"`
+	Alternates []StreamAlternate   `json:"alternates,omitempty"`
+}
+
+type StreamAlternate struct {
+	Name    string `json:"name"`
+	Domain  string `json:"domain,omitempty"`
+	Cluster string `json:"cluster"`
 }
 
 type StreamState struct {

@@ -729,6 +729,32 @@
           "items": {
             "$ref": "#/definitions/stream_source_info"
           }
+        },
+        "alternates": {
+          "type": "array",
+          "description": "List of mirrors sorted by priority",
+          "items": {
+            "$ref": "#/definitions/stream_alternate"
+          }
+        }
+      }
+    },
+    "stream_alternate": {
+      "type": "object",
+      "description": "An alternate location to read mirrored data",
+      "required": ["name", "cluster"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The mirror stream name"
+        },
+        "cluster": {
+          "type": "string",
+          "description": "The name of the cluster holding the stream"
+        },
+        "domain": {
+          "type": "string",
+          "description": "The domain holding the string"
         }
       }
     },

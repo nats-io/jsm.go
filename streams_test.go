@@ -857,6 +857,23 @@ func TestStreamDescription(t *testing.T) {
 	}
 }
 
+func TestStreamPageContents(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test"), jsm.WorkQueueRetention())
+	checkErr(t, err, "create failed")
+
+	pager, err := s.PageContents()
+	if err.Error() != "work queue retention streams can not be paged" {
+		t.Fatalf("Expected an error, got: %v", err)
+	}
+	if pager != nil {
+		t.Fatalf("expected a nil pager")
+	}
+}
+
 func TestStreamSealed(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

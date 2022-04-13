@@ -391,6 +391,10 @@ func AllowRollup() StreamOption {
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
+	if s.Retention() == api.WorkQueuePolicy {
+		return nil, fmt.Errorf("work queue retention streams can not be paged")
+	}
+
 	pgr := &StreamPager{}
 	err := pgr.start(s.Name(), s.mgr, opts...)
 	if err != nil {

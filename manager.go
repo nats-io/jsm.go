@@ -86,6 +86,26 @@ func (m *Manager) JetStreamAccountInfo() (info *api.JetStreamAccountStats, err e
 	return resp.JetStreamAccountStats, nil
 }
 
+// IsStreamMaxBytesRequired determines if the JetStream account requires streams to set a byte limit
+func (m *Manager) IsStreamMaxBytesRequired() (bool, error) {
+	nfo, err := m.JetStreamAccountInfo()
+	if err != nil {
+		return false, err
+	}
+
+	if nfo.Limits.MaxBytesRequired {
+		return true, nil
+	}
+
+	for _, t := range nfo.Tiers {
+		if t.Limits.MaxBytesRequired {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func (m *Manager) jsonRequest(subj string, req interface{}, response interface{}) (err error) {
 	var body []byte
 

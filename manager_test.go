@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}
+	defer os.RemoveAll(d)
 
 	var (
 		servers []*natsd.Server
@@ -114,6 +116,44 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn
 	}
 }
 
+func withNatsServerWithConfig(t *testing.T, cfile string, cb func(*testing.T, *natsd.Server)) {
+	t.Helper()
+
+	d, err := ioutil.TempDir("", "jstest")
+	if err != nil {
+		t.Fatalf("temp dir could not be made: %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	af, err := filepath.Abs(cfile)
+	if err != nil {
+		t.Fatalf("absolute path failed: %v", err)
+	}
+
+	opts, err := natsd.ProcessConfigFile(af)
+	if err != nil {
+		t.Fatalf("config file failed: %v", err)
+	}
+
+	opts.StoreDir = d
+	opts.Port = -1
+	opts.Host = "localhost"
+	opts.LogFile = "/dev/stdout"
+	opts.Trace = true
+
+	s, err := natsd.NewServer(opts)
+	if err != nil {
+		t.Fatal("server start failed: ", err)
+	}
+
+	go s.Start()
+	if !s.ReadyForConnections(10 * time.Second) {
+		t.Error("nats server did not start")
+	}
+
+	cb(t, s)
+}
+
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 
@@ -152,6 +192,37 @@ func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	}
 
 	return s, nc, mgr
+}
+
+func TestIsStreamBytesRequired(t *testing.T) {
+	withNatsServerWithConfig(t, "testdata/bytes_required.cfg", func(t *testing.T, srv *natsd.Server) {
+		cases := []struct {
+			user     string
+			required bool
+		}{
+			{"other", false},
+			{"a", true},
+		}
+
+		for _, tc := range cases {
+			t.Run(fmt.Sprintf("User_%s", tc.user), func(t *testing.T) {
+				nc, err := nats.Connect(srv.ClientURL(), nats.UserInfo(tc.user, "b"))
+				if err != nil {
+					t.Fatalf("connection failed: %v", err)
+				}
+
+				mgr, _ := jsm.New(nc)
+
+				required, err := mgr.IsStreamMaxBytesRequired()
+				if err != nil {
+					t.Fatalf("failed: %v", err)
+				}
+				if required != tc.required {
+					t.Fatalf("Expected it to be %t got %t", tc.required, required)
+				}
+			})
+		}
+	})
 }
 
 func TestJetStreamEnabled(t *testing.T) {

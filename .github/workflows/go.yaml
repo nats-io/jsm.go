@@ -4,8 +4,11 @@ on: [push, pull_request]
 jobs:
   lint_and_test:
     runs-on: ubuntu-latest
-    env:
-      GO111MODULE: "on"
+
+    strategy:
+      matrix:
+        go: [ 1.17, 1.18 ]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v1

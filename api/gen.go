@@ -192,6 +192,7 @@ func main() {
 		&schema{P: "server/metric/v1/service_latency.json", St: "srvmetric.ServiceLatencyV1"},
 		&schema{P: "jetstream/advisory/v1/api_audit.json", St: "jsadvisory.JetStreamAPIAuditV1"},
 		&schema{P: "jetstream/advisory/v1/max_deliver.json", St: "jsadvisory.ConsumerDeliveryExceededAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/nak.json", St: "jsadvisory.JSConsumerDeliveryNakAdvisoryV1"},
 		&schema{P: "jetstream/advisory/v1/terminated.json", St: "jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1"},
 		&schema{P: "jetstream/advisory/v1/stream_action.json", St: "jsadvisory.JSStreamActionAdvisoryV1"},
 		&schema{P: "jetstream/advisory/v1/consumer_action.json", St: "jsadvisory.JSConsumerActionAdvisoryV1"},

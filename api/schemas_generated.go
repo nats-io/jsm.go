@@ -17,6 +17,7 @@ var schemaTypes = map[string]func() interface{}{
 	"io.nats.server.metric.v1.service_latency":                   func() interface{} { return &srvmetric.ServiceLatencyV1{} },
 	"io.nats.jetstream.advisory.v1.api_audit":                    func() interface{} { return &jsadvisory.JetStreamAPIAuditV1{} },
 	"io.nats.jetstream.advisory.v1.max_deliver":                  func() interface{} { return &jsadvisory.ConsumerDeliveryExceededAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.nak":                          func() interface{} { return &jsadvisory.JSConsumerDeliveryNakAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.terminated":                   func() interface{} { return &jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.stream_action":                func() interface{} { return &jsadvisory.JSStreamActionAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.consumer_action":              func() interface{} { return &jsadvisory.JSConsumerActionAdvisoryV1{} },

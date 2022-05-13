@@ -3,19 +3,11 @@
 This is a Go based library to manage and interact with JetStream.
 
 This package is the underlying library for the `nats` CLI, our Terraform provider, GitHub Actions and Kubernetes CRDs.
+It's essentially a direct wrapping of the JetStream API with few userfriendly features and requires deep technical
+knowledge of the JetStream internals.
 
-**NOTE**: This package is under development, while JetStream is in Preview we make no promises about the API stability of this package.
+For typical end users we suggest the [nats.go](https://github.com/nats-io/nats.go) package.
 
-[![Go Doc](https://pkg.go.dev/badge/github.com/nats-io/jsm.go)](https://pkg.go.dev/github.com/nats-io/jsm.go)
-
-## Features
-
- * Manage and interact with Streams
- * Manage and interact with Consumers
- * Perform Backup and Restore operations of configuration and data
- * Schema registry of many standard NATS events and APIs that supports validation using JSON Schema
- * Process, validate and render NATS server events and advisories
- 
 ## Initialization
 
 This package is modeled as a `Manager` instance that receives a NATS Connection and sets default timeouts and validation for
@@ -30,121 +22,6 @@ mgr, _ := jsm.New(nc, jsm.WithTimeout(10*time.Second))
 This creates a Manager with a 10 second timeout when accessing the JetStream API. All examples below assume a manager
 was created as above.
 
-## Managing Streams
-
-A Stream stores data, this package allow you to Read messages from , Create, Delete, List and Update Streams.
-
-### Creating Streams
-
-Before anything you have to create a stream, the basic pattern is:
-
-```go
-mgr, _ := jsm.New(nc)
-stream, _ := mgr.NewStream("ORDERS", jsm.Subjects("ORDERS.*"), jsm.MaxAge(24*365*time.Hour), jsm.FileStorage())
-```
-
-The `mgr.NewStream` uses `jsm.DefaultStream` as starting defaults.  
-
-This can get quite verbose, so you might have a template configuration of your own choosing to create many similar Streams.
-
-```go
-template, _ := jsm.NewStreamConfiguration(jsm.DefaultStream, jsm.MaxAge(24 * 365 * time.Hour), jsm.FileStorage())
-
-orders, _ := mgr.NewStreamFromDefault("ORDERS", template,  jsm.Subjects("ORDERS.*"))
-archive, _ := mgr.NewStreamFromDefault("ARCHIVE", template, jsm.Subjects("ARCHIVE"), jsm.MaxAge(5*template.MaxAge))
-```
-
-We have 2 pre-defined configurations that you might use instead of your own template - `jsm.DefaultStream` and `jsm.DefaultWorkQueue`.
-
-You can even copy Stream configurations this way (not content, just configuration), this creates `STAGING` using `ORDERS` config with a different set of subjects:
-
-```go
-orders, err := mgr.NewStream("ORDERS", jsm.Subjects("ORDERS.*"), jsm.MaxAge(24*365*time.Hour), jsm.FileStorage())
-staging, err := mgr.NewStreamFromDefault("STAGING", orders.Configuration(), jsm.Subjects("STAGINGORDERS.*"))
-```
-
-### Loading references to existing streams
-
-Once a Stream exist you can load it later:
-
-```go
-orders, err := mgr.LoadStream("ORDERS")
-```
-
-This will fail if the stream does not exist, create and load can be combined:
-
-```go
-orders, err := mgr.LoadOrNewFromDefault("ORDERS", template, jsm.Subjects("ORDERS.*"))
-```
-
-This will create the Stream if it doesn't exist, else load the existing one - though no effort is made to ensure the loaded one matches the desired configuration in that case.
-
-### Associated Consumers
-
-With a stream handle you can get lists of known Consumers using `stream.ConsumerNames()`, or create new Consumers within the stream using `stream.NewConsumer` and `stream.NewConsumerFromDefault`. Consumers can also be loaded using `stream.LoadConsumer` and you can combine load and create using `stream.LoadOrNewConsumer` and `stream.LoadOrNewConsumerFromDefault`.
-
-These methods just proxy to the Consumer specific ones which will be discussed below. When creating new Consumer instances this way the connection information from the Stream is passed into the Consumer.
-
-### Other actions
-
-There are a number of other functions allowing you to purge messages, read individual messages, get statistics and access the configuration. Review the godoc for details.
-
-## Consumers
-
-### Creating
-
-Above you saw that once you have a handle to a stream you can create and load consumers, you can access the consumer directly though, lets create one:
-
-```go
-consumer, err := mgr.NewConsumer("ORDERS", "NEW", jsm.FilterSubject("ORDERS.received"), jsm.SampleFrequency("100"))
-```
-
-Like with Streams we have `NewConsumerFromDefault`, `LoadOrNewConsumer` and `LoadOrNewConsumerFromDefault` and we supply 2 default configurations to help you `DefaultConsumer` and `SampledDefaultConsumer`.
-
-When using `LoadOrNewConsumer` and `LoadOrNewConsumerFromDefault` if a durable name is given then that has to match the name supplied.
-
-Many options exist to set starting points, durability and more - everything that you will find in the `jsm` utility, review the godoc for full details.
-
-### Consuming
-
-Push-based Consumers are accessed using the normal NATS subscribe approach:
-
-```go
-ib := nats.NewInbox()
-
-sub, _ := nc.Subscribe(ib, func(m *nats.Msg){ // process messages })
-
-consumer, _ := mgr.NewConsumer("ORDERS", "NEW", jsm.FilterSubject("ORDERS.received"), jsm.SampleFrequency("100"), jsm.DeliverySubject(ib))
-```
-
-For Pull-based Consumers we have a helper to fetch the next message:
-
-```go
-// 1 message
-msg, err := consumer.NextMsg()
-```
-
-When consuming these messages they have metadata attached that you can parse:
-
-```go
-msg, _ := consumer.NextMsg(jsm.WithTimeout(60*time.Second))
-meta, _ := jsm.ParseJSMsgMetadata(msg)
-```
-
-At this point you have access to `meta.Stream`, `meta.Consumer` for the names and `meta.StreamSequence`, `meta.ConsumerSequence` to determine which exact message and `meta.Delivered` for how many times it was redelivered.
-
-If using the latest `nats.go` branch the `nats.Msg` instance will have a `JetStreamMetaData()` function that performs the same parsing and it also have helpers to acknowledge messages and more.
-
-```go
-sub, _ := nc.Subscribe(ib, func(m *nats.Msg){
-  meta, _ := m.JetStreamMetaData()
-  fmt.Printf("Received message from %s > %s\n", meta.Stream, meta.Consumer)
-  m.Ack()
-})
-```
-### Other Actions
-
-There are a number of other functions to help you determine if its Pull or Push, is it Durable, Sampled and to access the full configuration.
 
 ## Schema Registry
 

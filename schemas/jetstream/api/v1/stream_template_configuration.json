@@ -304,8 +304,8 @@
           "type": "object",
           "description": "Rules for mapping subjects onto new subjects for partitioning and more",
           "required": [
-            "source",
-            "destination"
+            "src",
+            "dst"
           ],
           "properties": {
             "src": {

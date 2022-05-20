@@ -848,7 +848,7 @@
     "subject_mapping": {
       "type": "object",
       "description": "Rules for mapping subjects onto new subjects for partitioning and more",
-      "required": ["source","destination"],
+      "required": ["src","dst"],
       "properties": {
         "src": {
           "type": "string",

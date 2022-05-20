@@ -485,6 +485,8 @@ func TestConsumer_AcknowledgedState(t *testing.T) {
 	err = m.Respond(nil)
 	checkErr(t, err, "ack failed")
 
+	time.Sleep(150 * time.Millisecond)
+
 	state, err = durable.AcknowledgedFloor()
 	checkErr(t, err, "state failed")
 

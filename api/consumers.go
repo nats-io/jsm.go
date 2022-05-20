@@ -282,6 +282,8 @@ type ConsumerConfig struct {
 	MaxRequestExpires  time.Duration   `json:"max_expires,omitempty"`
 	MaxRequestMaxBytes int             `json:"max_bytes,omitempty"`
 	InactiveThreshold  time.Duration   `json:"inactive_threshold,omitempty"`
+	Replicas           int             `json:"num_replicas"`
+	MemoryStorage      bool            `json:"mem_storage,omitempty"`
 
 	// Don't add to general clients.
 	Direct bool `json:"direct,omitempty"`

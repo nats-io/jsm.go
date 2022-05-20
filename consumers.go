@@ -525,6 +525,21 @@ func BackoffPolicy(policy []time.Duration) ConsumerOption {
 	}
 }
 
+// ConsumerOverrideReplicas override the replica count inherited from the Stream with this value
+func ConsumerOverrideReplicas(r int) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.Replicas = r
+		return nil
+	}
+}
+
+func ConsumerOverrideMemoryStorage() ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.MemoryStorage = true
+		return nil
+	}
+}
+
 // LinearBackoffPolicy creates a backoff policy with linearly increasing steps between min and max
 func LinearBackoffPolicy(steps uint, min time.Duration, max time.Duration) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
@@ -839,6 +854,8 @@ func (c *Consumer) MaxRequestBatch() int             { return c.cfg.MaxRequestBa
 func (c *Consumer) MaxRequestExpires() time.Duration { return c.cfg.MaxRequestExpires }
 func (c *Consumer) MaxRequestMaxBytes() int          { return c.cfg.MaxRequestMaxBytes }
 func (c *Consumer) InactiveThreshold() time.Duration { return c.cfg.InactiveThreshold }
+func (c *Consumer) Replicas() int                    { return c.cfg.Replicas }
+func (c *Consumer) MemoryStorage() bool              { return c.cfg.MemoryStorage }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {
 		return time.Time{}

@@ -19,9 +19,23 @@
       "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
       "type": "integer"
     },
+    "max_bytes": {
+      "description": "Sends at most this many bytes to the requestor, limited by consumer configuration max_bytes",
+      "minimum": 0,
+      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+      "type": "integer",
+      "maximum": 9223372036854775807
+    },
     "no_wait": {
       "type": "boolean",
       "description": "When true a response with a 404 status header will be returned when no messages are available"
+    },
+    "idle_heartbeat": {
+      "description": "When not 0 idle heartbeats will be sent on this interval",
+      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807,
+      "minimum": -9223372036854775807
     }
   }
 }

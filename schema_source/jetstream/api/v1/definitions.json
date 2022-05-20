@@ -681,6 +681,12 @@
           "$ref": "#/definitions/golang_duration_nanos",
           "default": 0
         },
+        "max_bytes": {
+          "description": "The maximum bytes value that maybe set when dong a pull on a Pull Consumer",
+          "$ref": "definitions.json#/definitions/golang_int",
+          "minimum": 0,
+          "default": 0
+        },
         "inactive_threshold": {
           "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
           "$ref": "#/definitions/golang_duration_nanos",

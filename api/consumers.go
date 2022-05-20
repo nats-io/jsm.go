@@ -313,9 +313,11 @@ type ConsumerInfo struct {
 //
 // NATS Schema Type io.nats.jetstream.api.v1.consumer_getnext_request
 type JSApiConsumerGetNextRequest struct {
-	Expires time.Duration `json:"expires,omitempty"`
-	Batch   int           `json:"batch,omitempty"`
-	NoWait  bool          `json:"no_wait,omitempty"`
+	Expires   time.Duration `json:"expires,omitempty"`
+	Batch     int           `json:"batch,omitempty"`
+	MaxBytes  int           `json:"max_bytes,omitempty"`
+	NoWait    bool          `json:"no_wait,omitempty"`
+	Heartbeat time.Duration `json:"idle_heartbeat,omitempty"`
 }
 
 // ConsumerNakOptions is for optional NAK parameters, e.g. delay.

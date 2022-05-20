@@ -16,6 +16,7 @@ package jsm_test
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -902,5 +903,52 @@ func TestStreamSealed(t *testing.T) {
 	err = s.DeleteMessage(1)
 	if !jsm.IsNatsError(err, 10109) {
 		t.Fatalf("expected err 10109 got %v", err)
+	}
+}
+
+func TestStreamRepublish(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test.*"), jsm.Republish(&api.SubjectMapping{Source: "test.*", Destination: "repub.{{partition(2,1)}}"}))
+	checkErr(t, err, "create failed")
+	if s.Configuration().RePublish == nil {
+		t.Fatalf("expected republish configuration")
+	}
+
+	received := map[int]int{0: 0, 1: 0}
+	mu := sync.Mutex{}
+	s1, err := nc.Subscribe("repub.1", func(m *nats.Msg) {
+		mu.Lock()
+		received[1]++
+		mu.Unlock()
+	})
+	checkErr(t, err, "sub failed")
+	s2, err := nc.Subscribe("repub.0", func(m *nats.Msg) {
+		mu.Lock()
+		received[0]++
+		mu.Unlock()
+	})
+	checkErr(t, err, "sub failed")
+
+	for i := 0; i < 100; i++ {
+		_, err := nc.Request(fmt.Sprintf("test.%d", i), []byte("hello"), time.Second)
+		checkErr(t, err, "req failed")
+	}
+
+	s1.Drain()
+	s2.Drain()
+
+	nfo, err := s.State()
+	if err != nil {
+		t.Fatalf("state failed: %v", err)
+	}
+	if nfo.Msgs != 100 {
+		t.Fatalf("Stream did not have 100 messages: %d", nfo.Msgs)
+	}
+
+	if received[0] == 0 || received[1] == 0 {
+		t.Fatalf("Expected 2 mapped subjects to get messages: %#v", received)
 	}
 }

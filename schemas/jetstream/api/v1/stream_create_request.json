@@ -285,14 +285,14 @@
           "description": "Rules for mapping subjects onto new subjects for partitioning and more",
           "required": [
             "src",
-            "dst"
+            "dest"
           ],
           "properties": {
             "src": {
               "type": "string",
               "description": "The source subject to republish"
             },
-            "dst": {
+            "dest": {
               "type": "string",
               "description": "The destination to publish to"
             }

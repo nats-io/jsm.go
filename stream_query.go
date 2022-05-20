@@ -15,6 +15,7 @@ package jsm
 
 import (
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -26,9 +27,19 @@ type streamQuery struct {
 	IdlePeriod     *time.Duration
 	CreatedPeriod  *time.Duration
 	Invert         bool
+	Subject        string
 }
 
 type StreamQueryOpt func(query *streamQuery) error
+
+// StreamQuerySubjectWildcard limits results to streams with subject interest matching standard a nats wildcard
+func StreamQuerySubjectWildcard(s string) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.Subject = s
+
+		return nil
+	}
+}
 
 // StreamQueryServerName limits results to servers matching a regular expression
 func StreamQueryServerName(s string) StreamQueryOpt {
@@ -130,12 +141,49 @@ func (q *streamQuery) Filter(streams []*Stream) ([]*Stream, error) {
 			q.matchEmpty(
 				q.matchConsumerLimit(
 					q.matchCluster(
-						q.matchServer(streams, nil),
+						q.matchSubjectWildcard(
+							q.matchServer(streams, nil),
+						),
 					),
 				),
 			),
 		),
 	)
+}
+
+func (q *streamQuery) matchSubjectWildcard(streams []*Stream, err error) ([]*Stream, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	if q.Subject == "" {
+		return streams, nil
+	}
+
+	var matched []*Stream
+	for _, stream := range streams {
+		match := false
+		for _, subj := range stream.Configuration().Subjects {
+			subMatch := SubjectIsSubsetMatch(subj, q.Subject)
+
+			if q.Invert {
+				if !subMatch {
+					match = true
+				}
+			} else {
+				if subMatch {
+					match = true
+					break
+				}
+			}
+		}
+
+		if match {
+			matched = append(matched, stream)
+		}
+	}
+
+	return matched, nil
 }
 
 func (q *streamQuery) matchCreatedPeriod(streams []*Stream, err error) ([]*Stream, error) {
@@ -305,4 +353,79 @@ func (q *streamQuery) matchServer(streams []*Stream, err error) ([]*Stream, erro
 	}
 
 	return matched, nil
+}
+
+const (
+	btsep = '.'
+	fwc   = '>'
+	pwc   = '*'
+)
+
+// SubjectIsSubsetMatch tests if a subject matches a standard nats wildcard
+func SubjectIsSubsetMatch(subject, test string) bool {
+	tsa := [32]string{}
+	tts := tokenizeSubjectIntoSlice(tsa[:0], subject)
+	return isSubsetMatch(tts, test)
+}
+
+// This will test a subject as an array of tokens against a test subject
+// Calls into the function isSubsetMatchTokenized
+func isSubsetMatch(tokens []string, test string) bool {
+	tsa := [32]string{}
+	tts := tokenizeSubjectIntoSlice(tsa[:0], test)
+	return isSubsetMatchTokenized(tokens, tts)
+}
+
+// use similar to append. meaning, the updated slice will be returned
+func tokenizeSubjectIntoSlice(tts []string, subject string) []string {
+	start := 0
+	for i := 0; i < len(subject); i++ {
+		if subject[i] == btsep {
+			tts = append(tts, subject[start:i])
+			start = i + 1
+		}
+	}
+	tts = append(tts, subject[start:])
+	return tts
+}
+
+// This will test a subject as an array of tokens against a test subject (also encoded as array of tokens)
+// and determine if the tokens are matched. Both test subject and tokens
+// may contain wildcards. So foo.* is a subset match of [">", "*.*", "foo.*"],
+// but not of foo.bar, etc.
+func isSubsetMatchTokenized(tokens, test []string) bool {
+	// Walk the target tokens
+	for i, t2 := range test {
+		if i >= len(tokens) {
+			return false
+		}
+		l := len(t2)
+		if l == 0 {
+			return false
+		}
+		if t2[0] == fwc && l == 1 {
+			return true
+		}
+		t1 := tokens[i]
+
+		l = len(t1)
+		if l == 0 || t1[0] == fwc && l == 1 {
+			return false
+		}
+
+		if t1[0] == pwc && len(t1) == 1 {
+			m := t2[0] == pwc && len(t2) == 1
+			if !m {
+				return false
+			}
+			if i >= len(test) {
+				return true
+			}
+			continue
+		}
+		if t2[0] != pwc && strings.Compare(t1, t2) != 0 {
+			return false
+		}
+	}
+	return len(tokens) == len(test)
 }

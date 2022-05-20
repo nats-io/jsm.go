@@ -463,6 +463,14 @@ func DeliverGroup(g string) ConsumerOption {
 	}
 }
 
+// MaxRequestMaxBytes sets the limit of max bytes a consumer my request
+func MaxRequestMaxBytes(max int) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.MaxRequestMaxBytes = max
+		return nil
+	}
+}
+
 // MaxRequestBatch is the largest batch that can be specified when doing pulls against the consumer
 func MaxRequestBatch(max uint) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
@@ -829,6 +837,7 @@ func (c *Consumer) DeliverGroup() string             { return c.cfg.DeliverGroup
 func (c *Consumer) MaxWaiting() int                  { return c.cfg.MaxWaiting }
 func (c *Consumer) MaxRequestBatch() int             { return c.cfg.MaxRequestBatch }
 func (c *Consumer) MaxRequestExpires() time.Duration { return c.cfg.MaxRequestExpires }
+func (c *Consumer) MaxRequestMaxBytes() int          { return c.cfg.MaxRequestMaxBytes }
 func (c *Consumer) InactiveThreshold() time.Duration { return c.cfg.InactiveThreshold }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {

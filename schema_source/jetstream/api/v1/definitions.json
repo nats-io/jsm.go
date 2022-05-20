@@ -845,6 +845,21 @@
         }
       }
     },
+    "subject_mapping": {
+      "type": "object",
+      "description": "Rules for mapping subjects onto new subjects for partitioning and more",
+      "required": ["source","destination"],
+      "properties": {
+        "src": {
+          "type": "string",
+          "description": "The source subject to republish"
+        },
+        "dst": {
+          "type": "string",
+          "description": "The destination to publish to"
+        }
+      }
+    },
     "stream_configuration": {
       "type": "object",
       "required":[
@@ -987,6 +1002,9 @@
           "type": "boolean",
           "default": false,
           "description": "Allows the use of the Nats-Rollup header to replace all contents of a stream, or subject in a stream, with a single new message"
+        },
+        "republish": {
+          "$ref": "#/definitions/subject_mapping"
         }
       }
     },

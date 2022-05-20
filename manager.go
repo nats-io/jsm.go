@@ -16,6 +16,7 @@ package jsm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -80,6 +81,9 @@ func (m *Manager) JetStreamAccountInfo() (info *api.JetStreamAccountStats, err e
 	var resp api.JSApiAccountInfoResponse
 	err = m.jsonRequest(api.JSApiAccountInfo, nil, &resp)
 	if err != nil {
+		if errors.Is(err, nats.ErrNoResponders) {
+			return nil, nats.ErrJetStreamNotEnabled
+		}
 		return nil, err
 	}
 

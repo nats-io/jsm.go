@@ -141,7 +141,7 @@ func TestStreamQueryCluster(t *testing.T) {
 
 func TestStreamQueryServer(t *testing.T) {
 	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
-		stream, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
+		stream, err := mgr.NewStream("q1", jsm.Subjects("in.q1", "in.q1.other"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
 		nfo, err := stream.LatestInformation()
@@ -152,5 +152,27 @@ func TestStreamQueryServer(t *testing.T) {
 
 		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryServerName(nfo.Cluster.Leader))
 		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryServerName(nfo.Cluster.Leader), jsm.StreamQueryInvert())
+	})
+}
+
+func TestStreamSubjectWildcardMatch(t *testing.T) {
+	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1", "in.q1.other"), jsm.MemoryStorage(), jsm.Replicas(2))
+		checkErr(t, err, "create failed")
+
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQuerySubjectWildcard("foo"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQuerySubjectWildcard("foo"), jsm.StreamQueryInvert())
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQuerySubjectWildcard("in.>"))
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQuerySubjectWildcard("in.>"), jsm.StreamQueryInvert())
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQuerySubjectWildcard("in.*"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQuerySubjectWildcard("in.*"), jsm.StreamQueryInvert())
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQuerySubjectWildcard("in.*.*"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQuerySubjectWildcard("in.*.*"), jsm.StreamQueryInvert())
+
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQuerySubjectWildcard("in.*.*.>"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQuerySubjectWildcard("in.*.*.>"), jsm.StreamQueryInvert())
 	})
 }

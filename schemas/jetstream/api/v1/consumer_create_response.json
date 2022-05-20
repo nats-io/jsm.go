@@ -246,6 +246,14 @@
               "maximum": 9223372036854775807,
               "minimum": -9223372036854775807
             },
+            "max_bytes": {
+              "description": "The maximum bytes value that maybe set when dong a pull on a Pull Consumer",
+              "minimum": 0,
+              "default": 0,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
+            },
             "inactive_threshold": {
               "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
               "default": 0,

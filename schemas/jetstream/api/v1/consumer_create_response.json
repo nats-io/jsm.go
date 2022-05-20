@@ -271,6 +271,18 @@
                 "maximum": 9223372036854775807,
                 "minimum": -9223372036854775807
               }
+            },
+            "num_replicas": {
+              "description": "When set do not inherit the replica count from the stream but specifically set it to this amount",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit"
+            },
+            "mem_storage": {
+              "description": "Force the consumer state to be kept in memory rather than inherit the setting from the stream",
+              "type": "boolean",
+              "default": false
             }
           }
         },

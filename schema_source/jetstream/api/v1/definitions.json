@@ -697,7 +697,19 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/golang_duration_nanos"
-          }
+          },
+        },
+        "num_replicas": {
+          "description": "When set do not inherit the replica count from the stream but specifically set it to this amount",
+          "type": "integer",
+          "$ref": "#/definitions/golang_int",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "mem_storage": {
+          "description": "Force the consumer state to be kept in memory rather than inherit the setting from the stream",
+          "type": "boolean",
+          "default": false
         }
       }
     },

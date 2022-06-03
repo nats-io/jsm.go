@@ -911,7 +911,7 @@ func TestStreamRepublish(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	s, err := mgr.NewStream("m1", jsm.Subjects("test.*"), jsm.Republish(&api.SubjectMapping{Source: "test.*", Destination: "repub.{{partition(2,1)}}"}))
+	s, err := mgr.NewStream("m1", jsm.Subjects("test.*"), jsm.Republish(&api.RePublish{Source: "test.*", Destination: "repub.{{partition(2,1)}}"}))
 	checkErr(t, err, "create failed")
 	if s.Configuration().RePublish == nil {
 		t.Fatalf("expected republish configuration")

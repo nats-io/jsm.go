@@ -388,7 +388,7 @@ func AllowRollup() StreamOption {
 	}
 }
 
-func Republish(m *api.SubjectMapping) StreamOption {
+func Republish(m *api.RePublish) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.RePublish = m
 		return nil
@@ -709,5 +709,5 @@ func (s *Stream) Sealed() bool                    { return s.cfg.Sealed }
 func (s *Stream) DeleteAllow() bool               { return !s.cfg.DenyDelete }
 func (s *Stream) PurgeAllowed() bool              { return !s.cfg.DenyPurge }
 func (s *Stream) RollupAllowed() bool             { return s.cfg.RollupAllowed }
-func (s *Stream) Republish() *api.SubjectMapping  { return s.cfg.RePublish }
+func (s *Stream) Republish() *api.RePublish       { return s.cfg.RePublish }
 func (s *Stream) IsRepublishing() bool            { return s.Republish() != nil }

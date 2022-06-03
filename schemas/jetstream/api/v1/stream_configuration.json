@@ -279,7 +279,7 @@
     },
     "republish": {
       "type": "object",
-      "description": "Rules for mapping subjects onto new subjects for partitioning and more",
+      "description": "Rules for republishing messages from a stream with subject mapping onto new subjects for partitioning and more",
       "required": [
         "src",
         "dest"
@@ -292,6 +292,11 @@
         "dest": {
           "type": "string",
           "description": "The destination to publish to"
+        },
+        "headers_only": {
+          "type": "boolean",
+          "description": "Only send message headers, no bodies",
+          "default": false
         }
       }
     }

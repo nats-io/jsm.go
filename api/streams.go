@@ -353,30 +353,38 @@ func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
 //
 // NATS Schema Type io.nats.jetstream.api.v1.stream_configuration
 type StreamConfig struct {
-	Name          string          `json:"name"`
-	Description   string          `json:"description,omitempty"`
-	Subjects      []string        `json:"subjects,omitempty"`
-	Retention     RetentionPolicy `json:"retention"`
-	MaxConsumers  int             `json:"max_consumers"`
-	MaxMsgsPer    int64           `json:"max_msgs_per_subject"`
-	MaxMsgs       int64           `json:"max_msgs"`
-	MaxBytes      int64           `json:"max_bytes"`
-	MaxAge        time.Duration   `json:"max_age"`
-	MaxMsgSize    int32           `json:"max_msg_size,omitempty"`
-	Storage       StorageType     `json:"storage"`
-	Discard       DiscardPolicy   `json:"discard"`
-	Replicas      int             `json:"num_replicas"`
-	NoAck         bool            `json:"no_ack,omitempty"`
-	Template      string          `json:"template_owner,omitempty"`
-	Duplicates    time.Duration   `json:"duplicate_window,omitempty"`
-	Placement     *Placement      `json:"placement,omitempty"`
-	Mirror        *StreamSource   `json:"mirror,omitempty"`
-	Sources       []*StreamSource `json:"sources,omitempty"`
-	RePublish     *RePublish      `json:"republish,omitempty"`
-	Sealed        bool            `json:"sealed"`
-	DenyDelete    bool            `json:"deny_delete"`
-	DenyPurge     bool            `json:"deny_purge"`
-	RollupAllowed bool            `json:"allow_rollup_hdrs"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description,omitempty"`
+	Subjects     []string        `json:"subjects,omitempty"`
+	Retention    RetentionPolicy `json:"retention"`
+	MaxConsumers int             `json:"max_consumers"`
+	MaxMsgsPer   int64           `json:"max_msgs_per_subject"`
+	MaxMsgs      int64           `json:"max_msgs"`
+	MaxBytes     int64           `json:"max_bytes"`
+	MaxAge       time.Duration   `json:"max_age"`
+	MaxMsgSize   int32           `json:"max_msg_size,omitempty"`
+	Storage      StorageType     `json:"storage"`
+	Discard      DiscardPolicy   `json:"discard"`
+	Replicas     int             `json:"num_replicas"`
+	NoAck        bool            `json:"no_ack,omitempty"`
+	Template     string          `json:"template_owner,omitempty"`
+	Duplicates   time.Duration   `json:"duplicate_window,omitempty"`
+	Placement    *Placement      `json:"placement,omitempty"`
+	Mirror       *StreamSource   `json:"mirror,omitempty"`
+	Sources      []*StreamSource `json:"sources,omitempty"`
+	// Allow republish of the message after being sequenced and stored.
+	RePublish *RePublish `json:"republish,omitempty"`
+	// Sealed will seal a stream so no messages can get out or in.
+	Sealed bool `json:"sealed"`
+	// DenyDelete will restrict the ability to delete messages.
+	DenyDelete bool `json:"deny_delete"`
+	// DenyPurge will restrict the ability to purge messages.
+	DenyPurge bool `json:"deny_purge"`
+	// AllowRollup allows messages to be placed into the system and purge
+	// all older messages using a special msg header.
+	RollupAllowed bool `json:"allow_rollup_hdrs"`
+	// Allow higher peformance, direct access to get individual messages.
+	AllowDirect bool `json:"allow_direct,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream

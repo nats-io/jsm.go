@@ -1008,6 +1008,11 @@
           "default": false,
           "description": "Allows the use of the Nats-Rollup header to replace all contents of a stream, or subject in a stream, with a single new message"
         },
+        "allow_direct": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow higher performance, direct access to get individual messages via the $JS.DS.GET API"
+        },
         "republish": {
           "$ref": "#/definitions/republish"
         }

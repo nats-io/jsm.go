@@ -153,13 +153,16 @@ func parentDir() (string, error) {
 }
 
 // DeleteContext deletes a context with a given name, the active context
-// can not be deleted
+// can not be deleted unless it's the only context
 func DeleteContext(name string) error {
 	if !validName(name) {
 		return fmt.Errorf("invalid context name %q", name)
 	}
 
-	if SelectedContext() == name {
+	known := KnownContexts()
+	selected := SelectedContext() == name
+
+	if selected && len(known) > 1 {
 		return fmt.Errorf("cannot remove the current active context")
 	}
 
@@ -174,7 +177,16 @@ func DeleteContext(name string) error {
 		return nil
 	}
 
-	return os.Remove(cfile)
+	err = os.Remove(cfile)
+	if err != nil {
+		return err
+	}
+
+	if selected {
+		return os.Remove(filepath.Join(parent, "nats", "context.txt"))
+	}
+
+	return nil
 }
 
 // IsKnown determines if a context is known

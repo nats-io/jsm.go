@@ -60,6 +60,7 @@ type settings struct {
 	JSAPIPrefix   string `json:"jetstream_api_prefix"`
 	JSEventPrefix string `json:"jetstream_event_prefix"`
 	InboxPrefix   string `json:"inbox_prefix"`
+	UserJwt       string `json:"user_jwt"`
 }
 
 type Context struct {
@@ -678,4 +679,23 @@ func WithInboxPrefix(p string) Option {
 // InboxPrefix is the configured inbox prefix for request-reply inboxes
 func (c *Context) InboxPrefix() string {
 	return c.config.InboxPrefix
+}
+
+// WithUserJWT sets the user jwt
+func WithUserJWT(p string) Option {
+	return func(s *settings) {
+		if p != "" {
+			s.UserJwt = p
+		}
+	}
+}
+
+// UserJWT retrieves the configured user jwt, empty if not set
+func (c *Context) UserJWT() string {
+	switch {
+	case c.config.UserJwt != "":
+		return c.config.UserJwt
+	default:
+		return ""
+	}
 }

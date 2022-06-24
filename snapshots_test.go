@@ -15,6 +15,7 @@ package jsm_test
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -31,7 +32,15 @@ func TestStream_Snapshot(t *testing.T) {
 	defer os.RemoveAll(srv.JetStreamConfig().StoreDir)
 	defer srv.Shutdown()
 
-	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
+	stream, err := mgr.NewStream("m1", jsm.MemoryStorage(), jsm.Subjects("memtest"))
+	checkErr(t, err, "create failed")
+
+	_, err = stream.SnapshotToDirectory(context.Background(), "/tmp")
+	if !errors.Is(err, jsm.ErrMemoryStreamNotSupported) {
+		t.Fatalf("expected memory error, got %v", err)
+	}
+
+	stream, err = mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
 	_, err = stream.NewConsumer(jsm.DurableName("c"))

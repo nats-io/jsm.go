@@ -16,6 +16,7 @@ package jsm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -45,6 +46,9 @@ type snapshotOptions struct {
 	chunkSz       int
 	restoreConfig *api.StreamConfig
 }
+
+// ErrMemoryStreamNotSupported is an error indicating a memory stream was being snapshotted which is not supported
+var ErrMemoryStreamNotSupported = errors.New("memory streams do not support snapshots")
 
 type SnapshotOption func(o *snapshotOptions)
 
@@ -353,6 +357,10 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 		return nil, nil, fmt.Errorf("stream name may not be changed during restore")
 	}
 
+	if req.Config.Storage == api.MemoryStorage {
+		return nil, nil, ErrMemoryStreamNotSupported
+	}
+
 	inf, err := os.Open(sopts.dataFile)
 	if err != nil {
 		return nil, nil, err
@@ -458,6 +466,10 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 
 // SnapshotToDirectory creates a backup into s2 compressed tar file
 func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...SnapshotOption) (SnapshotProgress, error) {
+	if s.Storage() == api.MemoryStorage {
+		return nil, ErrMemoryStreamNotSupported
+	}
+
 	sopts := &snapshotOptions{
 		dir:       dir,
 		dataFile:  filepath.Join(dir, "stream.tar.s2"),

@@ -692,10 +692,5 @@ func WithUserJWT(p string) Option {
 
 // UserJWT retrieves the configured user jwt, empty if not set
 func (c *Context) UserJWT() string {
-	switch {
-	case c.config.UserJwt != "":
-		return c.config.UserJwt
-	default:
-		return ""
-	}
+	return c.config.UserJwt
 }

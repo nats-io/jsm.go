@@ -20,7 +20,7 @@ import (
 const (
 	JSApiLeaderStepDown   = "$JS.API.META.LEADER.STEPDOWN"
 	JSApiRemoveServer     = "$JS.API.SERVER.REMOVE"
-	JSApiServerStreamMove = "$JS.API.SERVER.STREAM.MOVE.%s"
+	JSApiServerStreamMove = "$JS.API.SERVER.STREAM.MOVE"
 )
 
 // io.nats.jetstream.api.v1.meta_leader_stepdown_request

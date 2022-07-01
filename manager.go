@@ -537,7 +537,7 @@ func (m *Manager) MetaPeerRemove(name string) error {
 // MetaServerStreamMove moves a stream between servers, requires a system account
 func (m *Manager) MetaServerStreamMove(req *api.JSApiMetaServerStreamMoveRequest) (*api.JSApiStreamUpdateResponse, error) {
 	var resp api.JSApiStreamUpdateResponse
-	err := m.jsonRequest(fmt.Sprintf(api.JSApiServerStreamMove, req.Stream), req, &resp)
+	err := m.jsonRequest(api.JSApiServerStreamMove, req, &resp)
 	if err != nil {
 		return nil, err
 	}

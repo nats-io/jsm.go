@@ -49,6 +49,19 @@
       "type": "integer",
       "description": "The combined client and leafnode account connections",
       "minimum": 0
+    },
+    "sent": {
+      "description": "Data sent by this account",
+      "$ref": "definitions.json#/definitions/datastats"
+    },
+    "received": {
+      "description": "Data received by this account",
+      "$ref": "definitions.json#/definitions/datastats"
+    },
+    "slow_consumers": {
+      "type": "integer",
+      "description": "The number of slow consumer errors this account encountered",
+      "minimum": 0
     }
   }
 }

@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	JSApiLeaderStepDown = "$JS.API.META.LEADER.STEPDOWN"
-	JSApiRemoveServer   = "$JS.API.SERVER.REMOVE"
+	JSApiLeaderStepDown   = "$JS.API.META.LEADER.STEPDOWN"
+	JSApiRemoveServer     = "$JS.API.SERVER.REMOVE"
+	JSApiServerStreamMove = "$JS.API.SERVER.STREAM.MOVE.%s"
 )
 
 // io.nats.jetstream.api.v1.meta_leader_stepdown_request
@@ -61,4 +62,17 @@ type PeerInfo struct {
 	Offline bool          `json:"offline,omitempty"`
 	Active  time.Duration `json:"active"`
 	Lag     uint64        `json:"lag,omitempty"`
+}
+
+// JSApiMetaServerStreamMoveRequest will move a stream on a server to another
+// io.nats.jetstream.api.v1.meta_stream_move_request
+type JSApiMetaServerStreamMoveRequest struct {
+	// Server name of the peer to be evacuated.
+	Server string `json:"peer"`
+	// Account name the stream to move is in
+	Account string `json:"account"`
+	// Stream ame of stream to move
+	Stream string `json:"string"`
+	// Tags ephemeral placement tags for the move
+	Tags []string `json:"tags,omitempty"`
 }

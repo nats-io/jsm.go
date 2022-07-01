@@ -534,6 +534,17 @@ func (m *Manager) MetaPeerRemove(name string) error {
 	return nil
 }
 
+// MetaServerStreamMove moves a stream between servers, requires a system account
+func (m *Manager) MetaServerStreamMove(req *api.JSApiMetaServerStreamMoveRequest) (*api.JSApiStreamUpdateResponse, error) {
+	var resp api.JSApiStreamUpdateResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiServerStreamMove, req.Stream), req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
 // NatsConn gives access to the underlying NATS Connection
 func (m *Manager) NatsConn() *nats.Conn {
 	m.Lock()

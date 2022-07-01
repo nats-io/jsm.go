@@ -1,4 +1,4 @@
-// auto generated 2022-05-20 14:54:10.019841 +0200 CEST m=+0.027313157
+// auto generated 2022-07-01 11:30:04.464229 +0200 CEST m=+0.041196871
 
 package api
 
@@ -78,6 +78,7 @@ var schemaTypes = map[string]func() interface{}{
 	"io.nats.jetstream.api.v1.meta_leader_stepdown_response":     func() interface{} { return &JSApiLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.meta_server_remove_request":        func() interface{} { return &JSApiMetaServerRemoveRequest{} },
 	"io.nats.jetstream.api.v1.meta_server_remove_response":       func() interface{} { return &JSApiMetaServerRemoveResponse{} },
+	"io.nats.jetstream.api.v1.meta_stream_move_request":          func() interface{} { return &JSApiMetaServerStreamMoveRequest{} },
 	"io.nats.unknown_message":                                    func() interface{} { return &UnknownMessage{} },
 }
 
@@ -1390,6 +1391,34 @@ func (t JSApiMetaServerRemoveResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiMetaServerRemoveResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMetaServerStreamMoveRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_stream_move_request
+func (t JSApiMetaServerStreamMoveRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_stream_move_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMetaServerStreamMoveRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_stream_move_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMetaServerStreamMoveRequest) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

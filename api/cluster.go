@@ -72,7 +72,7 @@ type JSApiMetaServerStreamMoveRequest struct {
 	// Account name the stream to move is in
 	Account string `json:"account"`
 	// Stream ame of stream to move
-	Stream string `json:"string"`
+	Stream string `json:"stream"`
 	// Tags ephemeral placement tags for the move
 	Tags []string `json:"tags,omitempty"`
 }

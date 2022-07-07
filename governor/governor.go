@@ -111,6 +111,7 @@ type jsGMgr struct {
 	replicas int
 	running  bool
 	noCreate bool
+	noLeave  bool
 
 	logger Logger
 	cint   time.Duration
@@ -176,6 +177,13 @@ func WithInterval(i time.Duration) Option {
 func WithSubject(s string) Option {
 	return func(mgr *jsGMgr) {
 		mgr.subj = s
+	}
+}
+
+// WithoutLeavingOnCompletion prevents removal from the governor after execution
+func WithoutLeavingOnCompletion() Option {
+	return func(mgr *jsGMgr) {
+		mgr.noLeave = true
 	}
 }
 
@@ -268,6 +276,11 @@ func (g *jsGMgr) Start(ctx context.Context, name string) (Finisher, uint64, erro
 		}
 
 		g.running = false
+
+		if g.noLeave {
+			g.Infof("Not evicting self from %s based on configuration directive", g.name)
+			return nil
+		}
 
 		g.Infof("Removing self from %s sequence %d", g.name, seq)
 		err := g.mgr.DeleteStreamMessage(g.stream, seq, true)

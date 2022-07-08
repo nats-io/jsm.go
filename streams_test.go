@@ -15,6 +15,7 @@ package jsm_test
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"sync"
 	"testing"
@@ -903,6 +904,38 @@ func TestStreamSealed(t *testing.T) {
 	err = s.DeleteMessage(1)
 	if !jsm.IsNatsError(err, 10109) {
 		t.Fatalf("expected err 10109 got %v", err)
+	}
+}
+
+func TestStream_ContainedSubjects(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test.>"))
+	checkErr(t, err, "Create failed")
+
+	_, err = nc.Request("test.otherset.e1", []byte("1"), time.Second)
+	checkErr(t, err, "Publish failed")
+	_, err = nc.Request("test.set.e1", []byte("1"), time.Second)
+	checkErr(t, err, "Publish failed")
+	_, err = nc.Request("test.set.e2", []byte("1"), time.Second)
+	checkErr(t, err, "Publish failed")
+	_, err = nc.Request("test.set.e3", []byte("1"), time.Second)
+	checkErr(t, err, "Publish failed")
+	_, err = nc.Request("test.set.e4", []byte("1"), time.Second)
+	checkErr(t, err, "Publish failed")
+
+	subs, err := s.ContainedSubjects()
+	checkErr(t, err, "contained failed")
+	if !reflect.DeepEqual(subs, []string{"test.otherset.e1", "test.set.e1", "test.set.e2", "test.set.e3", "test.set.e4"}) {
+		t.Fatalf("Invalid set: %v", subs)
+	}
+
+	subs, err = s.ContainedSubjects("test.set.>")
+	checkErr(t, err, "contained failed")
+	if !reflect.DeepEqual(subs, []string{"test.set.e1", "test.set.e2", "test.set.e3", "test.set.e4"}) {
+		t.Fatalf("Invalid set: %v", subs)
 	}
 }
 

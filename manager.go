@@ -519,6 +519,35 @@ func (m *Manager) MetaLeaderStandDown(placement *api.Placement) error {
 	return nil
 }
 
+// StreamContainedSubjects queries the stream for the subjects it holds with optional filter
+func (m *Manager) StreamContainedSubjects(stream string, filter ...string) ([]string, error) {
+	if len(filter) > 1 {
+		return nil, fmt.Errorf("only 1 filter supported")
+	}
+
+	f := ">"
+	if len(filter) == 1 && filter[0] != "" {
+		f = filter[0]
+	}
+
+	var resp api.JSApiStreamInfoResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiStreamInfoT, stream), api.JSApiStreamInfoRequest{SubjectsFilter: f}, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	subs := make([]string, len(resp.State.Subjects))
+	var i int
+
+	for k := range resp.State.Subjects {
+		subs[i] = k
+		i++
+	}
+	sort.Strings(subs)
+
+	return subs, nil
+}
+
 // MetaPeerRemove removes a peer from the JetStream meta cluster, evicting all streams, consumer etc.  Use with extreme caution.
 func (m *Manager) MetaPeerRemove(name string) error {
 	var resp api.JSApiMetaServerRemoveResponse

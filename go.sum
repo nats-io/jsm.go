@@ -24,10 +24,10 @@ github.com/minio/highwayhash v1.0.2 h1:Aak5U0nElisjDCfPSG79Tgzkn2gl66NxOMspRrKnA
 github.com/minio/highwayhash v1.0.2/go.mod h1:BQskDq+xkJ12lmlUUi7U0M5Swg3EWR+dLTk+kldvVxY=
 github.com/nats-io/jwt/v2 v2.3.0 h1:z2mA1a7tIf5ShggOFlR1oBPgd6hGqcDYsISxZByUzdI=
 github.com/nats-io/jwt/v2 v2.3.0/go.mod h1:0tqz9Hlu6bCBFLWAASKhE5vUA4c24L9KPUUgvwumE/k=
-github.com/nats-io/nats-server/v2 v2.8.5-0.20220702153544-7cf814de8e09 h1:S5WPwSJt37kkgFE7HHnIp+3YxsKhpuoKm3CBtpsALzU=
-github.com/nats-io/nats-server/v2 v2.8.5-0.20220702153544-7cf814de8e09/go.mod h1:DDSswj1ITPghvnFXGoj+aP13Zq5vTX40YJaqtiEYYkQ=
 github.com/nats-io/nats-server/v2 v2.8.5-0.20220708005446-61fe6bcffbd7 h1:tWZ5qZfEaTOUDqMS5glKhBG6Crebz6S3KgTa6fYNxtI=
 github.com/nats-io/nats-server/v2 v2.8.5-0.20220708005446-61fe6bcffbd7/go.mod h1:DDSswj1ITPghvnFXGoj+aP13Zq5vTX40YJaqtiEYYkQ=
+github.com/nats-io/nats-server/v2 v2.8.5-0.20220708145433-da305f2044cb h1:d7LDYwCCBMyjjM7E+z6LYjIQ2Amel9/kjlJKA/HuL/g=
+github.com/nats-io/nats-server/v2 v2.8.5-0.20220708145433-da305f2044cb/go.mod h1:DDSswj1ITPghvnFXGoj+aP13Zq5vTX40YJaqtiEYYkQ=
 github.com/nats-io/nats.go v1.16.0 h1:zvLE7fGBQYW6MWaFaRdsgm9qT39PJDQoju+DS8KsO1g=
 github.com/nats-io/nats.go v1.16.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
 github.com/nats-io/nkeys v0.3.0 h1:cgM5tL53EvYRU+2YLXIK0G2mJtK12Ft9oeooSZMA2G8=

@@ -12,6 +12,10 @@
     "last_by_subj": {
       "type": "string",
       "description": "Retrieves the last message for a given subject, cannot be combined with seq"
+    },
+    "next_by_subj": {
+      "type": "string",
+      "description": "Combined with sequence gets the next message for a subject with the given sequence or higher"
     }
   }
 }

@@ -164,6 +164,7 @@ type JSApiMsgGetResponse struct {
 type JSApiMsgGetRequest struct {
 	Seq     uint64 `json:"seq,omitempty"`
 	LastFor string `json:"last_by_subj,omitempty"`
+	NextFor string `json:"next_by_subj,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_snapshot_response

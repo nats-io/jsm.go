@@ -694,6 +694,11 @@ func (s *Stream) IsMQTTState() bool {
 	return IsMQTTStateStream(s.Name())
 }
 
+// ContainedSubjects queries the stream for the subjects it holds with optional filter
+func (s *Stream) ContainedSubjects(filter ...string) ([]string, error) {
+	return s.mgr.StreamContainedSubjects(s.Name(), filter...)
+}
+
 func (s *Stream) Configuration() api.StreamConfig { return *s.cfg }
 func (s *Stream) Name() string                    { return s.cfg.Name }
 func (s *Stream) Description() string             { return s.cfg.Description }

@@ -1,4 +1,4 @@
-// auto generated 2022-07-01 11:30:04.464229 +0200 CEST m=+0.041196871
+// auto generated 2022-07-08 12:07:51.035265 +0200 CEST m=+0.026291145
 
 package api
 

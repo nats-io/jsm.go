@@ -16,8 +16,8 @@ package governor
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -32,7 +32,7 @@ import (
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 
-	d, err := ioutil.TempDir("", "jstest")
+	d, err := os.MkdirTemp("", "jstest")
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}

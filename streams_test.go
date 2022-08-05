@@ -981,6 +981,8 @@ func TestStreamRepublish(t *testing.T) {
 		t.Fatalf("Stream did not have 100 messages: %d", nfo.Msgs)
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
 	if received[0] == 0 || received[1] == 0 {
 		t.Fatalf("Expected 2 mapped subjects to get messages: %#v", received)
 	}

@@ -47,7 +47,7 @@ type options struct {
 	storageType       storageType
 	stream            *jsm.Stream
 	bo                Backoff
-	debug             func(format string, a ...interface{})
+	debug             func(format string, a ...any)
 
 	sync.Mutex
 }
@@ -130,7 +130,7 @@ func WithMemoryStorage() Option {
 }
 
 // WithDebug sets a function to do debug logging with
-func WithDebug(cb func(format string, a ...interface{})) Option {
+func WithDebug(cb func(format string, a ...any)) Option {
 	return func(o *options) error {
 		o.debug = cb
 		return nil

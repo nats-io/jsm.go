@@ -92,10 +92,10 @@ JetStream will produce metrics about message Acknowledgments, API audits and mor
 nc.Subscribe("$JS.EVENT.ADVISORY.>", func(m *nats.Msg){
     kind, msg, _ := api.ParseMessage(m.Data)
     log.Printf("Received message of type %s", kind) // io.nats.jetstream.advisory.v1.api_audit
-    
+
     switch e := event.(type){
     case advisory.JetStreamAPIAuditV1:
-        fmt.Printf("Audit event on subject %s from %s\n", e.Subject, e.Client.Name)                
+        fmt.Printf("Audit event on subject %s from %s\n", e.Subject, e.Client.Name)
     }
 })
 ```
@@ -141,7 +141,7 @@ provide better errors.
 ```go
 type SchemaValidator struct{}
 
-func (v SchemaValidator) ValidateStruct(data interface{}, schemaType string) (ok bool, errs []string) {
+func (v SchemaValidator) ValidateStruct(data any, schemaType string) (ok bool, errs []string) {
 	s, err := api.Schema(schemaType)
 	if err != nil {
 		return false, []string{"unknown schema type %s", schemaType}

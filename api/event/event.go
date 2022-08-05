@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -135,7 +137,7 @@ type stringer interface {
 }
 
 func compileTemplate(schema string, body string) (*template.Template, error) {
-	return template.New(schema).Funcs(map[string]interface{}{
+	return template.New(schema).Funcs(map[string]any{
 		"ShortTime":   func(v time.Time) string { return v.Format("15:04:05") },
 		"NanoTime":    func(v time.Time) string { return v.Format("15:04:05.000") },
 		"IBytes":      func(v int64) string { return humanize.IBytes(uint64(v)) },
@@ -144,7 +146,7 @@ func compileTemplate(schema string, body string) (*template.Template, error) {
 		"HostPort":    func(h string, p int) string { return net.JoinHostPort(h, strconv.Itoa(p)) },
 		"LeftPad":     func(indent int, v string) string { return leftPad(v, indent) },
 		"ToString":    func(v stringer) string { return v.String() },
-		"TitleString": func(v string) string { return strings.Title(v) },
+		"TitleString": func(v string) string { return cases.Title(language.AmericanEnglish).String(v) },
 		"JoinStrings": func(v []string) string { return strings.Join(v, ",") },
 	}).Parse(body)
 }

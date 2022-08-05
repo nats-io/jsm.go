@@ -100,7 +100,7 @@ func NewElection(name string, wonCb func(), lostCb func(), streamName string, mg
 	return e, nil
 }
 
-func (e *election) debug(format string, a ...interface{}) {
+func (e *election) debug(format string, a ...any) {
 	if e.opts.debug == nil {
 		return
 	}

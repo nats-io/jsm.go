@@ -16,7 +16,6 @@ package jsm_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -33,7 +32,7 @@ import (
 func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn, *jsm.Manager)) {
 	t.Helper()
 
-	d, err := ioutil.TempDir("", "jstest")
+	d, err := os.MkdirTemp("", "jstest")
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}
@@ -119,7 +118,7 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn
 func withNatsServerWithConfig(t *testing.T, cfile string, cb func(*testing.T, *natsd.Server)) {
 	t.Helper()
 
-	d, err := ioutil.TempDir("", "jstest")
+	d, err := os.MkdirTemp("", "jstest")
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}
@@ -157,7 +156,7 @@ func withNatsServerWithConfig(t *testing.T, cfile string, cb func(*testing.T, *n
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 
-	d, err := ioutil.TempDir("", "jstest")
+	d, err := os.MkdirTemp("", "jstest")
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}

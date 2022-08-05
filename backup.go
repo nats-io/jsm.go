@@ -18,7 +18,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -97,7 +96,7 @@ func (m *Manager) RestoreJetStreamConfiguration(backupDir string, update bool) e
 		}
 
 		log.Printf("Reading file %s", path)
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -154,7 +153,7 @@ func (m *Manager) RestoreJetStreamConfiguration(backupDir string, update bool) e
 // RestoreJetStreamConfigurationFile restores a single file from a backup made by BackupJetStreamConfiguration
 func (m *Manager) RestoreJetStreamConfigurationFile(path string, update bool) error {
 	log.Printf("Reading file %s", path)
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -279,7 +278,7 @@ func (m *Manager) backupStream(stream *Stream, backupDir string, data bool) erro
 		return err
 	}
 
-	err = ioutil.WriteFile(path, bupj, 0640)
+	err = os.WriteFile(path, bupj, 0640)
 	if err != nil {
 		return err
 	}
@@ -314,7 +313,7 @@ func (m *Manager) backupStreamTemplate(template *StreamTemplate, backupDir strin
 		return err
 	}
 
-	return ioutil.WriteFile(path, bupj, 0640)
+	return os.WriteFile(path, bupj, 0640)
 }
 
 func (m *Manager) backupConsumer(consumer *Consumer, backupDir string) error {
@@ -337,7 +336,7 @@ func (m *Manager) backupConsumer(consumer *Consumer, backupDir string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path, bupj, 0640)
+	return os.WriteFile(path, bupj, 0640)
 }
 
 func (m *Manager) verifySum(data []byte, csum string) bool {
@@ -347,7 +346,7 @@ func (m *Manager) verifySum(data []byte, csum string) bool {
 	return fmt.Sprintf("%x", sum.Sum(nil)) == csum
 }
 
-func (m *Manager) backupSerialize(data interface{}, btype string) ([]byte, error) {
+func (m *Manager) backupSerialize(data any, btype string) ([]byte, error) {
 	dj, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return nil, err

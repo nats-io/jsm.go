@@ -50,7 +50,7 @@ func Example() {
 	}
 	fmt.Printf("Type Schema URL: %s (%s)\n", address, uri.Host)
 
-	// parses an event into it a type if supported else map[string]interface{}
+	// parses an event into it a type if supported else map[string]any
 	schema, event, err := ParseMessage([]byte(receivedEvent))
 	if err != nil {
 		panic(err.Error())

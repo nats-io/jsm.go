@@ -235,6 +235,63 @@ func TestJetStreamEnabled(t *testing.T) {
 	}
 }
 
+func TestDeleteStream(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	_, err := mgr.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
+	checkErr(t, err, "create failed")
+
+	known, err := mgr.IsKnownStream("ORDERS")
+	checkErr(t, err, "known lookup failed")
+	if !known {
+		t.Fatalf("ORDERS should be known")
+	}
+
+	err = mgr.DeleteStream("ORDERS")
+	checkErr(t, err, "delete failed")
+
+	known, err = mgr.IsKnownStream("ORDERS")
+	checkErr(t, err, "known lookup failed")
+	if known {
+		t.Fatalf("ORDERS should not be known")
+	}
+}
+
+func TestDeleteConsumer(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	stream, err := mgr.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
+	checkErr(t, err, "create failed")
+
+	known, err := mgr.IsKnownStream("ORDERS")
+	checkErr(t, err, "known lookup failed")
+	if !known {
+		t.Fatalf("ORDERS should be known")
+	}
+
+	_, err = stream.NewConsumer(jsm.DurableName("DURABLE"))
+	checkErr(t, err, "create failed")
+
+	names, err := stream.ConsumerNames()
+	checkErr(t, err, "names failed")
+	if len(names) != 1 {
+		t.Fatalf("Create failed")
+	}
+
+	err = mgr.DeleteConsumer("ORDERS", "DURABLE")
+	checkErr(t, err, "delete failed")
+
+	names, err = stream.ConsumerNames()
+	checkErr(t, err, "names failed")
+	if len(names) != 0 {
+		t.Fatalf("Delete failed")
+	}
+}
+
 func TestIsKnownStream(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

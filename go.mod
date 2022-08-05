@@ -5,9 +5,9 @@ go 1.17
 require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/google/go-cmp v0.5.8
-	github.com/klauspost/compress v1.15.7
-	github.com/nats-io/nats-server/v2 v2.8.5-0.20220708145433-da305f2044cb
-	github.com/nats-io/nats.go v1.16.0
+	github.com/klauspost/compress v1.15.9
+	github.com/nats-io/nats-server/v2 v2.8.5-0.20220805010126-be54b08afd5e
+	github.com/nats-io/nats.go v1.16.1-0.20220804203020-c157d64783d9
 	github.com/nats-io/nuid v1.0.1
 )
 

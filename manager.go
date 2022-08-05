@@ -519,6 +519,47 @@ func (m *Manager) MetaLeaderStandDown(placement *api.Placement) error {
 	return nil
 }
 
+// DeleteStream removes a stream without all the drama of loading it etc
+func (m *Manager) DeleteStream(stream string) error {
+	if stream == "" || strings.ContainsAny(stream, ".>*") {
+		return fmt.Errorf("invalid stream name")
+	}
+
+	var resp api.JSApiStreamDeleteResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiStreamDeleteT, stream), nil, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("deleting stream %s failed", stream)
+	}
+
+	return nil
+}
+
+// DeleteConsumer removes a consumer without all the drama of loading it etc
+func (m *Manager) DeleteConsumer(stream string, consumer string) error {
+	if stream == "" || strings.ContainsAny(stream, ".>*") {
+		return fmt.Errorf("invalid stream name")
+	}
+	if consumer == "" || strings.ContainsAny(consumer, ".>*") {
+		return fmt.Errorf("invalid consumer name")
+	}
+
+	var resp api.JSApiConsumerDeleteResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiConsumerDeleteT, stream, consumer), nil, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("deleting consumer %s > %s failed", stream, consumer)
+	}
+
+	return nil
+}
+
 // StreamContainedSubjects queries the stream for the subjects it holds with optional filter
 func (m *Manager) StreamContainedSubjects(stream string, filter ...string) ([]string, error) {
 	if len(filter) > 1 {

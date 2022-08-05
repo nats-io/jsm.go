@@ -16,7 +16,6 @@ package jsm_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -33,7 +32,7 @@ import (
 func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn, *jsm.Manager)) {
 	t.Helper()
 
-	d, err := ioutil.TempDir("", "jstest")
+	d, err := os.MkdirTemp("", "jstest")
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}
@@ -119,7 +118,7 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn
 func withNatsServerWithConfig(t *testing.T, cfile string, cb func(*testing.T, *natsd.Server)) {
 	t.Helper()
 
-	d, err := ioutil.TempDir("", "jstest")
+	d, err := os.MkdirTemp("", "jstest")
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}
@@ -157,7 +156,7 @@ func withNatsServerWithConfig(t *testing.T, cfile string, cb func(*testing.T, *n
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 
-	d, err := ioutil.TempDir("", "jstest")
+	d, err := os.MkdirTemp("", "jstest")
 	if err != nil {
 		t.Fatalf("temp dir could not be made: %s", err)
 	}
@@ -232,6 +231,63 @@ func TestJetStreamEnabled(t *testing.T) {
 
 	if !mgr.IsJetStreamEnabled() {
 		t.Fatalf("expected JS to be enabled")
+	}
+}
+
+func TestDeleteStream(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	_, err := mgr.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
+	checkErr(t, err, "create failed")
+
+	known, err := mgr.IsKnownStream("ORDERS")
+	checkErr(t, err, "known lookup failed")
+	if !known {
+		t.Fatalf("ORDERS should be known")
+	}
+
+	err = mgr.DeleteStream("ORDERS")
+	checkErr(t, err, "delete failed")
+
+	known, err = mgr.IsKnownStream("ORDERS")
+	checkErr(t, err, "known lookup failed")
+	if known {
+		t.Fatalf("ORDERS should not be known")
+	}
+}
+
+func TestDeleteConsumer(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	stream, err := mgr.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.Subjects("ORDERS.*"), jsm.MemoryStorage())
+	checkErr(t, err, "create failed")
+
+	known, err := mgr.IsKnownStream("ORDERS")
+	checkErr(t, err, "known lookup failed")
+	if !known {
+		t.Fatalf("ORDERS should be known")
+	}
+
+	_, err = stream.NewConsumer(jsm.DurableName("DURABLE"))
+	checkErr(t, err, "create failed")
+
+	names, err := stream.ConsumerNames()
+	checkErr(t, err, "names failed")
+	if len(names) != 1 {
+		t.Fatalf("Create failed")
+	}
+
+	err = mgr.DeleteConsumer("ORDERS", "DURABLE")
+	checkErr(t, err, "delete failed")
+
+	names, err = stream.ConsumerNames()
+	checkErr(t, err, "names failed")
+	if len(names) != 0 {
+		t.Fatalf("Delete failed")
 	}
 }
 

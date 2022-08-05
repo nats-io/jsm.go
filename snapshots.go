@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net"
@@ -334,7 +333,7 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 	}
 
 	req := api.JSApiStreamRestoreRequest{}
-	mj, err := ioutil.ReadFile(sopts.metaFile)
+	mj, err := os.ReadFile(sopts.metaFile)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -591,7 +590,7 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 		}
 		defer mf.Close()
 
-		meta := map[string]interface{}{
+		meta := map[string]any{
 			"config": resp.Config,
 			"state":  resp.State,
 		}

@@ -16,7 +16,6 @@ package jsm_test
 import (
 	"context"
 	"errors"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"reflect"
@@ -53,7 +52,7 @@ func TestStream_Snapshot(t *testing.T) {
 	preState, err := stream.State()
 	checkErr(t, err, "state retrieve failed")
 
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	checkErr(t, err, "temp dir failed")
 	defer os.RemoveAll(td)
 

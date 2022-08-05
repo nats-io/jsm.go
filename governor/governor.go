@@ -93,10 +93,10 @@ type Backoff interface {
 
 // Logger is a custom logger
 type Logger interface {
-	Debugf(format string, a ...interface{})
-	Infof(format string, a ...interface{})
-	Warnf(format string, a ...interface{})
-	Errorf(format string, a ...interface{})
+	Debugf(format string, a ...any)
+	Infof(format string, a ...any)
+	Warnf(format string, a ...any)
+	Errorf(format string, a ...any)
 }
 
 type jsGMgr struct {
@@ -444,28 +444,28 @@ func (g *jsGMgr) loadOrCreate(update bool) error {
 	return nil
 }
 
-func (g *jsGMgr) Debugf(format string, a ...interface{}) {
+func (g *jsGMgr) Debugf(format string, a ...any) {
 	if g.logger == nil {
 		return
 	}
 	g.logger.Debugf(format, a...)
 }
 
-func (g *jsGMgr) Infof(format string, a ...interface{}) {
+func (g *jsGMgr) Infof(format string, a ...any) {
 	if g.logger == nil {
 		return
 	}
 	g.logger.Infof(format, a...)
 }
 
-func (g *jsGMgr) Warnf(format string, a ...interface{}) {
+func (g *jsGMgr) Warnf(format string, a ...any) {
 	if g.logger == nil {
 		return
 	}
 	g.logger.Warnf(format, a...)
 }
 
-func (g *jsGMgr) Errorf(format string, a ...interface{}) {
+func (g *jsGMgr) Errorf(format string, a ...any) {
 	if g.logger == nil {
 		return
 	}

@@ -18,7 +18,7 @@ import (
 var SchemasRepo = "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas"
 
 // UnknownMessage is a type returned when parsing an unknown type of event
-type UnknownMessage = map[string]interface{}
+type UnknownMessage = map[string]any
 
 // Event is a generic NATS Event capable of being converted to CloudEvents format
 type Event interface {
@@ -32,7 +32,7 @@ type Event interface {
 
 // StructValidator is used to validate API structures
 type StructValidator interface {
-	ValidateStruct(data interface{}, schemaType string) (ok bool, errs []string)
+	ValidateStruct(data any, schemaType string) (ok bool, errs []string)
 }
 
 // RenderFormat indicates the format to render templates in
@@ -156,7 +156,7 @@ func Schema(schemaType string) (schema []byte, err error) {
 }
 
 // NewMessage creates a new instance of the structure matching schema. When unknown creates a UnknownMessage
-func NewMessage(schemaType string) (interface{}, bool) {
+func NewMessage(schemaType string) (any, bool) {
 	gf, ok := schemaTypes[schemaType]
 	if !ok {
 		gf = schemaTypes["io.nats.unknown_message"]
@@ -167,7 +167,7 @@ func NewMessage(schemaType string) (interface{}, bool) {
 
 // ParseMessage parses a typed message m and returns event as for example *api.ConsumerAckMetric, all unknown
 // event schemas will be of type *UnknownMessage
-func ParseMessage(m []byte) (schemaType string, msg interface{}, err error) {
+func ParseMessage(m []byte) (schemaType string, msg any, err error) {
 	schemaType, err = SchemaTypeForMessage(m)
 	if err != nil {
 		return "", nil, err

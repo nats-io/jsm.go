@@ -47,13 +47,13 @@ import (
     scfs "github.com/nats-io/jsm.go/schemas"
 )
 
-var schemaTypes = map[string]func() interface{}{
+var schemaTypes = map[string]func() any {
 {{- range . }}
 {{- if .St }}
-    "{{ .T }}": func() interface{} { return &{{ .St }}{} },
+    "{{ .T }}": func() any { return &{{ .St }}{} },
 {{- end }}
 {{- end }}
-	"io.nats.unknown_message": func() interface{} { return &UnknownMessage{} },
+	"io.nats.unknown_message": func() any { return &UnknownMessage{} },
 }
 
 {{- range . }}

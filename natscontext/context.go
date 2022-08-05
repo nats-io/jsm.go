@@ -17,11 +17,11 @@
 //
 // Files are stored in ~/.config/nats or in the directory set by XDG_CONFIG_HOME environment
 //
-//   .config/nats
-//   .config/nats/context
-//   .config/nats/context/ngs.js.json
-//   .config/nats/context/ngs.stats.json
-//   .config/nats/context.txt
+//	.config/nats
+//	.config/nats/context
+//	.config/nats/context/ngs.js.json
+//	.config/nats/context/ngs.stats.json
+//	.config/nats/context.txt
 //
 // Here the context.txt holds simply the string matching a context name like 'ngs.js'
 package natscontext
@@ -29,7 +29,6 @@ package natscontext
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -227,13 +226,20 @@ func KnownContexts() []string {
 		return configs
 	}
 
-	files, err := ioutil.ReadDir(filepath.Join(parent, "nats", "context"))
+	files, err := os.ReadDir(filepath.Join(parent, "nats", "context"))
 	if err != nil {
 		return configs
 	}
 
 	for _, f := range files {
-		if f.IsDir() || f.Size() == 0 {
+		if f.IsDir() {
+			continue
+		}
+		nfo, err := f.Info()
+		if err != nil {
+			continue
+		}
+		if nfo.Size() == 0 {
 			continue
 		}
 
@@ -264,7 +270,7 @@ func SelectedContext() string {
 		return ""
 	}
 
-	fc, err := ioutil.ReadFile(currentFile)
+	fc, err := os.ReadFile(currentFile)
 	if err != nil {
 		return ""
 	}
@@ -354,7 +360,7 @@ func (c *Context) loadActiveContext() error {
 		c.path = filepath.Join(parent, "nats", "context", c.Name+".json")
 	}
 
-	ctxContent, err := ioutil.ReadFile(c.path)
+	ctxContent, err := os.ReadFile(c.path)
 	if err != nil {
 		return err
 	}
@@ -442,7 +448,7 @@ func SelectContext(name string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(parent, "nats", "context.txt"), []byte(name), 0600)
+	return os.WriteFile(filepath.Join(parent, "nats", "context.txt"), []byte(name), 0600)
 }
 
 func (c *Context) MarshalJSON() ([]byte, error) {
@@ -476,7 +482,7 @@ func (c *Context) Save(name string) error {
 	}
 
 	c.path = filepath.Join(ctxDir, c.Name+".json")
-	return ioutil.WriteFile(c.path, j, 0600)
+	return os.WriteFile(c.path, j, 0600)
 }
 
 // WithServerURL supplies the url(s) to connect to nats with

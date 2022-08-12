@@ -65,6 +65,11 @@ type Stream struct {
 	sync.Mutex
 }
 
+type SubjectInfo struct {
+	SubjectName  string
+	MessageCount uint64
+}
+
 // NewStreamFromDefault creates a new stream based on a supplied template and options
 func (m *Manager) NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOption) (stream *Stream, err error) {
 	if !IsValidName(name) {
@@ -716,7 +721,7 @@ func (s *Stream) IsMQTTState() bool {
 }
 
 // ContainedSubjects queries the stream for the subjects it holds with optional filter
-func (s *Stream) ContainedSubjects(filter ...string) ([]string, error) {
+func (s *Stream) ContainedSubjects(filter ...string) ([]SubjectInfo, error) {
 	return s.mgr.StreamContainedSubjects(s.Name(), filter...)
 }
 

@@ -393,7 +393,7 @@ func (c *Context) resolveNscLookup() error {
 	cmd := exec.Command(path, "generate", "profile", c.config.NSCLookup)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("nsc invoke failed: %s", err)
+		return fmt.Errorf("nsc invoke failed: %s", string(out))
 	}
 
 	type nscCreds struct {

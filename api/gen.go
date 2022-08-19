@@ -253,7 +253,6 @@ func main() {
 		&schema{P: "jetstream/api/v1/meta_leader_stepdown_response.json", St: "JSApiLeaderStepDownResponse"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "JSApiMetaServerRemoveRequest"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "JSApiMetaServerRemoveResponse"},
-		&schema{P: "jetstream/api/v1/meta_stream_move_request.json", St: "JSApiMetaServerStreamMoveRequest"},
 	}
 
 	for _, i := range s {

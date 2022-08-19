@@ -1,4 +1,4 @@
-// auto generated 2022-08-05 09:13:45.971724 +0200 CEST m=+0.029482001
+// auto generated 2022-08-19 16:00:21.159269 +0300 EEST m=+0.026426854
 
 package api
 
@@ -78,7 +78,6 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.meta_leader_stepdown_response":     func() any { return &JSApiLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.meta_server_remove_request":        func() any { return &JSApiMetaServerRemoveRequest{} },
 	"io.nats.jetstream.api.v1.meta_server_remove_response":       func() any { return &JSApiMetaServerRemoveResponse{} },
-	"io.nats.jetstream.api.v1.meta_stream_move_request":          func() any { return &JSApiMetaServerStreamMoveRequest{} },
 	"io.nats.unknown_message":                                    func() any { return &UnknownMessage{} },
 }
 
@@ -1391,34 +1390,6 @@ func (t JSApiMetaServerRemoveResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiMetaServerRemoveResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiMetaServerStreamMoveRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_stream_move_request
-func (t JSApiMetaServerStreamMoveRequest) SchemaType() string {
-	return "io.nats.jetstream.api.v1.meta_stream_move_request"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiMetaServerStreamMoveRequest) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_stream_move_request.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiMetaServerStreamMoveRequest) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

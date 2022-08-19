@@ -80,10 +80,10 @@
     "deprecates": ""
   },
   {
-    "constant": "JSClusterNoPeersErr",
+    "constant": "JSClusterNoPeersErrF",
     "code": 400,
     "error_code": 10005,
-    "description": "no suitable peers for placement",
+    "description": "no suitable peers for placement: {err}",
     "comment": "",
     "help": "",
     "url": "",
@@ -1220,10 +1220,10 @@
     "deprecates": ""
   },
   {
-    "constant": "JSStreamMoveInProgress",
+    "constant": "JSStreamMoveInProgressF",
     "code": 400,
     "error_code": 10124,
-    "description": "stream move already in progress",
+    "description": "stream move already in progress: {msg}",
     "comment": "",
     "help": "",
     "url": "",

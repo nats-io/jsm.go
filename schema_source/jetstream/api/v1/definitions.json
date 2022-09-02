@@ -598,6 +598,11 @@
       "properties": {
         "durable_name": {
           "description": "A unique name for a durable consumer",
+          "deprecationMessage": "Durable is deprecated. All consumers will have names. picked by clients.",
+          "$ref": "#/definitions/basic_name"
+        },
+        "name": {
+          "description": "A unique name for a consumer",
           "$ref": "#/definitions/basic_name"
         },
         "description": {
@@ -693,7 +698,7 @@
           "default": 0
         },
         "backoff": {
-          "description": "List of durations in Go format that represents a retry time scale for NaK'd messages or those being normally retried",
+          "description": "List of durations in Go format that represents a retry time scale for NaK'd messages",
           "type": "array",
           "items": {
             "$ref": "#/definitions/golang_duration_nanos"
@@ -1010,7 +1015,7 @@
         },
         "allow_direct": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Allow higher performance, direct access to get individual messages via the $JS.DS.GET API"
         },
         "republish": {

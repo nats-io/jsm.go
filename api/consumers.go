@@ -264,7 +264,8 @@ type ConsumerConfig struct {
 	DeliverPolicy      DeliverPolicy   `json:"deliver_policy"`
 	DeliverSubject     string          `json:"deliver_subject,omitempty"`
 	DeliverGroup       string          `json:"deliver_group,omitempty"`
-	Durable            string          `json:"durable_name,omitempty"`
+	Durable            string          `json:"durable_name,omitempty"` // Durable is deprecated. All consumers will have names. picked by clients.
+	Name               string          `json:"name,omitempty"`
 	FilterSubject      string          `json:"filter_subject,omitempty"`
 	FlowControl        bool            `json:"flow_control,omitempty"`
 	Heartbeat          time.Duration   `json:"idle_heartbeat,omitempty"`

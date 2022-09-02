@@ -33,6 +33,7 @@ var DefaultStream = api.StreamConfig{
 	MaxAge:       24 * 365 * time.Hour,
 	MaxMsgSize:   -1,
 	Replicas:     1,
+	AllowDirect:  true,
 	NoAck:        false,
 }
 
@@ -46,6 +47,7 @@ var DefaultWorkQueue = api.StreamConfig{
 	MaxBytes:     -1,
 	MaxAge:       24 * 365 * time.Hour,
 	MaxMsgSize:   -1,
+	AllowDirect:  true,
 	Replicas:     api.StreamDefaultReplicas,
 	NoAck:        false,
 }
@@ -718,9 +720,13 @@ func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }
 func (s *Stream) Mirror() *api.StreamSource       { return s.cfg.Mirror }
 func (s *Stream) Sources() []*api.StreamSource    { return s.cfg.Sources }
 func (s *Stream) Sealed() bool                    { return s.cfg.Sealed }
-func (s *Stream) DeleteAllow() bool               { return !s.cfg.DenyDelete }
+func (s *Stream) DeleteAllowed() bool             { return !s.cfg.DenyDelete }
 func (s *Stream) PurgeAllowed() bool              { return !s.cfg.DenyPurge }
 func (s *Stream) RollupAllowed() bool             { return s.cfg.RollupAllowed }
 func (s *Stream) DirectAllowed() bool             { return s.cfg.AllowDirect }
 func (s *Stream) Republish() *api.RePublish       { return s.cfg.RePublish }
 func (s *Stream) IsRepublishing() bool            { return s.Republish() != nil }
+
+// DeleteAllow
+// Deprecated: use DeleteAllowed()
+func (s *Stream) DeleteAllow() bool { return !s.cfg.DenyDelete }

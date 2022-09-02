@@ -137,6 +137,13 @@
           "properties": {
             "durable_name": {
               "description": "A unique name for a durable consumer",
+              "deprecationMessage": "Durable is deprecated. All consumers will have names. picked by clients.",
+              "type": "string",
+              "pattern": "^[^.*>]+$",
+              "minLength": 1
+            },
+            "name": {
+              "description": "A unique name for a consumer",
               "type": "string",
               "pattern": "^[^.*>]+$",
               "minLength": 1
@@ -263,7 +270,7 @@
               "minimum": -9223372036854775807
             },
             "backoff": {
-              "description": "List of durations in Go format that represents a retry time scale for NaK'd messages or those being normally retried",
+              "description": "List of durations in Go format that represents a retry time scale for NaK'd messages",
               "type": "array",
               "items": {
                 "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",

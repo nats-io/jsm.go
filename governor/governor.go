@@ -29,6 +29,8 @@
 //
 // A manager is included to create, observe and edit these streams and the
 // nats CLI has a new command build on this library: nats governor
+//
+// Deprecated: This experimental feature is now deprecated and will be removed
 package governor
 
 import (

@@ -109,7 +109,7 @@ func IsValidName(n string) bool {
 		return false
 	}
 
-	return !strings.ContainsAny(n, ">*. ")
+	return !strings.ContainsAny(n, ">*. /\\")
 }
 
 // APISubject returns API subject with prefix applied

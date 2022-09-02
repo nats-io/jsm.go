@@ -174,6 +174,10 @@ func (m *Manager) LoadConsumer(stream string, name string) (consumer *Consumer, 
 }
 
 func (m *Manager) consumerFromCfg(stream string, name string, cfg *api.ConsumerConfig) *Consumer {
+	if name == "" && cfg.Name != "" {
+		name = cfg.Name
+	}
+
 	return &Consumer{
 		name:   name,
 		stream: stream,

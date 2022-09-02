@@ -286,7 +286,7 @@
         },
         "allow_direct": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Allow higher performance, direct access to get individual messages via the $JS.DS.GET API"
         },
         "republish": {

@@ -33,7 +33,6 @@ var DefaultStream = api.StreamConfig{
 	MaxAge:       24 * 365 * time.Hour,
 	MaxMsgSize:   -1,
 	Replicas:     1,
-	AllowDirect:  true,
 	NoAck:        false,
 }
 
@@ -47,7 +46,6 @@ var DefaultWorkQueue = api.StreamConfig{
 	MaxBytes:     -1,
 	MaxAge:       24 * 365 * time.Hour,
 	MaxMsgSize:   -1,
-	AllowDirect:  true,
 	Replicas:     api.StreamDefaultReplicas,
 	NoAck:        false,
 }

@@ -395,6 +395,27 @@ func AllowDirect() StreamOption {
 	}
 }
 
+func NoAllowDirect() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.AllowDirect = false
+		return nil
+	}
+}
+
+func MirrorDirect() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.MirrorDirect = true
+		return nil
+	}
+}
+
+func NoMirrorDirect() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.MirrorDirect = false
+		return nil
+	}
+}
+
 func Republish(m *api.RePublish) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.RePublish = m
@@ -722,6 +743,7 @@ func (s *Stream) DeleteAllowed() bool             { return !s.cfg.DenyDelete }
 func (s *Stream) PurgeAllowed() bool              { return !s.cfg.DenyPurge }
 func (s *Stream) RollupAllowed() bool             { return s.cfg.RollupAllowed }
 func (s *Stream) DirectAllowed() bool             { return s.cfg.AllowDirect }
+func (s *Stream) MirrorDirectAllowed() bool       { return s.cfg.MirrorDirect }
 func (s *Stream) Republish() *api.RePublish       { return s.cfg.RePublish }
 func (s *Stream) IsRepublishing() bool            { return s.Republish() != nil }
 

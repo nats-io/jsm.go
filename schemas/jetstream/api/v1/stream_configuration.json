@@ -279,8 +279,13 @@
     },
     "allow_direct": {
       "type": "boolean",
-      "default": true,
-      "description": "Allow higher performance, direct access to get individual messages via the $JS.DS.GET API"
+      "default": false,
+      "description": "Allow higher performance, direct access to get individual messages"
+    },
+    "mirror_direct": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow higher performance, direct access for mirrors as well"
     },
     "republish": {
       "type": "object",

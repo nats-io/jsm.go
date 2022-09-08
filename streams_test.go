@@ -928,13 +928,13 @@ func TestStream_ContainedSubjects(t *testing.T) {
 
 	subs, err := s.ContainedSubjects()
 	checkErr(t, err, "contained failed")
-	if !reflect.DeepEqual(subs, []jsm.SubjectInfo{{"test.otherset.e1", 1}, {"test.set.e1", 1}, {"test.set.e2", 1}, {"test.set.e3", 1}, {"test.set.e4", 1}}) {
+	if !reflect.DeepEqual(subs, map[string]uint64{"test.otherset.e1": 1, "test.set.e1": 1, "test.set.e2": 1, "test.set.e3": 1, "test.set.e4": 1}) {
 		t.Fatalf("Invalid set: %v", subs)
 	}
 
 	subs, err = s.ContainedSubjects("test.set.>")
 	checkErr(t, err, "contained failed")
-	if !reflect.DeepEqual(subs, []jsm.SubjectInfo{{"test.set.e1", 1}, {"test.set.e2", 1}, {"test.set.e3", 1}, {"test.set.e4", 1}}) {
+	if !reflect.DeepEqual(subs, map[string]uint64{"test.set.e1": 1, "test.set.e2": 1, "test.set.e3": 1, "test.set.e4": 1}) {
 		t.Fatalf("Invalid set: %v", subs)
 	}
 }

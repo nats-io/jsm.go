@@ -66,8 +66,8 @@ type Stream struct {
 }
 
 type SubjectInfo struct {
-	SubjectName  string
-	MessageCount uint64
+	SubjectName  string `json:"subject"`
+	MessageCount uint64 `json:"messages"`
 }
 
 // NewStreamFromDefault creates a new stream based on a supplied template and options
@@ -721,7 +721,7 @@ func (s *Stream) IsMQTTState() bool {
 }
 
 // ContainedSubjects queries the stream for the subjects it holds with optional filter
-func (s *Stream) ContainedSubjects(filter ...string) ([]SubjectInfo, error) {
+func (s *Stream) ContainedSubjects(filter ...string) (map[string]uint64, error) {
 	return s.mgr.StreamContainedSubjects(s.Name(), filter...)
 }
 

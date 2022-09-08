@@ -59,8 +59,21 @@ type PubAck struct {
 	Duplicate bool   `json:"duplicate,omitempty"`
 }
 
+// ApiPagedRequest includes parameters allowing specific pages to be requests from APIs responding with ApiPaged
+type ApiPagedRequest struct {
+	Offset int `json:"offset"`
+}
+
+// ApiPaged includes variables used to create paged responses from the JSON API
+type ApiPaged struct {
+	Total  int `json:"total"`
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+}
+
 // io.nats.jetstream.api.v1.stream_info_request
 type JSApiStreamInfoRequest struct {
+	ApiPagedRequest
 	DeletedDetails bool   `json:"deleted_details,omitempty"`
 	SubjectsFilter string `json:"subjects_filter,omitempty"`
 }
@@ -118,6 +131,7 @@ type JSApiStreamCreateResponse struct {
 // io.nats.jetstream.api.v1.stream_info_response
 type JSApiStreamInfoResponse struct {
 	JSApiResponse
+	ApiPaged
 	*StreamInfo
 }
 

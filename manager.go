@@ -561,7 +561,7 @@ func (m *Manager) DeleteConsumer(stream string, consumer string) error {
 }
 
 // StreamContainedSubjects queries the stream for the subjects it holds with optional filter
-func (m *Manager) StreamContainedSubjects(stream string, filter ...string) ([]SubjectInfo, error) {
+func (m *Manager) StreamContainedSubjects(stream string, filter ...string) (map[string]uint64, error) {
 	if len(filter) > 1 {
 		return nil, fmt.Errorf("only 1 filter supported")
 	}
@@ -571,25 +571,38 @@ func (m *Manager) StreamContainedSubjects(stream string, filter ...string) ([]Su
 		f = filter[0]
 	}
 
-	var resp api.JSApiStreamInfoResponse
-	err := m.jsonRequest(fmt.Sprintf(api.JSApiStreamInfoT, stream), api.JSApiStreamInfoRequest{SubjectsFilter: f}, &resp)
-	if err != nil {
-		return nil, err
-	}
-
-	subjectInfos := make([]SubjectInfo, len(resp.State.Subjects))
 	var i int
+	var subjectMessagesMap map[string]uint64 = nil
 
-	for k, j := range resp.State.Subjects {
-		subjectInfos[i] = SubjectInfo{SubjectName: k, MessageCount: j}
-		i++
+	for {
+		var resp api.JSApiStreamInfoResponse
+		err := m.jsonRequest(fmt.Sprintf(api.JSApiStreamInfoT, stream), api.JSApiStreamInfoRequest{SubjectsFilter: f, ApiPagedRequest: api.ApiPagedRequest{Offset: i}}, &resp)
+		if err != nil {
+			return nil, err
+		}
+
+		// for backwards compatibility
+		var total int
+		if resp.Total != 0 {
+			total = resp.Total
+		} else {
+			total = len(resp.State.Subjects)
+		}
+
+		if subjectMessagesMap == nil {
+			subjectMessagesMap = make(map[string]uint64, total)
+		}
+
+		for k, j := range resp.State.Subjects {
+			subjectMessagesMap[k] = j
+			i++
+		}
+		if i == total {
+			break
+		}
 	}
 
-	sort.Slice(subjectInfos[:], func(i, j int) bool {
-		return subjectInfos[i].SubjectName < subjectInfos[j].SubjectName
-	})
-
-	return subjectInfos, nil
+	return subjectMessagesMap, nil
 }
 
 // MetaPeerRemove removes a peer from the JetStream meta cluster, evicting all streams, consumer etc.  Use with extreme caution.

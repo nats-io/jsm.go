@@ -12,6 +12,11 @@
     "subjects_filter": {
       "type": "string",
       "description": "When set will return a list of subjects and how many messages they hold for all matching subjects. Filter is a standard NATS subject wildcard pattern."
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Paging offset when retrieving pages of subjet details"
     }
   }
 }

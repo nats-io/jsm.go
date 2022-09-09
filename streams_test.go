@@ -928,15 +928,40 @@ func TestStream_ContainedSubjects(t *testing.T) {
 
 	subs, err := s.ContainedSubjects()
 	checkErr(t, err, "contained failed")
-	if !reflect.DeepEqual(subs, []string{"test.otherset.e1", "test.set.e1", "test.set.e2", "test.set.e3", "test.set.e4"}) {
+	expected := map[string]uint64{
+		"test.otherset.e1": 1,
+		"test.set.e2":      1,
+		"test.set.e1":      1,
+		"test.set.e3":      1,
+		"test.set.e4":      1,
+	}
+	if !reflect.DeepEqual(subs, expected) {
 		t.Fatalf("Invalid set: %v", subs)
 	}
 
+	delete(expected, "test.otherset.e1")
 	subs, err = s.ContainedSubjects("test.set.>")
 	checkErr(t, err, "contained failed")
-	if !reflect.DeepEqual(subs, []string{"test.set.e1", "test.set.e2", "test.set.e3", "test.set.e4"}) {
+	if !reflect.DeepEqual(subs, expected) {
 		t.Fatalf("Invalid set: %v", subs)
 	}
+
+	// Test disabled as it keeps timing out since it needs
+	// 100001 subjects
+
+	// js, err := nc.JetStream()
+	// checkErr(t, err, "js failed")
+	// for i := 0; i < 100001; i++ {
+	// 	_, err = js.PublishAsync(fmt.Sprintf("test.new.e%d", i), []byte("1"))
+	// 	checkErr(t, err, "Publish failed")
+	// }
+	// <-js.PublishAsyncComplete()
+	//
+	// subs, err = s.ContainedSubjects("test.new.>")
+	// checkErr(t, err, "contained failed")
+	// if len(subs) != 100001 {
+	// 	t.Fatalf("Expected 100001 subjects got %d", len(subs))
+	// }
 }
 
 func TestStreamRepublish(t *testing.T) {

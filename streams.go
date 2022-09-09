@@ -716,7 +716,7 @@ func (s *Stream) IsMQTTState() bool {
 }
 
 // ContainedSubjects queries the stream for the subjects it holds with optional filter
-func (s *Stream) ContainedSubjects(filter ...string) ([]string, error) {
+func (s *Stream) ContainedSubjects(filter ...string) (map[string]uint64, error) {
 	return s.mgr.StreamContainedSubjects(s.Name(), filter...)
 }
 

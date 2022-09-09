@@ -61,6 +61,7 @@ type PubAck struct {
 
 // io.nats.jetstream.api.v1.stream_info_request
 type JSApiStreamInfoRequest struct {
+	JSApiIterableRequest
 	DeletedDetails bool   `json:"deleted_details,omitempty"`
 	SubjectsFilter string `json:"subjects_filter,omitempty"`
 }
@@ -118,6 +119,7 @@ type JSApiStreamCreateResponse struct {
 // io.nats.jetstream.api.v1.stream_info_response
 type JSApiStreamInfoResponse struct {
 	JSApiResponse
+	JSApiIterableResponse
 	*StreamInfo
 }
 

@@ -596,15 +596,16 @@ func (m *Manager) StreamContainedSubjects(stream string, filter ...string) (map[
 }
 
 // MetaPeerRemove removes a peer from the JetStream meta cluster, evicting all streams, consumer etc.  Use with extreme caution.
-func (m *Manager) MetaPeerRemove(name string) error {
+// If id is given it will be used by the server else name, it's generally best to remove by id
+func (m *Manager) MetaPeerRemove(name string, id string) error {
 	var resp api.JSApiMetaServerRemoveResponse
-	err := m.jsonRequest(api.JSApiRemoveServer, api.JSApiMetaServerRemoveRequest{Server: name}, &resp)
+	err := m.jsonRequest(api.JSApiRemoveServer, api.JSApiMetaServerRemoveRequest{Server: name, Peer: id}, &resp)
 	if err != nil {
 		return err
 	}
 
 	if !resp.Success {
-		return fmt.Errorf("unknown error while requesting leader step down")
+		return fmt.Errorf("unknown error while removing the peer")
 	}
 
 	return nil

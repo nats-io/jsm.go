@@ -35,8 +35,11 @@ type JSApiLeaderStepDownResponse struct {
 
 // io.nats.jetstream.api.v1.meta_server_remove_request
 type JSApiMetaServerRemoveRequest struct {
-	// Server ID of the peer to be removed.
+	// Server name of the peer to be removed.
 	Server string `json:"peer"`
+	// Peer ID of the peer to be removed. If specified this is used
+	// instead of the server name.
+	Peer string `json:"peer_id,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.meta_server_remove_response

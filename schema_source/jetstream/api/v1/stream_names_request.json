@@ -4,9 +4,13 @@
   "description": "A request to the JetStream $JS.API.STREAM.NAMES API",
   "title": "io.nats.jetstream.api.v1.stream_names_request",
   "type": "object",
-  "allOf": [
-    {
-      "$ref": "definitions.json#/definitions/iterable_request"
+  "properties": {
+    "subject": {
+      "type": "string",
+      "description": "Limit the list to streams matching this subject filter"
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0
     }
-  ]
-}
+  }}

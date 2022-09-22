@@ -390,6 +390,8 @@ type StreamConfig struct {
 	AllowDirect bool `json:"allow_direct"`
 	// Allow higher performance and unified direct access for mirrors as well.
 	MirrorDirect bool `json:"mirror_direct"`
+	// Allow KV like semantics to also discard new on a per subject basis
+	DiscardNewPer bool `json:"discard_new_per_subject,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream

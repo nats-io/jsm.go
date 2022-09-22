@@ -808,6 +808,24 @@ func TestAllowRollup(t *testing.T) {
 	}
 }
 
+func TestStream_DiscardNewPerSubject(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s1, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+	s2, err := mgr.NewStream("q2", jsm.FileStorage(), jsm.DiscardNewPerSubject(), jsm.MaxMessagesPerSubject(10))
+	checkErr(t, err, "create failed")
+
+	if s1.DiscardNewPerSubject() {
+		t.Fatalf("Expected s1 to not be discard per subject")
+	}
+	if !s2.DiscardNewPerSubject() {
+		t.Fatalf("Expected s2 to be discard per subject")
+	}
+}
+
 func TestStream_IsMirror(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

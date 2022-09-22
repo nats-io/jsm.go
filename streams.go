@@ -303,6 +303,14 @@ func DiscardNew() StreamOption {
 	}
 }
 
+func DiscardNewPerSubject() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Discard = api.DiscardNew
+		o.DiscardNewPer = true
+		return nil
+	}
+}
+
 func DiscardOld() StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.Discard = api.DiscardOld
@@ -720,32 +728,34 @@ func (s *Stream) ContainedSubjects(filter ...string) (map[string]uint64, error) 
 	return s.mgr.StreamContainedSubjects(s.Name(), filter...)
 }
 
-func (s *Stream) Configuration() api.StreamConfig { return *s.cfg }
-func (s *Stream) Name() string                    { return s.cfg.Name }
-func (s *Stream) Description() string             { return s.cfg.Description }
-func (s *Stream) Subjects() []string              { return s.cfg.Subjects }
-func (s *Stream) Retention() api.RetentionPolicy  { return s.cfg.Retention }
-func (s *Stream) MaxConsumers() int               { return s.cfg.MaxConsumers }
-func (s *Stream) MaxMsgs() int64                  { return s.cfg.MaxMsgs }
-func (s *Stream) MaxMsgsPerSubject() int64        { return s.cfg.MaxMsgsPer }
-func (s *Stream) MaxBytes() int64                 { return s.cfg.MaxBytes }
-func (s *Stream) MaxAge() time.Duration           { return s.cfg.MaxAge }
-func (s *Stream) MaxMsgSize() int32               { return s.cfg.MaxMsgSize }
-func (s *Stream) Storage() api.StorageType        { return s.cfg.Storage }
-func (s *Stream) Replicas() int                   { return s.cfg.Replicas }
-func (s *Stream) NoAck() bool                     { return s.cfg.NoAck }
-func (s *Stream) Template() string                { return s.cfg.Template }
-func (s *Stream) DuplicateWindow() time.Duration  { return s.cfg.Duplicates }
-func (s *Stream) Mirror() *api.StreamSource       { return s.cfg.Mirror }
-func (s *Stream) Sources() []*api.StreamSource    { return s.cfg.Sources }
-func (s *Stream) Sealed() bool                    { return s.cfg.Sealed }
-func (s *Stream) DeleteAllowed() bool             { return !s.cfg.DenyDelete }
-func (s *Stream) PurgeAllowed() bool              { return !s.cfg.DenyPurge }
-func (s *Stream) RollupAllowed() bool             { return s.cfg.RollupAllowed }
-func (s *Stream) DirectAllowed() bool             { return s.cfg.AllowDirect }
-func (s *Stream) MirrorDirectAllowed() bool       { return s.cfg.MirrorDirect }
-func (s *Stream) Republish() *api.RePublish       { return s.cfg.RePublish }
-func (s *Stream) IsRepublishing() bool            { return s.Republish() != nil }
+func (s *Stream) Configuration() api.StreamConfig  { return *s.cfg }
+func (s *Stream) Name() string                     { return s.cfg.Name }
+func (s *Stream) Description() string              { return s.cfg.Description }
+func (s *Stream) Subjects() []string               { return s.cfg.Subjects }
+func (s *Stream) Retention() api.RetentionPolicy   { return s.cfg.Retention }
+func (s *Stream) DiscardPolicy() api.DiscardPolicy { return s.cfg.Discard }
+func (s *Stream) DiscardNewPerSubject() bool       { return s.cfg.DiscardNewPer }
+func (s *Stream) MaxConsumers() int                { return s.cfg.MaxConsumers }
+func (s *Stream) MaxMsgs() int64                   { return s.cfg.MaxMsgs }
+func (s *Stream) MaxMsgsPerSubject() int64         { return s.cfg.MaxMsgsPer }
+func (s *Stream) MaxBytes() int64                  { return s.cfg.MaxBytes }
+func (s *Stream) MaxAge() time.Duration            { return s.cfg.MaxAge }
+func (s *Stream) MaxMsgSize() int32                { return s.cfg.MaxMsgSize }
+func (s *Stream) Storage() api.StorageType         { return s.cfg.Storage }
+func (s *Stream) Replicas() int                    { return s.cfg.Replicas }
+func (s *Stream) NoAck() bool                      { return s.cfg.NoAck }
+func (s *Stream) Template() string                 { return s.cfg.Template }
+func (s *Stream) DuplicateWindow() time.Duration   { return s.cfg.Duplicates }
+func (s *Stream) Mirror() *api.StreamSource        { return s.cfg.Mirror }
+func (s *Stream) Sources() []*api.StreamSource     { return s.cfg.Sources }
+func (s *Stream) Sealed() bool                     { return s.cfg.Sealed }
+func (s *Stream) DeleteAllowed() bool              { return !s.cfg.DenyDelete }
+func (s *Stream) PurgeAllowed() bool               { return !s.cfg.DenyPurge }
+func (s *Stream) RollupAllowed() bool              { return s.cfg.RollupAllowed }
+func (s *Stream) DirectAllowed() bool              { return s.cfg.AllowDirect }
+func (s *Stream) MirrorDirectAllowed() bool        { return s.cfg.MirrorDirect }
+func (s *Stream) Republish() *api.RePublish        { return s.cfg.RePublish }
+func (s *Stream) IsRepublishing() bool             { return s.Republish() != nil }
 
 // DeleteAllow
 // Deprecated: use DeleteAllowed()

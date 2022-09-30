@@ -416,7 +416,10 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, err error) {
 	})
 
 	for _, c := range cinfo {
-		consumers = append(consumers, m.consumerFromCfg(c.Stream, c.Name, &c.Config))
+		consumer := m.consumerFromCfg(c.Stream, c.Name, &c.Config)
+		consumer.lastInfo = c
+
+		consumers = append(consumers, consumer)
 	}
 
 	return consumers, nil

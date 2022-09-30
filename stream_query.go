@@ -127,7 +127,7 @@ func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 		}
 	}
 
-	streams, err := m.Streams()
+	streams, err := m.Streams(nil)
 	if err != nil {
 		return nil, err
 	}

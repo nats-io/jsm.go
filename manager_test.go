@@ -369,7 +369,7 @@ func TestStreams(t *testing.T) {
 		checkErr(t, err, "create failed")
 	}
 
-	streams, err := mgr.Streams()
+	streams, err := mgr.Streams(nil)
 	checkErr(t, err, "streams failed")
 	if len(streams) != numStreams {
 		t.Fatalf("expected %d orders got %d", numStreams, len(streams))
@@ -477,8 +477,8 @@ func TestEachStream(t *testing.T) {
 	_, err = mgr.NewStreamFromDefault("ARCHIVE", orders.Configuration(), jsm.Subjects("OTHER"))
 	checkErr(t, err, "create failed")
 
-	seen := []string{}
-	err = mgr.EachStream(func(s *jsm.Stream) {
+	var seen []string
+	err = mgr.EachStream(nil, func(s *jsm.Stream) {
 		seen = append(seen, s.Name())
 	})
 	checkErr(t, err, "iteration failed")
@@ -489,6 +489,18 @@ func TestEachStream(t *testing.T) {
 
 	if seen[0] != "ARCHIVE" || seen[1] != "ORDERS" {
 		t.Fatalf("incorrect streams or order, expected [ARCHIVE, ORDERS] got %v", seen)
+	}
+
+	seen = []string{}
+	err = mgr.EachStream(&jsm.StreamNamesFilter{Subject: "ORDERS.*"}, func(s *jsm.Stream) {
+		seen = append(seen, s.Name())
+	})
+	checkErr(t, err, "iteration failed")
+	if len(seen) != 1 {
+		t.Fatalf("expected 1 got %d", len(seen))
+	}
+	if seen[0] != "ORDERS" {
+		t.Fatalf("incorrect streams or order, expected [ORDERS] got %v", seen)
 	}
 }
 

@@ -55,7 +55,7 @@ func (m *Manager) BackupJetStreamConfiguration(backupDir string, data bool) erro
 	}
 
 	log.Printf("Creating JetStream backup into %s", backupDir)
-	err = m.EachStream(func(stream *Stream) {
+	err = m.EachStream(nil, func(stream *Stream) {
 		err = m.backupStream(stream, backupDir, data)
 		if err != nil {
 			log.Fatalf("Could not backup Stream %s: %s", stream.Name(), err)

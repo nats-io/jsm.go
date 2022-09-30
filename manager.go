@@ -374,8 +374,8 @@ func (m *Manager) EachStreamTemplate(cb func(*StreamTemplate)) (err error) {
 }
 
 // EachStream iterates over all known Streams
-func (m *Manager) EachStream(cb func(*Stream)) (err error) {
-	streams, err := m.Streams()
+func (m *Manager) EachStream(filter *StreamNamesFilter, cb func(*Stream)) (err error) {
+	streams, err := m.Streams(filter)
 	if err != nil {
 		return err
 	}
@@ -473,14 +473,19 @@ func (m *Manager) ConsumerNames(stream string) (names []string, err error) {
 }
 
 // Streams is a sorted list of all known Streams
-func (m *Manager) Streams() ([]*Stream, error) {
+func (m *Manager) Streams(filter *StreamNamesFilter) ([]*Stream, error) {
 	var (
 		streams []*Stream
 		err     error
 		resp    = func() apiIterableResponse { return &api.JSApiStreamListResponse{} }
 	)
 
-	err = m.iterableRequest(api.JSApiStreamList, &api.JSApiStreamListRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, resp, func(page any) error {
+	req := &api.JSApiStreamListRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}
+	if filter != nil {
+		req.Subject = filter.Subject
+	}
+
+	err = m.iterableRequest(api.JSApiStreamList, req, resp, func(page any) error {
 		apiresp, ok := page.(*api.JSApiStreamListResponse)
 		if !ok {
 			return fmt.Errorf("invalid response type from iterable request")

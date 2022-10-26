@@ -312,27 +312,6 @@ func (m *Manager) IsKnownStream(stream string) (bool, error) {
 	return true, nil
 }
 
-// IsKnownStreamTemplate determines if a StreamTemplate is known
-func (m *Manager) IsKnownStreamTemplate(template string) (bool, error) {
-	t, err := m.LoadStreamTemplate(template)
-	if err != nil {
-		jserr, ok := err.(api.ApiError)
-		if ok {
-			if jserr.NotFoundError() {
-				return false, nil
-			}
-		}
-
-		return false, err
-	}
-
-	if t.Name() != template {
-		return false, fmt.Errorf("received invalid stream template from load")
-	}
-
-	return true, nil
-}
-
 // IsKnownConsumer determines if a Consumer is known for a specific Stream
 func (m *Manager) IsKnownConsumer(stream string, consumer string) (bool, error) {
 	c, err := m.LoadConsumer(stream, consumer)
@@ -352,25 +331,6 @@ func (m *Manager) IsKnownConsumer(stream string, consumer string) (bool, error) 
 	}
 
 	return true, nil
-}
-
-// EachStreamTemplate iterates over all known Stream Templates
-func (m *Manager) EachStreamTemplate(cb func(*StreamTemplate)) (err error) {
-	names, err := m.StreamTemplateNames()
-	if err != nil {
-		return err
-	}
-
-	for _, t := range names {
-		template, err := m.LoadStreamTemplate(t)
-		if err != nil {
-			return err
-		}
-
-		cb(template)
-	}
-
-	return nil
 }
 
 // EachStream iterates over all known Streams

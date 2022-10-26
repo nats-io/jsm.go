@@ -503,26 +503,3 @@ func TestEachStream(t *testing.T) {
 		t.Fatalf("incorrect streams or order, expected [ORDERS] got %v", seen)
 	}
 }
-
-func TestIsKnownStreamTemplate(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Close()
-
-	exists, err := mgr.IsKnownStreamTemplate("orders_templ")
-	checkErr(t, err, "is known failed")
-
-	if exists {
-		t.Fatalf("found orders_templ when it shouldnt have")
-	}
-
-	_, err = mgr.NewStreamTemplate("orders_templ", 1, jsm.DefaultStream, jsm.FileStorage(), jsm.Subjects("ORDERS.*"))
-	checkErr(t, err, "new stream template failed")
-
-	exists, err = mgr.IsKnownStreamTemplate("orders_templ")
-	checkErr(t, err, "is known failed")
-
-	if !exists {
-		t.Fatalf("did not find orders_templ when it should have")
-	}
-}

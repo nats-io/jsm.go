@@ -65,13 +65,6 @@ func (m *Manager) BackupJetStreamConfiguration(backupDir string, data bool) erro
 		return err
 	}
 
-	err = m.EachStreamTemplate(func(template *StreamTemplate) {
-		err = m.backupStreamTemplate(template, backupDir)
-		if err != nil {
-			log.Fatalf("Could not backup Stream Template %s: %s", template.Name(), err)
-		}
-	})
-
 	log.Printf("Configuration backup complete")
 
 	return nil
@@ -137,11 +130,6 @@ func (m *Manager) RestoreJetStreamConfiguration(backupDir string, update bool) e
 		return err
 	}
 
-	err = eachOfType("stream_template", m.restoreStreamTemplate)
-	if err != nil {
-		return err
-	}
-
 	err = eachOfType("consumer", m.restoreConsumer)
 	if err != nil {
 		return err
@@ -174,7 +162,7 @@ func (m *Manager) RestoreJetStreamConfigurationFile(path string, update bool) er
 	case "consumer":
 		err = m.restoreConsumer(bd)
 	case "stream_template":
-		err = m.restoreStreamTemplate(bd)
+		err = fmt.Errorf("stream templates have been deprecated")
 	default:
 		err = fmt.Errorf("unknown backup type %q", bd.Type)
 	}
@@ -222,24 +210,6 @@ func (m *Manager) restoreStream(backup *BackupData, update bool) error {
 		_, err = m.NewStreamFromDefault(sc.Name, sc)
 	}
 
-	return err
-}
-
-func (m *Manager) restoreStreamTemplate(backup *BackupData) error {
-	if backup.Type != "stream_template" {
-		return fmt.Errorf("cannot restore backup of type %q as Stream Template", backup.Type)
-	}
-
-	tc := api.StreamTemplateConfig{}
-	err := json.Unmarshal([]byte(backup.Configuration), &tc)
-	if err != nil {
-		return err
-	}
-
-	tc.Config.Name = ""
-
-	log.Printf("Restoring Stream Template %s", tc.Name)
-	_, err = m.NewStreamTemplate(tc.Name, tc.MaxStreams, *tc.Config)
 	return err
 }
 
@@ -302,18 +272,6 @@ func (m *Manager) backupStream(stream *Stream, backupDir string, data bool) erro
 	}
 
 	return err
-}
-
-func (m *Manager) backupStreamTemplate(template *StreamTemplate, backupDir string) error {
-	path := filepath.Join(backupDir, fmt.Sprintf("stream_template_%s.json", template.Name()))
-	log.Printf("Stream Template %s to %s", template.Name(), path)
-
-	bupj, err := m.backupSerialize(template.Configuration(), "stream_template")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, bupj, 0640)
 }
 
 func (m *Manager) backupConsumer(consumer *Consumer, backupDir string) error {

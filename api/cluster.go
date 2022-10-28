@@ -50,7 +50,7 @@ type JSApiMetaServerRemoveResponse struct {
 }
 
 // io.nats.jetstream.api.v1.account_purge_response
-type JSApiMetaAccountPurgeResponse struct {
+type JSApiAccountPurgeResponse struct {
 	JSApiResponse
 	Initiated bool `json:"initiated,omitempty"`
 }

@@ -1,4 +1,4 @@
-// auto generated 2022-10-28 10:34:48.313989 +0200 CEST m=+0.028724773
+// auto generated 2022-10-28 11:01:09.159536 +0200 CEST m=+0.056189053
 
 package api
 
@@ -78,7 +78,7 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.meta_leader_stepdown_response":     func() any { return &JSApiLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.meta_server_remove_request":        func() any { return &JSApiMetaServerRemoveRequest{} },
 	"io.nats.jetstream.api.v1.meta_server_remove_response":       func() any { return &JSApiMetaServerRemoveResponse{} },
-	"io.nats.jetstream.api.v1.account_purge_response":            func() any { return &JSApiMetaAccountPurgeResponse{} },
+	"io.nats.jetstream.api.v1.account_purge_response":            func() any { return &JSApiAccountPurgeResponse{} },
 	"io.nats.unknown_message":                                    func() any { return &UnknownMessage{} },
 }
 
@@ -1399,7 +1399,7 @@ func (t JSApiMetaServerRemoveResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
-func (t JSApiMetaAccountPurgeResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+func (t JSApiAccountPurgeResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
 	}
@@ -1408,17 +1408,17 @@ func (t JSApiMetaAccountPurgeResponse) Validate(v ...StructValidator) (valid boo
 }
 
 // SchemaType is the NATS schema type io.nats.jetstream.api.v1.account_purge_response
-func (t JSApiMetaAccountPurgeResponse) SchemaType() string {
+func (t JSApiAccountPurgeResponse) SchemaType() string {
 	return "io.nats.jetstream.api.v1.account_purge_response"
 }
 
 // SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiMetaAccountPurgeResponse) SchemaID() string {
+func (t JSApiAccountPurgeResponse) SchemaID() string {
 	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/account_purge_response.json"
 }
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiMetaAccountPurgeResponse) Schema() ([]byte, error) {
+func (t JSApiAccountPurgeResponse) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

@@ -585,7 +585,7 @@ func (m *Manager) MetaPurgeAccount(account string) error {
 		return fmt.Errorf("account is required")
 	}
 
-	var resp api.JSApiMetaAccountPurgeResponse
+	var resp api.JSApiAccountPurgeResponse
 	err := m.jsonRequest(fmt.Sprintf(api.JSApiPurgeAccountT, account), nil, &resp)
 	if err != nil {
 		return err

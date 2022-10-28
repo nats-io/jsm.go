@@ -20,6 +20,7 @@ import (
 const (
 	JSApiLeaderStepDown = "$JS.API.META.LEADER.STEPDOWN"
 	JSApiRemoveServer   = "$JS.API.SERVER.REMOVE"
+	JSApiPurgeAccountT  = "$JS.API.ACCOUNT.PURGE.%s"
 )
 
 // io.nats.jetstream.api.v1.meta_leader_stepdown_request
@@ -46,6 +47,12 @@ type JSApiMetaServerRemoveRequest struct {
 type JSApiMetaServerRemoveResponse struct {
 	JSApiResponse
 	Success bool `json:"success,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.account_purge_response
+type JSApiMetaAccountPurgeResponse struct {
+	JSApiResponse
+	Initiated bool `json:"initiated,omitempty"`
 }
 
 // ClusterInfo shows information about the underlying set of servers

@@ -579,6 +579,25 @@ func (m *Manager) MetaPeerRemove(name string, id string) error {
 	return nil
 }
 
+// MetaPurgeAccount removes all data from an account, must be run in the system account
+func (m *Manager) MetaPurgeAccount(account string) error {
+	if account == "" {
+		return fmt.Errorf("account is required")
+	}
+
+	var resp api.JSApiMetaAccountPurgeResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiPurgeAccountT, account), nil, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Initiated {
+		return fmt.Errorf("unknown error while purging the account")
+	}
+
+	return nil
+}
+
 // NatsConn gives access to the underlying NATS Connection
 func (m *Manager) NatsConn() *nats.Conn {
 	m.Lock()

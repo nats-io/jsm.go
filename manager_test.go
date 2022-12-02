@@ -478,7 +478,7 @@ func TestEachStream(t *testing.T) {
 	checkErr(t, err, "create failed")
 
 	var seen []string
-	err = mgr.EachStream(nil, func(s *jsm.Stream) {
+	_, err = mgr.EachStream(nil, func(s *jsm.Stream) {
 		seen = append(seen, s.Name())
 	})
 	checkErr(t, err, "iteration failed")
@@ -492,7 +492,7 @@ func TestEachStream(t *testing.T) {
 	}
 
 	seen = []string{}
-	err = mgr.EachStream(&jsm.StreamNamesFilter{Subject: "ORDERS.*"}, func(s *jsm.Stream) {
+	_, err = mgr.EachStream(&jsm.StreamNamesFilter{Subject: "ORDERS.*"}, func(s *jsm.Stream) {
 		seen = append(seen, s.Name())
 	})
 	checkErr(t, err, "iteration failed")

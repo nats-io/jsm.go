@@ -333,18 +333,18 @@ func (m *Manager) IsKnownConsumer(stream string, consumer string) (bool, error) 
 	return true, nil
 }
 
-// EachStream iterates over all known Streams, does not handle any streams the cluster could not get data from
-func (m *Manager) EachStream(filter *StreamNamesFilter, cb func(*Stream)) (err error) {
-	streams, _, err := m.Streams(filter)
+// EachStream iterates over all known Streams, does not handle any streams the cluster could not get data from but returns a list of those
+func (m *Manager) EachStream(filter *StreamNamesFilter, cb func(*Stream)) (missing []string, err error) {
+	streams, missing, err := m.Streams(filter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, s := range streams {
 		cb(s)
 	}
 
-	return nil
+	return missing, nil
 }
 
 // Consumers is a sorted list of all known Consumers within a Stream and a list of any consumer names that were known but no details were found

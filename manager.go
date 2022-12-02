@@ -333,9 +333,9 @@ func (m *Manager) IsKnownConsumer(stream string, consumer string) (bool, error) 
 	return true, nil
 }
 
-// EachStream iterates over all known Streams
+// EachStream iterates over all known Streams, does not handle any streams the cluster could not get data from
 func (m *Manager) EachStream(filter *StreamNamesFilter, cb func(*Stream)) (err error) {
-	streams, err := m.Streams(filter)
+	streams, _, err := m.Streams(filter)
 	if err != nil {
 		return err
 	}
@@ -347,10 +347,10 @@ func (m *Manager) EachStream(filter *StreamNamesFilter, cb func(*Stream)) (err e
 	return nil
 }
 
-// Consumers is a sorted list of all known Consumers within a Stream
-func (m *Manager) Consumers(stream string) (consumers []*Consumer, err error) {
+// Consumers is a sorted list of all known Consumers within a Stream and a list of any consumer names that were known but no details were found
+func (m *Manager) Consumers(stream string) (consumers []*Consumer, missing []string, err error) {
 	if !IsValidName(stream) {
-		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+		return nil, nil, fmt.Errorf("%q is not a valid stream name", stream)
 	}
 
 	var (
@@ -364,11 +364,12 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, err error) {
 			return fmt.Errorf("invalid response type from iterable request")
 		}
 
+		missing = append(missing, apiresp.Missing...)
 		cinfo = append(cinfo, apiresp.Consumers...)
 		return nil
 	})
 	if err != nil {
-		return consumers, err
+		return consumers, missing, err
 	}
 
 	sort.Slice(cinfo, func(i int, j int) bool {
@@ -382,7 +383,7 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, err error) {
 		consumers = append(consumers, consumer)
 	}
 
-	return consumers, nil
+	return consumers, missing, nil
 }
 
 // StreamTemplateNames is a sorted list of all known StreamTemplates
@@ -432,10 +433,11 @@ func (m *Manager) ConsumerNames(stream string) (names []string, err error) {
 	return names, nil
 }
 
-// Streams is a sorted list of all known Streams
-func (m *Manager) Streams(filter *StreamNamesFilter) ([]*Stream, error) {
+// Streams is a sorted list of all known Streams and a list of any stream names that were known but no details were found
+func (m *Manager) Streams(filter *StreamNamesFilter) ([]*Stream, []string, error) {
 	var (
 		streams []*Stream
+		missing []string
 		err     error
 		resp    = func() apiIterableResponse { return &api.JSApiStreamListResponse{} }
 	)
@@ -459,13 +461,12 @@ func (m *Manager) Streams(filter *StreamNamesFilter) ([]*Stream, error) {
 			streams = append(streams, m.streamFromConfig(&s.Config, s))
 		}
 
+		missing = append(missing, apiresp.Missing...)
+
 		return nil
 	})
-	if err != nil {
-		return streams, err
-	}
 
-	return streams, nil
+	return streams, missing, err
 }
 
 func (m *Manager) apiSubject(subject string) string {

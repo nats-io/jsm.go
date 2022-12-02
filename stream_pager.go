@@ -168,6 +168,7 @@ func (p *StreamPager) createConsumer() error {
 		ConsumerDescription("JSM Stream Pager"),
 		InactiveThreshold(time.Hour),
 		DurableName(fmt.Sprintf("stream_pager_%d%d", os.Getpid(), time.Now().UnixNano())),
+		ConsumerOverrideReplicas(1),
 	}
 
 	switch {

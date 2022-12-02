@@ -500,7 +500,7 @@ func (s *Stream) ConsumerNames() (names []string, err error) {
 
 // EachConsumer calls cb with each known consumer for this stream, error on any error to load consumers
 func (s *Stream) EachConsumer(cb func(consumer *Consumer)) error {
-	consumers, err := s.mgr.Consumers(s.Name())
+	consumers, _, err := s.mgr.Consumers(s.Name())
 	if err != nil {
 		return err
 	}

@@ -369,7 +369,7 @@ func TestStreams(t *testing.T) {
 		checkErr(t, err, "create failed")
 	}
 
-	streams, err := mgr.Streams(nil)
+	streams, _, err := mgr.Streams(nil)
 	checkErr(t, err, "streams failed")
 	if len(streams) != numStreams {
 		t.Fatalf("expected %d orders got %d", numStreams, len(streams))

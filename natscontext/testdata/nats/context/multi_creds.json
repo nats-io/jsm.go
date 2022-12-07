@@ -1,0 +1,18 @@
+{
+  "description": "",
+  "url": "demo.nats.io",
+  "token": "foo",
+  "user": "foo",
+  "password": "foo",
+  "creds": "foo",
+  "nkey": "foo",
+  "cert": "",
+  "key": "",
+  "ca": "",
+  "nsc": "",
+  "jetstream_domain": "",
+  "jetstream_api_prefix": "",
+  "jetstream_event_prefix": "",
+  "inbox_prefix": "",
+  "user_jwt": ""
+}

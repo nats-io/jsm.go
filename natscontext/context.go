@@ -28,6 +28,7 @@ package natscontext
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -424,6 +425,25 @@ func validName(name string) bool {
 	return name != "" && !strings.Contains(name, "..") && !strings.Contains(name, string(os.PathSeparator))
 }
 
+func numCreds(c *Context) int {
+	i := 0
+	creds := []string{
+		c.config.User,
+		c.config.Creds,
+		c.config.NKey,
+		c.config.Token,
+		c.config.NSCLookup,
+	}
+
+	for _, c := range creds {
+		if c != "" {
+			i++
+		}
+	}
+
+	return i
+}
+
 func createTree(parent string) error {
 	return os.MkdirAll(ctxDir(parent), 0700)
 }
@@ -463,6 +483,10 @@ func (c *Context) Save(name string) error {
 
 	if !validName(c.Name) {
 		return fmt.Errorf("invalid context name %q", c.Name)
+	}
+
+	if numCreds(c) > 1 {
+		return errors.New("too many types of credentials. Choose only one from 'user/password', 'creds', 'nkey', 'token', 'nsc'")
 	}
 
 	parent, err := parentDir()

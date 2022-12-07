@@ -70,6 +70,16 @@ func TestContext(t *testing.T) {
 		t.Fatalf("expected ngs got %s", config.ServerURL())
 	}
 
+	// Disallow multiple credential types
+	config, err = natscontext.New("multi_creds", true)
+	if err != nil {
+		t.Fatalf("error loading context: %s", err)
+	}
+	err = config.Save("multi_creds")
+	if err == nil {
+		t.Fatalf("expected error saving context with multiple credentials, received none")
+	}
+
 	// support missing config/context
 	os.Setenv("XDG_CONFIG_HOME", "/nonexisting")
 	config, err = natscontext.New("", true)

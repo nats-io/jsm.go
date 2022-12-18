@@ -46,6 +46,7 @@ type settings struct {
 	Description   string `json:"description"`
 	URL           string `json:"url"`
 	nscUrl        string
+	SocksProxy    string `json:"socks_proxy"`
 	Token         string `json:"token"`
 	User          string `json:"user"`
 	Password      string `json:"password"`
@@ -324,6 +325,10 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 
 	if c.CA() != "" {
 		nopts = append(nopts, nats.RootCAs(c.CA()))
+	}
+
+	if c.SocksProxy() != "" {
+		nopts = append(nopts, nats.SetCustomDialer(c.SOCKSDialer()))
 	}
 
 	if c.InboxPrefix() != "" {
@@ -723,4 +728,21 @@ func WithUserJWT(p string) Option {
 // UserJWT retrieves the configured user jwt, empty if not set
 func (c *Context) UserJWT() string {
 	return c.config.UserJwt
+}
+
+// WithSocksProxy sets the SOCKS5 Proxy.
+// To explicitly remove an already configured proxy, use the string "none".
+func WithSocksProxy(p string) Option {
+	return func(s *settings) {
+		if p == "none" || p == "NONE" || p == "-" {
+			s.SocksProxy = ""
+		} else if p != "" {
+			s.SocksProxy = p
+		}
+	}
+}
+
+// SocksProxy retrieves the configured SOCKS5 Proxy, empty if not set
+func (c *Context) SocksProxy() string {
+	return c.config.SocksProxy
 }

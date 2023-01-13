@@ -57,6 +57,10 @@
           "description": "Replicate only a subset of messages based on filter",
           "type": "string"
         },
+        "subject_transform_dest" : {
+          "description": "Map matching subjects according to this transform destination",
+          "type": "string"
+        },
         "external": {
           "$ref": "#/definitions/external_stream_source"
         }
@@ -85,6 +89,14 @@
         "name": {
           "type": "string",
           "description": "The name of the Stream being replicated"
+        },
+        "filter_subject": {
+          "type": "string",
+          "description": "The subject filter to apply to the messages"
+        },
+        "subject_transform_dest": {
+          "type": "string",
+          "description": "The subject transform destination to apply to the messages"
         },
         "lag": {
           "$ref": "#/definitions/golang_uint64",
@@ -855,6 +867,21 @@
         }
       }
     },
+    "subject_transform" : {
+      "type": "object",
+      "description": "Subject transform to apply to matching messages going into the stream",
+      "required": ["dest"],
+      "properties": {
+        "src": {
+          "type": "string",
+          "description": "The subject transform source"
+        },
+        "dest": {
+          "type": "string",
+          "description": "The subject transform destination"
+        }
+      }
+    },
     "republish": {
       "type": "object",
       "description": "Rules for republishing messages from a stream with subject mapping onto new subjects for partitioning and more",
@@ -906,6 +933,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "subject_transform" : {
+          "description": "Subject transform to apply to matching messages",
+          "$ref": "#/definitions/subject_transform"
         },
         "retention": {
           "description": "How messages are retained in the Stream, once this is exceeded old messages are removed.",

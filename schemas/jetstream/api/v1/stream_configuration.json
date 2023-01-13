@@ -34,6 +34,23 @@
         "type": "string"
       }
     },
+    "subject_transform": {
+      "description": "Subject transform to apply to matching messages",
+      "type": "object",
+      "required": [
+        "dest"
+      ],
+      "properties": {
+        "src": {
+          "type": "string",
+          "description": "The subject transform source"
+        },
+        "dest": {
+          "type": "string",
+          "description": "The subject transform destination"
+        }
+      }
+    },
     "retention": {
       "description": "How messages are retained in the Stream, once this is exceeded old messages are removed.",
       "type": "string",
@@ -185,6 +202,10 @@
           "description": "Replicate only a subset of messages based on filter",
           "type": "string"
         },
+        "subject_transform_dest": {
+          "description": "Map matching subjects according to this transform destination",
+          "type": "string"
+        },
         "external": {
           "required": [
             "api"
@@ -235,6 +256,10 @@
           },
           "filter_subject": {
             "description": "Replicate only a subset of messages based on filter",
+            "type": "string"
+          },
+          "subject_transform_dest": {
+            "description": "Map matching subjects according to this transform destination",
             "type": "string"
           },
           "external": {

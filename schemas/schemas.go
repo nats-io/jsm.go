@@ -6,6 +6,7 @@ import (
 
 //go:embed jetstream
 //go:embed server
+//go:embed micro
 
 var schemas embed.FS
 

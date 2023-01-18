@@ -1,4 +1,4 @@
-// auto generated 2022-10-28 11:01:09.159536 +0200 CEST m=+0.056189053
+// auto generated 2023-01-18 20:10:47.929545 +0100 CET m=+0.032919176
 
 package api
 
@@ -8,6 +8,7 @@ import (
 	srvadvisory "github.com/nats-io/jsm.go/api/server/advisory"
 	srvmetric "github.com/nats-io/jsm.go/api/server/metric"
 	scfs "github.com/nats-io/jsm.go/schemas"
+	"github.com/nats-io/nats.go/micro"
 )
 
 var schemaTypes = map[string]func() any{
@@ -79,6 +80,10 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.meta_server_remove_request":        func() any { return &JSApiMetaServerRemoveRequest{} },
 	"io.nats.jetstream.api.v1.meta_server_remove_response":       func() any { return &JSApiMetaServerRemoveResponse{} },
 	"io.nats.jetstream.api.v1.account_purge_response":            func() any { return &JSApiAccountPurgeResponse{} },
+	"io.nats.micro.v1.info_response":                             func() any { return &micro.Info{} },
+	"io.nats.micro.v1.ping_response":                             func() any { return &micro.Ping{} },
+	"io.nats.micro.v1.stats_response":                            func() any { return &micro.Stats{} },
+	"io.nats.micro.v1.schema_response":                           func() any { return &micro.SchemaResp{} },
 	"io.nats.unknown_message":                                    func() any { return &UnknownMessage{} },
 }
 

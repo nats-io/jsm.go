@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/micro/v1/definitions.json",
+  "title": "io.nats.micro.v1.definitions",
+  "description": "Shared definitions for the Micro API",
+  "type": "object",
+  "definitions": {
+    "basic_name": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 1
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "minLength": 5
+    },
+    "golang_int": {
+      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+      "$ref": "#/definitions/golang_int64"
+    },
+    "golang_int64": {
+      "$comment": "signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807,
+      "minimum": -9223372036854775808
+    },
+    "golang_time": {
+      "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+      "type": "string",
+      "format": "date-time"
+    },
+    "golang_duration_nanos": {
+      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+      "$ref": "#/definitions/golang_int64"
+    },
+    "endpoint_stats": {
+      "type": "object",
+      "required": [
+        "name",
+        "subject",
+        "num_requests",
+        "num_errors",
+        "last_error",
+        "processing_time",
+        "average_processing_time"
+      ],
+      "description": "Statistics about a specific service endpoint",
+      "properties": {
+        "name": {
+          "description": "The endpoint name",
+          "$ref": "#/definitions/basic_name"
+        },
+        "subject": {
+          "description": "The subject the endpoint listens on",
+          "type": "string",
+          "minLength": 1
+        },
+        "num_requests": {
+          "description": "The number of requests this endpoint received",
+          "$ref": "#/definitions/golang_int"
+        },
+        "num_errors": {
+          "description": "The number of errors this endpoint encountered",
+          "$ref": "#/definitions/golang_int"
+        },
+        "last_error": {
+          "description": "The last error the service encountered",
+          "type": "string"
+        },
+        "processing_time": {
+          "description": "How long, in total, was spent processing requests in the handler",
+          "$ref": "#/definitions/golang_duration_nanos"
+        },
+        "average_processing_time": {
+          "description": "The average time spent processing requests",
+          "$ref": "#/definitions/golang_duration_nanos"
+        },
+        "data": {
+          "description": "Additional statistics the endpoint makes available",
+          "type": "object"
+        }
+      }
+    }
+  }
+}

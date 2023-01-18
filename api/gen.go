@@ -45,6 +45,7 @@ import (
     jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
 	jsapi "github.com/nats-io/jsm.go/api/jetstream/api"
     scfs "github.com/nats-io/jsm.go/schemas"
+	"github.com/nats-io/nats.go/micro"
 )
 
 var schemaTypes = map[string]func() any {
@@ -254,6 +255,10 @@ func main() {
 		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "JSApiMetaServerRemoveRequest"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "JSApiMetaServerRemoveResponse"},
 		&schema{P: "jetstream/api/v1/account_purge_response.json", St: "JSApiAccountPurgeResponse"},
+		&schema{P: "micro/v1/info_response.json", St: "micro.Info"},
+		&schema{P: "micro/v1/ping_response.json", St: "micro.Ping"},
+		&schema{P: "micro/v1/stats_response.json", St: "micro.Stats"},
+		&schema{P: "micro/v1/schema_response.json", St: "micro.SchemaResp"},
 	}
 
 	for _, i := range s {

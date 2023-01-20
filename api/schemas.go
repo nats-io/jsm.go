@@ -179,6 +179,21 @@ func ParseMessage(m []byte) (schemaType string, msg any, err error) {
 	return schemaType, msg, err
 }
 
+// ParseAndValidateMessage parses the data using ParseMessage() and validates it against the detected schema. Will panic with a nil validator.
+func ParseAndValidateMessage(m []byte, validator StructValidator) (schemaType string, msg any, err error) {
+	schemaType, msg, err = ParseMessage(m)
+	if err != nil {
+		return "", nil, err
+	}
+
+	ok, errs := validator.ValidateStruct(msg, schemaType)
+	if !ok {
+		return schemaType, nil, fmt.Errorf(strings.Join(errs, ","))
+	}
+
+	return schemaType, msg, nil
+}
+
 // ToCloudEventV1 turns a NATS Event into a version 1.0 Cloud Event
 func ToCloudEventV1(e Event) ([]byte, error) {
 	je, err := json.MarshalIndent(e, "", "  ")

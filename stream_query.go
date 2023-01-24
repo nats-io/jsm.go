@@ -31,10 +31,30 @@ type streamQuery struct {
 	Invert         bool
 	Subject        string
 	Replicas       int
+	Mirrored       bool
+	MirroredIsSet  bool
+	Sourced        bool
+	SourcedIsSet   bool
 	matchers       []streamMatcher
 }
 
 type StreamQueryOpt func(query *streamQuery) error
+
+func StreamQueryIsSourced() StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.Sourced = true
+		q.SourcedIsSet = true
+		return nil
+	}
+}
+
+func StreamQueryIsMirror() StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.Mirrored = true
+		q.MirroredIsSet = true
+		return nil
+	}
+}
 
 // StreamQueryReplicas finds streams with a certain number of replicas or more
 func StreamQueryReplicas(r uint) StreamQueryOpt {
@@ -149,6 +169,8 @@ func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 		q.matchSubjectWildcard,
 		q.matchServer,
 		q.matchReplicas,
+		q.matchSourced,
+		q.matchMirrored,
 	}
 
 	streams, _, err := m.Streams(nil)
@@ -167,6 +189,36 @@ func (q *streamQuery) Filter(streams []*Stream) ([]*Stream, error) {
 		matched, err = matcher(matched)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	return matched, nil
+}
+
+func (q *streamQuery) matchMirrored(streams []*Stream) ([]*Stream, error) {
+	if !q.MirroredIsSet {
+		return streams, nil
+	}
+
+	var matched []*Stream
+	for _, stream := range streams {
+		if (!q.Invert && stream.IsMirror()) || (q.Invert && !stream.IsMirror()) {
+			matched = append(matched, stream)
+		}
+	}
+
+	return matched, nil
+}
+
+func (q *streamQuery) matchSourced(streams []*Stream) ([]*Stream, error) {
+	if !q.SourcedIsSet {
+		return streams, nil
+	}
+
+	var matched []*Stream
+	for _, stream := range streams {
+		if (!q.Invert && stream.IsSourced()) || (q.Invert && !stream.IsSourced()) {
+			matched = append(matched, stream)
 		}
 	}
 

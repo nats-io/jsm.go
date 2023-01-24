@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+type streamMatcher func([]*Stream) ([]*Stream, error)
+
 type streamQuery struct {
 	Server         *regexp.Regexp
 	Cluster        *regexp.Regexp
@@ -28,9 +30,40 @@ type streamQuery struct {
 	CreatedPeriod  *time.Duration
 	Invert         bool
 	Subject        string
+	Replicas       int
+	Mirrored       bool
+	MirroredIsSet  bool
+	Sourced        bool
+	SourcedIsSet   bool
+	matchers       []streamMatcher
 }
 
 type StreamQueryOpt func(query *streamQuery) error
+
+func StreamQueryIsSourced() StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.Sourced = true
+		q.SourcedIsSet = true
+		return nil
+	}
+}
+
+func StreamQueryIsMirror() StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.Mirrored = true
+		q.MirroredIsSet = true
+		return nil
+	}
+}
+
+// StreamQueryReplicas finds streams with a certain number of replicas or more
+func StreamQueryReplicas(r uint) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.Replicas = int(r)
+
+		return nil
+	}
+}
 
 // StreamQuerySubjectWildcard limits results to streams with subject interest matching standard a nats wildcard
 func StreamQuerySubjectWildcard(s string) StreamQueryOpt {
@@ -127,6 +160,19 @@ func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 		}
 	}
 
+	q.matchers = []streamMatcher{
+		q.matchCreatedPeriod,
+		q.matchIdlePeriod,
+		q.matchEmpty,
+		q.matchConsumerLimit,
+		q.matchCluster,
+		q.matchSubjectWildcard,
+		q.matchServer,
+		q.matchReplicas,
+		q.matchSourced,
+		q.matchMirrored,
+	}
+
 	streams, _, err := m.Streams(nil)
 	if err != nil {
 		return nil, err
@@ -136,26 +182,65 @@ func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 }
 
 func (q *streamQuery) Filter(streams []*Stream) ([]*Stream, error) {
-	return q.matchCreatedPeriod(
-		q.matchIdlePeriod(
-			q.matchEmpty(
-				q.matchConsumerLimit(
-					q.matchCluster(
-						q.matchSubjectWildcard(
-							q.matchServer(streams, nil),
-						),
-					),
-				),
-			),
-		),
-	)
-}
+	matched := streams[:]
+	var err error
 
-func (q *streamQuery) matchSubjectWildcard(streams []*Stream, err error) ([]*Stream, error) {
-	if err != nil {
-		return nil, err
+	for _, matcher := range q.matchers {
+		matched, err = matcher(matched)
+		if err != nil {
+			return nil, err
+		}
 	}
 
+	return matched, nil
+}
+
+func (q *streamQuery) matchMirrored(streams []*Stream) ([]*Stream, error) {
+	if !q.MirroredIsSet {
+		return streams, nil
+	}
+
+	var matched []*Stream
+	for _, stream := range streams {
+		if (!q.Invert && stream.IsMirror()) || (q.Invert && !stream.IsMirror()) {
+			matched = append(matched, stream)
+		}
+	}
+
+	return matched, nil
+}
+
+func (q *streamQuery) matchSourced(streams []*Stream) ([]*Stream, error) {
+	if !q.SourcedIsSet {
+		return streams, nil
+	}
+
+	var matched []*Stream
+	for _, stream := range streams {
+		if (!q.Invert && stream.IsSourced()) || (q.Invert && !stream.IsSourced()) {
+			matched = append(matched, stream)
+		}
+	}
+
+	return matched, nil
+}
+
+func (q *streamQuery) matchReplicas(streams []*Stream) ([]*Stream, error) {
+	if q.Replicas == 0 {
+		return streams, nil
+	}
+
+	var matched []*Stream
+	for _, stream := range streams {
+		if (q.Invert && stream.Replicas() <= q.Replicas) || (!q.Invert && stream.Replicas() >= q.Replicas) {
+			matched = append(matched, stream)
+		}
+	}
+
+	return matched, nil
+}
+
+func (q *streamQuery) matchSubjectWildcard(streams []*Stream) ([]*Stream, error) {
 	if q.Subject == "" {
 		return streams, nil
 	}
@@ -186,11 +271,7 @@ func (q *streamQuery) matchSubjectWildcard(streams []*Stream, err error) ([]*Str
 	return matched, nil
 }
 
-func (q *streamQuery) matchCreatedPeriod(streams []*Stream, err error) ([]*Stream, error) {
-	if err != nil {
-		return nil, err
-	}
-
+func (q *streamQuery) matchCreatedPeriod(streams []*Stream) ([]*Stream, error) {
 	if q.CreatedPeriod == nil {
 		return streams, nil
 	}
@@ -212,11 +293,7 @@ func (q *streamQuery) matchCreatedPeriod(streams []*Stream, err error) ([]*Strea
 
 // note: ideally we match in addition for ones where no consumer had any messages in this period
 // but today that means doing a consumer info on every consumer on every stream thats not viable
-func (q *streamQuery) matchIdlePeriod(streams []*Stream, err error) ([]*Stream, error) {
-	if err != nil {
-		return nil, err
-	}
-
+func (q *streamQuery) matchIdlePeriod(streams []*Stream) ([]*Stream, error) {
 	if q.IdlePeriod == nil {
 		return streams, nil
 	}
@@ -239,11 +316,7 @@ func (q *streamQuery) matchIdlePeriod(streams []*Stream, err error) ([]*Stream, 
 	return matched, nil
 }
 
-func (q *streamQuery) matchEmpty(streams []*Stream, err error) ([]*Stream, error) {
-	if err != nil {
-		return nil, err
-	}
-
+func (q *streamQuery) matchEmpty(streams []*Stream) ([]*Stream, error) {
 	if q.Empty == nil {
 		return streams, nil
 	}
@@ -263,10 +336,7 @@ func (q *streamQuery) matchEmpty(streams []*Stream, err error) ([]*Stream, error
 	return matched, nil
 }
 
-func (q *streamQuery) matchConsumerLimit(streams []*Stream, err error) ([]*Stream, error) {
-	if err != nil {
-		return nil, err
-	}
+func (q *streamQuery) matchConsumerLimit(streams []*Stream) ([]*Stream, error) {
 	if q.ConsumersLimit == nil {
 		return streams, nil
 	}
@@ -286,10 +356,7 @@ func (q *streamQuery) matchConsumerLimit(streams []*Stream, err error) ([]*Strea
 	return matched, nil
 }
 
-func (q *streamQuery) matchCluster(streams []*Stream, err error) ([]*Stream, error) {
-	if err != nil {
-		return nil, err
-	}
+func (q *streamQuery) matchCluster(streams []*Stream) ([]*Stream, error) {
 	if q.Cluster == nil {
 		return streams, nil
 	}
@@ -315,10 +382,7 @@ func (q *streamQuery) matchCluster(streams []*Stream, err error) ([]*Stream, err
 	return matched, nil
 }
 
-func (q *streamQuery) matchServer(streams []*Stream, err error) ([]*Stream, error) {
-	if err != nil {
-		return nil, err
-	}
+func (q *streamQuery) matchServer(streams []*Stream) ([]*Stream, error) {
 	if q.Server == nil {
 		return streams, nil
 	}

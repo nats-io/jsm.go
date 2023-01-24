@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/api"
 	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -44,6 +45,43 @@ func TestStreamQueryCreatePeriod(t *testing.T) {
 
 		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryOlderThan(10*time.Millisecond))
 		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryOlderThan(10*time.Millisecond), jsm.StreamQueryInvert())
+	})
+}
+
+func TestStreamQueryReplicas(t *testing.T) {
+	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
+		checkErr(t, err, "create failed")
+		_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.MemoryStorage(), jsm.Replicas(1))
+		checkErr(t, err, "create failed")
+
+		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(1))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryReplicas(2))
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryReplicas(3))
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryReplicas(1), jsm.StreamQueryInvert())
+		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(2), jsm.StreamQueryInvert())
+		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(3), jsm.StreamQueryInvert())
+	})
+}
+
+func TestStreamQueryIsMirror(t *testing.T) {
+	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+		_, err := mgr.NewStream("q1", jsm.MemoryStorage(), jsm.Mirror(&api.StreamSource{Name: "OTHER"}))
+		checkErr(t, err, "create failed")
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIsMirror())
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIsMirror(), jsm.StreamQueryInvert())
+	})
+}
+
+func TestStreamQueryIsSourced(t *testing.T) {
+	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+		_, err := mgr.NewStream("q1", jsm.MemoryStorage(), jsm.Sources(&api.StreamSource{Name: "OTHER"}))
+		checkErr(t, err, "create failed")
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIsSourced())
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryIsSourced(), jsm.StreamQueryInvert())
 	})
 }
 

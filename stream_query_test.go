@@ -55,13 +55,13 @@ func TestStreamQueryReplicas(t *testing.T) {
 		_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.MemoryStorage(), jsm.Replicas(1))
 		checkErr(t, err, "create failed")
 
-		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(1))
-		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryReplicas(2))
-		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryReplicas(3))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryReplicas(1))
+		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(2))
+		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(3))
 
-		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryReplicas(1), jsm.StreamQueryInvert())
-		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(2), jsm.StreamQueryInvert())
-		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(3), jsm.StreamQueryInvert())
+		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryReplicas(1), jsm.StreamQueryInvert())
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryReplicas(2), jsm.StreamQueryInvert())
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryReplicas(3), jsm.StreamQueryInvert())
 	})
 }
 

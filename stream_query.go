@@ -56,7 +56,7 @@ func StreamQueryIsMirror() StreamQueryOpt {
 	}
 }
 
-// StreamQueryReplicas finds streams with a certain number of replicas or more
+// StreamQueryReplicas finds streams with a certain number of replicas or less
 func StreamQueryReplicas(r uint) StreamQueryOpt {
 	return func(q *streamQuery) error {
 		q.Replicas = int(r)
@@ -232,7 +232,7 @@ func (q *streamQuery) matchReplicas(streams []*Stream) ([]*Stream, error) {
 
 	var matched []*Stream
 	for _, stream := range streams {
-		if (q.Invert && stream.Replicas() <= q.Replicas) || (!q.Invert && stream.Replicas() >= q.Replicas) {
+		if (q.Invert && stream.Replicas() >= q.Replicas) || (!q.Invert && stream.Replicas() <= q.Replicas) {
 			matched = append(matched, stream)
 		}
 	}

@@ -290,6 +290,13 @@
               "description": "Force the consumer state to be kept in memory rather than inherit the setting from the stream",
               "type": "boolean",
               "default": false
+            },
+            "metadata": {
+              "description": "Additional metadata for the Consumer",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           }
         },

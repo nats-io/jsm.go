@@ -558,6 +558,19 @@ func LinearBackoffPolicy(steps uint, min time.Duration, max time.Duration) Consu
 	}
 }
 
+func ConsumerMetadata(meta map[string]string) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		for k := range meta {
+			if len(k) == 0 {
+				return fmt.Errorf("invalid empty string key in metadata")
+			}
+		}
+
+		o.Metadata = meta
+		return nil
+	}
+}
+
 // UpdateConfiguration updates the consumer configuration
 // At present the description, ack wait, max deliver, sample frequency, max ack pending, max waiting and header only settings can be changed
 func (c *Consumer) UpdateConfiguration(opts ...ConsumerOption) error {
@@ -859,6 +872,7 @@ func (c *Consumer) MaxRequestExpires() time.Duration { return c.cfg.MaxRequestEx
 func (c *Consumer) MaxRequestMaxBytes() int          { return c.cfg.MaxRequestMaxBytes }
 func (c *Consumer) InactiveThreshold() time.Duration { return c.cfg.InactiveThreshold }
 func (c *Consumer) Replicas() int                    { return c.cfg.Replicas }
+func (c *Consumer) Metadata() map[string]string      { return c.cfg.Metadata }
 func (c *Consumer) MemoryStorage() bool              { return c.cfg.MemoryStorage }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {

@@ -431,6 +431,19 @@ func Republish(m *api.RePublish) StreamOption {
 	}
 }
 
+func StreamMetadata(meta map[string]string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		for k := range meta {
+			if len(k) == 0 {
+				return fmt.Errorf("invalid empty string key in metadata")
+			}
+		}
+
+		o.Metadata = meta
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -756,6 +769,7 @@ func (s *Stream) DirectAllowed() bool              { return s.cfg.AllowDirect }
 func (s *Stream) MirrorDirectAllowed() bool        { return s.cfg.MirrorDirect }
 func (s *Stream) Republish() *api.RePublish        { return s.cfg.RePublish }
 func (s *Stream) IsRepublishing() bool             { return s.Republish() != nil }
+func (s *Stream) Metadata() map[string]string      { return s.cfg.Metadata }
 
 // DeleteAllow
 // Deprecated: use DeleteAllowed()

@@ -715,6 +715,11 @@
           "description": "Force the consumer state to be kept in memory rather than inherit the setting from the stream",
           "type": "boolean",
           "default": false
+        },
+        "metadata": {
+          "description": "Additional metadata for the Consumer",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
         }
       }
     },
@@ -1030,6 +1035,11 @@
           "type": "boolean",
           "description": "When discard policy is new and the stream is one with max messages per subject set, this will apply the new behavior to every subject. Essentially turning discard new from maximum number of subjects into maximum number of messages in a subject.",
           "default": false
+        },
+        "metadata": {
+          "description": "Additional metadata for the Stream",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
         }
       }
     },

@@ -394,6 +394,8 @@ type StreamConfig struct {
 	MirrorDirect bool `json:"mirror_direct"`
 	// Allow KV like semantics to also discard new on a per subject basis
 	DiscardNewPer bool `json:"discard_new_per_subject,omitempty"`
+	// Metadata is additional metadata for the Consumer.
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream

@@ -286,6 +286,8 @@ type ConsumerConfig struct {
 	InactiveThreshold  time.Duration   `json:"inactive_threshold,omitempty"`
 	Replicas           int             `json:"num_replicas"`
 	MemoryStorage      bool            `json:"mem_storage,omitempty"`
+	// Metadata is additional metadata for the Consumer.
+	Metadata map[string]string `json:"metadata,omitempty"`
 
 	// Don't add to general clients.
 	Direct bool `json:"direct,omitempty"`

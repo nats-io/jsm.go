@@ -377,6 +377,8 @@ type StreamConfig struct {
 	Placement    *Placement      `json:"placement,omitempty"`
 	Mirror       *StreamSource   `json:"mirror,omitempty"`
 	Sources      []*StreamSource `json:"sources,omitempty"`
+	// Allow applying a subject transform to incoming messages before doing anything else
+	SubjectTransform *SubjectTransformConfig `json:"subject_transform,omitempty"`
 	// Allow republish of the message after being sequenced and stored.
 	RePublish *RePublish `json:"republish,omitempty"`
 	// Sealed will seal a stream so no messages can get out or in.
@@ -406,11 +408,13 @@ type Placement struct {
 
 // StreamSourceInfo shows information about an upstream stream source.
 type StreamSourceInfo struct {
-	Name     string          `json:"name"`
-	External *ExternalStream `json:"external,omitempty"`
-	Lag      uint64          `json:"lag"`
-	Active   time.Duration   `json:"active"`
-	Error    *ApiError       `json:"error,omitempty"`
+	Name                 string          `json:"name"`
+	External             *ExternalStream `json:"external,omitempty"`
+	Lag                  uint64          `json:"lag"`
+	Active               time.Duration   `json:"active"`
+	Error                *ApiError       `json:"error,omitempty"`
+	FilterSubject        string          `json:"filter_subject,omitempty"`
+	SubjectTransformDest string          `json:"subject_transform_dest,omitempty"`
 }
 
 // LostStreamData indicates msgs that have been lost during file checks and recover due to corruption
@@ -423,11 +427,12 @@ type LostStreamData struct {
 
 // StreamSource dictates how streams can source from other streams.
 type StreamSource struct {
-	Name          string          `json:"name"`
-	OptStartSeq   uint64          `json:"opt_start_seq,omitempty"`
-	OptStartTime  *time.Time      `json:"opt_start_time,omitempty"`
-	FilterSubject string          `json:"filter_subject,omitempty"`
-	External      *ExternalStream `json:"external,omitempty"`
+	Name                 string          `json:"name"`
+	OptStartSeq          uint64          `json:"opt_start_seq,omitempty"`
+	OptStartTime         *time.Time      `json:"opt_start_time,omitempty"`
+	FilterSubject        string          `json:"filter_subject,omitempty"`
+	External             *ExternalStream `json:"external,omitempty"`
+	SubjectTransformDest string          `json:"subject_transform_dest,omitempty"`
 }
 
 // ExternalStream allows you to qualify access to a stream source in another account.
@@ -465,6 +470,13 @@ type StreamState struct {
 	Subjects    map[string]uint64 `json:"subjects,omitempty"`
 	Lost        *LostStreamData   `json:"lost,omitempty"`
 	Consumers   int               `json:"consumer_count"`
+}
+
+// SubjectTransformConfig is for applying a subject transform (to matching messages) before doing anything else
+// when a new message is received
+type SubjectTransformConfig struct {
+	Source      string `json:"src,omitempty"`
+	Destination string `json:"dest"`
 }
 
 // RePublish allows a source subject to be mapped to a destination subject for republishing.

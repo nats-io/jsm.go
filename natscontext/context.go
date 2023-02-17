@@ -62,6 +62,7 @@ type settings struct {
 	JSEventPrefix string `json:"jetstream_event_prefix"`
 	InboxPrefix   string `json:"inbox_prefix"`
 	UserJwt       string `json:"user_jwt"`
+	ColorScheme   string `json:"color_scheme"`
 }
 
 type Context struct {
@@ -645,6 +646,18 @@ func WithDescription(d string) Option {
 	return func(s *settings) {
 		if d != "" {
 			s.Description = d
+		}
+	}
+}
+
+// ColorScheme is a color scheme hint for CLI tools, valid values depend on the tool
+func (c *Context) ColorScheme() string { return c.config.ColorScheme }
+
+// WithColorScheme allows a color scheme to be recorded, valid values depend on the tool
+func WithColorScheme(scheme string) Option {
+	return func(s *settings) {
+		if scheme != "" {
+			s.ColorScheme = scheme
 		}
 	}
 }

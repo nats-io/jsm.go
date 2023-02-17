@@ -440,9 +440,8 @@ func numCreds(c *Context) int {
 		c.config.NSCLookup,
 	}
 
-	for k, c := range creds {
+	for _, c := range creds {
 		if c != "" {
-			fmt.Println(k, c)
 			i++
 		}
 	}

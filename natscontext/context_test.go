@@ -80,6 +80,16 @@ func TestContext(t *testing.T) {
 		t.Fatalf("expected error saving context with multiple credentials, received none")
 	}
 
+	// Make sure username, password, and token can coexist
+	config, err = natscontext.New("user_pass_token_creds", true)
+	if err != nil {
+		t.Fatalf("error loading context: %s", err)
+	}
+	err = config.Save("user_pass_token_creds")
+	if err != nil {
+		t.Fatalf("expected no error when saving a context with username and password")
+	}
+
 	// support missing config/context
 	os.Setenv("XDG_CONFIG_HOME", "/nonexisting")
 	config, err = natscontext.New("", true)

@@ -437,12 +437,12 @@ func numCreds(c *Context) int {
 		c.config.User,
 		c.config.Creds,
 		c.config.NKey,
-		c.config.Token,
 		c.config.NSCLookup,
 	}
 
-	for _, c := range creds {
+	for k, c := range creds {
 		if c != "" {
+			fmt.Println(k, c)
 			i++
 		}
 	}
@@ -492,7 +492,7 @@ func (c *Context) Save(name string) error {
 	}
 
 	if numCreds(c) > 1 {
-		return errors.New("too many types of credentials. Choose only one from 'user/password', 'creds', 'nkey', 'token', 'nsc'")
+		return errors.New("too many types of credentials. Choose only one from 'user/password/token', 'creds', 'nkey', 'nsc'")
 	}
 
 	parent, err := parentDir()

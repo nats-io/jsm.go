@@ -10,6 +10,7 @@ require (
 	github.com/nats-io/nats.go v1.23.0
 	golang.org/x/net v0.7.0
 	golang.org/x/text v0.7.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

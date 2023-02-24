@@ -17,6 +17,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -252,12 +254,36 @@ func (p *DiscardPolicy) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (p *DiscardPolicy) UnmarshalYAML(data *yaml.Node) error {
+	switch data.Value {
+	case "old":
+		*p = DiscardOld
+	case "new":
+		*p = DiscardNew
+	default:
+		return fmt.Errorf("can not unmarshal %q", data.Value)
+	}
+
+	return nil
+}
+
 func (p DiscardPolicy) MarshalJSON() ([]byte, error) {
 	switch p {
 	case DiscardOld:
 		return json.Marshal("old")
 	case DiscardNew:
 		return json.Marshal("new")
+	default:
+		return nil, fmt.Errorf("unknown discard policy %v", p)
+	}
+}
+
+func (p DiscardPolicy) MarshalYAML() (any, error) {
+	switch p {
+	case DiscardOld:
+		return "old", nil
+	case DiscardNew:
+		return "new", nil
 	default:
 		return nil, fmt.Errorf("unknown discard policy %v", p)
 	}
@@ -294,6 +320,19 @@ func (t *StorageType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (t *StorageType) UnmarshalYAML(data *yaml.Node) error {
+	switch data.Value {
+	case "memory":
+		*t = MemoryStorage
+	case "file":
+		*t = FileStorage
+	default:
+		return fmt.Errorf("can not unmarshal %q", data.Value)
+	}
+
+	return nil
+}
+
 func (t StorageType) MarshalJSON() ([]byte, error) {
 	switch t {
 	case MemoryStorage:
@@ -302,6 +341,17 @@ func (t StorageType) MarshalJSON() ([]byte, error) {
 		return json.Marshal("file")
 	default:
 		return nil, fmt.Errorf("unknown storage type %q", t)
+	}
+}
+
+func (t StorageType) MarshalYAML() (any, error) {
+	switch t {
+	case MemoryStorage:
+		return "memory", nil
+	case FileStorage:
+		return "file", nil
+	default:
+		return "", nil
 	}
 }
 
@@ -341,6 +391,21 @@ func (p *RetentionPolicy) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (p *RetentionPolicy) UnmarshalYAML(data *yaml.Node) error {
+	switch data.Value {
+	case "limits":
+		*p = LimitsPolicy
+	case "interest":
+		*p = InterestPolicy
+	case "workqueue":
+		*p = WorkQueuePolicy
+	default:
+		return fmt.Errorf("can not unmarshal %q", data.Value)
+	}
+
+	return nil
+}
+
 func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
 	switch p {
 	case LimitsPolicy:
@@ -354,56 +419,70 @@ func (p RetentionPolicy) MarshalJSON() ([]byte, error) {
 	}
 }
 
+func (p RetentionPolicy) MarshalYAML() (any, error) {
+	switch p {
+	case LimitsPolicy:
+		return "limits", nil
+	case InterestPolicy:
+		return "interest", nil
+	case WorkQueuePolicy:
+		return "workqueue", nil
+	default:
+		return nil, fmt.Errorf("unknown retention policy %q", p)
+	}
+}
+
 // StreamConfig is the configuration for a JetStream Stream Template
 //
 // NATS Schema Type io.nats.jetstream.api.v1.stream_configuration
 type StreamConfig struct {
-	Name         string          `json:"name"`
-	Description  string          `json:"description,omitempty"`
-	Subjects     []string        `json:"subjects,omitempty"`
-	Retention    RetentionPolicy `json:"retention"`
-	MaxConsumers int             `json:"max_consumers"`
-	MaxMsgsPer   int64           `json:"max_msgs_per_subject"`
-	MaxMsgs      int64           `json:"max_msgs"`
-	MaxBytes     int64           `json:"max_bytes"`
-	MaxAge       time.Duration   `json:"max_age"`
-	MaxMsgSize   int32           `json:"max_msg_size,omitempty"`
-	Storage      StorageType     `json:"storage"`
-	Discard      DiscardPolicy   `json:"discard"`
-	Replicas     int             `json:"num_replicas"`
-	NoAck        bool            `json:"no_ack,omitempty"`
-	Template     string          `json:"template_owner,omitempty"`
-	Duplicates   time.Duration   `json:"duplicate_window,omitempty"`
-	Placement    *Placement      `json:"placement,omitempty"`
-	Mirror       *StreamSource   `json:"mirror,omitempty"`
-	Sources      []*StreamSource `json:"sources,omitempty"`
+	// A unique name for the string, cannot contain dots, spaces or wildcard characters
+	Name         string          `json:"name" yaml:"name"`
+	Description  string          `json:"description,omitempty" yaml:"description"`
+	Subjects     []string        `json:"subjects,omitempty" yaml:"subjects"`
+	Retention    RetentionPolicy `json:"retention" yaml:"retention"`
+	MaxConsumers int             `json:"max_consumers" yaml:"max_consumers"`
+	MaxMsgsPer   int64           `json:"max_msgs_per_subject" yaml:"max_msgs_per_subject"`
+	MaxMsgs      int64           `json:"max_msgs" yaml:"max_msgs"`
+	MaxBytes     int64           `json:"max_bytes" yaml:"max_bytes"`
+	MaxAge       time.Duration   `json:"max_age" yaml:"max_age"`
+	MaxMsgSize   int32           `json:"max_msg_size,omitempty" yaml:"max_msg_size"`
+	Storage      StorageType     `json:"storage" yaml:"storage"`
+	Discard      DiscardPolicy   `json:"discard" yaml:"discard"`
+	Replicas     int             `json:"num_replicas" yaml:"num_replicas"`
+	NoAck        bool            `json:"no_ack,omitempty" yaml:"no_ack"`
+	Template     string          `json:"template_owner,omitempty" yaml:"-"`
+	Duplicates   time.Duration   `json:"duplicate_window,omitempty" yaml:"duplicate_window"`
+	Placement    *Placement      `json:"placement,omitempty" yaml:"placement"`
+	Mirror       *StreamSource   `json:"mirror,omitempty" yaml:"mirror"`
+	Sources      []*StreamSource `json:"sources,omitempty" yaml:"sources"`
 	// Allow applying a subject transform to incoming messages before doing anything else
-	SubjectTransform *SubjectTransformConfig `json:"subject_transform,omitempty"`
+	SubjectTransform *SubjectTransformConfig `json:"subject_transform,omitempty" yaml:"subject_transform"`
 	// Allow republish of the message after being sequenced and stored.
-	RePublish *RePublish `json:"republish,omitempty"`
+	RePublish *RePublish `json:"republish,omitempty" yaml:"republish"`
 	// Sealed will seal a stream so no messages can get out or in.
-	Sealed bool `json:"sealed"`
+	Sealed bool `json:"sealed" yaml:"sealed"`
 	// DenyDelete will restrict the ability to delete messages.
-	DenyDelete bool `json:"deny_delete"`
+	DenyDelete bool `json:"deny_delete" yaml:"deny_delete"`
 	// DenyPurge will restrict the ability to purge messages.
-	DenyPurge bool `json:"deny_purge"`
+	DenyPurge bool `json:"deny_purge" yaml:"deny_purge"`
 	// AllowRollup allows messages to be placed into the system and purge
 	// all older messages using a special msg header.
-	RollupAllowed bool `json:"allow_rollup_hdrs"`
+	RollupAllowed bool `json:"allow_rollup_hdrs" yaml:"allow_rollup_hdrs"`
 	// Allow higher peformance, direct access to get individual messages.
-	AllowDirect bool `json:"allow_direct"`
+	AllowDirect bool `json:"allow_direct" yaml:"allow_direct"`
 	// Allow higher performance and unified direct access for mirrors as well.
-	MirrorDirect bool `json:"mirror_direct"`
+	MirrorDirect bool `json:"mirror_direct" yaml:"mirror_direct"`
 	// Allow KV like semantics to also discard new on a per subject basis
-	DiscardNewPer bool `json:"discard_new_per_subject,omitempty"`
+	DiscardNewPer bool `json:"discard_new_per_subject,omitempty" yaml:"discard_new_per_subject"`
 	// Metadata is additional metadata for the Consumer.
-	Metadata map[string]string `json:"metadata,omitempty"`
+	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata"`
 }
 
 // Placement describes stream placement requirements for a stream
 type Placement struct {
-	Cluster string   `json:"cluster"`
-	Tags    []string `json:"tags,omitempty"`
+	Cluster string   `json:"cluster" yaml:"cluster"`
+	Tags    []string `json:"tags,omitempty" yaml:"tags"`
 }
 
 // StreamSourceInfo shows information about an upstream stream source.
@@ -427,18 +506,18 @@ type LostStreamData struct {
 
 // StreamSource dictates how streams can source from other streams.
 type StreamSource struct {
-	Name                 string          `json:"name"`
-	OptStartSeq          uint64          `json:"opt_start_seq,omitempty"`
-	OptStartTime         *time.Time      `json:"opt_start_time,omitempty"`
-	FilterSubject        string          `json:"filter_subject,omitempty"`
-	External             *ExternalStream `json:"external,omitempty"`
-	SubjectTransformDest string          `json:"subject_transform_dest,omitempty"`
+	Name                 string          `json:"name" yaml:"name"`
+	OptStartSeq          uint64          `json:"opt_start_seq,omitempty" yaml:"opt_start_seq"`
+	OptStartTime         *time.Time      `json:"opt_start_time,omitempty" yaml:"opt_start_time"`
+	FilterSubject        string          `json:"filter_subject,omitempty" yaml:"filter_subject"`
+	External             *ExternalStream `json:"external,omitempty" yaml:"external"`
+	SubjectTransformDest string          `json:"subject_transform_dest,omitempty" yaml:"subject_transform_dest"`
 }
 
 // ExternalStream allows you to qualify access to a stream source in another account.
 type ExternalStream struct {
-	ApiPrefix     string `json:"api"`
-	DeliverPrefix string `json:"deliver"`
+	ApiPrefix     string `json:"api" yaml:"api"`
+	DeliverPrefix string `json:"deliver" yaml:"deliver"`
 }
 
 type StreamInfo struct {
@@ -475,13 +554,13 @@ type StreamState struct {
 // SubjectTransformConfig is for applying a subject transform (to matching messages) before doing anything else
 // when a new message is received
 type SubjectTransformConfig struct {
-	Source      string `json:"src,omitempty"`
-	Destination string `json:"dest"`
+	Source      string `json:"src,omitempty" yaml:"src"`
+	Destination string `json:"dest" yaml:"dest"`
 }
 
 // RePublish allows a source subject to be mapped to a destination subject for republishing.
 type RePublish struct {
-	Source      string `json:"src,omitempty"`
-	Destination string `json:"dest"`
-	HeadersOnly bool   `json:"headers_only,omitempty"`
+	Source      string `json:"src,omitempty" yaml:"src"`
+	Destination string `json:"dest" yaml:"dest"`
+	HeadersOnly bool   `json:"headers_only,omitempty" yaml:"headers_only"`
 }

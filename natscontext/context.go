@@ -480,18 +480,26 @@ func (c *Context) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(c.config, "", "  ")
 }
 
+func (c *Context) Validate() error {
+	if !validName(c.Name) {
+		return fmt.Errorf("invalid context name %q", c.Name)
+	}
+
+	if numCreds(c) > 1 {
+		return errors.New("too many types of credentials. Choose only one from 'user/token', 'creds', 'nkey', 'nsc'")
+	}
+
+	return nil
+}
+
 // Save saves the current context to name
 func (c *Context) Save(name string) error {
 	if name != "" {
 		c.Name = name
 	}
 
-	if !validName(c.Name) {
-		return fmt.Errorf("invalid context name %q", c.Name)
-	}
-
-	if numCreds(c) > 1 {
-		return errors.New("too many types of credentials. Choose only one from 'user/password/token', 'creds', 'nkey', 'nsc'")
+	if err := c.Validate(); err != nil {
+		return err
 	}
 
 	parent, err := parentDir()

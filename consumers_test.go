@@ -707,6 +707,19 @@ func TestFilterStreamBySubject(t *testing.T) {
 	if cfg.FilterSubject != "test" {
 		t.Fatalf("expected 'test' got %q", cfg.FilterSubject)
 	}
+
+	if len(cfg.FilterSubjects) > 0 {
+		t.Fatalf("expected no filter subjects got %v", cfg.FilterSubjects)
+	}
+
+	cfg = testConsumerConfig()
+	jsm.FilterStreamBySubject("test", "1", "2", "3")(cfg)
+	if cfg.FilterSubject != "" {
+		t.Fatalf("expected '' got %q", cfg.FilterSubject)
+	}
+	if !cmp.Equal([]string{"test", "1", "2", "3"}, cfg.FilterSubjects) {
+		t.Fatalf("expected [test, 1, 2, 3] got %v", cfg.FilterSubjects)
+	}
 }
 
 func TestMaxDeliveryAttempts(t *testing.T) {

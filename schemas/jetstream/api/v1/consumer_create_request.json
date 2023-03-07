@@ -167,7 +167,16 @@
           "minimum": -9223372036854775807
         },
         "filter_subject": {
+          "description": "Filter the stream by a single subjects",
           "type": "string"
+        },
+        "filter_subjects": {
+          "description": "Filter the stream by multiple subjects",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "replay_policy": {
           "type": "string",

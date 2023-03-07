@@ -268,6 +268,7 @@ type ConsumerConfig struct {
 	Durable            string          `json:"durable_name,omitempty"` // Durable is deprecated. All consumers will have names. picked by clients.
 	Name               string          `json:"name,omitempty"`
 	FilterSubject      string          `json:"filter_subject,omitempty"`
+	FilterSubjects     []string        `json:"filter_subjects,omitempty"`
 	FlowControl        bool            `json:"flow_control,omitempty"`
 	Heartbeat          time.Duration   `json:"idle_heartbeat,omitempty"`
 	MaxAckPending      int             `json:"max_ack_pending,omitempty"`

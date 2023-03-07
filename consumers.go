@@ -379,9 +379,14 @@ func MaxDeliveryAttempts(n int) ConsumerOption {
 }
 
 // FilterStreamBySubject filters the messages in a wildcard stream to those matching a specific subject
-func FilterStreamBySubject(s string) ConsumerOption {
+func FilterStreamBySubject(s ...string) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
-		o.FilterSubject = s
+		if len(s) == 1 {
+			o.FilterSubject = s[0]
+		} else {
+			o.FilterSubjects = append(o.FilterSubjects, s...)
+		}
+
 		return nil
 	}
 }
@@ -859,6 +864,7 @@ func (c *Consumer) AckWait() time.Duration           { return c.cfg.AckWait }
 func (c *Consumer) MaxDeliver() int                  { return c.cfg.MaxDeliver }
 func (c *Consumer) Backoff() []time.Duration         { return c.cfg.BackOff }
 func (c *Consumer) FilterSubject() string            { return c.cfg.FilterSubject }
+func (c *Consumer) FilterSubjects() []string         { return c.cfg.FilterSubjects }
 func (c *Consumer) ReplayPolicy() api.ReplayPolicy   { return c.cfg.ReplayPolicy }
 func (c *Consumer) SampleFrequency() string          { return c.cfg.SampleFrequency }
 func (c *Consumer) RateLimit() uint64                { return c.cfg.RateLimit }

@@ -34,6 +34,13 @@
       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
       "minLength": 5
     },
+    "metadata": {
+      "description": "Additional metadata for the service",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "description": {
       "description": "The description of the service supplied as configuration while creating the service",
       "type": "string"

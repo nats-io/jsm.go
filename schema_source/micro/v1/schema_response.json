@@ -28,6 +28,11 @@
       "description": "The version of the service",
       "$ref": "definitions.json#/definitions/semver"
     },
+    "metadata": {
+      "description": "Additional metadata for the service",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
     "api_url": {
       "description": "A URL to a schema for the service as a whole",
       "type": "string"
@@ -48,6 +53,11 @@
             "type": "string",
             "description": "The subject a service listens on",
             "minLength": 1
+          },
+          "metadata": {
+            "description": "Additional metadata for the endpoint",
+            "type": "object",
+            "additionalProperties": { "type": "string" }
           },
           "schema": {
             "type": "object",

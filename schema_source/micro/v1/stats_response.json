@@ -23,6 +23,11 @@
       "description": "The version of the service",
       "$ref": "definitions.json#/definitions/semver"
     },
+    "metadata": {
+      "description": "Additional metadata for the service",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
     "started": {
       "description": "The time the service was stated in RFC3339 format",
       "$ref": "definitions.json#/definitions/golang_time"

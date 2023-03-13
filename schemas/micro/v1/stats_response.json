@@ -34,6 +34,13 @@
       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
       "minLength": 5
     },
+    "metadata": {
+      "description": "Additional metadata for the service",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "started": {
       "description": "The time the service was stated in RFC3339 format",
       "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",

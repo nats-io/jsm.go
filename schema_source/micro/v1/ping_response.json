@@ -22,6 +22,11 @@
     "version": {
       "description": "The version of the service",
       "$ref": "definitions.json#/definitions/semver"
+    },
+    "metadata": {
+      "description": "Additional metadata for the service",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
     }
   }
 }

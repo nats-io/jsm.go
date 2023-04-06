@@ -995,6 +995,12 @@
           "enum": ["file", "memory"],
           "default": "file"
         },
+        "compression": {
+          "description": "Optional compression algorithm used for the Stream on disk (file store only).",
+          "type": "string",
+          "enum": ["none", "s2"],
+          "default": "none"
+        },
         "num_replicas": {
           "description": "How many replicas to keep for each message.",
           "$ref": "#/definitions/golang_int",

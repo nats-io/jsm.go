@@ -444,6 +444,13 @@ func StreamMetadata(meta map[string]string) StreamOption {
 	}
 }
 
+func Compression(alg api.Compression) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.Compression = alg
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -770,6 +777,7 @@ func (s *Stream) MirrorDirectAllowed() bool        { return s.cfg.MirrorDirect }
 func (s *Stream) Republish() *api.RePublish        { return s.cfg.RePublish }
 func (s *Stream) IsRepublishing() bool             { return s.Republish() != nil }
 func (s *Stream) Metadata() map[string]string      { return s.cfg.Metadata }
+func (s *Stream) Compression() api.Compression     { return s.cfg.Compression }
 
 // DeleteAllow
 // Deprecated: use DeleteAllowed()

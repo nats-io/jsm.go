@@ -432,6 +432,72 @@ func (p RetentionPolicy) MarshalYAML() (any, error) {
 	}
 }
 
+type Compression int
+
+const (
+	NoCompression Compression = iota
+	S2Compression
+)
+
+func (p Compression) String() string {
+	switch p {
+	case NoCompression:
+		return "None"
+	case S2Compression:
+		return "S2 Compression"
+	default:
+		return "Unknown Compression"
+	}
+}
+
+func (p *Compression) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("none"), jsonString(""):
+		*p = NoCompression
+	case jsonString("s2"):
+		*p = S2Compression
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
+
+func (p *Compression) UnmarshalYAML(data *yaml.Node) error {
+	switch data.Value {
+	case "none", "":
+		*p = NoCompression
+	case "s2":
+		*p = S2Compression
+	default:
+		return fmt.Errorf("can not unmarshal %q", data.Value)
+	}
+
+	return nil
+}
+
+func (p Compression) MarshalJSON() ([]byte, error) {
+	switch p {
+	case NoCompression:
+		return json.Marshal("none")
+	case S2Compression:
+		return json.Marshal("s2")
+	default:
+		return nil, fmt.Errorf("unknown compression %q", p)
+	}
+}
+
+func (p Compression) MarshalYAML() (any, error) {
+	switch p {
+	case NoCompression:
+		return "none", nil
+	case S2Compression:
+		return "s2", nil
+	default:
+		return nil, fmt.Errorf("unknown compression %q", p)
+	}
+}
+
 // StreamConfig is the configuration for a JetStream Stream Template
 //
 // NATS Schema Type io.nats.jetstream.api.v1.stream_configuration
@@ -456,6 +522,7 @@ type StreamConfig struct {
 	Placement    *Placement      `json:"placement,omitempty" yaml:"placement"`
 	Mirror       *StreamSource   `json:"mirror,omitempty" yaml:"mirror"`
 	Sources      []*StreamSource `json:"sources,omitempty" yaml:"sources"`
+	Compression  Compression     `json:"compression,omitempty" yaml:"compression"`
 	// Allow applying a subject transform to incoming messages before doing anything else
 	SubjectTransform *SubjectTransformConfig `json:"subject_transform,omitempty" yaml:"subject_transform"`
 	// Allow republish of the message after being sequenced and stored.

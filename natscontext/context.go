@@ -463,6 +463,10 @@ func SelectContext(name string) error {
 		return fmt.Errorf("invalid context name %q", name)
 	}
 
+	if !IsKnown(name) {
+		return fmt.Errorf("unknown context")
+	}
+
 	parent, err := parentDir()
 	if err != nil {
 		return err

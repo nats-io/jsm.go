@@ -32,6 +32,11 @@ func TestContext(t *testing.T) {
 		t.Fatalf("Expected other got %q", selected)
 	}
 
+	err = natscontext.SelectContext("nonexisting")
+	if err.Error() != "unknown context" {
+		t.Fatalf("expected unknown context error got: %v", err)
+	}
+
 	err = natscontext.SelectContext("gotest")
 	if err != nil {
 		t.Fatalf("could not select context: %s", err)

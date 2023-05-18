@@ -258,7 +258,6 @@ func main() {
 		&schema{P: "micro/v1/info_response.json", St: "micro.Info"},
 		&schema{P: "micro/v1/ping_response.json", St: "micro.Ping"},
 		&schema{P: "micro/v1/stats_response.json", St: "micro.Stats"},
-		&schema{P: "micro/v1/schema_response.json", St: "micro.SchemaResp"},
 	}
 
 	for _, i := range s {

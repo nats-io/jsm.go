@@ -24,9 +24,16 @@
       "$ref": "definitions.json#/definitions/semver"
     },
     "metadata": {
-      "description": "Additional metadata for the service",
-      "type": "object",
-      "additionalProperties": { "type": "string" }
+      "oneOf": [
+        {
+          "description": "Additional metadata for the service",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "description": {
       "description": "The description of the service supplied as configuration while creating the service",

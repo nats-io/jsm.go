@@ -1,4 +1,4 @@
-// auto generated 2023-03-13 18:30:20.117275 +0100 CET m=+0.009265210
+// auto generated 2023-05-18 17:29:38.621276 +0300 EEST m=+0.014328126
 
 package api
 
@@ -83,7 +83,6 @@ var schemaTypes = map[string]func() any{
 	"io.nats.micro.v1.info_response":                             func() any { return &micro.Info{} },
 	"io.nats.micro.v1.ping_response":                             func() any { return &micro.Ping{} },
 	"io.nats.micro.v1.stats_response":                            func() any { return &micro.Stats{} },
-	"io.nats.micro.v1.schema_response":                           func() any { return &micro.SchemaResp{} },
 	"io.nats.unknown_message":                                    func() any { return &UnknownMessage{} },
 }
 

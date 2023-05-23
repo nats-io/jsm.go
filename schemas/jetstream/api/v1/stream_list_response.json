@@ -202,7 +202,7 @@
                         "default": "file"
                       },
                       "compression": {
-                        "description": "Optional compression algorithm used for the Stream on disk (file store only).",
+                        "description": "Optional compression algorithm used for the Stream.",
                         "type": "string",
                         "enum": [
                           "none",

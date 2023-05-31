@@ -354,8 +354,8 @@ func TestStream_State(t *testing.T) {
 	}
 
 	sub := stream.Subjects()[0]
-	nc.Publish(sub, []byte("message 1"))
-	nc.Publish(sub, []byte("message 2"))
+	streamPublish(t, nc, sub, []byte("message 1"))
+	streamPublish(t, nc, sub, []byte("message 2"))
 
 	stats, err = stream.State()
 	checkErr(t, err, "stats failed")
@@ -523,7 +523,10 @@ func TestStream_ReadMessage(t *testing.T) {
 	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
-	nc.Publish(stream.Subjects()[0], []byte("message 1"))
+	_, err = nc.Request(stream.Subjects()[0], []byte("message 1"), time.Second)
+	if err != nil {
+		t.Fatalf("Publish failed: %v", err)
+	}
 
 	msg, err := stream.ReadMessage(1)
 	checkErr(t, err, "load failed")
@@ -545,7 +548,7 @@ func TestStream_DeleteMessage(t *testing.T) {
 	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 	checkErr(t, err, "create failed")
 
-	nc.Publish(stream.Subjects()[0], []byte("message 1"))
+	streamPublish(t, nc, stream.Subjects()[0], []byte("message 1"))
 
 	_, err = stream.ReadMessage(1)
 	checkErr(t, err, "load failed")

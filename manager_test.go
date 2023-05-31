@@ -153,6 +153,11 @@ func withNatsServerWithConfig(t *testing.T, cfile string, cb func(*testing.T, *n
 	cb(t, s)
 }
 
+func streamPublish(t *testing.T, nc *nats.Conn, subj string, msg []byte) {
+	_, err := nc.Request(subj, msg, time.Second)
+	checkErr(t, err, "publish failed")
+}
+
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 

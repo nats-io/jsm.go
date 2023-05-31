@@ -34,6 +34,40 @@
       "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
       "$ref": "#/definitions/golang_int64"
     },
+    "optional_metadata": {
+      "oneOf": [
+        {
+          "description": "Additional metadata for the service",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "endpoint_info": {
+      "type": "object",
+      "required": [
+        "name",
+        "subject"
+      ],
+      "description": "Information about an endpoint",
+      "properties": {
+        "name": {
+          "description": "The endopoint name",
+          "$ref": "#/definitions/basic_name"
+        },
+        "subject": {
+          "description": "The subject the endpoint listens on",
+          "type": "string",
+          "minLength": 1
+        },
+        "metadata": {
+          "$ref": "#/definitions/optional_metadata"
+        }
+      }
+    },
     "endpoint_stats": {
       "type": "object",
       "required": [

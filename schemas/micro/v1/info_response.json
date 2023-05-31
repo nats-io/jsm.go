@@ -52,12 +52,43 @@
       "description": "The description of the service supplied as configuration while creating the service",
       "type": "string"
     },
-    "subjects": {
-      "description": "A list of subjects the service endpoints are listening on",
+    "endpoints": {
       "type": "array",
+      "description": "List of declared endpoints",
       "items": {
-        "type": "string",
-        "minLength": 1
+        "type": "object",
+        "required": [
+          "name",
+          "subject"
+        ],
+        "description": "Information about an endpoint",
+        "properties": {
+          "name": {
+            "description": "The endopoint name",
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "minLength": 1
+          },
+          "subject": {
+            "description": "The subject the endpoint listens on",
+            "type": "string",
+            "minLength": 1
+          },
+          "metadata": {
+            "oneOf": [
+              {
+                "description": "Additional metadata for the service",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
       }
     }
   }

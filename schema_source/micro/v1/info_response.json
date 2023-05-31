@@ -24,27 +24,17 @@
       "$ref": "definitions.json#/definitions/semver"
     },
     "metadata": {
-      "oneOf": [
-        {
-          "description": "Additional metadata for the service",
-          "type": "object",
-          "additionalProperties": { "type": "string" }
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "$ref": "definitions.json#/definitions/optional_metadata"
     },
     "description": {
       "description": "The description of the service supplied as configuration while creating the service",
       "type": "string"
     },
-    "subjects": {
-      "description": "A list of subjects the service endpoints are listening on",
+    "endpoints": {
       "type": "array",
+      "description": "List of declared endpoints",
       "items": {
-        "type": "string",
-        "minLength": 1
+        "$ref": "definitions.json#/definitions/endpoint_info"
       }
     }
   }

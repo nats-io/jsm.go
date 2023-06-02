@@ -96,6 +96,12 @@
                 "type": "string",
                 "description": "A unique name for the consumer, either machine generated or the durable name"
               },
+              "ts": {
+                "description": "The server time the consumer info was created",
+                "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                "type": "string",
+                "format": "date-time"
+              },
               "config": {
                 "required": [
                   "deliver_policy",

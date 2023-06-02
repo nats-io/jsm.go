@@ -429,7 +429,8 @@ func TestStream_Dedupe(t *testing.T) {
 		m := nats.NewMsg(stream.Subjects()[0])
 		m.Data = []byte(fmt.Sprintf("message %d", i))
 		m.Header.Add("Nats-Msg-Id", strconv.Itoa(i%2))
-		nc.PublishMsg(m)
+		_, err := nc.RequestMsg(m, time.Second)
+		checkErr(t, err, "Publish failed")
 	}
 
 	stats, err := stream.State()

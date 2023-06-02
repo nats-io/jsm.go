@@ -572,6 +572,12 @@
                 "type": "string",
                 "format": "date-time"
               },
+              "ts": {
+                "description": "The server time the stream info was created",
+                "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                "type": "string",
+                "format": "date-time"
+              },
               "cluster": {
                 "type": "object",
                 "properties": {

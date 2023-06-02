@@ -556,6 +556,10 @@
           "type": "string",
           "description": "A unique name for the consumer, either machine generated or the durable name"
         },
+        "ts": {
+          "description": "The server time the consumer info was created",
+          "$ref": "#/definitions/golang_time"
+        },
         "config": {
           "$ref": "#/definitions/consumer_configuration"
         },
@@ -764,6 +768,10 @@
         },
         "created": {
           "description": "Timestamp when the stream was created",
+          "$ref": "#/definitions/golang_time"
+        },
+        "ts": {
+          "description": "The server time the stream info was created",
           "$ref": "#/definitions/golang_time"
         },
         "cluster": {

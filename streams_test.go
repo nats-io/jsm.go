@@ -890,11 +890,20 @@ func TestStreamPageContents(t *testing.T) {
 	checkErr(t, err, "create failed")
 
 	pager, err := s.PageContents()
-	if err.Error() != "work queue retention streams can not be paged" {
+	if err.Error() != "work queue retention streams can only be paged if direct access is allowed" {
 		t.Fatalf("Expected an error, got: %v", err)
 	}
 	if pager != nil {
 		t.Fatalf("expected a nil pager")
+	}
+
+	err = s.UpdateConfiguration(s.Configuration(), jsm.AllowDirect())
+	if err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+	_, err = s.PageContents()
+	if err != nil {
+		t.Fatalf("paging direct enabled WQ failed: %v", err)
 	}
 }
 

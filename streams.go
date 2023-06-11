@@ -454,12 +454,12 @@ func Compression(alg api.Compression) StreamOption {
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
-	if s.Retention() == api.WorkQueuePolicy {
-		return nil, fmt.Errorf("work queue retention streams can not be paged")
+	if s.Retention() == api.WorkQueuePolicy && !s.DeleteAllowed() {
+		return nil, fmt.Errorf("work queue retention streams can only be paged if direct access is allowed")
 	}
 
 	pgr := &StreamPager{}
-	err := pgr.start(s.Name(), s.mgr, opts...)
+	err := pgr.start(s, s.mgr, opts...)
 	if err != nil {
 		return nil, err
 	}

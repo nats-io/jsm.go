@@ -19,7 +19,7 @@ type StreamPager struct {
 	consumer *Consumer
 
 	q             chan *nats.Msg
-	stream        string
+	stream        *Stream
 	startSeq      int
 	startDelta    time.Duration
 	pageSize      int
@@ -27,6 +27,9 @@ type StreamPager struct {
 	started       bool
 	timeout       time.Duration
 	seen          int
+
+	useDirect bool
+	curSeq    uint64 // for direct where to get
 
 	mu sync.Mutex
 }
@@ -69,7 +72,7 @@ func PagerTimeout(d time.Duration) PagerOption {
 	}
 }
 
-func (p *StreamPager) start(stream string, mgr *Manager, opts ...PagerOption) error {
+func (p *StreamPager) start(stream *Stream, mgr *Manager, opts ...PagerOption) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -96,6 +99,14 @@ func (p *StreamPager) start(stream string, mgr *Manager, opts ...PagerOption) er
 	}
 
 	var err error
+
+	if p.stream.Retention() == api.WorkQueuePolicy && !p.stream.DirectAllowed() {
+		return fmt.Errorf("work queue retention streams can only be paged if direct access is allowed")
+	}
+
+	// for now only on WQ because its slow, until there is a batch mode direct request
+	p.useDirect = p.stream.Retention() == api.WorkQueuePolicy && p.stream.DirectAllowed()
+
 	p.q = make(chan *nats.Msg, p.pageSize)
 	p.sub, err = mgr.nc.ChanSubscribe(mgr.nc.NewRespInbox(), p.q)
 	if err != nil {
@@ -110,6 +121,41 @@ func (p *StreamPager) start(stream string, mgr *Manager, opts ...PagerOption) er
 	}
 
 	p.started = true
+
+	return nil
+}
+
+func (p *StreamPager) directGetBatch() error {
+	for i := 1; i <= p.pageSize; i++ {
+		req := api.JSApiMsgGetRequest{Seq: p.curSeq, NextFor: p.filterSubject}
+
+		rj, err := json.Marshal(req)
+		if err != nil {
+			return err
+		}
+
+		err = p.mgr.nc.PublishRequest(p.consumer.NextSubject(), p.sub.Subject, rj)
+		if err != nil {
+			return err
+		}
+
+		p.curSeq++
+	}
+
+	return nil
+}
+
+func (p *StreamPager) fetchBatch() error {
+	req := api.JSApiConsumerGetNextRequest{Batch: p.pageSize, NoWait: true}
+	rj, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	err = p.mgr.nc.PublishRequest(p.consumer.NextSubject(), p.sub.Subject, rj)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -130,13 +176,11 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 	if p.seen == p.pageSize || p.seen == -1 {
 		p.seen = 0
 
-		req := api.JSApiConsumerGetNextRequest{Batch: p.pageSize, NoWait: true}
-		rj, err := json.Marshal(req)
-		if err != nil {
-			return nil, false, err
+		if p.useDirect {
+			err = p.directGetBatch()
+		} else {
+			err = p.fetchBatch()
 		}
-
-		err = p.mgr.nc.PublishRequest(p.consumer.NextSubject(), p.sub.Subject, rj)
 		if err != nil {
 			return nil, false, err
 		}
@@ -154,7 +198,17 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 			return nil, true, fmt.Errorf("last message reached")
 		}
 
-		msg.Ack()
+		if p.useDirect {
+			nfo, err := ParseJSMsgMetadata(msg)
+			if err != nil {
+				p.curSeq = nfo.StreamSequence()
+			}
+			if nfo.Pending() == 0 {
+				return msg, true, fmt.Errorf("last message reached")
+			}
+		} else {
+			msg.Ack()
+		}
 
 		return msg, p.seen == p.pageSize, nil
 
@@ -168,7 +222,7 @@ func (p *StreamPager) createConsumer() error {
 		ConsumerDescription("JSM Stream Pager"),
 		InactiveThreshold(time.Hour),
 		DurableName(fmt.Sprintf("stream_pager_%d%d", os.Getpid(), time.Now().UnixNano())),
-		ConsumerOverrideReplicas(1),
+		ConsumerOverrideMemoryStorage(),
 	}
 
 	switch {
@@ -187,9 +241,23 @@ func (p *StreamPager) createConsumer() error {
 	}
 
 	var err error
-	p.consumer, err = p.mgr.NewConsumer(p.stream, cops...)
+	p.consumer, err = p.mgr.NewConsumer(p.stream.Name(), cops...)
+	if err != nil {
+		return err
+	}
 
-	return err
+	if p.useDirect {
+		nfo, err := p.consumer.LatestState()
+		if err != nil {
+			return err
+		}
+
+		// record the initial seq based on consumer config like time deltas etc
+		// direct will start from there following subject filter
+		p.curSeq = nfo.Delivered.Stream
+	}
+
+	return nil
 }
 
 func (p *StreamPager) close() error {

@@ -9,8 +9,7 @@
     "name",
     "id",
     "version",
-    "description",
-    "subjects"
+    "description"
   ],
   "properties": {
     "type": {

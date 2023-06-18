@@ -4,7 +4,7 @@
   "description": "A response from the NATS Micro $SRV.INFO API",
   "title": "io.nats.micro.v1.info_response",
   "type": "object",
-  "required": ["type","name","id","version","description","subjects"],
+  "required": ["type","name","id","version","description"],
   "properties": {
     "type": {
       "type": "string",

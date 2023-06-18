@@ -15,6 +15,7 @@ require (
 )
 
 require (
+	github.com/antonmedv/expr v1.12.5 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect

@@ -43,6 +43,7 @@ import (
 type Option func(c *settings)
 
 type settings struct {
+	Name          string `json:"name,omitempty"`
 	Description   string `json:"description"`
 	URL           string `json:"url"`
 	nscUrl        string
@@ -481,6 +482,7 @@ func SelectContext(name string) error {
 }
 
 func (c *Context) MarshalJSON() ([]byte, error) {
+	c.config.Name = c.Name
 	return json.MarshalIndent(c.config, "", "  ")
 }
 
@@ -517,7 +519,10 @@ func (c *Context) Save(name string) error {
 		return err
 	}
 
-	j, err := json.MarshalIndent(c, "", "  ")
+	// make sure no disk representations change while supporting showing a name for external serializers
+	c.config.Name = ""
+
+	j, err := json.MarshalIndent(c.config, "", "  ")
 	if err != nil {
 		return err
 	}

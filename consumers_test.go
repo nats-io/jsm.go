@@ -159,6 +159,10 @@ func TestNewConsumer(t *testing.T) {
 	consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
 	checkErr(t, err, "create failed")
 
+	if consumer.Configuration().Name != "NEW" {
+		t.Fatalf("consumer name was not set")
+	}
+
 	consumer.Reset()
 	if consumer.AckPolicy() != api.AckExplicit {
 		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
@@ -201,6 +205,44 @@ func TestNewConsumerFromDefaultEphemeral(t *testing.T) {
 
 	consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DeliverySubject("out"), jsm.FilterStreamBySubject("ORDERS.new"))
 	checkErr(t, err, "create failed")
+
+	if consumer.Configuration().Name != consumer.Name() {
+		t.Fatalf("consumer name wqs not set")
+	}
+
+	consumers, err := mgr.ConsumerNames("ORDERS")
+	checkErr(t, err, "consumer list failed")
+	if len(consumers) != 1 {
+		t.Fatalf("expected 1 consumer got %v", consumers)
+	}
+
+	if consumer.Name() != consumers[0] {
+		t.Fatalf("incorrect consumer name '%s' expected '%s'", consumer.Name(), consumers[0])
+	}
+
+	if consumer.IsDurable() {
+		t.Fatalf("expected ephemeral consumer got durable")
+	}
+}
+
+func TestNewConsumerFromDefaultNamedEphemeral(t *testing.T) {
+	srv, nc, stream, mgr := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	// interest is needed
+	nc.Subscribe("out", func(_ *nats.Msg) {})
+
+	consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.ConsumerName("EPHEMERAL"), jsm.DeliverySubject("out"), jsm.FilterStreamBySubject("ORDERS.new"))
+	checkErr(t, err, "create failed")
+
+	if consumer.Configuration().Name != consumer.Name() {
+		t.Fatalf("consumer name was not set")
+	}
+
+	if consumer.Name() != "EPHEMERAL" {
+		t.Fatalf("consumer ephemeral name was not set")
+	}
 
 	consumers, err := mgr.ConsumerNames("ORDERS")
 	checkErr(t, err, "consumer list failed")

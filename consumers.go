@@ -15,6 +15,7 @@ package jsm
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nuid"
 )
 
 // DefaultConsumer is the configuration that will be used to create new Consumers in NewConsumer
@@ -79,14 +81,7 @@ func (m *Manager) NewConsumerFromDefault(stream string, dflt api.ConsumerConfig,
 		Config: *cfg,
 	}
 
-	var createdInfo *api.ConsumerInfo
-
-	switch req.Config.Durable {
-	case "":
-		createdInfo, err = m.createEphemeralConsumer(req)
-	default:
-		createdInfo, err = m.createDurableConsumer(req)
-	}
+	createdInfo, err := m.createConsumer(req)
 	if err != nil {
 		return nil, err
 	}
@@ -101,19 +96,21 @@ func (m *Manager) NewConsumerFromDefault(stream string, dflt api.ConsumerConfig,
 	return c, nil
 }
 
-func (m *Manager) createDurableConsumer(req api.JSApiConsumerCreateRequest) (info *api.ConsumerInfo, err error) {
+func (m *Manager) createConsumer(req api.JSApiConsumerCreateRequest) (info *api.ConsumerInfo, err error) {
 	var resp api.JSApiConsumerCreateResponse
-	err = m.jsonRequest(fmt.Sprintf(api.JSApiDurableCreateT, req.Stream, req.Config.Durable), req, &resp)
-	if err != nil {
-		return nil, err
+
+	if req.Config.Name == "" {
+		return nil, fmt.Errorf("consumer conmfiguration requires a name")
 	}
 
-	return resp.ConsumerInfo, nil
-}
+	var subj string
+	if req.Config.FilterSubject == "" {
+		subj = fmt.Sprintf(api.JSApiConsumerCreateWithNameT, req.Stream, req.Config.Name)
+	} else {
+		subj = fmt.Sprintf(api.JSApiConsumerCreateExT, req.Stream, req.Config.Name, req.Config.FilterSubject)
+	}
 
-func (m *Manager) createEphemeralConsumer(req api.JSApiConsumerCreateRequest) (info *api.ConsumerInfo, err error) {
-	var resp api.JSApiConsumerCreateResponse
-	err = m.jsonRequest(fmt.Sprintf(api.JSApiConsumerCreateT, req.Stream), req, &resp)
+	err = m.jsonRequest(subj, req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +194,29 @@ func NewConsumerConfiguration(dflt api.ConsumerConfig, opts ...ConsumerOption) (
 		}
 	}
 
+	if cfg.Durable != "" {
+		cfg.Name = cfg.Durable
+	}
+
+	if cfg.Name == "" {
+		cfg.Name = generateConsName()
+	}
+
 	return &cfg, nil
+}
+
+const rdigits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+const base = 62
+
+func generateConsName() string {
+	name := nuid.Next()
+	sha := sha256.New()
+	sha.Write([]byte(name))
+	b := sha.Sum(nil)
+	for i := 0; i < 8; i++ {
+		b[i] = rdigits[int(b[i]%base)]
+	}
+	return string(b[:8])
 }
 
 func (m *Manager) loadConfigForConsumer(consumer *Consumer) (err error) {
@@ -236,6 +255,19 @@ func ConsumerDescription(d string) ConsumerOption {
 func DeliverySubject(s string) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
 		o.DeliverSubject = s
+		return nil
+	}
+}
+
+// ConsumerName sets a name for the consumer, when creating a durable consumer use DurableName, using ConsumerName allows
+// for creating named ephemeral consumers, else a random name will be generated
+func ConsumerName(s string) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if !IsValidName(s) {
+			return fmt.Errorf("%q is not a valid consumer name", s)
+		}
+
+		o.Name = s
 		return nil
 	}
 }

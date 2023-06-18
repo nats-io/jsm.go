@@ -33,6 +33,29 @@ func checkStreamQueryMatched(t *testing.T, mgr *jsm.Manager, expect int, opts ..
 	}
 }
 
+func TestStreamQueryExpression(t *testing.T) {
+	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
+		checkErr(t, err, "create failed")
+
+		_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.MemoryStorage(), jsm.Replicas(2))
+		checkErr(t, err, "create failed")
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryExpression("'in.q1' in config.subjects"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryExpression("'in.q2' in config.subjects"))
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryExpression("'in.q3' in config.subjects"))
+		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryExpression("state.messages == 0"))
+		checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryExpression("state.messages == 1"))
+
+		_, err = nc.Request("in.q1", nil, time.Second)
+		checkErr(t, err, "Publish failed")
+
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryExpression("state.messages == 0"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryExpression("state.messages == 1"))
+		checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryExpression("Info.State.Msgs == 1"))
+	})
+}
+
 func TestStreamQueryCreatePeriod(t *testing.T) {
 	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))

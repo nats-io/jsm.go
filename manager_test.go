@@ -16,7 +16,6 @@ package jsm_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -102,7 +101,6 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn
 		case <-ticker.C:
 			_, err := mgr.JetStreamAccountInfo()
 			if err != nil {
-				log.Printf("err: %v", err)
 				continue
 			}
 

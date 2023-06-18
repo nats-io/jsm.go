@@ -21,6 +21,7 @@ import (
 
 const (
 	JSApiConsumerCreateT                   = "$JS.API.CONSUMER.CREATE.%s"
+	JSApiConsumerCreateWithNameT           = "$JS.API.CONSUMER.CREATE.%s.%s"
 	JSApiDurableCreateT                    = "$JS.API.CONSUMER.DURABLE.CREATE.%s.%s"
 	JSApiConsumerCreateExT                 = "$JS.API.CONSUMER.CREATE.%s.%s.%s"
 	JSApiConsumerNamesT                    = "$JS.API.CONSUMER.NAMES.%s"

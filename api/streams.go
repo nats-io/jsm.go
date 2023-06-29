@@ -556,13 +556,15 @@ type Placement struct {
 
 // StreamSourceInfo shows information about an upstream stream source.
 type StreamSourceInfo struct {
-	Name                 string          `json:"name"`
-	External             *ExternalStream `json:"external,omitempty"`
-	Lag                  uint64          `json:"lag"`
-	Active               time.Duration   `json:"active"`
-	Error                *ApiError       `json:"error,omitempty"`
-	FilterSubject        string          `json:"filter_subject,omitempty"`
-	SubjectTransformDest string          `json:"subject_transform_dest,omitempty"`
+	Name                  string          `json:"name"`
+	External              *ExternalStream `json:"external,omitempty"`
+	Lag                   uint64          `json:"lag"`
+	Active                time.Duration   `json:"active"`
+	Error                 *ApiError       `json:"error,omitempty"`
+	FilterSubject         string          `json:"filter_subject,omitempty"`
+	SubjectTransformDest  string          `json:"subject_transform_dest,omitempty"`
+	FilterSubjects        []string        `json:"filter_subjects,omitempty"`
+	SubjectTransformDests []string        `json:"subject_transform_dests,omitempty"`
 }
 
 // LostStreamData indicates msgs that have been lost during file checks and recover due to corruption
@@ -575,12 +577,14 @@ type LostStreamData struct {
 
 // StreamSource dictates how streams can source from other streams.
 type StreamSource struct {
-	Name                 string          `json:"name" yaml:"name"`
-	OptStartSeq          uint64          `json:"opt_start_seq,omitempty" yaml:"opt_start_seq"`
-	OptStartTime         *time.Time      `json:"opt_start_time,omitempty" yaml:"opt_start_time"`
-	FilterSubject        string          `json:"filter_subject,omitempty" yaml:"filter_subject"`
-	External             *ExternalStream `json:"external,omitempty" yaml:"external"`
-	SubjectTransformDest string          `json:"subject_transform_dest,omitempty" yaml:"subject_transform_dest"`
+	Name                  string          `json:"name" yaml:"name"`
+	OptStartSeq           uint64          `json:"opt_start_seq,omitempty" yaml:"opt_start_seq"`
+	OptStartTime          *time.Time      `json:"opt_start_time,omitempty" yaml:"opt_start_time"`
+	FilterSubject         string          `json:"filter_subject,omitempty" yaml:"filter_subject"`
+	External              *ExternalStream `json:"external,omitempty" yaml:"external"`
+	SubjectTransformDest  string          `json:"subject_transform_dest,omitempty" yaml:"subject_transform_dest"`
+	FilterSubjects        []string        `json:"filter_subjects,omitempty" yaml:"filter_subjects"`
+	SubjectTransformDests []string        `json:"subject_transform_dests,omitempty" yaml:"subject_transform_dests"`
 }
 
 // ExternalStream allows you to qualify access to a stream source in another account.

@@ -229,6 +229,22 @@
               "description": "Map matching subjects according to this transform destination",
               "type": "string"
             },
+            "filter_subjects": {
+              "description": "Filter the stream by multiple subjects",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "subject_transform_dests": {
+              "description": "Map matching subjects according to these transform destinations",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
             "external": {
               "required": [
                 "api"
@@ -284,6 +300,22 @@
               "subject_transform_dest": {
                 "description": "Map matching subjects according to this transform destination",
                 "type": "string"
+              },
+              "filter_subjects": {
+                "description": "Filter the stream by multiple subjects",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "subject_transform_dests": {
+                "description": "Map matching subjects according to these transform destinations",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
               },
               "external": {
                 "required": [

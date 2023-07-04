@@ -3,11 +3,12 @@ module github.com/nats-io/jsm.go
 go 1.19
 
 require (
+	github.com/antonmedv/expr v1.12.5
 	github.com/dustin/go-humanize v1.0.1
 	github.com/google/go-cmp v0.5.9
-	github.com/klauspost/compress v1.16.6
-	github.com/nats-io/nats-server/v2 v2.9.19-0.20230616205649-42827596d857
-	github.com/nats-io/nats.go v1.27.0
+	github.com/klauspost/compress v1.16.7
+	github.com/nats-io/nats-server/v2 v2.9.20-0.20230629004853-cf393140ab60
+	github.com/nats-io/nats.go v1.27.1
 	github.com/nats-io/nuid v1.0.1
 	golang.org/x/net v0.11.0
 	golang.org/x/text v0.10.0
@@ -15,7 +16,6 @@ require (
 )
 
 require (
-	github.com/antonmedv/expr v1.12.5 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect

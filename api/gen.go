@@ -206,6 +206,7 @@ func main() {
 		&schema{P: "jetstream/advisory/v1/stream_quorum_lost.json", St: "jsadvisory.JSStreamQuorumLostV1"},
 		&schema{P: "jetstream/advisory/v1/consumer_quorum_lost.json", St: "jsadvisory.JSConsumerQuorumLostV1"},
 		&schema{P: "jetstream/advisory/v1/server_out_of_space.json", St: "jsadvisory.JSServerOutOfSpaceAdvisoryV1"},
+		&schema{P: "jetstream/advisory/v1/server_removed.json", St: "jsadvisory.JSServerRemovedAdvisoryV1"},
 		&schema{P: "jetstream/metric/v1/consumer_ack.json", St: "jsmetric.ConsumerAckMetricV1"},
 		&schema{P: "jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
 		&schema{P: "jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},

@@ -1,4 +1,4 @@
-// auto generated 2023-06-18 11:21:14.359323 +0300 EEST m=+0.011781167
+// auto generated 2023-07-04 11:47:36.693947 +0300 EEST m=+0.026335042
 
 package api
 
@@ -31,6 +31,7 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.advisory.v1.stream_quorum_lost":           func() any { return &jsadvisory.JSStreamQuorumLostV1{} },
 	"io.nats.jetstream.advisory.v1.consumer_quorum_lost":         func() any { return &jsadvisory.JSConsumerQuorumLostV1{} },
 	"io.nats.jetstream.advisory.v1.server_out_of_space":          func() any { return &jsadvisory.JSServerOutOfSpaceAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.server_removed":               func() any { return &jsadvisory.JSServerRemovedAdvisoryV1{} },
 	"io.nats.jetstream.metric.v1.consumer_ack":                   func() any { return &jsmetric.ConsumerAckMetricV1{} },
 	"io.nats.jetstream.api.v1.consumer_configuration":            func() any { return &ConsumerConfig{} },
 	"io.nats.jetstream.api.v1.stream_configuration":              func() any { return &StreamConfig{} },

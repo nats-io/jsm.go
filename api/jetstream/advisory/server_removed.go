@@ -4,7 +4,7 @@ import (
 	"github.com/nats-io/jsm.go/api/event"
 )
 
-// JSServerRemovedAdvisoryV1 indicates that a stream has lost quorum and is stalled.
+// JSServerRemovedAdvisoryV1 indicates a server has been removed from the cluster.
 //
 // NATS Schema Type io.nats.jetstream.advisory.v1.server_removed
 type JSServerRemovedAdvisoryV1 struct {

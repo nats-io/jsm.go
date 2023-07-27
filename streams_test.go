@@ -907,6 +907,19 @@ func TestStreamPageContents(t *testing.T) {
 	}
 }
 
+func TestFirstSequence(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test"), jsm.FirstSequence(1000))
+	checkErr(t, err, "create failed")
+
+	if s.FirstSequence() != 1000 {
+		t.Fatalf("Expected first sequence to be 1000 got %v", s.FirstSequence())
+	}
+}
+
 func TestStreamSealed(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

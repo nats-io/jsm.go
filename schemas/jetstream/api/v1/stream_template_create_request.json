@@ -144,6 +144,13 @@
               ],
               "default": "none"
             },
+            "first_seq": {
+              "description": "A custom sequence to use for the first message in the stream",
+              "type": "integer",
+              "$comment": "unsigned 64 bit integer",
+              "minimum": 0,
+              "maximum": 18446744073709551615
+            },
             "num_replicas": {
               "description": "How many replicas to keep for each message.",
               "minimum": 1,

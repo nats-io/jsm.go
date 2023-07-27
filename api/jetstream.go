@@ -15,6 +15,8 @@ package api
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 )
 
 // Subjects used by the JetStream API
@@ -77,6 +79,19 @@ func (i JSApiIterableResponse) ItemsTotal() int  { return i.Total }
 func (i JSApiIterableResponse) ItemsOffset() int { return i.Offset }
 func (i JSApiIterableResponse) ItemsLimit() int  { return i.Limit }
 func (i JSApiIterableResponse) LastPage() bool {
+	// allow the total from the server to be overridden in cases where a
+	// server bug would report an incorrect total
+	//
+	// deliberately hard to discover as this is a not something we want
+	// users to do generally and just need it in some sticky situations
+	ts := os.Getenv("PAGE_TOTAL")
+	if ts != "" {
+		total, err := strconv.Atoi(ts)
+		if err == nil {
+			i.Total = total
+		}
+	}
+
 	return i.Offset+i.Limit >= i.Total
 }
 

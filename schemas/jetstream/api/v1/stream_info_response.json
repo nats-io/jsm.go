@@ -56,6 +56,7 @@
                   "description": "Subject transform to apply to matching messages",
                   "type": "object",
                   "required": [
+                    "src",
                     "dest"
                   ],
                   "properties": {
@@ -240,20 +241,30 @@
                       "description": "Map matching subjects according to this transform destination",
                       "type": "string"
                     },
-                    "filter_subjects": {
-                      "description": "Filter the stream by multiple subjects",
-                      "type": "array",
+                    "subject_transforms": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "description": "The subject filtering sources and associated destination transforms",
                       "items": {
-                        "type": "string",
-                        "minLength": 1
-                      }
-                    },
-                    "subject_transform_dests": {
-                      "description": "Map matching subjects according to these transform destinations",
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "minLength": 1
+                        "minimum": 0,
+                        "type": "object",
+                        "description": "Subject transform to apply to matching messages going into the stream",
+                        "required": [
+                          "src",
+                          "dest"
+                        ],
+                        "properties": {
+                          "src": {
+                            "type": "string",
+                            "description": "The subject transform source"
+                          },
+                          "dest": {
+                            "type": "string",
+                            "description": "The subject transform destination"
+                          }
+                        }
                       }
                     },
                     "external": {
@@ -312,20 +323,30 @@
                         "description": "Map matching subjects according to this transform destination",
                         "type": "string"
                       },
-                      "filter_subjects": {
-                        "description": "Filter the stream by multiple subjects",
-                        "type": "array",
+                      "subject_transforms": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "description": "The subject filtering sources and associated destination transforms",
                         "items": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      },
-                      "subject_transform_dests": {
-                        "description": "Map matching subjects according to these transform destinations",
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
+                          "minimum": 0,
+                          "type": "object",
+                          "description": "Subject transform to apply to matching messages going into the stream",
+                          "required": [
+                            "src",
+                            "dest"
+                          ],
+                          "properties": {
+                            "src": {
+                              "type": "string",
+                              "description": "The subject transform source"
+                            },
+                            "dest": {
+                              "type": "string",
+                              "description": "The subject transform destination"
+                            }
+                          }
                         }
                       },
                       "external": {
@@ -624,20 +645,30 @@
               "type": "string",
               "description": "The subject transform destination to apply to the messages"
             },
-            "filter_subjects": {
-              "description": "Filter the stream by multiple subjects",
-              "type": "array",
+            "subject_transforms": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "description": "The subject filtering sources and associated destination transforms",
               "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "subject_transform_dests": {
-              "description": "Map matching subjects according to these transform destinations",
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
+                "minimum": 0,
+                "type": "object",
+                "description": "Subject transform to apply to matching messages going into the stream",
+                "required": [
+                  "src",
+                  "dest"
+                ],
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "description": "The subject transform source"
+                  },
+                  "dest": {
+                    "type": "string",
+                    "description": "The subject transform destination"
+                  }
+                }
               }
             },
             "lag": {
@@ -721,20 +752,30 @@
                 "type": "string",
                 "description": "The subject transform destination to apply to the messages"
               },
-              "filter_subjects": {
-                "description": "Filter the stream by multiple subjects",
-                "type": "array",
+              "subject_transforms": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "The subject filtering sources and associated destination transforms",
                 "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              },
-              "subject_transform_dests": {
-                "description": "Map matching subjects according to these transform destinations",
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
+                  "minimum": 0,
+                  "type": "object",
+                  "description": "Subject transform to apply to matching messages going into the stream",
+                  "required": [
+                    "src",
+                    "dest"
+                  ],
+                  "properties": {
+                    "src": {
+                      "type": "string",
+                      "description": "The subject transform source"
+                    },
+                    "dest": {
+                      "type": "string",
+                      "description": "The subject transform destination"
+                    }
+                  }
                 }
               },
               "lag": {

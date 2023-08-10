@@ -628,7 +628,7 @@ type StreamState struct {
 // SubjectTransformConfig is for applying a subject transform (to matching messages) before doing anything else
 // when a new message is received
 type SubjectTransformConfig struct {
-	Source      string `json:"src,omitempty" yaml:"src"`
+	Source      string `json:"src" yaml:"src"`
 	Destination string `json:"dest" yaml:"dest"`
 }
 

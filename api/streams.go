@@ -581,7 +581,7 @@ type StreamSource struct {
 	OptStartTime      *time.Time               `json:"opt_start_time,omitempty" yaml:"opt_start_time"`
 	FilterSubject     string                   `json:"filter_subject,omitempty" yaml:"filter_subject"`
 	External          *ExternalStream          `json:"external,omitempty" yaml:"external"`
-	SubjectTransforms []SubjectTransformConfig `json:"subject_transforms,omitempty"`
+	SubjectTransforms []SubjectTransformConfig `json:"subject_transforms,omitempty" yaml:"subject_transforms"`
 }
 
 // ExternalStream allows you to qualify access to a stream source in another account.

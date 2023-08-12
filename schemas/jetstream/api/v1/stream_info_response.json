@@ -56,6 +56,7 @@
                   "description": "Subject transform to apply to matching messages",
                   "type": "object",
                   "required": [
+                    "src",
                     "dest"
                   ],
                   "properties": {
@@ -240,6 +241,32 @@
                       "description": "Map matching subjects according to this transform destination",
                       "type": "string"
                     },
+                    "subject_transforms": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "description": "The subject filtering sources and associated destination transforms",
+                      "items": {
+                        "minimum": 0,
+                        "type": "object",
+                        "description": "Subject transform to apply to matching messages going into the stream",
+                        "required": [
+                          "src",
+                          "dest"
+                        ],
+                        "properties": {
+                          "src": {
+                            "type": "string",
+                            "description": "The subject transform source"
+                          },
+                          "dest": {
+                            "type": "string",
+                            "description": "The subject transform destination"
+                          }
+                        }
+                      }
+                    },
                     "external": {
                       "required": [
                         "api"
@@ -295,6 +322,32 @@
                       "subject_transform_dest": {
                         "description": "Map matching subjects according to this transform destination",
                         "type": "string"
+                      },
+                      "subject_transforms": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "description": "The subject filtering sources and associated destination transforms",
+                        "items": {
+                          "minimum": 0,
+                          "type": "object",
+                          "description": "Subject transform to apply to matching messages going into the stream",
+                          "required": [
+                            "src",
+                            "dest"
+                          ],
+                          "properties": {
+                            "src": {
+                              "type": "string",
+                              "description": "The subject transform source"
+                            },
+                            "dest": {
+                              "type": "string",
+                              "description": "The subject transform destination"
+                            }
+                          }
+                        }
                       },
                       "external": {
                         "required": [
@@ -592,6 +645,32 @@
               "type": "string",
               "description": "The subject transform destination to apply to the messages"
             },
+            "subject_transforms": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "description": "The subject filtering sources and associated destination transforms",
+              "items": {
+                "minimum": 0,
+                "type": "object",
+                "description": "Subject transform to apply to matching messages going into the stream",
+                "required": [
+                  "src",
+                  "dest"
+                ],
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "description": "The subject transform source"
+                  },
+                  "dest": {
+                    "type": "string",
+                    "description": "The subject transform destination"
+                  }
+                }
+              }
+            },
             "lag": {
               "description": "How many messages behind the mirror operation is",
               "minimum": 0,
@@ -672,6 +751,32 @@
               "subject_transform_dest": {
                 "type": "string",
                 "description": "The subject transform destination to apply to the messages"
+              },
+              "subject_transforms": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "The subject filtering sources and associated destination transforms",
+                "items": {
+                  "minimum": 0,
+                  "type": "object",
+                  "description": "Subject transform to apply to matching messages going into the stream",
+                  "required": [
+                    "src",
+                    "dest"
+                  ],
+                  "properties": {
+                    "src": {
+                      "type": "string",
+                      "description": "The subject transform source"
+                    },
+                    "dest": {
+                      "type": "string",
+                      "description": "The subject transform destination"
+                    }
+                  }
+                }
               },
               "lag": {
                 "description": "How many messages behind the mirror operation is",

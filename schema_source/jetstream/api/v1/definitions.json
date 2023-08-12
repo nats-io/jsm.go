@@ -61,6 +61,14 @@
           "description": "Map matching subjects according to this transform destination",
           "type": "string"
         },
+        "subject_transforms": {
+          "type": ["array","null"],
+          "description": "The subject filtering sources and associated destination transforms",
+          "items": {
+            "$ref": "#/definitions/subject_transform",
+            "minimum": 0
+          }
+        },
         "external": {
           "$ref": "#/definitions/external_stream_source"
         }
@@ -97,6 +105,14 @@
         "subject_transform_dest": {
           "type": "string",
           "description": "The subject transform destination to apply to the messages"
+        },
+        "subject_transforms": {
+          "type": ["array","null"],
+          "description": "The subject filtering sources and associated destination transforms",
+          "items": {
+            "$ref": "#/definitions/subject_transform",
+            "minimum": 0
+          }
         },
         "lag": {
           "$ref": "#/definitions/golang_uint64",
@@ -887,7 +903,7 @@
     "subject_transform" : {
       "type": "object",
       "description": "Subject transform to apply to matching messages going into the stream",
-      "required": ["dest"],
+      "required": ["src","dest"],
       "properties": {
         "src": {
           "type": "string",

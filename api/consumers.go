@@ -34,6 +34,14 @@ const (
 	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"
 )
 
+type ConsumerAction int
+
+const (
+	ActionCreateOrUpdate ConsumerAction = iota
+	ActionUpdate
+	ActionCreate
+)
+
 // io.nats.jetstream.api.v1.consumer_delete_response
 type JSApiConsumerDeleteResponse struct {
 	JSApiResponse
@@ -44,6 +52,7 @@ type JSApiConsumerDeleteResponse struct {
 type JSApiConsumerCreateRequest struct {
 	Stream string         `json:"stream_name"`
 	Config ConsumerConfig `json:"config"`
+	Action ConsumerAction `json:"action"`
 }
 
 // io.nats.jetstream.api.v1.consumer_create_response

@@ -292,6 +292,10 @@
           }
         }
       }
+    },
+    "action": {
+      "type": "string",
+      "description": "The consumer create action"
     }
   }
 }

@@ -42,6 +42,50 @@ const (
 	ActionCreate
 )
 
+const (
+	actionUpdateString         = "update"
+	actionCreateString         = "create"
+	actionCreateOrUpdateString = ""
+)
+
+func (a ConsumerAction) String() string {
+	switch a {
+	case ActionCreateOrUpdate:
+		return actionCreateOrUpdateString
+	case ActionCreate:
+		return actionCreateString
+	case ActionUpdate:
+		return actionUpdateString
+	}
+	return actionCreateOrUpdateString
+}
+func (a ConsumerAction) MarshalJSON() ([]byte, error) {
+	switch a {
+	case ActionCreate:
+		return json.Marshal(actionCreateString)
+	case ActionUpdate:
+		return json.Marshal(actionUpdateString)
+	case ActionCreateOrUpdate:
+		return json.Marshal(actionCreateOrUpdateString)
+	default:
+		return nil, fmt.Errorf("can not marshal %v", a)
+	}
+}
+
+func (a *ConsumerAction) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("create"):
+		*a = ActionCreate
+	case jsonString("update"):
+		*a = ActionUpdate
+	case jsonString(""):
+		*a = ActionCreateOrUpdate
+	default:
+		return fmt.Errorf("unknown consumer action: %v", string(data))
+	}
+	return nil
+}
+
 // io.nats.jetstream.api.v1.consumer_delete_response
 type JSApiConsumerDeleteResponse struct {
 	JSApiResponse

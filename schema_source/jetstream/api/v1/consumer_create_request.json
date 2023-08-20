@@ -19,8 +19,8 @@
       "$ref": "definitions.json#/definitions/consumer_configuration"
     },
     "action" : {
-      "type": "integer",
-      "description": "The consumer create action: 0=CreateOrUpdate, 1=Update, 2=Create"
+      "type": "string",
+      "description": "The consumer create action"
     }
   }
 }

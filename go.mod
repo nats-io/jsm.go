@@ -7,7 +7,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/google/go-cmp v0.5.9
 	github.com/klauspost/compress v1.16.7
-	github.com/nats-io/nats-server/v2 v2.9.22-0.20230816181149-3f28de8e8329
+	github.com/nats-io/nats-server/v2 v2.9.22-0.20230823030127-5a926f1911cf
 	github.com/nats-io/nats.go v1.28.0
 	github.com/nats-io/nuid v1.0.1
 	golang.org/x/net v0.14.0

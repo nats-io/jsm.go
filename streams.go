@@ -14,12 +14,15 @@
 package jsm
 
 import (
+	"context"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go"
 )
 
 // DefaultStream is a template configuration with StreamPolicy retention and 1 years maximum age. No storage type or subjects are set
@@ -717,6 +720,59 @@ func (s *Stream) LeaderStepDown() error {
 	}
 
 	return nil
+}
+
+// DetectGaps detects interior deletes in a stream, reports progress through the stream and each found gap
+func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pending uint64), gap func(first uint64, last uint64)) error {
+	nc := s.mgr.NatsConn()
+	msgs := make(chan *nats.Msg, 10000)
+
+	sub, err := nc.ChanSubscribe(nc.NewRespInbox(), msgs)
+	if err != nil {
+		return err
+	}
+	defer sub.Unsubscribe()
+
+	_, err = s.NewConsumer(DeliverHeadersOnly(), PushFlowControl(), DeliverySubject(sub.Subject), InactiveThreshold(time.Minute), IdleHeartbeat(time.Second), AcknowledgeNone())
+	if err != nil {
+		return err
+	}
+
+	last := uint64(math.MaxUint64)
+
+	for {
+		select {
+		case msg := <-msgs:
+			if fc := msg.Header.Get("Nats-Consumer-Stalled"); fc != "" {
+				nc.Publish(fc, nil)
+				continue
+			}
+			meta, err := ParseJSMsgMetadata(msg)
+			if err != nil {
+				continue
+			}
+
+			progress(meta.StreamSequence(), meta.Pending())
+
+			if meta.Pending() == 0 {
+				return nil
+			}
+
+			if last == math.MaxUint64 {
+				last = meta.StreamSequence()
+				continue
+			}
+
+			if meta.StreamSequence() != last+1 {
+				gap(last+1, meta.StreamSequence()-1)
+			}
+
+			last = meta.StreamSequence()
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 // IsTemplateManaged determines if this stream is managed by a template

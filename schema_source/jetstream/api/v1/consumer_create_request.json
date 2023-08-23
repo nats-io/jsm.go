@@ -17,6 +17,10 @@
       "type": "object",
       "description": "The consumer configuration",
       "$ref": "definitions.json#/definitions/consumer_configuration"
+    },
+    "action" : {
+      "type": "string",
+      "description": "The consumer create action"
     }
   }
 }

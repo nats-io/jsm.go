@@ -14,6 +14,7 @@
 package jsm_test
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -1006,6 +1007,53 @@ func TestStream_ContainedSubjects(t *testing.T) {
 	// if len(subs) != 100001 {
 	// 	t.Fatalf("Expected 100001 subjects got %d", len(subs))
 	// }
+}
+
+func TestStream_DetectGaps(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test.*"))
+	checkErr(t, err, "create failed")
+
+	for i := 1; i <= 3000; i++ {
+		_, err := nc.Request(fmt.Sprintf("test.%d", i), nil, time.Second)
+		checkErr(t, err, "publish failed")
+	}
+
+	checkErr(t, s.DeleteMessage(1), "delete failed")
+	checkErr(t, s.DeleteMessage(2), "delete failed")
+	checkErr(t, s.DeleteMessage(10), "delete failed")
+	checkErr(t, s.DeleteMessage(11), "delete failed")
+	checkErr(t, s.DeleteMessage(12), "delete failed")
+	checkErr(t, s.DeleteMessage(20), "delete failed")
+	checkErr(t, s.DeleteMessage(21), "delete failed")
+	checkErr(t, s.DeleteMessage(22), "delete failed")
+	checkErr(t, s.DeleteMessage(2000), "delete failed")
+	checkErr(t, s.DeleteMessage(2001), "delete failed")
+	checkErr(t, s.DeleteMessage(2002), "delete failed")
+	checkErr(t, s.DeleteMessage(2005), "delete failed")
+
+	gaps := [][2]uint64{}
+	progressCnt := 0
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err = s.DetectGaps(ctx,
+		func(_, pending uint64) { progressCnt++ },
+		func(start uint64, end uint64) { gaps = append(gaps, [2]uint64{start, end}) },
+	)
+	checkErr(t, err, "detection failed")
+
+	if len(gaps) != 4 {
+		t.Fatalf("expected 4 gaps got %d", gaps)
+	}
+
+	if !cmp.Equal(gaps, [][2]uint64{{10, 12}, {20, 22}, {2000, 2002}, {2005, 2005}}) {
+		t.Fatalf("Invalid gaps detected: %v", gaps)
+	}
 }
 
 func TestStreamRepublish(t *testing.T) {

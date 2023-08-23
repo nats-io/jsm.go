@@ -722,10 +722,62 @@ func (s *Stream) LeaderStepDown() error {
 	return nil
 }
 
-// DetectGaps detects interior deletes in a stream, reports progress through the stream and each found gap
+// DetectGaps detects interior deletes in a stream, reports progress through the stream and each found gap.
+//
+// It uses the extended stream info to get the sequences and use that to detect gaps. The Deleted information
+// in StreamInfo is capped at some amount so if it determines there are more messages that are deleted in the
+// stream it will then make a consumer and walk the remainder of the stream to detect gaps the hard way
 func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pending uint64), gap func(first uint64, last uint64)) error {
 	nc := s.mgr.NatsConn()
 	msgs := make(chan *nats.Msg, 10000)
+
+	nfo, err := s.Information(api.JSApiStreamInfoRequest{DeletedDetails: true})
+	if err != nil {
+		return err
+	}
+
+	progress(nfo.State.Msgs, 0)
+
+	if len(nfo.State.Deleted) == 0 {
+		return nil
+	}
+
+	if len(nfo.State.Deleted) == 1 {
+		gap(nfo.State.Deleted[0], nfo.State.Deleted[0])
+	}
+
+	start := nfo.State.Deleted[0]
+
+	for i, seq := range nfo.State.Deleted {
+		progress(seq, nfo.State.Msgs-seq)
+
+		// the last message
+		if i == len(nfo.State.Deleted)-1 {
+			// if its part of a gap we close it off
+			if seq-1 == nfo.State.Deleted[i-1] {
+				gap(start, seq)
+				return nil
+			}
+
+			// else its a start and end of a gap
+			gap(seq, seq)
+			return nil
+		}
+
+		// a normal message that isnt in sequence so its the
+		// end and start of a gap
+		if nfo.State.Deleted[i+1] != seq+1 {
+			gap(start, seq)
+			start = nfo.State.Deleted[i+1]
+		}
+	}
+
+	// if we have more to do than what was returned from stream info
+	// we do the hard thing and walk the stream, the consumer will start
+	// at the last message after the deleted information
+	if len(nfo.State.Deleted) == nfo.State.NumDeleted {
+		return nil
+	}
 
 	sub, err := nc.ChanSubscribe(nc.NewRespInbox(), msgs)
 	if err != nil {
@@ -733,7 +785,7 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 	}
 	defer sub.Unsubscribe()
 
-	_, err = s.NewConsumer(DeliverHeadersOnly(), PushFlowControl(), DeliverySubject(sub.Subject), InactiveThreshold(time.Minute), IdleHeartbeat(time.Second), AcknowledgeNone())
+	_, err = s.NewConsumer(DeliverHeadersOnly(), PushFlowControl(), DeliverySubject(sub.Subject), InactiveThreshold(time.Minute), IdleHeartbeat(time.Second), AcknowledgeNone(), StartAtSequence(nfo.State.Deleted[len(nfo.State.Deleted)-1]+1))
 	if err != nil {
 		return err
 	}

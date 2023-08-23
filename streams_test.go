@@ -1022,18 +1022,9 @@ func TestStream_DetectGaps(t *testing.T) {
 		checkErr(t, err, "publish failed")
 	}
 
-	checkErr(t, s.DeleteMessage(1), "delete failed")
-	checkErr(t, s.DeleteMessage(2), "delete failed")
-	checkErr(t, s.DeleteMessage(10), "delete failed")
-	checkErr(t, s.DeleteMessage(11), "delete failed")
-	checkErr(t, s.DeleteMessage(12), "delete failed")
-	checkErr(t, s.DeleteMessage(20), "delete failed")
-	checkErr(t, s.DeleteMessage(21), "delete failed")
-	checkErr(t, s.DeleteMessage(22), "delete failed")
-	checkErr(t, s.DeleteMessage(2000), "delete failed")
-	checkErr(t, s.DeleteMessage(2001), "delete failed")
-	checkErr(t, s.DeleteMessage(2002), "delete failed")
-	checkErr(t, s.DeleteMessage(2005), "delete failed")
+	for _, seq := range []uint64{1, 3, 10, 11, 12, 20, 21, 22, 2000, 2001, 2002, 2005} {
+		checkErr(t, s.DeleteMessage(seq), "delete failed")
+	}
 
 	gaps := [][2]uint64{}
 	progressCnt := 0
@@ -1047,11 +1038,11 @@ func TestStream_DetectGaps(t *testing.T) {
 	)
 	checkErr(t, err, "detection failed")
 
-	if len(gaps) != 4 {
-		t.Fatalf("expected 4 gaps got %d", gaps)
+	if len(gaps) != 5 {
+		t.Fatalf("expected 5 gaps got %d", gaps)
 	}
 
-	if !cmp.Equal(gaps, [][2]uint64{{10, 12}, {20, 22}, {2000, 2002}, {2005, 2005}}) {
+	if !cmp.Equal(gaps, [][2]uint64{{3, 3}, {10, 12}, {20, 22}, {2000, 2002}, {2005, 2005}}) {
 		t.Fatalf("Invalid gaps detected: %v", gaps)
 	}
 }

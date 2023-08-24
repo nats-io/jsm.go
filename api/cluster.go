@@ -58,17 +58,17 @@ type JSApiAccountPurgeResponse struct {
 // ClusterInfo shows information about the underlying set of servers
 // that make up the stream or consumer.
 type ClusterInfo struct {
-	Name     string      `json:"name,omitempty"`
-	Leader   string      `json:"leader,omitempty"`
-	Replicas []*PeerInfo `json:"replicas,omitempty"`
+	Name     string      `json:"name,omitempty" yaml:"name"`
+	Leader   string      `json:"leader,omitempty" yaml:"leader"`
+	Replicas []*PeerInfo `json:"replicas,omitempty" yaml:"replicas"`
 }
 
 // PeerInfo shows information about all the peers in the cluster that
 // are supporting the stream or consumer.
 type PeerInfo struct {
-	Name    string        `json:"name"`
-	Current bool          `json:"current"`
-	Offline bool          `json:"offline,omitempty"`
-	Active  time.Duration `json:"active"`
-	Lag     uint64        `json:"lag,omitempty"`
+	Name    string        `json:"name" yaml:"name"`
+	Current bool          `json:"current" yaml:"current"`
+	Offline bool          `json:"offline,omitempty" yaml:"offline"`
+	Active  time.Duration `json:"active" yaml:"active"`
+	Lag     uint64        `json:"lag,omitempty" yaml:"lag"`
 }

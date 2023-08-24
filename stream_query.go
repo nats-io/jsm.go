@@ -14,13 +14,13 @@
 package jsm
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/antonmedv/expr"
+	"gopkg.in/yaml.v3"
 )
 
 type streamMatcher func([]*Stream) ([]*Stream, error)
@@ -221,13 +221,13 @@ func (q *streamQuery) matchExpression(streams []*Stream) ([]*Stream, error) {
 		state := map[string]any{}
 		info := map[string]any{}
 
-		cfgBytes, _ := json.Marshal(stream.Configuration())
-		json.Unmarshal(cfgBytes, &cfg)
+		cfgBytes, _ := yaml.Marshal(stream.Configuration())
+		yaml.Unmarshal(cfgBytes, &cfg)
 		nfo, _ := stream.LatestInformation()
-		nfoBytes, _ := json.Marshal(nfo)
-		json.Unmarshal(nfoBytes, &info)
-		stateBytes, _ := json.Marshal(nfo.State)
-		json.Unmarshal(stateBytes, &state)
+		nfoBytes, _ := yaml.Marshal(nfo)
+		yaml.Unmarshal(nfoBytes, &info)
+		stateBytes, _ := yaml.Marshal(nfo.State)
+		yaml.Unmarshal(stateBytes, &state)
 
 		env := map[string]any{
 			"config": cfg,

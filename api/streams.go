@@ -556,22 +556,22 @@ type Placement struct {
 
 // StreamSourceInfo shows information about an upstream stream source.
 type StreamSourceInfo struct {
-	Name                 string                   `json:"name"`
-	External             *ExternalStream          `json:"external,omitempty"`
-	Lag                  uint64                   `json:"lag"`
-	Active               time.Duration            `json:"active"`
-	Error                *ApiError                `json:"error,omitempty"`
-	FilterSubject        string                   `json:"filter_subject,omitempty"`
-	SubjectTransformDest string                   `json:"subject_transform_dest,omitempty"`
-	SubjectTransforms    []SubjectTransformConfig `json:"subject_transforms,omitempty"`
+	Name                 string                   `json:"name" yaml:"name"`
+	External             *ExternalStream          `json:"external,omitempty" yaml:"external"`
+	Lag                  uint64                   `json:"lag" yaml:"lag"`
+	Active               time.Duration            `json:"active" yaml:"active"`
+	Error                *ApiError                `json:"error,omitempty" yaml:"error"`
+	FilterSubject        string                   `json:"filter_subject,omitempty" yaml:"filter_subject"`
+	SubjectTransformDest string                   `json:"subject_transform_dest,omitempty" yaml:"subject_transform_dest"`
+	SubjectTransforms    []SubjectTransformConfig `json:"subject_transforms,omitempty" yaml:"subject_transforms"`
 }
 
 // LostStreamData indicates msgs that have been lost during file checks and recover due to corruption
 type LostStreamData struct {
 	// Message IDs of lost messages
-	Msgs []uint64 `json:"msgs"`
+	Msgs []uint64 `json:"msgs" yaml:"msgs"`
 	// How many bytes were lost
-	Bytes uint64 `json:"bytes"`
+	Bytes uint64 `json:"bytes" yaml:"bytes"`
 }
 
 // StreamSource dictates how streams can source from other streams.
@@ -592,35 +592,35 @@ type ExternalStream struct {
 }
 
 type StreamInfo struct {
-	Config     StreamConfig        `json:"config"`
-	Created    time.Time           `json:"created"`
-	State      StreamState         `json:"state"`
-	Cluster    *ClusterInfo        `json:"cluster,omitempty"`
-	Mirror     *StreamSourceInfo   `json:"mirror,omitempty"`
-	Sources    []*StreamSourceInfo `json:"sources,omitempty"`
-	Alternates []StreamAlternate   `json:"alternates,omitempty"`
-	TimeStamp  time.Time           `json:"ts"`
+	Config     StreamConfig        `json:"config" yaml:"config"`
+	Created    time.Time           `json:"created" yaml:"created"`
+	State      StreamState         `json:"state" yaml:"state"`
+	Cluster    *ClusterInfo        `json:"cluster,omitempty" yaml:"cluster"`
+	Mirror     *StreamSourceInfo   `json:"mirror,omitempty" yaml:"mirror"`
+	Sources    []*StreamSourceInfo `json:"sources,omitempty" yaml:"sources"`
+	Alternates []StreamAlternate   `json:"alternates,omitempty" yaml:"alternates"`
+	TimeStamp  time.Time           `json:"ts" yaml:"ts"`
 }
 
 type StreamAlternate struct {
-	Name    string `json:"name"`
-	Domain  string `json:"domain,omitempty"`
-	Cluster string `json:"cluster"`
+	Name    string `json:"name" yaml:"name"`
+	Domain  string `json:"domain,omitempty" yaml:"domain"`
+	Cluster string `json:"cluster" yaml:"cluster"`
 }
 
 type StreamState struct {
-	Msgs        uint64            `json:"messages"`
-	Bytes       uint64            `json:"bytes"`
-	FirstSeq    uint64            `json:"first_seq"`
-	FirstTime   time.Time         `json:"first_ts"`
-	LastSeq     uint64            `json:"last_seq"`
-	LastTime    time.Time         `json:"last_ts"`
-	NumDeleted  int               `json:"num_deleted,omitempty"`
-	Deleted     []uint64          `json:"deleted,omitempty"`
-	NumSubjects int               `json:"num_subjects,omitempty"`
-	Subjects    map[string]uint64 `json:"subjects,omitempty"`
-	Lost        *LostStreamData   `json:"lost,omitempty"`
-	Consumers   int               `json:"consumer_count"`
+	Msgs        uint64            `json:"messages" yaml:"messages"`
+	Bytes       uint64            `json:"bytes" yaml:"bytes"`
+	FirstSeq    uint64            `json:"first_seq" yaml:"first_seq"`
+	FirstTime   time.Time         `json:"first_ts" yaml:"first_ts"`
+	LastSeq     uint64            `json:"last_seq" yaml:"last_seq"`
+	LastTime    time.Time         `json:"last_ts" yaml:"last_ts"`
+	NumDeleted  int               `json:"num_deleted,omitempty" yaml:"num_deleted"`
+	Deleted     []uint64          `json:"deleted,omitempty" yaml:"deleted"`
+	NumSubjects int               `json:"num_subjects,omitempty" yaml:"num_subjects"`
+	Subjects    map[string]uint64 `json:"subjects,omitempty" yaml:"subjects"`
+	Lost        *LostStreamData   `json:"lost,omitempty" yaml:"lost"`
+	Consumers   int               `json:"consumer_count" yaml:"consumer_count"`
 }
 
 // SubjectTransformConfig is for applying a subject transform (to matching messages) before doing anything else

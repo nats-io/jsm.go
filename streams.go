@@ -68,6 +68,8 @@ type Stream struct {
 	sync.Mutex
 }
 
+var ErrAckStreamIngestsAll = fmt.Errorf("configuration validation failed: streams with no_ack false may not have '>' or '*' as subjects")
+
 // NewStreamFromDefault creates a new stream based on a supplied template and options
 func (m *Manager) NewStreamFromDefault(name string, dflt api.StreamConfig, opts ...StreamOption) (stream *Stream, err error) {
 	if !IsValidName(name) {
@@ -80,6 +82,10 @@ func (m *Manager) NewStreamFromDefault(name string, dflt api.StreamConfig, opts 
 	}
 
 	cfg.Name = name
+
+	if !cfg.NoAck && (stringsContains(cfg.Subjects, ">") || stringsContains(cfg.Subjects, "*")) {
+		return nil, ErrAckStreamIngestsAll
+	}
 
 	valid, errs := cfg.Validate(m.validator)
 	if !valid {

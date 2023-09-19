@@ -57,10 +57,6 @@
           "description": "Replicate only a subset of messages based on filter",
           "type": "string"
         },
-        "subject_transform_dest" : {
-          "description": "Map matching subjects according to this transform destination",
-          "type": "string"
-        },
         "subject_transforms": {
           "type": ["array","null"],
           "description": "The subject filtering sources and associated destination transforms",
@@ -101,10 +97,6 @@
         "filter_subject": {
           "type": "string",
           "description": "The subject filter to apply to the messages"
-        },
-        "subject_transform_dest": {
-          "type": "string",
-          "description": "The subject transform destination to apply to the messages"
         },
         "subject_transforms": {
           "type": ["array","null"],

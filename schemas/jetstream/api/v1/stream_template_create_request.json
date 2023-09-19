@@ -236,10 +236,6 @@
                   "description": "Replicate only a subset of messages based on filter",
                   "type": "string"
                 },
-                "subject_transform_dest": {
-                  "description": "Map matching subjects according to this transform destination",
-                  "type": "string"
-                },
                 "subject_transforms": {
                   "type": [
                     "array",
@@ -316,10 +312,6 @@
                   },
                   "filter_subject": {
                     "description": "Replicate only a subset of messages based on filter",
-                    "type": "string"
-                  },
-                  "subject_transform_dest": {
-                    "description": "Map matching subjects according to this transform destination",
                     "type": "string"
                   },
                   "subject_transforms": {

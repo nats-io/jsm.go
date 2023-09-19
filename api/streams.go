@@ -576,13 +576,12 @@ type LostStreamData struct {
 
 // StreamSource dictates how streams can source from other streams.
 type StreamSource struct {
-	Name                 string                   `json:"name" yaml:"name"`
-	OptStartSeq          uint64                   `json:"opt_start_seq,omitempty" yaml:"opt_start_seq"`
-	OptStartTime         *time.Time               `json:"opt_start_time,omitempty" yaml:"opt_start_time"`
-	FilterSubject        string                   `json:"filter_subject,omitempty" yaml:"filter_subject"`
-	SubjectTransformDest string                   `json:"subject_transform_dest,omitempty" yaml:"subject_transform_dest"`
-	External             *ExternalStream          `json:"external,omitempty" yaml:"external"`
-	SubjectTransforms    []SubjectTransformConfig `json:"subject_transforms,omitempty" yaml:"subject_transforms"`
+	Name              string                   `json:"name" yaml:"name"`
+	OptStartSeq       uint64                   `json:"opt_start_seq,omitempty" yaml:"opt_start_seq"`
+	OptStartTime      *time.Time               `json:"opt_start_time,omitempty" yaml:"opt_start_time"`
+	FilterSubject     string                   `json:"filter_subject,omitempty" yaml:"filter_subject"`
+	External          *ExternalStream          `json:"external,omitempty" yaml:"external"`
+	SubjectTransforms []SubjectTransformConfig `json:"subject_transforms,omitempty" yaml:"subject_transforms"`
 }
 
 // ExternalStream allows you to qualify access to a stream source in another account.

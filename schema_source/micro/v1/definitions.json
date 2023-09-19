@@ -65,6 +65,10 @@
         },
         "metadata": {
           "$ref": "#/definitions/optional_metadata"
+        },
+        "queue_group": {
+          "description": "The queue group this endpoint listens on for requests",
+          "type": "string"
         }
       }
     },
@@ -109,6 +113,10 @@
         "average_processing_time": {
           "description": "The average time spent processing requests",
           "$ref": "#/definitions/golang_duration_nanos"
+        },
+        "queue_group": {
+          "description": "The queue group this endpoint listens on for requests",
+          "type": "string"
         },
         "data": {
           "description": "Additional statistics the endpoint makes available",

@@ -113,6 +113,10 @@
             "maximum": 9223372036854775807,
             "minimum": -9223372036854775807
           },
+          "queue_group": {
+            "description": "The queue group this endpoint listens on for requests",
+            "type": "string"
+          },
           "data": {
             "description": "Additional statistics the endpoint makes available",
             "type": "object"

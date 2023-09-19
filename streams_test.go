@@ -1015,6 +1015,25 @@ func TestStream_ContainedSubjects(t *testing.T) {
 	// }
 }
 
+func TestStream_Compression(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("f1", jsm.Subjects("test.*"), jsm.FileStorage(), jsm.Compression(api.S2Compression))
+	checkErr(t, err, "create failed")
+
+	nfo, err := s.Information()
+	checkErr(t, err, "info failed")
+
+	if nfo.Config.Compression != api.S2Compression {
+		t.Fatalf("s2 compression was not set")
+	}
+
+	if !s.IsCompressed() {
+		t.Fatalf("s2 compression was not reported correctly")
+	}
+}
 func TestStream_DetectGaps(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

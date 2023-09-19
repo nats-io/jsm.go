@@ -864,6 +864,11 @@ func (s *Stream) IsMQTTState() bool {
 	return IsMQTTStateStream(s.Name())
 }
 
+// IsCompressed determines if a stream is compressed
+func (s *Stream) IsCompressed() bool {
+	return s.Compression() != api.NoCompression
+}
+
 // ContainedSubjects queries the stream for the subjects it holds with optional filter
 func (s *Stream) ContainedSubjects(filter ...string) (map[string]uint64, error) {
 	return s.mgr.StreamContainedSubjects(s.Name(), filter...)

@@ -425,6 +425,26 @@
                   "additionalProperties": {
                     "type": "string"
                   }
+                },
+                "consumer_limits": {
+                  "description": "Limits of certain values that consumers can set, defaults for those who don't set these settings",
+                  "type": "object",
+                  "properties": {
+                    "inactive_threshold": {
+                      "description": "Maximum value for inactive_threshold for consumers of this stream. Acts as a default when consumers do not set this value.",
+                      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                      "type": "integer",
+                      "maximum": 9223372036854775807,
+                      "minimum": -9223372036854775807
+                    },
+                    "max_ack_pending": {
+                      "description": "Maximum value for max_ack_pending for consumers of this stream. Acts as a default when consumers do not set this value.",
+                      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+                      "type": "integer",
+                      "maximum": 9223372036854775807,
+                      "minimum": -9223372036854775807
+                    }
+                  }
                 }
               }
             }

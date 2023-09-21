@@ -546,6 +546,16 @@ type StreamConfig struct {
 	FirstSeq uint64 `json:"first_seq,omitempty"`
 	// Metadata is additional metadata for the Consumer.
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata"`
+	// The following defaults will apply to consumers when created against
+	// this stream, unless overridden manually. They also represent the maximum values that
+	// these properties may have
+	ConsumerLimits StreamConsumerLimits `json:"consumer_limits"`
+}
+
+// StreamConsumerLimits describes limits and defaults for consumers created on a stream
+type StreamConsumerLimits struct {
+	InactiveThreshold time.Duration `json:"inactive_threshold,omitempty"`
+	MaxAckPending     int           `json:"max_ack_pending,omitempty"`
 }
 
 // Placement describes stream placement requirements for a stream

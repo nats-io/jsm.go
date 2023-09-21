@@ -3,11 +3,11 @@ module github.com/nats-io/jsm.go
 go 1.20
 
 require (
-	github.com/antonmedv/expr v1.15.2
+	github.com/antonmedv/expr v1.15.3
 	github.com/dustin/go-humanize v1.0.1
 	github.com/google/go-cmp v0.5.9
 	github.com/klauspost/compress v1.17.0
-	github.com/nats-io/nats-server/v2 v2.10.0
+	github.com/nats-io/nats-server/v2 v2.10.1
 	github.com/nats-io/nats.go v1.30.0
 	github.com/nats-io/nuid v1.0.1
 	golang.org/x/net v0.15.0

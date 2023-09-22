@@ -118,8 +118,7 @@
             "type": "string"
           },
           "data": {
-            "description": "Additional statistics the endpoint makes available",
-            "type": "object"
+            "description": "Additional statistics the endpoint makes available"
           }
         }
       }

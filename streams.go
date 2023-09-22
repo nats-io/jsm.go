@@ -474,6 +474,13 @@ func FirstSequence(seq uint64) StreamOption {
 	}
 }
 
+func SubjectTransform(subjectTransform *api.SubjectTransformConfig) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.SubjectTransform = subjectTransform
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {

@@ -543,7 +543,7 @@ type StreamConfig struct {
 	// Allow KV like semantics to also discard new on a per subject basis
 	DiscardNewPer bool `json:"discard_new_per_subject,omitempty" yaml:"discard_new_per_subject"`
 	// FirstSeq sets a custom starting position for the stream
-	FirstSeq uint64 `json:"first_seq,omitempty"`
+	FirstSeq uint64 `json:"first_seq,omitempty" yaml:"first_seq"`
 	// Metadata is additional metadata for the Consumer.
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata"`
 	// The following defaults will apply to consumers when created against

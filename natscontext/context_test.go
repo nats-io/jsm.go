@@ -42,6 +42,11 @@ func TestContext(t *testing.T) {
 		t.Fatalf("could not select context: %s", err)
 	}
 
+	previousCtx := natscontext.OldCtx()
+	if previousCtx != "other" {
+		t.Fatalf("previous context should be %q instead of %q", "other", previousCtx)
+	}
+
 	c, err := natscontext.New("", false)
 	if err != nil {
 		t.Fatalf("could not create empty context: %s", err)

@@ -42,7 +42,7 @@ func TestContext(t *testing.T) {
 		t.Fatalf("could not select context: %s", err)
 	}
 
-	previousCtx := natscontext.OldCtx()
+	previousCtx := natscontext.PreviousContext()
 	if previousCtx != "other" {
 		t.Fatalf("previous context should be %q instead of %q", "other", previousCtx)
 	}

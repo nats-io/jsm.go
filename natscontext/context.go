@@ -265,9 +265,9 @@ func SelectedContext() string {
 	return readCtxFromFile("context.txt")
 }
 
-// OldCtx returns the name of the previous selected context, empty if it hasn't been selected before
-func OldCtx() string {
-	return readCtxFromFile("old-ctx.txt")
+// PreviousContext returns the name of the previous selected context, empty if it hasn't been selected before
+func PreviousContext() string {
+	return readCtxFromFile("previous-context.txt")
 }
 
 func readCtxFromFile(file string) string {
@@ -488,7 +488,7 @@ func SelectContext(name string) error {
 	}
 
 	currentCtx := SelectedContext()
-	err = setOldCtx(parent, currentCtx)
+	err = setPreviousContext(parent, currentCtx)
 	if err != nil {
 		return err
 	}
@@ -496,8 +496,8 @@ func SelectContext(name string) error {
 	return os.WriteFile(filepath.Join(parent, "nats", "context.txt"), []byte(name), 0600)
 }
 
-func setOldCtx(parent string, name string) error {
-	return os.WriteFile(filepath.Join(parent, "nats", "old-ctx.txt"), []byte(name), 0600)
+func setPreviousContext(parent string, name string) error {
+	return os.WriteFile(filepath.Join(parent, "nats", "previous-context.txt"), []byte(name), 0600)
 }
 
 func (c *Context) MarshalJSON() ([]byte, error) {

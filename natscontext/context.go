@@ -72,6 +72,11 @@ type Context struct {
 	path   string
 }
 
+const (
+	selectedCtxFile string = "context.txt"
+	previousCtxFile string = "previous-context.txt"
+)
+
 // New loads a new configuration context. If name is empty the current active
 // one will be loaded.  If load is false no loading of existing data is done
 // this is mainly useful to create new empty contexts.
@@ -187,7 +192,7 @@ func DeleteContext(name string) error {
 	}
 
 	if selected {
-		return os.Remove(filepath.Join(parent, "nats", "context.txt"))
+		return os.Remove(filepath.Join(parent, "nats", selectedCtxFile))
 	}
 
 	return nil
@@ -262,12 +267,12 @@ func KnownContexts() []string {
 
 // SelectedContext returns the name of the current selected context, empty when non is selected
 func SelectedContext() string {
-	return readCtxFromFile("context.txt")
+	return readCtxFromFile(selectedCtxFile)
 }
 
 // PreviousContext returns the name of the previous selected context, empty if it hasn't been selected before
 func PreviousContext() string {
-	return readCtxFromFile("previous-context.txt")
+	return readCtxFromFile(previousCtxFile)
 }
 
 func readCtxFromFile(file string) string {
@@ -493,11 +498,11 @@ func SelectContext(name string) error {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(parent, "nats", "context.txt"), []byte(name), 0600)
+	return os.WriteFile(filepath.Join(parent, "nats", selectedCtxFile), []byte(name), 0600)
 }
 
 func setPreviousContext(parent string, name string) error {
-	return os.WriteFile(filepath.Join(parent, "nats", "previous-context.txt"), []byte(name), 0600)
+	return os.WriteFile(filepath.Join(parent, "nats", previousCtxFile), []byte(name), 0600)
 }
 
 func (c *Context) MarshalJSON() ([]byte, error) {

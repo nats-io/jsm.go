@@ -19,16 +19,24 @@ import (
 	"time"
 )
 
+// also update wellKnownSubjectSchemas
 const (
 	JSApiConsumerCreateT                   = "$JS.API.CONSUMER.CREATE.%s"
+	JSApiConsumerCreate                    = "$JS.API.CONSUMER.CREATE.*"
 	JSApiConsumerCreateWithNameT           = "$JS.API.CONSUMER.CREATE.%s.%s"
+	JSApiConsumerCreateWithName            = "$JS.API.CONSUMER.CREATE.*.>"
 	JSApiDurableCreateT                    = "$JS.API.CONSUMER.DURABLE.CREATE.%s.%s"
+	JSApiDurableCreate                     = "$JS.API.CONSUMER.DURABLE.CREATE.*.*"
 	JSApiConsumerCreateExT                 = "$JS.API.CONSUMER.CREATE.%s.%s.%s"
+	JSApiConsumerCreateEx                  = "$JS.API.CONSUMER.CREATE.%s.*.>"
 	JSApiConsumerNamesT                    = "$JS.API.CONSUMER.NAMES.%s"
+	JSApiConsumerNames                     = "$JS.API.CONSUMER.NAMES.*"
 	JSApiConsumerListT                     = "$JS.API.CONSUMER.LIST.%s"
+	JSApiConsumerList                      = "$JS.API.CONSUMER.LIST.*"
 	JSApiConsumerInfoT                     = "$JS.API.CONSUMER.INFO.%s.%s"
 	JSApiConsumerDeleteT                   = "$JS.API.CONSUMER.DELETE.%s.%s"
 	JSApiRequestNextT                      = "$JS.API.CONSUMER.MSG.NEXT.%s.%s"
+	JSApiRequestNext                       = "$JS.API.CONSUMER.MSG.NEXT.*.*"
 	JSApiConsumerLeaderStepDownT           = "$JS.API.CONSUMER.LEADER.STEPDOWN.%s.%s"
 	JSMetricConsumerAckPre                 = JSMetricPrefix + ".CONSUMER.ACK"
 	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"

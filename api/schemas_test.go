@@ -36,6 +36,21 @@ func checkErr(t *testing.T, err error, m string) {
 	t.Fatal(m + ": " + err.Error())
 }
 
+func TestSchemaTypeForWellKnownRequestSubject(t *testing.T) {
+	cases := [][]string{
+		{"$JS.API.STREAM.PEER.REMOVE.FOO", "io.nats.jetstream.api.v1.stream_remove_peer_request"},
+		{"$JS.API.STREAM.CREATE.FOO", "io.nats.jetstream.api.v1.stream_create_request"},
+		{"Unknown", ""},
+	}
+
+	for _, tc := range cases {
+		res := SchemaTypeForWellKnownRequestSubject(tc[0])
+		if res != tc[1] {
+			t.Fatalf("Expected %q got %q", tc[1], res)
+		}
+	}
+}
+
 func TestToCloudEvent(t *testing.T) {
 	SchemasRepo = "https://nats.io/schemas"
 

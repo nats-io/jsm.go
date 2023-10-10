@@ -21,19 +21,28 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// also update wellKnownSubjectSchemas
 const (
 	JSApiStreamCreateT         = "$JS.API.STREAM.CREATE.%s"
+	JSApiStreamCreate          = "$JS.API.STREAM.CREATE.*"
 	JSApiStreamUpdateT         = "$JS.API.STREAM.UPDATE.%s"
+	JSApiStreamUpdate          = "$JS.API.STREAM.UPDATE.*"
 	JSApiStreamNames           = "$JS.API.STREAM.NAMES"
 	JSApiStreamList            = "$JS.API.STREAM.LIST"
 	JSApiStreamInfoT           = "$JS.API.STREAM.INFO.%s"
+	JSApiStreamInfo            = "$JS.API.STREAM.INFO.*"
 	JSApiStreamDeleteT         = "$JS.API.STREAM.DELETE.%s"
 	JSApiStreamPurgeT          = "$JS.API.STREAM.PURGE.%s"
+	JSApiStreamPurge           = "$JS.API.STREAM.PURGE.*"
 	JSApiMsgDeleteT            = "$JS.API.STREAM.MSG.DELETE.%s"
 	JSApiMsgGetT               = "$JS.API.STREAM.MSG.GET.%s"
+	JSApiMsgGet                = "$JS.API.STREAM.MSG.GET.*"
 	JSApiStreamSnapshotT       = "$JS.API.STREAM.SNAPSHOT.%s"
+	JSApiStreamSnapshot        = "$JS.API.STREAM.SNAPSHOT.*"
 	JSApiStreamRestoreT        = "$JS.API.STREAM.RESTORE.%s"
+	JSApiStreamRestore         = "$JS.API.STREAM.RESTORE.*"
 	JSApiStreamRemovePeerT     = "$JS.API.STREAM.PEER.REMOVE.%s"
+	JSApiStreamRemovePeer      = "$JS.API.STREAM.PEER.REMOVE.*"
 	JSApiStreamLeaderStepDownT = "$JS.API.STREAM.LEADER.STEPDOWN.%s"
 	StreamDefaultReplicas      = 1
 	StreamMaxReplicas          = 5

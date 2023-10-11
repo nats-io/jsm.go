@@ -121,6 +121,10 @@ func (m *Manager) jsonRequest(subj string, req any, response any) (err error) {
 		if err != nil {
 			return err
 		}
+
+		if string(body) == "null" {
+			body = nil
+		}
 	}
 
 	msg, err := m.request(m.apiSubject(subj), body)

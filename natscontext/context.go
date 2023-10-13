@@ -357,7 +357,7 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 		return nil, err
 	}
 
-	if u.Path != "" {
+	if u.IsAbs() && u.Path != "" {
 		nopts = append(nopts, nats.ProxyPath(u.Path))
 	}
 

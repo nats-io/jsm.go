@@ -698,6 +698,10 @@
                         }
                       }
                     }
+                  },
+                  "raft_group": {
+                    "type": "string",
+                    "description": "In clustered environments the name of the Raft group managing the asset"
                   }
                 }
               },

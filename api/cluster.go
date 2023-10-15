@@ -58,9 +58,10 @@ type JSApiAccountPurgeResponse struct {
 // ClusterInfo shows information about the underlying set of servers
 // that make up the stream or consumer.
 type ClusterInfo struct {
-	Name     string      `json:"name,omitempty" yaml:"name"`
-	Leader   string      `json:"leader,omitempty" yaml:"leader"`
-	Replicas []*PeerInfo `json:"replicas,omitempty" yaml:"replicas"`
+	Name      string      `json:"name,omitempty" yaml:"name"`
+	RaftGroup string      `json:"raft_group,omitempty"`
+	Leader    string      `json:"leader,omitempty" yaml:"leader"`
+	Replicas  []*PeerInfo `json:"replicas,omitempty" yaml:"replicas"`
 }
 
 // PeerInfo shows information about all the peers in the cluster that

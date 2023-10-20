@@ -792,7 +792,7 @@ func (c *Context) SocksProxy() string {
 }
 
 // WithTLSHandshakeFirst configures the client to send TLS handshakes before waiting for server INFO
-func (c *Context) WithTLSHandshakeFirst() Option {
+func WithTLSHandshakeFirst() Option {
 	return func(s *settings) {
 		s.TLSFirst = true
 	}

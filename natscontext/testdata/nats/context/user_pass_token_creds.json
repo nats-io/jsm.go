@@ -16,5 +16,6 @@
   "jetstream_event_prefix": "",
   "inbox_prefix": "",
   "user_jwt": "",
-  "color_scheme": ""
+  "color_scheme": "",
+  "tls_first": false
 }

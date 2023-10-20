@@ -65,6 +65,7 @@ type settings struct {
 	InboxPrefix   string `json:"inbox_prefix"`
 	UserJwt       string `json:"user_jwt"`
 	ColorScheme   string `json:"color_scheme"`
+	TLSFirst      bool   `json:"tls_first"`
 }
 
 type Context struct {
@@ -350,6 +351,10 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 
 	if c.InboxPrefix() != "" {
 		nopts = append(nopts, nats.CustomInboxPrefix(c.InboxPrefix()))
+	}
+
+	if c.TLSHandshakeFirst() {
+		nopts = append(nopts, nats.TLSHandshakeFirst())
 	}
 
 	u, err := url.Parse(c.ServerURL())
@@ -808,4 +813,16 @@ func WithSocksProxy(p string) Option {
 // SocksProxy retrieves the configured SOCKS5 Proxy, empty if not set
 func (c *Context) SocksProxy() string {
 	return c.config.SocksProxy
+}
+
+// WithTLSHandshakeFirst configures the client to send TLS handshakes before waiting for server INFO
+func (c *Context) WithTLSHandshakeFirst() Option {
+	return func(s *settings) {
+		s.TLSFirst = true
+	}
+}
+
+// TLSHandshakeFirst configures the connection to do a TLS Handshake before expecting server INFO
+func (c *Context) TLSHandshakeFirst() bool {
+	return c.config.TLSFirst
 }

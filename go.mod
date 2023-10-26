@@ -10,7 +10,7 @@ require (
 	github.com/nats-io/nats-server/v2 v2.10.4-0.20231026065034-2fb1b1b6021a
 	github.com/nats-io/nats.go v1.31.0
 	github.com/nats-io/nuid v1.0.1
-	golang.org/x/net v0.15.0
+	golang.org/x/net v0.17.0
 	golang.org/x/text v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 )

@@ -558,13 +558,13 @@ type StreamConfig struct {
 	// The following defaults will apply to consumers when created against
 	// this stream, unless overridden manually. They also represent the maximum values that
 	// these properties may have
-	ConsumerLimits StreamConsumerLimits `json:"consumer_limits"`
+	ConsumerLimits StreamConsumerLimits `json:"consumer_limits" yaml:"consumer_limits"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream
 type StreamConsumerLimits struct {
-	InactiveThreshold time.Duration `json:"inactive_threshold,omitempty"`
-	MaxAckPending     int           `json:"max_ack_pending,omitempty"`
+	InactiveThreshold time.Duration `json:"inactive_threshold,omitempty" yaml:"inactive_threshold"`
+	MaxAckPending     int           `json:"max_ack_pending,omitempty" yaml:"max_ack_pending"`
 }
 
 // Placement describes stream placement requirements for a stream

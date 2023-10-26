@@ -50,6 +50,14 @@
       "type": "integer",
       "minimum": 1,
       "description": "The number of deliveries that were attempted"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain the JetStream instance managing the message is in"
+    },
+    "reason": {
+      "type": "string",
+      "description": "An optional reason indicating why the message got terminated"
     }
   }
 }

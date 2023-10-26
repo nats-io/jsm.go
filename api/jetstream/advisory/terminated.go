@@ -16,10 +16,12 @@ type JSConsumerDeliveryTerminatedAdvisoryV1 struct {
 	ConsumerSeq uint64 `json:"consumer_seq"`
 	StreamSeq   uint64 `json:"stream_seq"`
 	Deliveries  uint64 `json:"deliveries"`
+	Reason      string `json:"reason,omitempty"`
+	Domain      string `json:"domain,omitempty"`
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.terminated", `{{ .Time | ShortTime }} [JS Delivery Terminated] {{ .Stream }} ({{ .StreamSeq }}) > {{ .Consumer }}: {{ .Deliveries }} deliveries`)
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.terminated", `{{ .Time | ShortTime }} [JS Delivery Terminated] {{ .Stream }} ({{ .StreamSeq }}) > {{ .Consumer }}: {{ .Deliveries }} deliveries{{ if .Reason }}: {{ .Reason }}{{ end }}`)
 	if err != nil {
 		panic(err)
 	}
@@ -29,7 +31,11 @@ func init() {
 
           Consumer: {{ .Stream }} > {{ .Consumer }}
    Stream Sequence: {{ .StreamSeq }}
-        Deliveries: {{ .Deliveries }}`)
+        Deliveries: {{ .Deliveries }}
+{{- if .Reason}}
+            Reason: {{ .Reason }}
+{{- end }}
+`)
 	if err != nil {
 		panic(err)
 	}

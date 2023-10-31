@@ -30,7 +30,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -355,15 +354,6 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 
 	if c.TLSHandshakeFirst() {
 		nopts = append(nopts, nats.TLSHandshakeFirst())
-	}
-
-	u, err := url.Parse(c.ServerURL())
-	if err != nil {
-		return nil, err
-	}
-
-	if u.IsAbs() && u.Path != "" {
-		nopts = append(nopts, nats.ProxyPath(u.Path))
 	}
 
 	nopts = append(nopts, opts...)

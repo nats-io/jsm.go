@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats.go"
@@ -94,20 +95,23 @@ func (i *Instance) jetstreamHandler(msg *nats.Msg) {
 		}
 	}
 
-	newMsg := nats.NewMsg(apiSubject)
-	newMsg.Reply = msg.Reply
-	newMsg.Data = msg.Data
-	newMsg.Header = msg.Header
+	go func(msg *nats.Msg) {
+		newMsg := nats.NewMsg(apiSubject)
+		newMsg.Data = msg.Data
+		newMsg.Header = msg.Header
 
-	i.log.Infof("Forwarding %s to %s via %s", msg.Subject, newMsg.Subject, newMsg.Reply)
-	err := i.nc.PublishMsg(newMsg)
-	if err != nil {
-		log.Printf("Publish failed: %v", err)
-	}
-	err = i.nc.Flush()
-	if err != nil {
-		log.Printf("Flush failed: %v", err)
-	}
+		i.log.Infof("Proxying %s to %s via %s", msg.Subject, newMsg.Subject, newMsg.Reply)
+		resp, err := i.nc.RequestMsg(newMsg, 2*time.Second)
+		if err != nil {
+			log.Printf("Publishing proxied request failed: %v", err)
+		}
+
+		resp.Subject = msg.Reply
+		err = i.nc.PublishMsg(resp)
+		if err != nil {
+			log.Printf("Publishing reply failed: %v", err)
+		}
+	}(msg)
 }
 
 func (i *Instance) lookupHandler(msg *nats.Msg) {

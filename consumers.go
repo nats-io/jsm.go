@@ -420,11 +420,14 @@ func MaxDeliveryAttempts(n int) ConsumerOption {
 func FilterStreamBySubject(s ...string) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
 		if len(s) == 1 {
+			// If there is only one filter, reset the multiple subjects filter.
+			o.FilterSubjects = nil
 			o.FilterSubject = s[0]
 		} else {
-			o.FilterSubjects = append(o.FilterSubjects, s...)
+			// If there are more subjects, reset the single subject filter.
+			o.FilterSubject = ""
+			o.FilterSubjects = s
 		}
-
 		return nil
 	}
 }

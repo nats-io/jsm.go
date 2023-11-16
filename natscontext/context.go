@@ -477,6 +477,25 @@ func ctxDir(parent string) string {
 	return filepath.Join(parent, "nats", "context")
 }
 
+func UnSelectContext() error {
+	currentCtx := SelectedContext()
+	if currentCtx == "" {
+		return nil
+	}
+
+	parent, err := parentDir()
+	if err != nil {
+		return err
+	}
+
+	err = setPreviousContext(parent, currentCtx)
+	if err != nil {
+		return err
+	}
+
+	return os.Remove(filepath.Join(parent, "nats", selectedCtxFile))
+}
+
 // SelectContext sets the given context to be the default, error if it does not exist
 func SelectContext(name string) error {
 	if !validName(name) {
@@ -507,6 +526,10 @@ func SelectContext(name string) error {
 }
 
 func setPreviousContext(parent string, name string) error {
+	if name == "" {
+		return nil
+	}
+
 	return os.WriteFile(filepath.Join(parent, "nats", previousCtxFile), []byte(name), 0600)
 }
 

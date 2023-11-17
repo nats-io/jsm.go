@@ -484,7 +484,7 @@ func SubjectTransform(subjectTransform *api.SubjectTransformConfig) StreamOption
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
-	if s.Retention() == api.WorkQueuePolicy && !s.DeleteAllowed() {
+	if s.Retention() == api.WorkQueuePolicy && !s.DirectAllowed() {
 		return nil, fmt.Errorf("work queue retention streams can only be paged if direct access is allowed")
 	}
 

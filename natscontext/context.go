@@ -397,6 +397,9 @@ func (c *Context) loadActiveContext() error {
 		return err
 	}
 
+	// performing environment variable expansion for the path of the cerds.
+	c.config.Creds = os.ExpandEnv(c.config.Creds)
+
 	if c.config.NSCLookup != "" {
 		err := c.resolveNscLookup()
 		if err != nil {

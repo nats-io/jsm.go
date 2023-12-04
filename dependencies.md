@@ -4,7 +4,7 @@ This file lists the dependencies used in this repository.
 
 | Dependency                     | License                                 |
 |--------------------------------|-----------------------------------------|
-| github.com/antonmedv/expr      | MIT License                             |
+| github.com/expr-lang/expr      | MIT License                             |
 | github.com/dustin/go-humanize  | MIT License                             |
 | github.com/google/go-cmp       | BSD 3-Clause "New" or "Revised" License |
 | github.com/klauspost/compress  | BSD 3-Clause "New" or "Revised" License |

@@ -606,6 +606,10 @@ func (c *Context) Validate() error {
 		}
 	}
 
+	if c.config.WinCertStoreType != "" && c.config.WinCertStoreMatch == "" {
+		return fmt.Errorf("windows certificate store requires a matcher")
+	}
+
 	return nil
 }
 
@@ -906,6 +910,9 @@ func (c *Context) WithWindowsCertStore(storeType string) Option {
 	}
 }
 
+// WindowsCertStore indicates if the cert store should be used and which type
+func (c *Context) WindowsCertStore() string { return c.config.WinCertStoreType }
+
 // WithWindowsCertStoreMatchBy configures Matching behavior for Windows Certificate Store. Valid values are "issuer" or "subject"
 func (c *Context) WithWindowsCertStoreMatchBy(matchBy string) Option {
 	return func(s *settings) {
@@ -913,9 +920,15 @@ func (c *Context) WithWindowsCertStoreMatchBy(matchBy string) Option {
 	}
 }
 
+// WindowsCertStoreMatchBy indicates which property will be used to search in the store
+func (c *Context) WindowsCertStoreMatchBy() string { return c.config.WinCertStoreMatchBy }
+
 // WithWindowsCertStoreMatch configures the matcher query to select certificates with, see WithWindowsCertStoreMatchBy
 func (c *Context) WithWindowsCertStoreMatch(match string) Option {
 	return func(s *settings) {
 		c.config.WinCertStoreMatch = match
 	}
 }
+
+// WindowsCertStoreMatch is the string to use when searching a certificate in the windows certificate store
+func (c *Context) WindowsCertStoreMatch() string { return c.config.WinCertStoreMatch }

@@ -1,4 +1,4 @@
-// Copyright 2020 The NATS Authors
+// Copyright 2020-2023 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -27,6 +27,7 @@
 package natscontext
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,34 +38,38 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/nats-io/nats-server/v2/server/certstore"
 	"github.com/nats-io/nats.go"
 )
 
 type Option func(c *settings)
 
 type settings struct {
-	Name          string `json:"name,omitempty"`
-	Description   string `json:"description"`
-	URL           string `json:"url"`
-	nscUrl        string
-	SocksProxy    string `json:"socks_proxy"`
-	Token         string `json:"token"`
-	User          string `json:"user"`
-	Password      string `json:"password"`
-	Creds         string `json:"creds"`
-	nscCreds      string
-	NKey          string `json:"nkey"`
-	Cert          string `json:"cert"`
-	Key           string `json:"key"`
-	CA            string `json:"ca"`
-	NSCLookup     string `json:"nsc"`
-	JSDomain      string `json:"jetstream_domain"`
-	JSAPIPrefix   string `json:"jetstream_api_prefix"`
-	JSEventPrefix string `json:"jetstream_event_prefix"`
-	InboxPrefix   string `json:"inbox_prefix"`
-	UserJwt       string `json:"user_jwt"`
-	ColorScheme   string `json:"color_scheme"`
-	TLSFirst      bool   `json:"tls_first"`
+	Name                string `json:"name,omitempty"`
+	Description         string `json:"description"`
+	URL                 string `json:"url"`
+	nscUrl              string
+	SocksProxy          string `json:"socks_proxy"`
+	Token               string `json:"token"`
+	User                string `json:"user"`
+	Password            string `json:"password"`
+	Creds               string `json:"creds"`
+	nscCreds            string
+	NKey                string `json:"nkey"`
+	Cert                string `json:"cert"`
+	Key                 string `json:"key"`
+	CA                  string `json:"ca"`
+	NSCLookup           string `json:"nsc"`
+	JSDomain            string `json:"jetstream_domain"`
+	JSAPIPrefix         string `json:"jetstream_api_prefix"`
+	JSEventPrefix       string `json:"jetstream_event_prefix"`
+	InboxPrefix         string `json:"inbox_prefix"`
+	UserJwt             string `json:"user_jwt"`
+	ColorScheme         string `json:"color_scheme"`
+	TLSFirst            bool   `json:"tls_first"`
+	WinCertStoreType    string `json:"windows_cert_store"`
+	WinCertStoreMatchBy string `json:"windows_cert_match_by"`
+	WinCertStoreMatch   string `json:"windows_cert_match"`
 }
 
 type Context struct {
@@ -356,9 +361,46 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 		nopts = append(nopts, nats.TLSHandshakeFirst())
 	}
 
+	csOpts, err := c.certStoreNatsOptions()
+	if err != nil {
+		return nil, err
+	}
+	nopts = append(nopts, csOpts...)
+
 	nopts = append(nopts, opts...)
 
 	return nopts, nil
+}
+
+func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
+	if c.config.WinCertStoreType == "" {
+		return nil, nil
+	}
+
+	storeTypeString := c.config.WinCertStoreType
+	switch storeTypeString {
+	case "machine":
+		storeTypeString = "windowslocalmachine"
+	case "user":
+		storeTypeString = "windowscurrentuser"
+	}
+	storeType, err := certstore.ParseCertStore(storeTypeString)
+	if err != nil {
+		return nil, err
+	}
+
+	matchBy, err := certstore.ParseCertMatchBy(c.config.WinCertStoreMatchBy)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsc := &tls.Config{}
+	err = certstore.TLSConfig(storeType, matchBy, c.config.WinCertStoreMatch, tlsc)
+	if err != nil {
+		return nil, err
+	}
+
+	return []nats.Option{nats.Secure(tlsc)}, nil
 }
 
 func (c *Context) loadActiveContext() error {
@@ -548,6 +590,20 @@ func (c *Context) Validate() error {
 
 	if numCreds(c) > 1 {
 		return errors.New("too many types of credentials. Choose only one from 'user/token', 'creds', 'nkey', 'nsc'")
+	}
+
+	if c.config.WinCertStoreType != "" {
+		_, err := certstore.ParseCertStore(c.config.WinCertStoreType)
+		if err != nil {
+			return err
+		}
+	}
+
+	if c.config.WinCertStoreMatchBy != "" {
+		_, err := certstore.ParseCertMatchBy(c.config.WinCertStoreMatchBy)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -841,4 +897,25 @@ func WithTLSHandshakeFirst() Option {
 // TLSHandshakeFirst configures the connection to do a TLS Handshake before expecting server INFO
 func (c *Context) TLSHandshakeFirst() bool {
 	return c.config.TLSFirst
+}
+
+// WithWindowsCertStore configures TLS to use a Windows Certificate Store. Valid values are "user" or "machine"
+func (c *Context) WithWindowsCertStore(storeType string) Option {
+	return func(s *settings) {
+		c.config.WinCertStoreType = storeType
+	}
+}
+
+// WithWindowsCertStoreMatchBy configures Matching behavior for Windows Certificate Store. Valid values are "issuer" or "subject"
+func (c *Context) WithWindowsCertStoreMatchBy(matchBy string) Option {
+	return func(s *settings) {
+		c.config.WinCertStoreMatchBy = matchBy
+	}
+}
+
+// WithWindowsCertStoreMatch configures the matcher query to select certificates with, see WithWindowsCertStoreMatchBy
+func (c *Context) WithWindowsCertStoreMatch(match string) Option {
+	return func(s *settings) {
+		c.config.WinCertStoreMatch = match
+	}
 }

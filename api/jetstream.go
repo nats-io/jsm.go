@@ -102,11 +102,13 @@ type JSApiAccountInfoResponse struct {
 }
 
 type JetStreamTier struct {
-	Memory    uint64                 `json:"memory"`
-	Store     uint64                 `json:"storage"`
-	Streams   int                    `json:"streams"`
-	Consumers int                    `json:"consumers"`
-	Limits    JetStreamAccountLimits `json:"limits"`
+	Memory         uint64                 `json:"memory"`
+	Store          uint64                 `json:"storage"`
+	ReservedMemory uint64                 `json:"reserved_memory"`
+	ReservedStore  uint64                 `json:"reserved_storage"`
+	Streams        int                    `json:"streams"`
+	Consumers      int                    `json:"consumers"`
+	Limits         JetStreamAccountLimits `json:"limits"`
 }
 
 // JetStreamAccountStats returns current statistics about the account's JetStream usage.

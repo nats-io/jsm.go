@@ -119,6 +119,16 @@
                   "type": "integer",
                   "minimum": 0
                 },
+                "reserved_memory": {
+                  "description": "Bytes that is reserved for memory usage by this account on the server",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "reserved_storage": {
+                  "description": "Bytes that is reserved for disk usage by this account on the server",
+                  "type": "integer",
+                  "minimum": 0
+                },
                 "streams": {
                   "description": "Number of active Streams",
                   "type": "integer",

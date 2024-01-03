@@ -28,6 +28,7 @@ package natscontext
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -398,6 +399,28 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 	err = certstore.TLSConfig(storeType, matchBy, c.config.WinCertStoreMatch, tlsc)
 	if err != nil {
 		return nil, err
+	}
+
+	// the nats RootCAs() will not be called for custom tlsc so
+	// we have to basically replace that logic here our own
+	// since the current cert store feature in the server package
+	// does not support loading CAs from it
+	if c.config.CA != "" {
+		rootCAs, _ := x509.SystemCertPool()
+		if rootCAs == nil {
+			rootCAs = x509.NewCertPool()
+		}
+
+		certs, err := os.ReadFile(c.config.CA)
+		if err != nil {
+			return nil, err
+		}
+
+		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+			return nil, fmt.Errorf("failed to append CA certificates from %s", c.config.CA)
+		}
+
+		tlsc.RootCAs = rootCAs
 	}
 
 	return []nats.Option{nats.Secure(tlsc)}, nil

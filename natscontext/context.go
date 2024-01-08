@@ -934,7 +934,9 @@ func (c *Context) TLSHandshakeFirst() bool {
 // WithWindowsCertStore configures TLS to use a Windows Certificate Store. Valid values are "user" or "machine"
 func WithWindowsCertStore(storeType string) Option {
 	return func(s *settings) {
-		s.WinCertStoreType = storeType
+		if storeType != "" {
+			s.WinCertStoreType = storeType
+		}
 	}
 }
 
@@ -944,7 +946,9 @@ func (c *Context) WindowsCertStore() string { return c.config.WinCertStoreType }
 // WithWindowsCertStoreMatchBy configures Matching behavior for Windows Certificate Store. Valid values are "issuer" or "subject"
 func WithWindowsCertStoreMatchBy(matchBy string) Option {
 	return func(s *settings) {
-		s.WinCertStoreMatchBy = matchBy
+		if matchBy != "" {
+			s.WinCertStoreMatchBy = matchBy
+		}
 	}
 }
 
@@ -954,7 +958,9 @@ func (c *Context) WindowsCertStoreMatchBy() string { return c.config.WinCertStor
 // WithWindowsCertStoreMatch configures the matcher query to select certificates with, see WithWindowsCertStoreMatchBy
 func WithWindowsCertStoreMatch(match string) Option {
 	return func(s *settings) {
-		s.WinCertStoreMatch = match
+		if match != "" {
+			s.WinCertStoreMatch = match
+		}
 	}
 }
 

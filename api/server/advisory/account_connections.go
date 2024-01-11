@@ -22,7 +22,7 @@ type AccountConnectionsV1 struct {
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.server.advisory.v1.account_connections", `{{ .Time | ShortTime }} [Account] {{ .Account }} Server: {{ .Server.Name }} Connections: {{ .Conns }} Leaf Nodes: {{ .LeafNodes }}`)
+	err := event.RegisterTextCompactTemplate("io.nats.server.advisory.v1.account_connections", `{{ .Time | ShortTime }} [Account] {{ .Account }} Server: {{ .Server.Name }} Connections: {{ .Conns }} Leaf Nodes: {{ .LeafNodes }} Slow: {{ .SlowConsumers |Int64Commas  }} Sent: {{ .Sent.Msgs | Int64Commas }} / {{ .Sent.Bytes | IBytes }} Received: {{ .Received.Msgs | Int64Commas }} / {{ .Received.Bytes | IBytes }}`)
 	if err != nil {
 		panic(err)
 	}
@@ -40,9 +40,9 @@ func init() {
 {{- if .Received }}
 
    Stats:
-            Received: {{ .Received.Msgs }} messages ({{ .Received.Bytes | IBytes }})
-           Published: {{ .Sent.Msgs }} messages ({{ .Sent.Bytes | IBytes }})
-      Slow Consumers: {{ .SlowConsumers }}
+            Received: {{ .Received.Msgs | Int64Commas }} messages ({{ .Received.Bytes | IBytes }})
+           Published: {{ .Sent.Msgs | Int64Commas}} messages ({{ .Sent.Bytes | IBytes }})
+      Slow Consumers: {{ .SlowConsumers |Int64Commas  }}
 {{- end }}`)
 	if err != nil {
 		panic(err)

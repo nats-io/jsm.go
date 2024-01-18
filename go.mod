@@ -4,13 +4,13 @@ go 1.20
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/expr-lang/expr v1.15.6
+	github.com/expr-lang/expr v1.15.8
 	github.com/google/go-cmp v0.6.0
 	github.com/klauspost/compress v1.17.4
 	github.com/nats-io/nats-server/v2 v2.10.9
-	github.com/nats-io/nats.go v1.31.0
+	github.com/nats-io/nats.go v1.32.0
 	github.com/nats-io/nuid v1.0.1
-	golang.org/x/net v0.19.0
+	golang.org/x/net v0.20.0
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )

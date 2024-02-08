@@ -203,6 +203,7 @@ func main() {
 		&schema{P: "jetstream/advisory/v1/restore_complete.json", St: "jsadvisory.JSRestoreCompleteAdvisoryV1"},
 		&schema{P: "jetstream/advisory/v1/stream_leader_elected.json", St: "jsadvisory.JSStreamLeaderElectedV1"},
 		&schema{P: "jetstream/advisory/v1/consumer_leader_elected.json", St: "jsadvisory.JSConsumerLeaderElectedV1"},
+		&schema{P: "jetstream/advisory/v1/domain_leader_elected.json", St: "jsadvisory.JSDomainLeaderElectedV1"},
 		&schema{P: "jetstream/advisory/v1/stream_quorum_lost.json", St: "jsadvisory.JSStreamQuorumLostV1"},
 		&schema{P: "jetstream/advisory/v1/consumer_quorum_lost.json", St: "jsadvisory.JSConsumerQuorumLostV1"},
 		&schema{P: "jetstream/advisory/v1/server_out_of_space.json", St: "jsadvisory.JSServerOutOfSpaceAdvisoryV1"},

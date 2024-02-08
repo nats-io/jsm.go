@@ -6,8 +6,8 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.15.8
 	github.com/google/go-cmp v0.6.0
-	github.com/klauspost/compress v1.17.4
-	github.com/nats-io/nats-server/v2 v2.10.9
+	github.com/klauspost/compress v1.17.5
+	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20240207201315-f703123c4b88
 	github.com/nats-io/nats.go v1.32.0
 	github.com/nats-io/nuid v1.0.1
 	golang.org/x/net v0.20.0

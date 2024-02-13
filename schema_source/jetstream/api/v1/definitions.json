@@ -636,6 +636,14 @@
         "push_bound": {
           "description": "Indicates if any client is connected and receiving messages from a push consumer",
           "type": "boolean"
+        },
+        "paused": {
+          "description": "Indicates if the consumer is currently in a paused state",
+          "type": "boolean"
+        },
+        "pause_until": {
+          "description": "A deadline time for when the consumer will be paused. Only usable if 'paused' is true",
+          "$ref": "#/definitions/golang_time"
         }
       }
     },
@@ -780,6 +788,10 @@
           "description": "Additional metadata for the Consumer",
           "type": "object",
           "additionalProperties": { "type": "string" }
+        },
+        "pause_until": {
+          "description": "When creating a consumer supplying a time in the future will act as a deadline for when the consumer will be paused till",
+          "$ref": "#/definitions/golang_time"
         }
       }
     },

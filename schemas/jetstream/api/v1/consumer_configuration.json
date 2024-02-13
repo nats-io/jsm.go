@@ -278,6 +278,12 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "pause_until": {
+      "description": "When creating a consumer supplying a time in the future will act as a deadline for when the consumer will be paused till",
+      "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+      "type": "string",
+      "format": "date-time"
     }
   }
 }

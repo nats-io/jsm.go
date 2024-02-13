@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://nats.io/schemas/jetstream/api/v1/meta_account_purge_response.json",
-  "description": "A response from the JetStream $JS.API.ACCOUNT.PURGE API",
-  "title": "io.nats.jetstream.api.v1.account_purge_response",
+  "$id": "https://nats.io/schemas/jetstream/api/v1/consumer_pause_response.json",
+  "description": "A response from the JetStream $JS.API.CONSUMER.PAUSE API",
+  "title": "io.nats.jetstream.api.v1.consumer_pause_response",
   "type": "object",
   "oneOf": [
     {
@@ -40,10 +40,22 @@
     {
       "type": "object",
       "properties": {
-        "initiated": {
-          "type": "boolean",
-          "description": "If the purge operation was successfully started",
-          "default": false
+        "paused": {
+          "description": "Indicates if after parsing the pause_until property if the consumer was paused",
+          "type": "boolean"
+        },
+        "pause_until": {
+          "description": "The deadline till the consumer will be unpaused, only usable if 'paused' is true",
+          "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+          "type": "string",
+          "format": "date-time"
+        },
+        "pause_remaining": {
+          "description": "When paused the time remaining until unpause",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
         }
       }
     }
@@ -51,7 +63,7 @@
   "properties": {
     "type": {
       "type": "string",
-      "const": "io.nats.jetstream.api.v1.account_purge_response"
+      "const": "io.nats.jetstream.api.v1.consumer_pause_response"
     }
   }
 }

@@ -618,6 +618,13 @@ func ConsumerMetadata(meta map[string]string) ConsumerOption {
 	}
 }
 
+func PauseUntil(deadline time.Time) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.PauseUntil = deadline
+		return nil
+	}
+}
+
 // UpdateConfiguration updates the consumer configuration
 // At present the description, ack wait, max deliver, sample frequency, max ack pending, max waiting and header only settings can be changed
 func (c *Consumer) UpdateConfiguration(opts ...ConsumerOption) error {
@@ -888,6 +895,43 @@ func (c *Consumer) LeaderStepDown() error {
 	return nil
 }
 
+// Pause requests a consumer be paused until the deadline, if it fails to pause an error is returned.
+//
+// A common reason for failures is when a time is supplied that is in the past from the perspective of the server
+func (c *Consumer) Pause(deadline time.Time) (*api.JSApiConsumerPauseResponse, error) {
+	var resp *api.JSApiConsumerPauseResponse
+	req := api.JSApiConsumerPauseRequest{
+		PauseUntil: deadline,
+	}
+
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiconsumerPauseT, c.StreamName(), c.Name()), &req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Paused {
+		return nil, fmt.Errorf("pause request failed, perhaps due to a time in the past")
+	}
+
+	return resp, nil
+}
+
+// Resume requests the server resumes a paused consumer
+func (c *Consumer) Resume() error {
+	var resp *api.JSApiConsumerPauseResponse
+
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiconsumerPauseT, c.StreamName(), c.Name()), nil, &resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.Paused {
+		return fmt.Errorf("pause request failed for an unknown reason")
+	}
+
+	return nil
+}
+
 func (c *Consumer) Name() string                     { return c.name }
 func (c *Consumer) IsSampled() bool                  { return c.SampleFrequency() != "" }
 func (c *Consumer) IsPullMode() bool                 { return c.cfg.DeliverSubject == "" }
@@ -922,6 +966,7 @@ func (c *Consumer) InactiveThreshold() time.Duration { return c.cfg.InactiveThre
 func (c *Consumer) Replicas() int                    { return c.cfg.Replicas }
 func (c *Consumer) Metadata() map[string]string      { return c.cfg.Metadata }
 func (c *Consumer) MemoryStorage() bool              { return c.cfg.MemoryStorage }
+func (c *Consumer) PauseUntil() time.Time            { return c.cfg.PauseUntil }
 func (c *Consumer) StartTime() time.Time {
 	if c.cfg.OptStartTime == nil {
 		return time.Time{}

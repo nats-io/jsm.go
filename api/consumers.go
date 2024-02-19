@@ -38,6 +38,7 @@ const (
 	JSApiRequestNextT                      = "$JS.API.CONSUMER.MSG.NEXT.%s.%s"
 	JSApiRequestNext                       = "$JS.API.CONSUMER.MSG.NEXT.*.*"
 	JSApiConsumerLeaderStepDownT           = "$JS.API.CONSUMER.LEADER.STEPDOWN.%s.%s"
+	JSApiconsumerPauseT                    = "$JS.API.CONSUMER.PAUSE.%s.%s"
 	JSMetricConsumerAckPre                 = JSMetricPrefix + ".CONSUMER.ACK"
 	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"
 )
@@ -148,6 +149,19 @@ type JSApiConsumerListResponse struct {
 type JSApiConsumerLeaderStepDownResponse struct {
 	JSApiResponse
 	Success bool `json:"success,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.consumer_pause_request
+type JSApiConsumerPauseRequest struct {
+	PauseUntil time.Time `json:"pause_until,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.consumer_pause_response
+type JSApiConsumerPauseResponse struct {
+	JSApiResponse
+	Paused         bool          `json:"paused"`
+	PauseUntil     time.Time     `json:"pause_until"`
+	PauseRemaining time.Duration `json:"pause_remaining,omitempty"`
 }
 
 type AckPolicy int
@@ -352,6 +366,9 @@ type ConsumerConfig struct {
 	// Metadata is additional metadata for the Consumer.
 	Metadata map[string]string `json:"metadata,omitempty"`
 
+	// PauseUntil is for suspending the consumer until the deadline.
+	PauseUntil time.Time `json:"pause_until,omitempty"`
+
 	// Don't add to general clients.
 	Direct bool `json:"direct,omitempty"`
 }
@@ -377,6 +394,8 @@ type ConsumerInfo struct {
 	NumPending     uint64         `json:"num_pending"`
 	Cluster        *ClusterInfo   `json:"cluster,omitempty"`
 	PushBound      bool           `json:"push_bound,omitempty"`
+	Paused         bool           `json:"paused,omitempty"`
+	PauseRemaining time.Duration  `json:"pause_remaining,omitempty"`
 	TimeStamp      time.Time      `json:"ts"`
 }
 

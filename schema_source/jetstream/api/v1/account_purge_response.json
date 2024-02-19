@@ -13,7 +13,7 @@
       "properties": {
         "initiated": {
           "type": "boolean",
-          "description": "If the purge operation was succesfully started",
+          "description": "If the purge operation was successfully started",
           "default": false
         }
       }

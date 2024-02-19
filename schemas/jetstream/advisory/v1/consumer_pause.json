@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/advisory/v1/consumer_pause.json",
+  "description": "An Advisory sent when consumer is paused or resumed",
+  "title": "io.nats.jetstream.advisory.v1.consumer_pause",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "timestamp",
+    "stream",
+    "consumer",
+    "paused"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "io.nats.jetstream.advisory.v1.consumer_pause"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique correlation ID for this event"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "The time this event was created in RFC3339 format"
+    },
+    "stream": {
+      "type": "string",
+      "description": "The name of the Stream the Consumer belongs to"
+    },
+    "consumer": {
+      "type": "string",
+      "description": "The name of the Consumer that elected a new leader"
+    },
+    "paused": {
+      "type": "boolean",
+      "description": "Indicates the consumer is paused"
+    },
+    "pause_until": {
+      "description": "When paused the time the consumer will be unpaused, RFC3339 format",
+      "type": "string"
+    },
+    "domain": {
+      "description": "The domain hosting the Stream and Consumer if configured",
+      "type": "string"
+    }
+  }
+}

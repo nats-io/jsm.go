@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dustin/go-humanize"
 	"io"
 	"log"
 	"math"
@@ -90,6 +91,13 @@ func SnapshotDebug() SnapshotOption {
 func RestoreConfiguration(cfg api.StreamConfig) SnapshotOption {
 	return func(o *snapshotOptions) {
 		o.restoreConfig = &cfg
+	}
+}
+
+// SnapshotChunkSize sets the size of messages holding data the server will send, good values are 64KB and 128KB
+func SnapshotChunkSize(sz int) SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.chunkSz = sz
 	}
 }
 
@@ -567,6 +575,12 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 		}
 
 		if m.Reply != "" {
+			if sopts.debug {
+				progress.Lock()
+				log.Printf("Responding to server subject %s %s chunks, last chunk size %s", m.Reply, humanize.Comma(int64(progress.chunksReceived)), humanize.IBytes(uint64(len(m.Data))))
+				progress.Unlock()
+			}
+
 			m.Respond(nil)
 		}
 	})

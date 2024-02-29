@@ -555,7 +555,9 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 	sub, err := s.mgr.nc.Subscribe(ib, func(m *nats.Msg) {
 		if len(m.Data) == 0 {
 			m.Sub.Unsubscribe()
-			cancel()
+			if m.Header.Get("Status") == "408" {
+				errc <- fmt.Errorf("backup failed: %v", m.Header.Get("Description"))
+			}
 			return
 		}
 
@@ -595,6 +597,7 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 		if sopts.debug {
 			log.Printf("Snapshot Error: %s", err)
 		}
+		cancel()
 
 		return progress, err
 	case <-sctx.Done():

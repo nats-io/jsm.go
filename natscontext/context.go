@@ -319,7 +319,9 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 		}
 
 		nopts = append(nopts, nko)
-	case c.Token() != "":
+	}
+
+	if c.Token() != "" {
 		nopts = append(nopts, nats.Token(c.Token()))
 	}
 

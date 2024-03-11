@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/expr-lang/expr"
 	"gopkg.in/yaml.v3"
 )
 

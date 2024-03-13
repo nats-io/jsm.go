@@ -56,21 +56,22 @@ type settings struct {
 	Password            string `json:"password"`
 	Creds               string `json:"creds"`
 	nscCreds            string
-	NKey                string `json:"nkey"`
-	Cert                string `json:"cert"`
-	Key                 string `json:"key"`
-	CA                  string `json:"ca"`
-	NSCLookup           string `json:"nsc"`
-	JSDomain            string `json:"jetstream_domain"`
-	JSAPIPrefix         string `json:"jetstream_api_prefix"`
-	JSEventPrefix       string `json:"jetstream_event_prefix"`
-	InboxPrefix         string `json:"inbox_prefix"`
-	UserJwt             string `json:"user_jwt"`
-	ColorScheme         string `json:"color_scheme"`
-	TLSFirst            bool   `json:"tls_first"`
-	WinCertStoreType    string `json:"windows_cert_store"`
-	WinCertStoreMatchBy string `json:"windows_cert_match_by"`
-	WinCertStoreMatch   string `json:"windows_cert_match"`
+	NKey                string   `json:"nkey"`
+	Cert                string   `json:"cert"`
+	Key                 string   `json:"key"`
+	CA                  string   `json:"ca"`
+	NSCLookup           string   `json:"nsc"`
+	JSDomain            string   `json:"jetstream_domain"`
+	JSAPIPrefix         string   `json:"jetstream_api_prefix"`
+	JSEventPrefix       string   `json:"jetstream_event_prefix"`
+	InboxPrefix         string   `json:"inbox_prefix"`
+	UserJwt             string   `json:"user_jwt"`
+	ColorScheme         string   `json:"color_scheme"`
+	TLSFirst            bool     `json:"tls_first"`
+	WinCertStoreType    string   `json:"windows_cert_store"`
+	WinCertStoreMatchBy string   `json:"windows_cert_match_by"`
+	WinCertStoreMatch   string   `json:"windows_cert_match"`
+	WinCertStoreCaMatch []string `json:"windows_ca_certs_match"`
 }
 
 type Context struct {
@@ -403,16 +404,13 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 	}
 
 	tlsc := &tls.Config{}
-	err = certstore.TLSConfig(storeType, matchBy, c.config.WinCertStoreMatch, tlsc)
+	err = certstore.TLSConfig(storeType, matchBy, c.config.WinCertStoreMatch, c.config.WinCertStoreCaMatch, tlsc)
 	if err != nil {
 		return nil, err
 	}
 
-	// the nats RootCAs() will not be called for custom tlsc so
-	// we have to basically replace that logic here our own
-	// since the current cert store feature in the server package
-	// does not support loading CAs from it
-	if c.config.CA != "" {
+	// if no ca match was given but we have CA as a file lets pull in that file here
+	if len(c.config.WinCertStoreCaMatch) == 0 && c.config.CA != "" {
 		rootCAs, _ := x509.SystemCertPool()
 		if rootCAs == nil {
 			rootCAs = x509.NewCertPool()
@@ -968,3 +966,15 @@ func WithWindowsCertStoreMatch(match string) Option {
 
 // WindowsCertStoreMatch is the string to use when searching a certificate in the windows certificate store
 func (c *Context) WindowsCertStoreMatch() string { return c.config.WinCertStoreMatch }
+
+// WithWindowsCaCertsMatch configures criteria used to search for Certificate Authorities in the windows certificate store
+func WithWindowsCaCertsMatch(match ...string) Option {
+	return func(s *settings) {
+		if len(match) > 0 {
+			s.WinCertStoreCaMatch = match
+		}
+	}
+}
+
+// WindowsCaCertsMatch are criteria used to search for Certificate Authorities in the windows certificate store
+func (c *Context) WindowsCaCertsMatch() []string { return c.config.WinCertStoreCaMatch }

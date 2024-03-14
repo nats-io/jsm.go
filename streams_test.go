@@ -1072,6 +1072,61 @@ func TestStream_DetectGaps(t *testing.T) {
 	}
 }
 
+func TestStream_DirectGet(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test.*"), jsm.AllowDirect())
+	checkErr(t, err, "create failed")
+
+	for i := 1; i <= 1000; i++ {
+		_, err = nc.Request(fmt.Sprintf("test.%d", i%5), []byte(fmt.Sprintf("%d", i)), time.Second)
+		checkErr(t, err, "publish failed")
+	}
+
+	check := func(t *testing.T, req api.JSApiMsgGetRequest, expectMatched, expectNumPending, expectLastSeq, expectUpToSeq uint64) {
+		t.Helper()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		matched := uint64(0)
+		numPending, lastSeq, upToSeq, err := s.DirectGet(ctx, req, func(m *nats.Msg) {
+			matched++
+		})
+		checkErr(t, err, "Request failed")
+
+		if matched != expectMatched {
+			t.Fatalf("expected %d messages, got %d", expectMatched, matched)
+		}
+		if numPending != expectNumPending {
+			t.Fatalf("expected numPending %d got %d", expectNumPending, numPending)
+		}
+		if lastSeq != expectLastSeq {
+			t.Fatalf("expected lastSeq %d got %d", expectLastSeq, lastSeq)
+		}
+		if upToSeq != expectUpToSeq {
+			t.Fatalf("expected upToSeq %d got %d", expectUpToSeq, upToSeq)
+		}
+	}
+
+	cases := []struct {
+		name                                  string
+		request                               api.JSApiMsgGetRequest
+		matched, numPending, lastSeq, upToSeq uint64
+	}{
+		{"Batch", api.JSApiMsgGetRequest{Batch: 100, Seq: 1}, 100, 0, 100, 0},
+		{"Multi Batch", api.JSApiMsgGetRequest{Batch: 100, Seq: 1, MultiLastFor: []string{">"}}, 5, 0, 1000, 1000},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			check(t, tc.request, tc.matched, tc.numPending, tc.lastSeq, tc.upToSeq)
+		})
+	}
+}
+
 func TestStreamRepublish(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

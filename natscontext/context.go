@@ -409,6 +409,11 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 		return nil, err
 	}
 
+	if tlsc.ClientCAs != nil {
+		tlsc.RootCAs = tlsc.ClientCAs
+		tlsc.ClientCAs = nil
+	}
+
 	// if no ca match was given but we have CA as a file lets pull in that file here
 	if len(c.config.WinCertStoreCaMatch) == 0 && c.config.CA != "" {
 		rootCAs, _ := x509.SystemCertPool()

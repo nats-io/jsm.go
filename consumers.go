@@ -671,6 +671,14 @@ func (c *Consumer) NextSubject() string {
 	return s
 }
 
+func DirectSubject(stream string) (string, error) {
+	if !IsValidName(stream) {
+		return "", fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
+	return fmt.Sprintf(api.JSDirectMsgGetT, stream), nil
+}
+
 // NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
 func NextSubject(stream string, consumer string) (string, error) {
 	if !IsValidName(stream) {
@@ -904,7 +912,7 @@ func (c *Consumer) Pause(deadline time.Time) (*api.JSApiConsumerPauseResponse, e
 		PauseUntil: deadline,
 	}
 
-	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiconsumerPauseT, c.StreamName(), c.Name()), &req, &resp)
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerPauseT, c.StreamName(), c.Name()), &req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -920,7 +928,7 @@ func (c *Consumer) Pause(deadline time.Time) (*api.JSApiConsumerPauseResponse, e
 func (c *Consumer) Resume() error {
 	var resp *api.JSApiConsumerPauseResponse
 
-	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiconsumerPauseT, c.StreamName(), c.Name()), nil, &resp)
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerPauseT, c.StreamName(), c.Name()), nil, &resp)
 	if err != nil {
 		return err
 	}

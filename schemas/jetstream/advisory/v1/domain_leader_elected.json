@@ -48,6 +48,11 @@
           "type": "boolean",
           "default": false
         },
+        "observer": {
+          "description": "Indicates if the server is running as an observer only",
+          "type": "boolean",
+          "default": false
+        },
         "active": {
           "description": "Nanoseconds since this peer was last seen",
           "type": "number"

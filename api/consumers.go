@@ -38,7 +38,7 @@ const (
 	JSApiRequestNextT                      = "$JS.API.CONSUMER.MSG.NEXT.%s.%s"
 	JSApiRequestNext                       = "$JS.API.CONSUMER.MSG.NEXT.*.*"
 	JSApiConsumerLeaderStepDownT           = "$JS.API.CONSUMER.LEADER.STEPDOWN.%s.%s"
-	JSApiconsumerPauseT                    = "$JS.API.CONSUMER.PAUSE.%s.%s"
+	JSApiConsumerPauseT                    = "$JS.API.CONSUMER.PAUSE.%s.%s"
 	JSMetricConsumerAckPre                 = JSMetricPrefix + ".CONSUMER.ACK"
 	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"
 )

@@ -15,8 +15,11 @@ package jsm
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -740,6 +743,108 @@ func (s *Stream) LeaderStepDown() error {
 	}
 
 	return nil
+}
+
+// DirectGet performs a direct get against the stream, supports Batch and Multi Subject behaviors
+func (s *Stream) DirectGet(ctx context.Context, req api.JSApiMsgGetRequest, handler func(msg *nats.Msg)) (numPending uint64, lastSeq uint64, upToSeq uint64, err error) {
+	if !s.DirectAllowed() {
+		return 0, 0, 0, fmt.Errorf("direct gets are not enabled for %s", s.Name())
+	}
+	if req.Batch == 0 {
+		return 0, 0, 0, fmt.Errorf("batch size is required")
+	}
+	if req.Seq == 0 {
+		req.Seq = 1
+	}
+
+	rj, err := json.Marshal(req)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	nc := s.mgr.nc
+
+	to, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+
+	timer := time.AfterFunc(s.mgr.timeout, func() {
+		cancel(fmt.Errorf("timeout waiting for messages"))
+	})
+	defer timer.Stop()
+
+	sub, err := nc.Subscribe(nc.NewRespInbox(), func(m *nats.Msg) {
+		var err error
+
+		// move the timeout forward by 1 x timeout after getting any messages
+		timer.Reset(s.mgr.timeout)
+
+		switch m.Header.Get("Status") {
+		case "204": // end of batch
+			ls := m.Header.Get("Nats-Last-Sequence")
+			upTo := m.Header.Get("Nats-UpTo-Sequence")
+			if ls != "" {
+				lastSeq, err = strconv.ParseUint(ls, 10, 64)
+				if err != nil {
+					cancel(fmt.Errorf("invalid last sequence: %w", err))
+				}
+			}
+
+			if upTo != "" {
+				upToSeq, err = strconv.ParseUint(upTo, 10, 64)
+				if err != nil {
+					cancel(fmt.Errorf("invalid up-to sequence: %w", err))
+				}
+			}
+
+			cancel(nil)
+			return
+
+		case "404": // not found
+			cancel(fmt.Errorf("no messages found matching request"))
+			return
+
+		case "408": // invalid requests
+			cancel(fmt.Errorf("invalid request"))
+			return
+
+		case "413": // too many subjects
+			cancel(fmt.Errorf("too many subjects requested"))
+			return
+		}
+
+		np := m.Header.Get("Nats-Num-Pending")
+		if np == "" {
+			cancel(fmt.Errorf("server does not support batch requests"))
+			return
+		}
+
+		handler(m)
+	})
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	defer sub.Unsubscribe()
+
+	msg := nats.NewMsg(s.DirectSubject())
+	msg.Data = rj
+	msg.Reply = sub.Subject
+
+	err = nc.PublishMsg(msg)
+
+	<-to.Done()
+
+	// if we got canceled without a error its just normal, like on EOB
+	err = context.Cause(to)
+	if errors.Is(err, context.Canceled) {
+		err = nil
+	}
+
+	return numPending, lastSeq, upToSeq, err
+}
+
+// DirectSubject is the subject to perform direct gets against
+func (s *Stream) DirectSubject() string {
+	return fmt.Sprintf(api.JSDirectMsgGetT, s.Name())
 }
 
 // DetectGaps detects interior deletes in a stream, reports progress through the stream and each found gap.

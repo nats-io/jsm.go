@@ -16,6 +16,37 @@
     "next_by_subj": {
       "type": "string",
       "description": "Combined with sequence gets the next message for a subject with the given sequence or higher"
+    },
+    "batch": {
+      "type": "integer",
+      "description": "Request a number of messages to be delivered"
+    },
+    "max_bytes": {
+      "type": "integer",
+      "description": "Restrict batch get to a certain maximum cumulative bytes, defaults to server MAX_PENDING_SIZE"
+    },
+    "start_time": {
+      "description": "Start the batch at a certain point in time rather than sequence",
+      "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+      "type": "string",
+      "format": "date-time"
+    },
+    "multi_last": {
+      "description": "Get the last messages from the supplied subjects",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "up_to_seq": {
+      "description": "Returns messages up to this sequence otherwise last sequence for the stream",
+      "type": "integer"
+    },
+    "up_to_time": {
+      "description": "Only return messages up to a point in time",
+      "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+      "type": "string",
+      "format": "date-time"
     }
   }
 }

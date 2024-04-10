@@ -117,10 +117,62 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 		domain = parts[2]
 	}
 
-	return &MsgInfo{stream, consumer, streamSeq, consumerSeq, delivered, pending, ts, domain}, nil
+	nfo := &MsgInfo{
+		stream:    stream,
+		consumer:  consumer,
+		sSeq:      streamSeq,
+		cSeq:      consumerSeq,
+		delivered: delivered,
+		pending:   pending,
+		ts:        ts,
+		domain:    domain,
+	}
+
+	return nfo, nil
+}
+
+// ParseJSMsgMetadataDirect parses the DIRECT GET headers into a MsgInfo, in this case all consumer
+// related properties will not be filled in as there is no consumer involved
+func ParseJSMsgMetadataDirect(headers nats.Header) (*MsgInfo, error) {
+	nfo := &MsgInfo{
+		stream: headers.Get("Nats-Stream"),
+	}
+
+	sSeq, err := strconv.Atoi(headers.Get("Nats-Sequence"))
+	if err != nil {
+		return nil, err
+	}
+	nfo.sSeq = uint64(sSeq)
+
+	pending := headers.Get("Nats-Num-Pending")
+	if pending != "" {
+		pc, err := strconv.Atoi(pending)
+		if err != nil {
+			return nil, err
+		}
+		nfo.pending = uint64(pc)
+	}
+
+	ts, err := time.Parse(time.RFC3339, headers.Get("Nats-Time-Stamp"))
+	if err != nil {
+		return nil, err
+	}
+	nfo.ts = ts
+
+	return &MsgInfo{}, nil
 }
 
 // ParseJSMsgMetadata parse the reply subject metadata to determine message metadata
+//
+// When given a message obtained using Direct Get APIs several fields will be filled in but
+// consumer related ones will not as there is no consumer involved in that case
 func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
-	return ParseJSMsgMetadataReply(m.Reply)
+	switch {
+	case len(m.Reply) > 0:
+		return ParseJSMsgMetadataReply(m.Reply)
+	case len(m.Header.Get("Nats-Sequence")) > 0:
+		return ParseJSMsgMetadataDirect(m.Header)
+	default:
+		return nil, fmt.Errorf("unknown metadata format")
+	}
 }

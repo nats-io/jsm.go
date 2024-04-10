@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -114,10 +115,26 @@ func (p *StreamPager) start(stream *Stream, mgr *Manager, opts ...PagerOption) e
 		return err
 	}
 
-	err = p.createConsumer()
-	if err != nil {
-		p.close()
-		return err
+	if p.useDirect {
+		if p.startSeq > 0 {
+			p.curSeq = uint64(p.startSeq)
+		} else {
+			nfo, err := p.stream.State()
+			if err != nil {
+				return err
+			}
+			p.curSeq = nfo.FirstSeq
+		}
+
+		if p.startDelta > 0 {
+			return fmt.Errorf("workqueue paging does not support time delta starting positions")
+		}
+	} else {
+		err = p.createConsumer()
+		if err != nil {
+			p.close()
+			return err
+		}
 	}
 
 	p.started = true
@@ -126,21 +143,29 @@ func (p *StreamPager) start(stream *Stream, mgr *Manager, opts ...PagerOption) e
 }
 
 func (p *StreamPager) directGetBatch() error {
-	for i := 1; i <= p.pageSize; i++ {
-		req := api.JSApiMsgGetRequest{Seq: p.curSeq, NextFor: p.filterSubject}
+	// the idea here is to fetch a batch matching page to fill up the queue but direct makes this difficult
+	// because different stream replicas can answer and also the message that causes 404 replies much faster than
+	// one that includes data so it ends up out of order and just weird
+	//
+	// so until the batch api launch we have to do a get on demand to preserve order and to handle the 404 correctly
 
-		rj, err := json.Marshal(req)
-		if err != nil {
-			return err
-		}
+	req := api.JSApiMsgGetRequest{Seq: p.curSeq, NextFor: p.filterSubject}
 
-		err = p.mgr.nc.PublishRequest(p.consumer.NextSubject(), p.sub.Subject, rj)
-		if err != nil {
-			return err
-		}
-
-		p.curSeq++
+	rj, err := json.Marshal(req)
+	if err != nil {
+		return err
 	}
+
+	if p.mgr.trace {
+		log.Printf(">>> %s\n%s\n\n", p.stream.DirectSubject(), string(rj))
+	}
+
+	err = p.mgr.nc.PublishRequest(p.stream.DirectSubject(), p.sub.Subject, rj)
+	if err != nil {
+		return err
+	}
+
+	p.curSeq++
 
 	return nil
 }
@@ -173,16 +198,21 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	if p.useDirect {
+		err = p.directGetBatch()
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
 	if p.seen == p.pageSize || p.seen == -1 {
 		p.seen = 0
 
-		if p.useDirect {
-			err = p.directGetBatch()
-		} else {
+		if !p.useDirect {
 			err = p.fetchBatch()
-		}
-		if err != nil {
-			return nil, false, err
+			if err != nil {
+				return nil, false, err
+			}
 		}
 	}
 
@@ -191,6 +221,10 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 
 	select {
 	case msg := <-p.q:
+		if p.mgr.trace {
+			log.Printf("<<< (%d) %s\n%v\n", len(msg.Data), msg.Header, string(msg.Data))
+		}
+
 		p.seen++
 
 		status := msg.Header.Get("Status")
@@ -199,13 +233,7 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 		}
 
 		if p.useDirect {
-			nfo, err := ParseJSMsgMetadata(msg)
-			if err != nil {
-				p.curSeq = nfo.StreamSequence()
-			}
-			if nfo.Pending() == 0 {
-				return msg, true, fmt.Errorf("last message reached")
-			}
+			msg.Subject = msg.Header.Get("Nats-Subject")
 		} else {
 			msg.Ack()
 		}

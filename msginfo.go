@@ -138,19 +138,19 @@ func ParseJSMsgMetadataDirect(headers nats.Header) (*MsgInfo, error) {
 		stream: headers.Get("Nats-Stream"),
 	}
 
-	sSeq, err := strconv.Atoi(headers.Get("Nats-Sequence"))
+	sSeq, err := strconv.ParseUint(headers.Get("Nats-Sequence"), 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	nfo.sSeq = uint64(sSeq)
+	nfo.sSeq = sSeq
 
 	pending := headers.Get("Nats-Num-Pending")
 	if pending != "" {
-		pc, err := strconv.Atoi(pending)
+		pc, err := strconv.ParseUint(pending, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		nfo.pending = uint64(pc)
+		nfo.pending = pc
 	}
 
 	ts, err := time.Parse(time.RFC3339, headers.Get("Nats-Time-Stamp"))

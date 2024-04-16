@@ -749,14 +749,17 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 		return err
 	}
 
-	progress(nfo.State.Msgs, 0)
+	progress(nfo.State.Msgs, nfo.State.Msgs)
 
 	if len(nfo.State.Deleted) == 0 {
 		return nil
 	}
 
 	if len(nfo.State.Deleted) == 1 {
-		gap(nfo.State.Deleted[0], nfo.State.Deleted[0])
+		seq := nfo.State.Deleted[0]
+		gap(seq, seq)
+		progress(seq, 0)
+		return nil
 	}
 
 	start := nfo.State.Deleted[0]
@@ -764,11 +767,12 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 	for i, seq := range nfo.State.Deleted {
 		progress(seq, nfo.State.Msgs-seq)
 
-		// the last message
+		// the last deleted message
 		if i == len(nfo.State.Deleted)-1 {
 			// if its part of a gap we close it off
 			if seq-1 == nfo.State.Deleted[i-1] {
 				gap(start, seq)
+				progress(seq, 0)
 				return nil
 			}
 
@@ -781,6 +785,7 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 		// end and start of a gap
 		if nfo.State.Deleted[i+1] != seq+1 {
 			gap(start, seq)
+			progress(seq, 0)
 			start = nfo.State.Deleted[i+1]
 		}
 	}

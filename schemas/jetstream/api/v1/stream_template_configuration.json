@@ -195,9 +195,6 @@
         "placement": {
           "description": "Placement directives to consider when placing replicas of this stream, random placement when unset",
           "type": "object",
-          "required": [
-            "cluster"
-          ],
           "properties": {
             "cluster": {
               "type": "string",

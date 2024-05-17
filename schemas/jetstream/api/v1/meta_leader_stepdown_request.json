@@ -8,9 +8,6 @@
     "placement": {
       "type": "object",
       "description": "Placement requirements for a stream",
-      "required": [
-        "cluster"
-      ],
       "properties": {
         "cluster": {
           "type": "string",

@@ -563,7 +563,7 @@ type StreamConfig struct {
 	// AllowRollup allows messages to be placed into the system and purge
 	// all older messages using a special msg header.
 	RollupAllowed bool `json:"allow_rollup_hdrs" yaml:"allow_rollup_hdrs"`
-	// Allow higher peformance, direct access to get individual messages.
+	// Allow higher performance, direct access to get individual messages.
 	AllowDirect bool `json:"allow_direct" yaml:"allow_direct"`
 	// Allow higher performance and unified direct access for mirrors as well.
 	MirrorDirect bool `json:"mirror_direct" yaml:"mirror_direct"`

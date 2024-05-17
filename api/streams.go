@@ -587,7 +587,7 @@ type StreamConsumerLimits struct {
 
 // Placement describes stream placement requirements for a stream
 type Placement struct {
-	Cluster string   `json:"cluster" yaml:"cluster"`
+	Cluster string   `json:"cluster,omitempty" yaml:"cluster"`
 	Tags    []string `json:"tags,omitempty" yaml:"tags"`
 }
 

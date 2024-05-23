@@ -39,12 +39,14 @@ type snapshotOptions struct {
 	dir           string
 	metaFile      string
 	dataFile      string
+	dataFileSize  int64
 	scb           func(SnapshotProgress)
 	rcb           func(RestoreProgress)
 	debug         bool
 	consumers     bool
 	jsck          bool
 	chunkSz       int
+	progress      bool
 	restoreConfig *api.StreamConfig
 }
 
@@ -99,6 +101,13 @@ func RestoreConfiguration(cfg api.StreamConfig) SnapshotOption {
 func SnapshotChunkSize(sz int) SnapshotOption {
 	return func(o *snapshotOptions) {
 		o.chunkSz = sz
+	}
+}
+
+// WithProgress enables progress tracking
+func WithProgress(sz int) SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.progress = true
 	}
 }
 
@@ -319,30 +328,192 @@ func (sp *snapshotProgress) trackBps(ctx context.Context) {
 	}
 }
 
-func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream string, dir string, opts ...SnapshotOption) (RestoreProgress, *api.StreamState, error) {
+func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer io.WriteCloser, sopts *snapshotOptions) (SnapshotProgress, error) {
+	defer dataBuffer.Close()
+	defer metadataBuffer.Close()
+
+	if s.Storage() == api.MemoryStorage {
+		return nil, ErrMemoryStreamNotSupported
+	}
+
+	if sopts.debug {
+		log.Printf("Starting backup of %q", s.Name())
+	}
+
+	ib := s.mgr.nc.NewRespInbox()
+	req := api.JSApiStreamSnapshotRequest{
+		DeliverSubject: ib,
+		NoConsumers:    !sopts.consumers,
+		CheckMsgs:      sopts.jsck,
+		ChunkSize:      sopts.chunkSz,
+	}
+
+	var resp api.JSApiStreamSnapshotResponse
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamSnapshotT, s.Name()), req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	errc := make(chan error)
+	sctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var writer io.Writer
+
+	var progress *snapshotProgress
+	if sopts.progress {
+		progress := &snapshotProgress{
+			startTime:     time.Now(),
+			chunkSize:     req.ChunkSize,
+			bytesExpected: resp.State.Bytes,
+			scb:           sopts.scb,
+			rcb:           sopts.rcb,
+			healthCheck:   sopts.jsck,
+		}
+		defer func() { progress.endTime = time.Now() }()
+		go progress.trackBps(sctx)
+
+		// set up a multi writer that writes to file and the progress monitor
+		// if required else we write directly to the file and be done with it
+		trackingR, trackingW := net.Pipe()
+		defer trackingR.Close()
+		defer trackingW.Close()
+		go progress.trackBlockProgress(trackingR, sopts.debug, errc)
+
+		writer = io.MultiWriter(dataBuffer, trackingW)
+
+		// tell the caller we are starting and what to expect
+		progress.notify()
+
+	} else {
+		writer = io.MultiWriter(dataBuffer)
+	}
+
+	sub, err := s.mgr.nc.Subscribe(ib, func(m *nats.Msg) {
+		if len(m.Data) == 0 {
+			m.Sub.Unsubscribe()
+			cancel()
+			return
+		}
+
+		if sopts.progress {
+			progress.Lock()
+			progress.bytesReceived += uint64(len(m.Data))
+			progress.chunksReceived++
+			progress.Unlock()
+		}
+
+		n, err := writer.Write(m.Data)
+		if err != nil {
+			errc <- err
+			return
+		}
+		if n != len(m.Data) {
+			errc <- fmt.Errorf("failed to write %d bytes to %s, only wrote %d", len(m.Data), sopts.dataFile, n)
+			return
+		}
+
+		if m.Reply != "" {
+			if sopts.debug && sopts.progress {
+				progress.Lock()
+				log.Printf("Responding to server subject %s %s chunks, last chunk size %s", m.Reply, humanize.Comma(int64(progress.chunksReceived)), humanize.IBytes(uint64(len(m.Data))))
+				progress.Unlock()
+			}
+
+			m.Respond(nil)
+		}
+	})
+	if err != nil {
+		return progress, err
+	}
+	defer sub.Unsubscribe()
+	sub.SetPendingLimits(-1, -1)
+
+	select {
+	case err := <-errc:
+		if sopts.debug {
+			log.Printf("Snapshot Error: %s", err)
+		}
+
+		return progress, err
+	case <-sctx.Done():
+		meta := map[string]any{
+			"config": resp.Config,
+			"state":  resp.State,
+		}
+		mj, err := json.MarshalIndent(meta, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+
+		metadataBuffer.Write(mj)
+
+		if sopts.progress {
+			progress.finished = true
+			progress.notify()
+		}
+
+		return progress, nil
+	}
+}
+
+// SnapshotToDirectory creates a backup into s2 compressed tar file
+func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...SnapshotOption) (SnapshotProgress, error) {
 	sopts := &snapshotOptions{
-		dir:      dir,
-		dataFile: filepath.Join(dir, "stream.tar.s2"),
-		metaFile: filepath.Join(dir, "backup.json"),
-		chunkSz:  64 * 1024,
+		dir:       dir,
+		dataFile:  filepath.Join(dir, "stream.tar.s2"),
+		metaFile:  filepath.Join(dir, "backup.json"),
+		jsck:      false,
+		consumers: false,
+		chunkSz:   128 * 1024,
+		progress:  true,
 	}
 
 	for _, opt := range opts {
 		opt(sopts)
 	}
 
-	_, err := os.Stat(sopts.metaFile)
+	err := os.MkdirAll(sopts.dir, 0700)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	fstat, err := os.Stat(sopts.dataFile)
+	mf, err := os.Create(sopts.metaFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+
+	df, err := os.Create(sopts.dataFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.createSnapshot(ctx, df, mf, sopts)
+}
+
+// SnapshotToBuffer creates a compressed s2 backup and writes to an io.Writer
+func (s *Stream) SnapshotToBuffer(ctx context.Context, dataBuffer, metadataBuffer io.WriteCloser, opts ...SnapshotOption) error {
+	sopts := &snapshotOptions{
+		jsck:      false,
+		consumers: false,
+		chunkSz:   128 * 1024,
+		progress:  false,
+	}
+
+	for _, opt := range opts {
+		opt(sopts)
+	}
+
+	_, err := s.createSnapshot(ctx, dataBuffer, metadataBuffer, sopts)
+	return err
+}
+
+func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader, metadataReader io.ReadCloser, sopts *snapshotOptions) (RestoreProgress, *api.StreamState, error) {
+	defer dataReader.Close()
+	defer metadataReader.Close()
 
 	req := api.JSApiStreamRestoreRequest{}
-	mj, err := os.ReadFile(sopts.metaFile)
+	mj, err := io.ReadAll(metadataReader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -369,41 +540,40 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 		return nil, nil, ErrMemoryStreamNotSupported
 	}
 
-	inf, err := os.Open(sopts.dataFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer inf.Close()
-
 	var resp api.JSApiStreamRestoreResponse
 	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamRestoreT, req.Config.Name), req, &resp)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	progress := &snapshotProgress{
-		startTime:    time.Now(),
-		chunkSize:    sopts.chunkSz,
-		chunksToSend: 1 + int(fstat.Size())/sopts.chunkSz,
-		sending:      true,
-		rcb:          sopts.rcb,
-		scb:          sopts.scb,
+	var progress *snapshotProgress
+	var notifyInterval uint32
+
+	if sopts.progress {
+		progress = &snapshotProgress{
+			startTime:    time.Now(),
+			chunkSize:    sopts.chunkSz,
+			chunksToSend: 1 + int(sopts.chunkSz)/sopts.chunkSz,
+			sending:      true,
+			rcb:          sopts.rcb,
+			scb:          sopts.scb,
+		}
+		defer func() { progress.endTime = time.Now() }()
+		go progress.trackBps(ctx)
+
+		// in debug notify ~20ish times
+		notifyInterval = uint32(1)
+		if progress.chunksToSend >= 20 {
+			notifyInterval = uint32(math.Ceil(float64(progress.chunksToSend) / 20))
+		}
+
+		// send initial notify to inform what to expect
+		progress.notify()
 	}
-	defer func() { progress.endTime = time.Now() }()
-	go progress.trackBps(ctx)
 
 	if sopts.debug {
 		log.Printf("Starting restore of %q from %s using %d chunks", req.Config.Name, sopts.dataFile, progress.chunksToSend)
 	}
-
-	// in debug notify ~20ish times
-	notifyInterval := uint32(1)
-	if progress.chunksToSend >= 20 {
-		notifyInterval = uint32(math.Ceil(float64(progress.chunksToSend) / 20))
-	}
-
-	// send initial notify to inform what to expect
-	progress.notify()
 
 	nc := m.nc
 	var chunk [64 * 1024]byte
@@ -414,7 +584,7 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 			return nil, nil, ctx.Err()
 		}
 
-		n, err := inf.Read(chunk[:])
+		n, err := dataReader.Read(chunk[:])
 		if err == io.EOF {
 			break
 		}
@@ -430,19 +600,21 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 			return nil, nil, fmt.Errorf("restore failed: %q", cresp.Data)
 		}
 
-		if sopts.debug && progress.chunksSent > 0 && progress.chunksSent%notifyInterval == 0 {
-			log.Printf("Sent %d chunks", progress.chunksSent)
+		if sopts.progress {
+			if sopts.debug && progress.chunksSent > 0 && progress.chunksSent%notifyInterval == 0 {
+				log.Printf("Sent %d chunks", progress.chunksSent)
+			}
+
+			progress.Lock()
+			progress.chunksSent++
+			progress.bytesSent += uint64(n)
+			progress.Unlock()
+
+			progress.notify()
 		}
-
-		progress.Lock()
-		progress.chunksSent++
-		progress.bytesSent += uint64(n)
-		progress.Unlock()
-
-		progress.notify()
 	}
 
-	if sopts.debug {
+	if sopts.debug && sopts.progress {
 		log.Printf("Sent %d chunks, server will now restore the snapshot, this might take a long time", progress.chunksSent)
 	}
 
@@ -472,159 +644,57 @@ func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream strin
 	return progress, &createResp.State, nil
 }
 
-// SnapshotToDirectory creates a backup into s2 compressed tar file
-func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...SnapshotOption) (SnapshotProgress, error) {
-	if s.Storage() == api.MemoryStorage {
-		return nil, ErrMemoryStreamNotSupported
+func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream string, dir string, opts ...SnapshotOption) (RestoreProgress, *api.StreamState, error) {
+	sopts := &snapshotOptions{
+		dir:      dir,
+		dataFile: filepath.Join(dir, "stream.tar.s2"),
+		metaFile: filepath.Join(dir, "backup.json"),
+		chunkSz:  64 * 1024,
+		progress: true,
 	}
 
+	fstat, err := os.Stat(sopts.dataFile)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sopts.dataFileSize = fstat.Size()
+
+	for _, opt := range opts {
+		opt(sopts)
+	}
+
+	df, err := os.Open(sopts.dataFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer df.Close()
+
+	mf, err := os.Open(sopts.metaFile)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return m.restoreSnapshot(ctx, stream, df, mf, sopts)
+}
+
+// RestoreSnapshotFromBuffer restores a stream from a s2 compressed backup read from an io.Reader.
+func (m *Manager) RestoreSnapshotFromBuffer(ctx context.Context, stream string, dataReader, metadataReader io.ReadCloser, opts ...SnapshotOption) (*api.StreamState, error) {
 	sopts := &snapshotOptions{
-		dir:       dir,
-		dataFile:  filepath.Join(dir, "stream.tar.s2"),
-		metaFile:  filepath.Join(dir, "backup.json"),
-		jsck:      false,
-		consumers: false,
-		chunkSz:   128 * 1024,
+		chunkSz:  64 * 1024,
+		progress: false,
 	}
 
 	for _, opt := range opts {
 		opt(sopts)
 	}
 
-	if sopts.debug {
-		log.Printf("Starting backup of %q to %q", s.Name(), dir)
-	}
-
-	err := os.MkdirAll(sopts.dir, 0700)
-	if err != nil {
-		return nil, err
-	}
-
-	mf, err := os.Create(sopts.metaFile)
-	if err != nil {
-		return nil, err
-	}
-	defer mf.Close()
-
-	df, err := os.Create(sopts.dataFile)
-	if err != nil {
-		return nil, err
-	}
-	defer df.Close()
-
-	ib := s.mgr.nc.NewRespInbox()
-	req := api.JSApiStreamSnapshotRequest{
-		DeliverSubject: ib,
-		NoConsumers:    !sopts.consumers,
-		CheckMsgs:      sopts.jsck,
-		ChunkSize:      sopts.chunkSz,
-	}
-
-	var resp api.JSApiStreamSnapshotResponse
-	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamSnapshotT, s.Name()), req, &resp)
-	if err != nil {
-		return nil, err
-	}
-
-	errc := make(chan error)
-	sctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	progress := &snapshotProgress{
-		startTime:     time.Now(),
-		chunkSize:     req.ChunkSize,
-		bytesExpected: resp.State.Bytes,
-		scb:           sopts.scb,
-		rcb:           sopts.rcb,
-		healthCheck:   sopts.jsck,
-	}
-	defer func() { progress.endTime = time.Now() }()
-	go progress.trackBps(sctx)
-
-	// set up a multi writer that writes to file and the progress monitor
-	// if required else we write directly to the file and be done with it
-	trackingR, trackingW := net.Pipe()
-	defer trackingR.Close()
-	defer trackingW.Close()
-	go progress.trackBlockProgress(trackingR, sopts.debug, errc)
-
-	writer := io.MultiWriter(df, trackingW)
-
-	// tell the caller we are starting and what to expect
-	progress.notify()
-
-	sub, err := s.mgr.nc.Subscribe(ib, func(m *nats.Msg) {
-		if len(m.Data) == 0 {
-			m.Sub.Unsubscribe()
-			cancel()
-			return
-		}
-
-		progress.Lock()
-		progress.bytesReceived += uint64(len(m.Data))
-		progress.chunksReceived++
-		progress.Unlock()
-
-		n, err := writer.Write(m.Data)
-		if err != nil {
-			errc <- err
-			return
-		}
-		if n != len(m.Data) {
-			errc <- fmt.Errorf("failed to write %d bytes to %s, only wrote %d", len(m.Data), sopts.dataFile, n)
-			return
-		}
-
-		if m.Reply != "" {
-			if sopts.debug {
-				progress.Lock()
-				log.Printf("Responding to server subject %s %s chunks, last chunk size %s", m.Reply, humanize.Comma(int64(progress.chunksReceived)), humanize.IBytes(uint64(len(m.Data))))
-				progress.Unlock()
-			}
-
-			m.Respond(nil)
-		}
-	})
-	if err != nil {
-		return progress, err
-	}
-	defer sub.Unsubscribe()
-	sub.SetPendingLimits(-1, -1)
-
-	select {
-	case err := <-errc:
-		if sopts.debug {
-			log.Printf("Snapshot Error: %s", err)
-		}
-
-		return progress, err
-	case <-sctx.Done():
-		mf, err := os.Create(sopts.metaFile)
-		if err != nil {
-			return nil, err
-		}
-		defer mf.Close()
-
-		meta := map[string]any{
-			"config": resp.Config,
-			"state":  resp.State,
-		}
-		mj, err := json.MarshalIndent(meta, "", "  ")
-		if err != nil {
-			return nil, err
-		}
-
-		mf.Write(mj)
-
-		progress.finished = true
-		progress.notify()
-
-		return progress, nil
-	}
+	_, ss, err := m.restoreSnapshot(ctx, stream, dataReader, metadataReader, sopts)
+	return ss, err
 }
 
 // SnapshotToBuffer creates a compressed s2 backup and writes to an io.Writer
-func (s *Stream) SnapshotToBuffer(ctx context.Context, dataBuffer, metadataBuffer io.Writer, opts ...SnapshotOption) (SnapshotProgress, error) {
+func (s *Stream) SnapshotToBufferOld(ctx context.Context, dataBuffer, metadataBuffer io.Writer, opts ...SnapshotOption) (SnapshotProgress, error) {
 	if s.Storage() == api.MemoryStorage {
 		return nil, ErrMemoryStreamNotSupported
 	}
@@ -746,139 +816,4 @@ func (s *Stream) SnapshotToBuffer(ctx context.Context, dataBuffer, metadataBuffe
 
 		return progress, nil
 	}
-}
-
-// RestoreSnapshotFromBuffer restores a stream from a s2 compressed backup read from an io.Reader.
-func (m *Manager) RestoreSnapshotFromBuffer(ctx context.Context, stream string, dataReader, metadataReader io.Reader, opts ...SnapshotOption) (RestoreProgress, *api.StreamState, error) {
-	sopts := &snapshotOptions{
-		chunkSz: 64 * 1024,
-	}
-
-	for _, opt := range opts {
-		opt(sopts)
-	}
-
-	req := api.JSApiStreamRestoreRequest{}
-	mj, err := io.ReadAll(metadataReader)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = json.Unmarshal(mj, &req)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// allow full config override
-	if sopts.restoreConfig != nil {
-		req.Config = *sopts.restoreConfig
-	}
-
-	// allow just stream name override
-	//
-	// this used to be allowed but turns out the server support for this was
-	// not up to scratch and fixing it would mean having to rebuild and re-checksum
-	// every message, so for now we error here instead
-	if req.Config.Name != stream {
-		return nil, nil, fmt.Errorf("stream name may not be changed during restore")
-	}
-
-	if req.Config.Storage == api.MemoryStorage {
-		return nil, nil, ErrMemoryStreamNotSupported
-	}
-
-	var resp api.JSApiStreamRestoreResponse
-	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamRestoreT, req.Config.Name), req, &resp)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	progress := &snapshotProgress{
-		startTime: time.Now(),
-		chunkSize: sopts.chunkSz,
-		// chunksToSend: 1 + int(fstat.Size())/sopts.chunkSz,
-		sending: true,
-		rcb:     sopts.rcb,
-		scb:     sopts.scb,
-	}
-	defer func() { progress.endTime = time.Now() }()
-	go progress.trackBps(ctx)
-
-	if sopts.debug {
-		log.Printf("Starting restore of %q from %s using %d chunks", req.Config.Name, sopts.dataFile, progress.chunksToSend)
-	}
-
-	// in debug notify ~20ish times
-	// notifyInterval := uint32(1)
-	// if progress.chunksToSend >= 20 {
-	// 	notifyInterval = uint32(math.Ceil(float64(progress.chunksToSend) / 20))
-	// }
-
-	// send initial notify to inform what to expect
-	progress.notify()
-
-	nc := m.nc
-	var chunk [64 * 1024]byte
-	var cresp *nats.Msg
-
-	for {
-		if ctx.Err() != nil {
-			return nil, nil, ctx.Err()
-		}
-
-		n, err := dataReader.Read(chunk[:])
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, nil, err
-		}
-
-		cresp, err = nc.Request(resp.DeliverSubject, chunk[:n], m.timeout)
-		if err != nil {
-			return nil, nil, err
-		}
-		if IsErrorResponse(cresp) {
-			return nil, nil, fmt.Errorf("restore failed: %q", cresp.Data)
-		}
-
-		// if sopts.debug && progress.chunksSent > 0 && progress.chunksSent%notifyInterval == 0 {
-		// 	log.Printf("Sent %d chunks", progress.chunksSent)
-		// }
-
-		progress.Lock()
-		progress.chunksSent++
-		progress.bytesSent += uint64(n)
-		progress.Unlock()
-
-		progress.notify()
-	}
-
-	if sopts.debug {
-		log.Printf("Sent %d chunks, server will now restore the snapshot, this might take a long time", progress.chunksSent)
-	}
-
-	// very long timeout as the server is doing the restore here and might take any mount of time
-	cresp, err = nc.Request(resp.DeliverSubject, nil, time.Hour)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	kind, finalr, err := api.ParseMessage(cresp.Data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if kind != "io.nats.jetstream.api.v1.stream_create_response" {
-		return nil, nil, fmt.Errorf("invalid final response, expected a io.nats.jetstream.api.v1.stream_create_response message but got %q", kind)
-	}
-
-	createResp, ok := finalr.(*api.JSApiStreamCreateResponse)
-	if !ok {
-		return nil, nil, fmt.Errorf("invalid final response type")
-	}
-	if createResp.IsError() {
-		return nil, nil, createResp.ToError()
-	}
-
-	return progress, &createResp.State, nil
 }

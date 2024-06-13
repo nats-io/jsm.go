@@ -362,7 +362,7 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 
 	var progress *snapshotProgress
 	if sopts.progress {
-		progress := &snapshotProgress{
+		progress = &snapshotProgress{
 			startTime:     time.Now(),
 			chunkSize:     req.ChunkSize,
 			bytesExpected: resp.State.Bytes,

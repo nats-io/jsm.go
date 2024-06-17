@@ -104,6 +104,49 @@ func (m *Manager) NewStreamFromDefault(name string, dflt api.StreamConfig, opts 
 	return m.streamFromConfig(&resp.Config, resp.StreamInfo), nil
 }
 
+// LoadFromStreamDetailBytes creates a stream info from the server StreamDetails in json format, the StreamDetails should
+// be created with Config and Consumers options set
+func (m *Manager) LoadFromStreamDetailBytes(sd []byte) (stream *Stream, consumers []*Consumer, err error) {
+	stream = &Stream{
+		mgr: m,
+	}
+
+	var nfo api.StreamInfo
+	err = json.Unmarshal(sd, &nfo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stream.lastInfo = &nfo
+	stream.cfg = &nfo.Config
+
+	if stream.Name() == "" {
+		return nil, nil, fmt.Errorf("invalid stream details, ensure configuration is included")
+	}
+
+	var cons struct {
+		Consumers []*api.ConsumerInfo `json:"consumer_detail"`
+	}
+	err = json.Unmarshal(sd, &cons)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, consumer := range cons.Consumers {
+		c := Consumer{
+			name:     consumer.Name,
+			stream:   stream.Name(),
+			cfg:      &consumer.Config,
+			lastInfo: consumer,
+			mgr:      m,
+		}
+
+		consumers = append(consumers, &c)
+	}
+
+	return stream, consumers, nil
+}
+
 func (m *Manager) streamFromConfig(cfg *api.StreamConfig, info *api.StreamInfo) (stream *Stream) {
 	s := &Stream{cfg: cfg, mgr: m}
 	if info != nil {

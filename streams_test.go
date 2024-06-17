@@ -15,6 +15,7 @@ package jsm_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -24,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go"
@@ -165,6 +167,73 @@ func TestLoadStream(t *testing.T) {
 
 	if stream.Storage() != api.FileStorage {
 		t.Fatalf("expected file storage got %s", stream.Storage())
+	}
+}
+
+func TestLoadFromStreamDetailBytes(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	q1, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.FileStorage())
+	checkErr(t, err, "create failed")
+	c1, err := q1.NewConsumer(jsm.DurableName("C1"))
+	checkErr(t, err, "create failed")
+
+	_, err = q1.NewConsumer(jsm.DurableName("C2"))
+	checkErr(t, err, "create failed")
+
+	_, err = nc.Request("in.q1", nil, time.Second)
+	checkErr(t, err, "publish failed")
+	msg, err := c1.NextMsg()
+	checkErr(t, err, "next failed")
+	err = msg.Ack()
+	checkErr(t, err, "ack failed")
+
+	jsz, err := srv.Jsz(&server.JSzOptions{Streams: true, Config: true, Consumer: true})
+	checkErr(t, err, "jsz failed")
+	if len(jsz.AccountDetails) == 0 {
+		t.Fatalf("jsz should have at least one account")
+	}
+	if len(jsz.AccountDetails[0].Streams) == 0 {
+		t.Fatalf("jsz should have at least one stream")
+	}
+
+	sdb, err := json.Marshal(jsz.AccountDetails[0].Streams[0])
+	checkErr(t, err, "json marshal failed")
+
+	stream, consumers, err := mgr.LoadFromStreamDetailBytes(sdb)
+	checkErr(t, err, "load failed")
+
+	if stream.Name() != "q1" || !cmp.Equal(stream.Subjects(), []string{"in.q1"}) {
+		t.Fatalf("invalid stream")
+	}
+
+	state, err := stream.LatestState()
+	checkErr(t, err, "latest state failed")
+
+	if state.Msgs != 1 {
+		t.Fatalf("invalid state")
+	}
+	if state.Consumers != 2 {
+		t.Fatalf("invalid consumers")
+	}
+
+	if len(consumers) != 2 {
+		t.Fatalf("invalid consumers")
+	}
+
+	if consumers[0].Name() != "C1" || consumers[0].StreamName() != "q1" {
+		t.Fatalf("invalid c1 consumer")
+	}
+	af, err := consumers[0].AcknowledgedFloor()
+	checkErr(t, err, "ackfloor failed")
+	if af.Stream != 1 {
+		t.Fatalf("invalid ack floor")
+	}
+
+	if consumers[1].Name() != "C2" || consumers[1].StreamName() != "q1" {
+		t.Fatalf("invalid c2 consumer")
 	}
 }
 

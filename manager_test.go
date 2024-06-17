@@ -159,17 +159,12 @@ func streamPublish(t *testing.T, nc *nats.Conn, subj string, msg []byte) {
 func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 
-	d, err := os.MkdirTemp("", "jstest")
-	if err != nil {
-		t.Fatalf("temp dir could not be made: %s", err)
-	}
-
 	opts := &natsd.Options{
 		JetStream: true,
-		StoreDir:  d,
-		Port:      -1,
+		StoreDir:  t.TempDir(),
 		Host:      "localhost",
 		LogFile:   "/dev/stdout",
+		HTTPPort:  -1,
 		Trace:     true,
 	}
 

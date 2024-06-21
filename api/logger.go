@@ -11,17 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package connbalancer
+package api
 
 import (
 	"log"
 )
 
 type Logger interface {
-	Trace(format string, a ...any)
-	Debug(format string, a ...any)
-	Info(format string, a ...any)
-	Error(format string, a ...any)
+	Tracef(format string, a ...any)
+	Debugf(format string, a ...any)
+	Infof(format string, a ...any)
+	Errorf(format string, a ...any)
 }
 
 type Level uint
@@ -46,25 +46,25 @@ func NewDiscardLogger() Logger {
 	return &dfltLogger{lvl: ErrorLevel, logFunc: func(format string, a ...any) {}}
 }
 
-func (d *dfltLogger) Trace(format string, a ...any) {
+func (d *dfltLogger) Tracef(format string, a ...any) {
 	if d.lvl >= TraceLevel {
 		d.logFunc(format, a...)
 	}
 }
 
-func (d *dfltLogger) Debug(format string, a ...any) {
+func (d *dfltLogger) Debugf(format string, a ...any) {
 	if d.lvl >= DebugLevel {
 		d.logFunc(format, a...)
 	}
 }
 
-func (d *dfltLogger) Info(format string, a ...any) {
+func (d *dfltLogger) Infof(format string, a ...any) {
 	if d.lvl >= InfoLevel {
 		d.logFunc(format, a...)
 	}
 }
 
-func (d *dfltLogger) Error(format string, a ...any) {
+func (d *dfltLogger) Errorf(format string, a ...any) {
 	if d.lvl >= ErrorLevel {
 		d.logFunc(format, a...)
 	}

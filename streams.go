@@ -610,15 +610,20 @@ func (s *Stream) EachConsumer(cb func(consumer *Consumer)) (missing []string, er
 
 // LatestInformation returns the most recently fetched stream information
 func (s *Stream) LatestInformation() (info *api.StreamInfo, err error) {
-	s.Lock()
-	nfo := s.lastInfo
-	s.Unlock()
+	nfo := s.lastInfoLocked()
 
 	if nfo != nil {
 		return nfo, nil
 	}
 
 	return s.Information()
+}
+
+func (s *Stream) lastInfoLocked() *api.StreamInfo {
+	s.Lock()
+	defer s.Unlock()
+
+	return s.lastInfo
 }
 
 // Information loads the current stream information

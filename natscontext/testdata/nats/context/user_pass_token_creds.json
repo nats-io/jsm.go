@@ -20,5 +20,6 @@
   "tls_first": false,
   "windows_cert_store": "",
   "windows_cert_match_by": "",
-  "windows_cert_match": ""
+  "windows_cert_match": "",
+  "windows_ca_certs_match": null
 }

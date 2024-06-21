@@ -108,6 +108,17 @@ func (c *Consumer) HealthCheck(opts ConsumerHealthCheckOptions, check *monitor.R
 		return nil, err
 	}
 
+	check.Pd(&monitor.PerfDataItem{Name: "ack_pending", Value: float64(nfo.NumAckPending), Help: "The number of messages waiting to be Acknowledged", Crit: float64(opts.AckOutstandingCritical)})
+	check.Pd(&monitor.PerfDataItem{Name: "pull_waiting", Value: float64(nfo.NumWaiting), Help: "The number of waiting Pull requests", Crit: float64(opts.WaitingCritical)})
+	check.Pd(&monitor.PerfDataItem{Name: "pending", Value: float64(nfo.NumPending), Help: "The number of messages that have not yet been consumed", Crit: float64(opts.UnprocessedCritical)})
+	check.Pd(&monitor.PerfDataItem{Name: "redelivered", Value: float64(nfo.NumRedelivered), Help: "The number of messages currently being redelivered", Crit: float64(opts.RedeliveryCritical)})
+	if nfo.Delivered.Last != nil {
+		check.Pd(&monitor.PerfDataItem{Name: "last_delivery", Value: time.Since(*nfo.Delivered.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was delivered", Crit: opts.LastDeliveryCritical.Seconds()})
+	}
+	if nfo.AckFloor.Last != nil {
+		check.Pd(&monitor.PerfDataItem{Name: "last_ack", Value: time.Since(*nfo.AckFloor.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was acknowledged", Crit: opts.LastAckCritical.Seconds()})
+	}
+
 	c.checkOutstandingAck(&nfo, check, opts, log)
 	c.checkWaiting(&nfo, check, opts, log)
 	c.checkUnprocessed(&nfo, check, opts, log)

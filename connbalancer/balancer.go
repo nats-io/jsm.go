@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -41,7 +42,7 @@ type balancer struct {
 	nc       *nats.Conn
 	duration time.Duration
 	limits   *ConnectionSelector
-	log      Logger
+	log      api.Logger
 }
 
 type conn struct {
@@ -50,7 +51,7 @@ type conn struct {
 	conn       *server.ConnInfo
 }
 
-func New(nc *nats.Conn, runTime time.Duration, log Logger, connections ConnectionSelector) (Balancer, error) {
+func New(nc *nats.Conn, runTime time.Duration, log api.Logger, connections ConnectionSelector) (Balancer, error) {
 	if connections.SubjectInterest != "" && connections.Account == "" {
 		return nil, fmt.Errorf("can only filter by subject if account is given")
 	}
@@ -84,14 +85,14 @@ func (c *balancer) Balance(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	c.log.Debug("Had %d connz responses", len(connz))
+	c.log.Debugf("Had %d connz responses", len(connz))
 
 	matched, err := c.pickConnections(connz)
 	if err != nil {
 		return 0, err
 	}
 
-	c.log.Debug("Matched %d connections", len(matched))
+	c.log.Debugf("Matched %d connections", len(matched))
 
 	if len(matched) == 0 {
 		return 0, nil
@@ -100,40 +101,40 @@ func (c *balancer) Balance(ctx context.Context) (int, error) {
 	var sleep = c.duration / time.Duration(len(matched))
 	var success int
 
-	c.log.Info("Balancing %d connections with %v sleep between each balance request", len(matched), sleep)
+	c.log.Infof("Balancing %d connections with %v sleep between each balance request", len(matched), sleep)
 
 	for i, m := range matched {
 		cid, err := c.nc.GetClientID()
 		if err != nil {
-			c.log.Error("Could not exclude self from kicks: %v", err)
+			c.log.Errorf("Could not exclude self from kicks: %v", err)
 			continue
 		}
 
 		if m.serverId == c.nc.ConnectedServerId() && m.conn.Cid == cid {
-			c.log.Debug("Not kicking own connection")
+			c.log.Debugf("Not kicking own connection")
 			continue
 		}
 
 		res, err := c.reqMany(ctx, fmt.Sprintf("$SYS.REQ.SERVER.%s.KICK", m.serverId), &server.KickClientReq{CID: m.conn.Cid}, 1)
 		if err != nil {
-			c.log.Error("Could not kick %d on %s: %v", m.conn.Cid, m.serverId, err)
+			c.log.Errorf("Could not kick %d on %s: %v", m.conn.Cid, m.serverId, err)
 			continue
 		}
 
 		if len(res) != 1 {
-			c.log.Error("Could not kick %d on %s: expected 1 response but had %d", m.conn.Cid, m.serverId, len(res))
+			c.log.Errorf("Could not kick %d on %s: expected 1 response but had %d", m.conn.Cid, m.serverId, len(res))
 			continue
 		}
 
 		var resp server.ServerAPIResponse
 		err = json.Unmarshal(res[0].Data, &resp)
 		if err != nil {
-			c.log.Error("Could not kick %d on %s: invalid server response: %v", m.conn.Cid, m.serverId, err)
+			c.log.Errorf("Could not kick %d on %s: invalid server response: %v", m.conn.Cid, m.serverId, err)
 			continue
 		}
 
 		if resp.Error != nil {
-			c.log.Error("Could not kick %d on %s: invalid server response: %v", m.conn.Cid, m.serverId, resp.Error.Description)
+			c.log.Errorf("Could not kick %d on %s: invalid server response: %v", m.conn.Cid, m.serverId, resp.Error.Description)
 			continue
 		}
 
@@ -143,16 +144,16 @@ func (c *balancer) Balance(ctx context.Context) (int, error) {
 		}
 
 		if m.conn.Account != "" {
-			c.log.Info("Balanced client %d%s in account %s on %s", m.conn.Cid, name, m.conn.Account, m.serverName)
+			c.log.Infof("Balanced client %d%s in account %s on %s", m.conn.Cid, name, m.conn.Account, m.serverName)
 		} else {
-			c.log.Info("Balanced client %d%s on %s", m.conn.Cid, name, m.serverName)
+			c.log.Infof("Balanced client %d%s on %s", m.conn.Cid, name, m.serverName)
 		}
 
 		success++
 
 		if i != len(matched)-1 {
 			timer := time.NewTimer(sleep)
-			c.log.Debug("Sleeping for %v", sleep)
+			c.log.Debugf("Sleeping for %v", sleep)
 			select {
 			case <-timer.C:
 			case <-ctx.Done():
@@ -211,7 +212,7 @@ func (c *balancer) getConnz(ctx context.Context) ([]*server.ServerAPIConnzRespon
 			break
 		}
 
-		c.log.Info("Gathering paged connection information")
+		c.log.Infof("Gathering paged connection information")
 	}
 
 	return results, nil
@@ -287,7 +288,7 @@ func (c *balancer) reqMany(ctx context.Context, subj string, req any, expect int
 		}
 	}
 
-	c.log.Trace(">>> %s: %s", subj, string(jreq))
+	c.log.Tracef(">>> %s: %s", subj, string(jreq))
 
 	var (
 		mu       sync.Mutex
@@ -317,7 +318,7 @@ func (c *balancer) reqMany(ctx context.Context, subj string, req any, expect int
 		mu.Lock()
 		defer mu.Unlock()
 
-		c.log.Trace("<<< (%dB) %s", len(m.Data), string(m.Data))
+		c.log.Tracef("<<< (%dB) %s", len(m.Data), string(m.Data))
 		if finisher != nil {
 			finisher.Reset(300 * time.Millisecond)
 		}
@@ -363,7 +364,7 @@ func (c *balancer) reqMany(ctx context.Context, subj string, req any, expect int
 	}
 
 	mu.Lock()
-	c.log.Debug("=== Received %d responses", ctr)
+	c.log.Debugf("=== Received %d responses", ctr)
 	mu.Unlock()
 
 	return res, nil

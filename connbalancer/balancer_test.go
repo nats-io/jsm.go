@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -128,7 +129,7 @@ func checkBalanced(t *testing.T, nc *nats.Conn, expect int, s ConnectionSelector
 	t.Helper()
 
 	// dont kick ourselves or connections on other servers
-	balancer, err := New(nc, 0, NewDiscardLogger(), s)
+	balancer, err := New(nc, 0, api.NewDiscardLogger(), s)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}

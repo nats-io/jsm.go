@@ -183,6 +183,11 @@ func (s *Stream) checkMirror(si *api.StreamInfo, check *monitor.Result, opts Str
 		return
 	}
 
+	check.Pd(
+		&monitor.PerfDataItem{Name: "lag", Crit: float64(opts.SourcesLagCritical), Value: float64(state.Lag), Help: "Number of operations this peer is behind its origin"},
+		&monitor.PerfDataItem{Name: "active", Crit: opts.SourcesSeenCritical.Seconds(), Unit: "s", Value: state.Active.Seconds(), Help: "Indicates if this peer is active and catching up if lagged"},
+	)
+
 	ok := true
 
 	if opts.SourcesLagCritical > 0 && state.Lag >= opts.SourcesLagCritical {
@@ -205,6 +210,8 @@ func (s *Stream) checkMirror(si *api.StreamInfo, check *monitor.Result, opts Str
 func (s *Stream) checkSources(si *api.StreamInfo, check *monitor.Result, opts StreamHealthCheckOptions, log api.Logger) {
 	sources := si.Sources
 	count := len(sources)
+
+	check.Pd(&monitor.PerfDataItem{Name: "sources", Value: float64(len(sources)), Warn: float64(opts.MinSources), Crit: float64(opts.MaxSources), Help: "Number of sources being consumed by this stream"})
 
 	switch {
 	case opts.MinSources > 0 && count < opts.MinSources:
@@ -234,6 +241,11 @@ func (s *Stream) checkSources(si *api.StreamInfo, check *monitor.Result, opts St
 		}
 	}
 
+	check.Pd(
+		&monitor.PerfDataItem{Name: "sources_lagged", Value: float64(lagged), Help: "Number of sources that are behind more than the configured threshold"},
+		&monitor.PerfDataItem{Name: "sources_inactive", Value: float64(inactive), Help: "Number of sources that are inactive"},
+	)
+
 	if lagged > 0 {
 		log.Debugf("CRITICAL: %d/%d sources are lagged", lagged, count)
 		check.Critical("%d sources are lagged", lagged)
@@ -255,6 +267,8 @@ func (s *Stream) checkSubjects(si *api.StreamInfo, check *monitor.Result, opts S
 
 	ns := si.State.NumSubjects
 	lt := opts.SubjectsWarn < opts.SubjectsCrit
+
+	check.Pd(&monitor.PerfDataItem{Name: "subjects", Value: float64(ns), Warn: float64(opts.SubjectsWarn), Crit: float64(opts.SubjectsCrit), Help: "Number of subjects stored in the stream"})
 
 	switch {
 	case lt && ns >= opts.SubjectsCrit:
@@ -279,6 +293,8 @@ func (s *Stream) checkMessages(si *api.StreamInfo, check *monitor.Result, opts S
 	if opts.MessagesCrit <= 0 && opts.MessagesWarn <= 0 {
 		return
 	}
+
+	check.Pd(&monitor.PerfDataItem{Name: "messages", Value: float64(si.State.Msgs), Warn: float64(opts.MessagesWarn), Crit: float64(opts.MessagesCrit), Help: "Messages stored in the stream"})
 
 	if opts.MessagesCrit > 0 && si.State.Msgs <= opts.MessagesCrit {
 		log.Debugf("CRITICAL: %d messages", si.State.Msgs)

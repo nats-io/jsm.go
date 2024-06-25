@@ -22,8 +22,11 @@ import (
 	"log"
 	"math"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +36,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats-server/v2/server"
 )
 
 type snapshotOptions struct {
@@ -390,6 +394,14 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 	}
 
 	sub, err := s.mgr.nc.Subscribe(ib, func(m *nats.Msg) {
+		clientInfoHeader := m.Header.Get(server.ClientInfoHdr)
+
+		// if the server returns a non-204 status code in the message header, return an error
+		if !strings.Contains(clientInfoHeader, strconv.Itoa(http.StatusNoContent)) {
+			errc <- errors.New(clientInfoHeader)
+			return
+		}
+
 		if len(m.Data) == 0 {
 			m.Sub.Unsubscribe()
 			cancel()

@@ -402,7 +402,7 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 			clientInfoHeader := m.Header.Get(ClientInfoHdr)
 
 			// if the server returns a non-204 status code in the message header, return an error
-			if !strings.Contains(clientInfoHeader, "204") {
+			if clientInfoHeader != "" && !strings.Contains(clientInfoHeader, "204") {
 				errc <- errors.New(clientInfoHeader)
 				return
 			}

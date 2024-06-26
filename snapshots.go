@@ -22,10 +22,8 @@ import (
 	"log"
 	"math"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,7 +34,6 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go/api"
-	"github.com/nats-io/nats-server/v2/server"
 )
 
 type snapshotOptions struct {
@@ -54,8 +51,12 @@ type snapshotOptions struct {
 	restoreConfig *api.StreamConfig
 }
 
+const (
+	ClientInfoHdr string = "Nats-Request-Info"
+)
+
 // ErrMemoryStreamNotSupported is an error indicating a memory stream was being snapshotted which is not supported
-var ErrMemoryStreamNotSupported = errors.New("memory streams do not support snapshots")
+var ErrMemoryStreamNotSupported error = errors.New("memory streams do not support snapshots")
 
 type SnapshotOption func(o *snapshotOptions)
 
@@ -394,10 +395,10 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 	}
 
 	sub, err := s.mgr.nc.Subscribe(ib, func(m *nats.Msg) {
-		clientInfoHeader := m.Header.Get(server.ClientInfoHdr)
+		clientInfoHeader := m.Header.Get(ClientInfoHdr)
 
 		// if the server returns a non-204 status code in the message header, return an error
-		if !strings.Contains(clientInfoHeader, strconv.Itoa(http.StatusNoContent)) {
+		if !strings.Contains(clientInfoHeader, "204") {
 			errc <- errors.New(clientInfoHeader)
 			return
 		}

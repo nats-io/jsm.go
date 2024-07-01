@@ -915,11 +915,15 @@ func TestMaxWaiting(t *testing.T) {
 	}
 }
 
-func TestDeliverHeadersOnly(t *testing.T) {
+func TestDeliverHeadersOnlyAndDeliverBodies(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.DeliverHeadersOnly()(cfg)
 	if !cfg.HeadersOnly {
 		t.Fatalf("expected headers only to be set")
+	}
+	jsm.DeliverBodies()(cfg)
+	if cfg.HeadersOnly {
+		t.Fatalf("expected headers only to be false")
 	}
 }
 

@@ -368,6 +368,14 @@ func DeliverHeadersOnly() ConsumerOption {
 	}
 }
 
+// DeliverHeadersOnlyEx configures the consumer to deliver headers only. If headersOnly is false, the consumer will deliver the full message.
+func DeliverHeadersOnlyEx(headersOnly bool) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.HeadersOnly = headersOnly
+		return nil
+	}
+}
+
 func resetDeliverPolicy(o *api.ConsumerConfig) {
 	o.DeliverPolicy = api.DeliverAll
 	o.OptStartSeq = 0

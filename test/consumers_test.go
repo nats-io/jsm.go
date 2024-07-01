@@ -923,6 +923,19 @@ func TestDeliverHeadersOnly(t *testing.T) {
 	}
 }
 
+func TestDeliverHeadersOnlyEx(t *testing.T) {
+	cfg := testConsumerConfig()
+	jsm.DeliverHeadersOnlyEx(true)(cfg)
+	if !cfg.HeadersOnly {
+		t.Fatalf("expected headers only to be set")
+	}
+
+	jsm.DeliverHeadersOnlyEx(false)(cfg)
+	if cfg.HeadersOnly {
+		t.Fatalf("expected headers only to be set")
+	}
+}
+
 func TestMaxRequestBatch(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.MaxRequestBatch(10)(cfg)

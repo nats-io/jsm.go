@@ -17,12 +17,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/nats-io/natscli/columns"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 )
@@ -301,5 +303,72 @@ func (r *Result) GenericExit() {
 }
 
 func f(v any) string {
-	return columns.F(v)
+	switch x := v.(type) {
+	case []string:
+		return strings.Join(x, ", ")
+	case time.Duration:
+		return humanizeDuration(x)
+	case time.Time:
+		return x.Local().Format("2006-01-02 15:04:05")
+	case bool:
+		return fmt.Sprintf("%t", x)
+	case uint:
+		return humanize.Comma(int64(x))
+	case uint32:
+		return humanize.Comma(int64(x))
+	case uint16:
+		return humanize.Comma(int64(x))
+	case uint64:
+		return humanize.Comma(int64(x))
+	case int:
+		return humanize.Comma(int64(x))
+	case int32:
+		return humanize.Comma(int64(x))
+	case int64:
+		return humanize.Comma(x)
+	case float32:
+		return humanize.CommafWithDigits(float64(x), 3)
+	case float64:
+		return humanize.CommafWithDigits(x, 3)
+	default:
+		return fmt.Sprintf("%v", x)
+	}
+}
+
+func humanizeDuration(d time.Duration) string {
+	if d < time.Millisecond {
+		return d.Round(time.Microsecond).String()
+	}
+
+	if d < time.Second {
+		return d.Round(time.Millisecond).String()
+	}
+
+	if d == math.MaxInt64 {
+		return "never"
+	}
+
+	tsecs := d / time.Second
+	tmins := tsecs / 60
+	thrs := tmins / 60
+	tdays := thrs / 24
+	tyrs := tdays / 365
+
+	if tyrs > 0 {
+		return fmt.Sprintf("%dy%dd%dh%dm%ds", tyrs, tdays%365, thrs%24, tmins%60, tsecs%60)
+	}
+
+	if tdays > 0 {
+		return fmt.Sprintf("%dd%dh%dm%ds", tdays, thrs%24, tmins%60, tsecs%60)
+	}
+
+	if thrs > 0 {
+		return fmt.Sprintf("%dh%dm%ds", thrs, tmins%60, tsecs%60)
+	}
+
+	if tmins > 0 {
+		return fmt.Sprintf("%dm%ds", tmins, tsecs%60)
+	}
+
+	return fmt.Sprintf("%.2fs", d.Seconds())
 }

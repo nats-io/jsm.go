@@ -43,7 +43,7 @@ type ConsumerHealthCheckOptions struct {
 	HealthChecks           []ConsumerHealthCheck
 }
 
-func (c *Consumer) MonitorOptions(extraChecks ...ConsumerHealthCheck) (*ConsumerHealthCheckOptions, error) {
+func (c *Consumer) HealthCheckOptions(extraChecks ...ConsumerHealthCheck) (*ConsumerHealthCheckOptions, error) {
 	opts := &ConsumerHealthCheckOptions{
 		HealthChecks: extraChecks,
 	}

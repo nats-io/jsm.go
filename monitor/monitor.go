@@ -14,6 +14,8 @@
 package monitor
 
 import (
+	"math/rand"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -38,4 +40,16 @@ func newTableWriter(title string) table.Writer {
 	}
 
 	return tbl
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+var passwordRunes = append(letterRunes, []rune("@#_-%^&()")...)
+
+func randomPassword(length int) string {
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = passwordRunes[rand.Intn(len(passwordRunes))]
+	}
+
+	return string(b)
 }

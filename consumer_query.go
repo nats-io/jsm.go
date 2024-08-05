@@ -221,7 +221,7 @@ func (q *consumerQuery) cbMatcher(consumers []*Consumer, onlyIf bool, cb func(*C
 }
 
 func (q *consumerQuery) matchLeaderServer(consumers []*Consumer) ([]*Consumer, error) {
-	return q.cbMatcher(consumers, q.replicas > 0, func(consumer *Consumer) bool {
+	return q.cbMatcher(consumers, q.leader != "", func(consumer *Consumer) bool {
 		nfo, _ := consumer.LatestState()
 		if nfo.Cluster == nil {
 			return false

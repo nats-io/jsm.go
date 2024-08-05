@@ -25,10 +25,10 @@ type KVCheckOptions struct {
 	Bucket string `json:"bucket" yaml:"bucket"`
 	// Key requires a key to have a non delete/purge value set
 	Key string `json:"key" yaml:"key"`
-	// ValuesCritical critical threshold for number of values in the bucket. Set -1 to disable
-	ValuesCritical int64 `json:"values_critical" yaml:"values_critical"`
 	// ValuesWarning warning threshold for number of values in the bucket. Set -1 to disable
 	ValuesWarning int64 `json:"values_warning" yaml:"values_warning"`
+	// ValuesCritical critical threshold for number of values in the bucket. Set -1 to disable
+	ValuesCritical int64 `json:"values_critical" yaml:"values_critical"`
 }
 
 func CheckKVBucketAndKey(nc *nats.Conn, check *Result, opts KVCheckOptions) error {

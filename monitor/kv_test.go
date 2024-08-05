@@ -14,7 +14,6 @@
 package monitor
 
 import (
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -71,13 +70,9 @@ func assertListEquals(t *testing.T, list []string, vals ...string) {
 func withJetStream(t *testing.T, cb func(srv *server.Server, nc *nats.Conn)) {
 	t.Helper()
 
-	dir, err := os.MkdirTemp("", "")
-	checkErr(t, err, "could not create temporary js store: %v", err)
-	defer os.RemoveAll(dir)
-
 	srv, err := server.NewServer(&server.Options{
 		Port:      -1,
-		StoreDir:  dir,
+		StoreDir:  t.TempDir(),
 		JetStream: true,
 	})
 	checkErr(t, err, "could not start js server: %v", err)

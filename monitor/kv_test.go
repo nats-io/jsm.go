@@ -67,6 +67,14 @@ func assertListEquals(t *testing.T, list []string, vals ...string) {
 	}
 }
 
+func assertNoError(t *testing.T, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
+
 func withJetStream(t *testing.T, cb func(srv *server.Server, nc *nats.Conn)) {
 	t.Helper()
 

@@ -40,6 +40,7 @@ type consumerQuery struct {
 	waiting           int
 	ackPending        int
 	pending           uint64
+	leader            string
 	ageLimit          time.Duration
 	lastDeliveryLimit time.Duration
 }
@@ -50,6 +51,14 @@ type ConsumerQueryOpt func(query *consumerQuery) error
 func ConsumerQueryExpression(e string) ConsumerQueryOpt {
 	return func(q *consumerQuery) error {
 		q.expression = e
+		return nil
+	}
+}
+
+// ConsumerQueryLeaderServer finds clustered consumers where a certain node is the leader
+func ConsumerQueryLeaderServer(server string) ConsumerQueryOpt {
+	return func(q *consumerQuery) error {
+		q.leader = server
 		return nil
 	}
 }
@@ -167,6 +176,7 @@ func (s *Stream) QueryConsumers(opts ...ConsumerQueryOpt) ([]*Consumer, error) {
 		q.matchAge,
 		q.matchDelivery,
 		q.matchReplicas,
+		q.matchLeaderServer,
 	}
 
 	var consumers []*Consumer
@@ -208,6 +218,17 @@ func (q *consumerQuery) cbMatcher(consumers []*Consumer, onlyIf bool, cb func(*C
 	}
 
 	return matched, nil
+}
+
+func (q *consumerQuery) matchLeaderServer(consumers []*Consumer) ([]*Consumer, error) {
+	return q.cbMatcher(consumers, q.replicas > 0, func(consumer *Consumer) bool {
+		nfo, _ := consumer.LatestState()
+		if nfo.Cluster == nil {
+			return false
+		}
+
+		return (!q.invert && nfo.Cluster.Leader == q.leader) || (q.invert && nfo.Cluster.Leader != q.leader)
+	})
 }
 
 func (q *consumerQuery) matchReplicas(consumers []*Consumer) ([]*Consumer, error) {

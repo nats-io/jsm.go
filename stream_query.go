@@ -40,6 +40,7 @@ type streamQuery struct {
 	sourced        bool
 	sourcedIsSet   bool
 	expression     string
+	leader         string
 	matchers       []streamMatcher
 }
 
@@ -163,6 +164,14 @@ func StreamQueryInvert() StreamQueryOpt {
 	}
 }
 
+// StreamQueryLeaderServer finds clustered streams where a certain node is the leader
+func StreamQueryLeaderServer(server string) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.leader = server
+		return nil
+	}
+}
+
 // QueryStreams filters the streams found in JetStream using various filter options
 func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 	q := &streamQuery{}
@@ -185,6 +194,7 @@ func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 		q.matchReplicas,
 		q.matchSourced,
 		q.matchMirrored,
+		q.matchLeaderServer,
 	}
 
 	streams, _, err := m.Streams(nil)
@@ -252,6 +262,30 @@ func (q *streamQuery) matchExpression(streams []*Stream) ([]*Stream, error) {
 		}
 
 		if should {
+			matched = append(matched, stream)
+		}
+	}
+
+	return matched, nil
+}
+
+func (q *streamQuery) matchLeaderServer(streams []*Stream) ([]*Stream, error) {
+	if q.leader == "" {
+		return streams, nil
+	}
+
+	var matched []*Stream
+	for _, stream := range streams {
+		nfo, err := stream.LatestInformation()
+		if err != nil {
+			return nil, err
+		}
+
+		if nfo.Cluster == nil {
+			continue
+		}
+
+		if (!q.invert && nfo.Cluster.Leader == q.leader) || (q.invert && nfo.Cluster.Leader != q.leader) {
 			matched = append(matched, stream)
 		}
 	}

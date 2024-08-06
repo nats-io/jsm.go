@@ -92,7 +92,7 @@ func ExtractConsumerHealthCheckOptions(metadata map[string]string, extraChecks .
 	return opts, nil
 }
 
-func ConsumerHealthCheck(consumer *jsm.Consumer, opts ConsumerHealthCheckOptions, check *Result, log api.Logger) error {
+func ConsumerHealthCheck(consumer *jsm.Consumer, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
 	// make sure latest info cache is set as checks accesses it directly
 	nfo, err := consumer.LatestState()
 	if check.CriticalIfErr(err, "could not load info: %v", err) {

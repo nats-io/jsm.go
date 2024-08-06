@@ -14,7 +14,9 @@
 package monitor
 
 import (
+	"fmt"
 	"math/rand"
+	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -52,4 +54,23 @@ func randomPassword(length int) string {
 	}
 
 	return string(b)
+}
+
+func fileAccessible(f string) (bool, error) {
+	stat, err := os.Stat(f)
+	if err != nil {
+		return false, err
+	}
+
+	if stat.IsDir() {
+		return false, fmt.Errorf("is a directory")
+	}
+
+	file, err := os.Open(f)
+	if err != nil {
+		return false, err
+	}
+	file.Close()
+
+	return true, nil
 }

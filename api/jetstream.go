@@ -14,6 +14,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -167,6 +168,21 @@ func (e ApiError) ErrorCode() int { return e.Code }
 
 // NatsErrorCode is the unique nats error code, see `nats errors` command
 func (e ApiError) NatsErrorCode() uint16 { return e.ErrCode }
+
+// IsNatsError checks if err is a ApiErr matching code
+func IsNatsError(err error, code uint16) bool {
+	var aep *ApiError
+	if errors.As(err, &aep) {
+		return aep.NatsErrorCode() == code
+	}
+
+	var ae ApiError
+	if errors.As(err, &ae) {
+		return ae.NatsErrorCode() == code
+	}
+
+	return false
+}
 
 type JSApiResponse struct {
 	Type  string    `json:"type"`

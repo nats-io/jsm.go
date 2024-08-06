@@ -21,11 +21,16 @@ import (
 	"github.com/nats-io/nkeys"
 )
 
+// CredentialCheckOptions configures the credentials check
 type CredentialCheckOptions struct {
-	File             string        `json:"file" yaml:"file"`
-	ValidityWarning  time.Duration `json:"validity_warning" yaml:"validity_warning"`
+	// File is the file holding the credential
+	File string `json:"file" yaml:"file"`
+	// ValidityWarning is the warning threshold for credential validity
+	ValidityWarning time.Duration `json:"validity_warning" yaml:"validity_warning"`
+	// ValidityCritical is the critical threshold for credential validity
 	ValidityCritical time.Duration `json:"validity_critical" yaml:"validity_critical"`
-	RequiresExpiry   bool          `json:"requires_expiry" yaml:"requires_expiry"`
+	// RequiresExpiry requires the credential to have a validity set
+	RequiresExpiry bool `json:"requires_expiry" yaml:"requires_expiry"`
 }
 
 func CheckCredential(check *Result, opts CredentialCheckOptions) error {

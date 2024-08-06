@@ -215,7 +215,7 @@ var (
 	errInvalidDuration = fmt.Errorf("invalid duration")
 )
 
-// parseDuration parse durations with additional units over those from
+// ParseDuration parse durations with additional units over those from
 // standard go parser.
 //
 // In addition to normal go parser time units it also supports
@@ -231,7 +231,7 @@ var (
 // * "y", "Y" - a year made of 365 days of 24 hours each
 //
 // Valid duration strings can be -1y1d1µs
-func parseDuration(d string) (time.Duration, error) {
+func ParseDuration(d string) (time.Duration, error) {
 	// golang time.ParseDuration has a special case for 0
 	if d == "0" {
 		return 0 * time.Second, nil

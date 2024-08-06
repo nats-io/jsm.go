@@ -73,12 +73,22 @@ func (r *Result) Ok(format string, a ...any) {
 	r.OKs = append(r.OKs, fmt.Sprintf(format, a...))
 }
 
-func (r *Result) CriticalIfErr(err error, format string, a ...any) bool {
+func (r *Result) CriticalExitIfErr(err error, format string, a ...any) bool {
 	if err == nil {
 		return false
 	}
 
 	r.CriticalExit(format, a...)
+
+	return true
+}
+
+func (r *Result) CriticalIfErr(err error, format string, a ...any) bool {
+	if err == nil {
+		return false
+	}
+
+	r.Critical(format, a...)
 
 	return true
 }

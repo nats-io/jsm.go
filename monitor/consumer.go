@@ -11,14 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jsm
+package monitor
 
 import (
 	"strconv"
 	"time"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
-	"github.com/nats-io/jsm.go/monitor"
 )
 
 const (
@@ -30,7 +30,7 @@ const (
 	ConsumerMonitorMetaRedeliveryCritical     = "io.nats.monitor.redelivery-critical"
 )
 
-type ConsumerHealthCheck func(*Consumer, *monitor.Result, ConsumerHealthCheckOptions, api.Logger)
+type ConsumerHealthCheckF func(*jsm.Consumer, *Result, ConsumerHealthCheckOptions, api.Logger)
 
 type ConsumerHealthCheckOptions struct {
 	Enabled                bool
@@ -40,17 +40,17 @@ type ConsumerHealthCheckOptions struct {
 	LastDeliveryCritical   time.Duration
 	LastAckCritical        time.Duration
 	RedeliveryCritical     int
-	HealthChecks           []ConsumerHealthCheck
+	HealthChecks           []ConsumerHealthCheckF
 }
 
-func (c *Consumer) HealthCheckOptions(extraChecks ...ConsumerHealthCheck) (*ConsumerHealthCheckOptions, error) {
+func ExtractConsumerHealthCheckOptions(metadata map[string]string, extraChecks ...ConsumerHealthCheckF) (*ConsumerHealthCheckOptions, error) {
 	opts := &ConsumerHealthCheckOptions{
 		HealthChecks: extraChecks,
 	}
 
 	var err error
 	parser := []monitorMetaParser{
-		{MonitorEnabled, func(v string) error {
+		{MonitorMetaEnabled, func(v string) error {
 			opts.Enabled, err = strconv.ParseBool(v)
 			return err
 		}},
@@ -67,11 +67,11 @@ func (c *Consumer) HealthCheckOptions(extraChecks ...ConsumerHealthCheck) (*Cons
 			return err
 		}},
 		{ConsumerMonitorMetaLastDeliveredCritical, func(v string) error {
-			opts.LastDeliveryCritical, err = parseDuration(v)
+			opts.LastDeliveryCritical, err = jsm.ParseDuration(v)
 			return err
 		}},
 		{ConsumerMonitorMetaLastAckCritical, func(v string) error {
-			opts.LastAckCritical, err = parseDuration(v)
+			opts.LastAckCritical, err = jsm.ParseDuration(v)
 			return err
 		}},
 		{ConsumerMonitorMetaRedeliveryCritical, func(v string) error {
@@ -79,8 +79,6 @@ func (c *Consumer) HealthCheckOptions(extraChecks ...ConsumerHealthCheck) (*Cons
 			return err
 		}},
 	}
-
-	metadata := c.Metadata()
 
 	for _, m := range parser {
 		if v, ok := metadata[m.k]; ok {
@@ -94,46 +92,39 @@ func (c *Consumer) HealthCheckOptions(extraChecks ...ConsumerHealthCheck) (*Cons
 	return opts, nil
 }
 
-func (c *Consumer) HealthCheck(opts ConsumerHealthCheckOptions, check *monitor.Result, log api.Logger) (*monitor.Result, error) {
-	if check == nil {
-		check = &monitor.Result{
-			Check: "consumer_status",
-			Name:  c.Name(),
-		}
-	}
-
+func ConsumerHealthCheck(consumer *jsm.Consumer, opts ConsumerHealthCheckOptions, check *Result, log api.Logger) error {
 	// make sure latest info cache is set as checks accesses it directly
-	nfo, err := c.LatestState()
-	if err != nil {
-		return nil, err
+	nfo, err := consumer.LatestState()
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
 	}
 
-	check.Pd(&monitor.PerfDataItem{Name: "ack_pending", Value: float64(nfo.NumAckPending), Help: "The number of messages waiting to be Acknowledged", Crit: float64(opts.AckOutstandingCritical)})
-	check.Pd(&monitor.PerfDataItem{Name: "pull_waiting", Value: float64(nfo.NumWaiting), Help: "The number of waiting Pull requests", Crit: float64(opts.WaitingCritical)})
-	check.Pd(&monitor.PerfDataItem{Name: "pending", Value: float64(nfo.NumPending), Help: "The number of messages that have not yet been consumed", Crit: float64(opts.UnprocessedCritical)})
-	check.Pd(&monitor.PerfDataItem{Name: "redelivered", Value: float64(nfo.NumRedelivered), Help: "The number of messages currently being redelivered", Crit: float64(opts.RedeliveryCritical)})
+	check.Pd(&PerfDataItem{Name: "ack_pending", Value: float64(nfo.NumAckPending), Help: "The number of messages waiting to be Acknowledged", Crit: float64(opts.AckOutstandingCritical)})
+	check.Pd(&PerfDataItem{Name: "pull_waiting", Value: float64(nfo.NumWaiting), Help: "The number of waiting Pull requests", Crit: float64(opts.WaitingCritical)})
+	check.Pd(&PerfDataItem{Name: "pending", Value: float64(nfo.NumPending), Help: "The number of messages that have not yet been consumed", Crit: float64(opts.UnprocessedCritical)})
+	check.Pd(&PerfDataItem{Name: "redelivered", Value: float64(nfo.NumRedelivered), Help: "The number of messages currently being redelivered", Crit: float64(opts.RedeliveryCritical)})
 	if nfo.Delivered.Last != nil {
-		check.Pd(&monitor.PerfDataItem{Name: "last_delivery", Value: time.Since(*nfo.Delivered.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was delivered", Crit: opts.LastDeliveryCritical.Seconds()})
+		check.Pd(&PerfDataItem{Name: "last_delivery", Value: time.Since(*nfo.Delivered.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was delivered", Crit: opts.LastDeliveryCritical.Seconds()})
 	}
 	if nfo.AckFloor.Last != nil {
-		check.Pd(&monitor.PerfDataItem{Name: "last_ack", Value: time.Since(*nfo.AckFloor.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was acknowledged", Crit: opts.LastAckCritical.Seconds()})
+		check.Pd(&PerfDataItem{Name: "last_ack", Value: time.Since(*nfo.AckFloor.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was acknowledged", Crit: opts.LastAckCritical.Seconds()})
 	}
 
-	c.checkOutstandingAck(&nfo, check, opts, log)
-	c.checkWaiting(&nfo, check, opts, log)
-	c.checkUnprocessed(&nfo, check, opts, log)
-	c.checkRedelivery(&nfo, check, opts, log)
-	c.checkLastDelivery(&nfo, check, opts, log)
-	c.checkLastAck(&nfo, check, opts, log)
+	consumerCheckOutstandingAck(&nfo, check, opts, log)
+	consumerCheckWaiting(&nfo, check, opts, log)
+	consumerCheckUnprocessed(&nfo, check, opts, log)
+	consumerCheckRedelivery(&nfo, check, opts, log)
+	consumerCheckLastDelivery(&nfo, check, opts, log)
+	consumerCheckLastAck(&nfo, check, opts, log)
 
 	for _, hc := range opts.HealthChecks {
-		hc(c, check, opts, log)
+		hc(consumer, check, opts, log)
 	}
 
-	return check, nil
+	return nil
 }
 
-func (c *Consumer) checkLastAck(nfo *api.ConsumerInfo, check *monitor.Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckLastAck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
 	switch {
 	case opts.LastAckCritical <= 0:
 	case nfo.AckFloor.Last == nil:
@@ -147,7 +138,7 @@ func (c *Consumer) checkLastAck(nfo *api.ConsumerInfo, check *monitor.Result, op
 	}
 }
 
-func (c *Consumer) checkLastDelivery(nfo *api.ConsumerInfo, check *monitor.Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckLastDelivery(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
 	switch {
 	case opts.LastDeliveryCritical <= 0:
 	case nfo.Delivered.Last == nil:
@@ -161,7 +152,7 @@ func (c *Consumer) checkLastDelivery(nfo *api.ConsumerInfo, check *monitor.Resul
 	}
 }
 
-func (c *Consumer) checkRedelivery(nfo *api.ConsumerInfo, check *monitor.Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckRedelivery(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
 	switch {
 	case opts.RedeliveryCritical <= 0:
 		return
@@ -173,7 +164,7 @@ func (c *Consumer) checkRedelivery(nfo *api.ConsumerInfo, check *monitor.Result,
 	}
 }
 
-func (c *Consumer) checkUnprocessed(nfo *api.ConsumerInfo, check *monitor.Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckUnprocessed(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
 	switch {
 	case opts.UnprocessedCritical <= 0:
 		return
@@ -185,7 +176,7 @@ func (c *Consumer) checkUnprocessed(nfo *api.ConsumerInfo, check *monitor.Result
 	}
 }
 
-func (c *Consumer) checkWaiting(nfo *api.ConsumerInfo, check *monitor.Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckWaiting(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
 	switch {
 	case opts.WaitingCritical <= 0:
 		return
@@ -197,7 +188,7 @@ func (c *Consumer) checkWaiting(nfo *api.ConsumerInfo, check *monitor.Result, op
 	}
 }
 
-func (c *Consumer) checkOutstandingAck(nfo *api.ConsumerInfo, check *monitor.Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckOutstandingAck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
 	switch {
 	case opts.AckOutstandingCritical <= 0:
 		return

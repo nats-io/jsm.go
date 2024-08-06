@@ -37,13 +37,16 @@ type ServerCheckOptions struct {
 	AuthenticationRequired bool          `json:"authentication_required" yaml:"authentication_required"`
 	TLSRequired            bool          `json:"tls_required" yaml:"tls_required"`
 	JetStreamRequired      bool          `json:"jet_stream_required" yaml:"jet_stream_required"`
+
+	Resolver func(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz, error) `json:"-" yaml:"-"`
 }
 
-// allows for tests to mock the results
-var vzResolver = fetchVarz
-
 func CheckServer(nc *nats.Conn, check *Result, timeout time.Duration, opts ServerCheckOptions) error {
-	vz, err := vzResolver(nc, opts.Name, timeout)
+	if opts.Resolver == nil {
+		opts.Resolver = fetchVarz
+	}
+
+	vz, err := opts.Resolver(nc, opts.Name, timeout)
 	if check.CriticalIfErr(err, "varz failed: %v", err) {
 		return nil
 	}

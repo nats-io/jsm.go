@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package monitor
+package monitor_test
 
 import (
 	"sort"
@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/nats-io/jsm.go/monitor"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -33,7 +34,7 @@ func checkErr(t *testing.T, err error, format string, a ...any) {
 	t.Fatalf(format, a...)
 }
 
-func assertHasPDItem(t *testing.T, check *Result, items ...string) {
+func assertHasPDItem(t *testing.T, check *monitor.Result, items ...string) {
 	t.Helper()
 
 	if len(items) == 0 {
@@ -104,8 +105,8 @@ func withJetStream(t *testing.T, cb func(srv *server.Server, nc *nats.Conn)) {
 func TestCheckKVBucketAndKey(t *testing.T) {
 	t.Run("Bucket", func(t *testing.T) {
 		withJetStream(t, func(_ *server.Server, nc *nats.Conn) {
-			check := &Result{}
-			err := CheckKVBucketAndKey(nc, check, KVCheckOptions{
+			check := &monitor.Result{}
+			err := monitor.CheckKVBucketAndKey(nc, check, monitor.KVCheckOptions{
 				Bucket: "TEST",
 			})
 			checkErr(t, err, "check failed: %v", err)
@@ -119,8 +120,8 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			_, err = js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "TEST"})
 			checkErr(t, err, "kv create failed")
 
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, KVCheckOptions{
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, monitor.KVCheckOptions{
 				Bucket:         "TEST",
 				ValuesCritical: -1,
 				ValuesWarning:  -1,
@@ -141,14 +142,14 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			bucket, err := js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "TEST"})
 			checkErr(t, err, "kv create failed: %v", err)
 
-			opts := KVCheckOptions{
+			opts := monitor.KVCheckOptions{
 				Bucket:         "TEST",
 				ValuesWarning:  1,
 				ValuesCritical: 2,
 			}
 
-			check := &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check := &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)
@@ -157,8 +158,8 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			_, err = bucket.PutString("K", "V")
 			checkErr(t, err, "pub failed")
 
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=1;1;2 bytes=41B replicas=1")
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -168,8 +169,8 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			_, err = bucket.PutString("K1", "V")
 			checkErr(t, err, "pub failed")
 
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=2;1;2 bytes=83B replicas=1")
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -184,8 +185,8 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			_, err = bucket.PutString("K2", "V")
 			checkErr(t, err, "pub failed")
 
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=3;5;3 bytes=125B replicas=1")
 			assertListIsEmpty(t, check.Warnings)
@@ -195,8 +196,8 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			_, err = bucket.PutString("K3", "V")
 			checkErr(t, err, "pub failed")
 
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=4;5;3 bytes=167B replicas=1")
 			assertListIsEmpty(t, check.Criticals)
@@ -208,8 +209,8 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			_, err = bucket.PutString("K5", "V")
 			checkErr(t, err, "pub failed")
 
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=6;5;3 bytes=251B replicas=1")
 			assertListIsEmpty(t, check.Warnings)
@@ -226,15 +227,15 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			bucket, err := js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "TEST"})
 			checkErr(t, err, "kv create failed")
 
-			opts := KVCheckOptions{
+			opts := monitor.KVCheckOptions{
 				Bucket:         "TEST",
 				Key:            "KEY",
 				ValuesWarning:  -1,
 				ValuesCritical: -1,
 			}
 
-			check := &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check := &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -243,16 +244,16 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			_, err = bucket.Put("KEY", []byte("VAL"))
 			checkErr(t, err, "put failed")
 
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST", "key KEY found")
 			assertListIsEmpty(t, check.Criticals)
 
 			bucket.Delete("KEY")
-			check = &Result{}
-			err = CheckKVBucketAndKey(nc, check, opts)
+			check = &monitor.Result{}
+			err = monitor.CheckKVBucketAndKey(nc, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST")

@@ -11,12 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package monitor
+package monitor_test
 
 import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/nats-io/jsm.go/monitor"
 )
 
 func TestCheckCredential(t *testing.T) {
@@ -59,27 +61,27 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 	}
 
 	t.Run("no expiry", func(t *testing.T) {
-		opts := CredentialCheckOptions{
+		opts := monitor.CredentialCheckOptions{
 			File:           writeCred(t, noExpiry),
 			RequiresExpiry: true,
 		}
 
-		check := &Result{}
-		assertNoError(t, CheckCredential(check, opts))
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckCredential(check, opts))
 		assertListEquals(t, check.Criticals, "never expires")
 		assertListIsEmpty(t, check.Warnings)
 
 		opts.File = writeCred(t, expires2100)
-		check = &Result{}
-		assertNoError(t, CheckCredential(check, opts))
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckCredential(check, opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.Warnings)
 		assertListEquals(t, check.OKs, "expires in 2100-01-01 00:00:00 +0000 UTC")
 	})
 
 	t.Run("critical", func(t *testing.T) {
-		check := &Result{}
-		assertNoError(t, CheckCredential(check, CredentialCheckOptions{
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckCredential(check, monitor.CredentialCheckOptions{
 			File:             writeCred(t, noExpiry),
 			ValidityCritical: 100 * 24 * 365 * time.Hour,
 		}))
@@ -89,8 +91,8 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 	})
 
 	t.Run("warning", func(t *testing.T) {
-		check := &Result{}
-		assertNoError(t, CheckCredential(check, CredentialCheckOptions{
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckCredential(check, monitor.CredentialCheckOptions{
 			File:            writeCred(t, noExpiry),
 			ValidityWarning: 100 * 24 * 365 * time.Hour,
 		}))

@@ -11,18 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jsm
+package monitor
 
 import (
 	"strconv"
 	"time"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
-	"github.com/nats-io/jsm.go/monitor"
 )
 
 const (
-	MonitorEnabled                    = "io.nats.monitor.enabled"
+	MonitorMetaEnabled                = "io.nats.monitor.enabled"
 	StreamMonitorMetaLagCritical      = "io.nats.monitor.lag-critical"
 	StreamMonitorMetaSeenCritical     = "io.nats.monitor.seen-critical"
 	StreamMonitorMetaMinSources       = "io.nats.monitor.min-sources"
@@ -36,7 +36,7 @@ const (
 	StreamMonitorMetaSubjectsCritical = "io.nats.monitor.subjects-critical"
 )
 
-type StreamHealthCheck func(*Stream, *monitor.Result, StreamHealthCheckOptions, api.Logger)
+type StreamHealthCheckF func(*jsm.Stream, *Result, StreamHealthCheckOptions, api.Logger)
 
 type StreamHealthCheckOptions struct {
 	Enabled              bool
@@ -51,7 +51,7 @@ type StreamHealthCheckOptions struct {
 	MessagesCrit         uint64
 	SubjectsWarn         int
 	SubjectsCrit         int
-	HealthChecks         []StreamHealthCheck
+	HealthChecks         []StreamHealthCheckF
 }
 
 type monitorMetaParser struct {
@@ -59,14 +59,15 @@ type monitorMetaParser struct {
 	fn func(string) error
 }
 
-func (s *Stream) HealthCheckOptions(extraChecks ...StreamHealthCheck) (*StreamHealthCheckOptions, error) {
+// ExtractStreamHealthCheckOptions checks stream metadata and populate StreamHealthCheckOptions based on it
+func ExtractStreamHealthCheckOptions(metadata map[string]string, extraChecks ...StreamHealthCheckF) (*StreamHealthCheckOptions, error) {
 	opts := &StreamHealthCheckOptions{
 		HealthChecks: extraChecks,
 	}
 
 	var err error
 	parser := []monitorMetaParser{
-		{MonitorEnabled, func(v string) error {
+		{MonitorMetaEnabled, func(v string) error {
 			opts.Enabled, err = strconv.ParseBool(v)
 			return err
 		}},
@@ -75,7 +76,7 @@ func (s *Stream) HealthCheckOptions(extraChecks ...StreamHealthCheck) (*StreamHe
 			return err
 		}},
 		{StreamMonitorMetaSeenCritical, func(v string) error {
-			opts.SourcesSeenCritical, err = parseDuration(v)
+			opts.SourcesSeenCritical, err = jsm.ParseDuration(v)
 			return err
 		}},
 		{StreamMonitorMetaMinSources, func(v string) error {
@@ -95,7 +96,7 @@ func (s *Stream) HealthCheckOptions(extraChecks ...StreamHealthCheck) (*StreamHe
 			return err
 		}},
 		{StreamMonitorMetaPeerSeenCritical, func(v string) error {
-			opts.ClusterSeenCritical, err = parseDuration(v)
+			opts.ClusterSeenCritical, err = jsm.ParseDuration(v)
 			return err
 		}},
 		{StreamMonitorMetaMessagesWarn, func(v string) error {
@@ -116,8 +117,6 @@ func (s *Stream) HealthCheckOptions(extraChecks ...StreamHealthCheck) (*StreamHe
 		}},
 	}
 
-	metadata := s.Metadata()
-
 	for _, m := range parser {
 		if v, ok := metadata[m.k]; ok {
 			err = m.fn(v)
@@ -130,34 +129,27 @@ func (s *Stream) HealthCheckOptions(extraChecks ...StreamHealthCheck) (*StreamHe
 	return opts, nil
 }
 
-func (s *Stream) HealthCheck(opts StreamHealthCheckOptions, check *monitor.Result, log api.Logger) (*monitor.Result, error) {
-	if check == nil {
-		check = &monitor.Result{
-			Check: "stream_status",
-			Name:  s.Name(),
-		}
-	}
-
+func StreamHealthCheck(stream *jsm.Stream, check *Result, opts StreamHealthCheckOptions, log api.Logger) error {
 	// make sure latest info cache is set as checks accesses it directly
-	nfo, err := s.LatestInformation()
-	if err != nil {
-		return nil, err
+	nfo, err := stream.LatestInformation()
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
 	}
 
-	s.checkCluster(nfo, check, opts, log)
-	s.checkMessages(nfo, check, opts, log)
-	s.checkSubjects(nfo, check, opts, log)
-	s.checkSources(nfo, check, opts, log)
-	s.checkMirror(nfo, check, opts, log)
+	streamCheckCluster(nfo, check, opts, log)
+	streamCheckMessages(nfo, check, opts, log)
+	streamCheckSubjects(nfo, check, opts, log)
+	streamCheckSources(nfo, check, opts, log)
+	streamCheckMirror(nfo, check, opts, log)
 
 	for _, hc := range opts.HealthChecks {
-		hc(s, check, opts, log)
+		hc(stream, check, opts, log)
 	}
 
-	return check, nil
+	return nil
 }
 
-func (s *Stream) checkMirror(si *api.StreamInfo, check *monitor.Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckMirror(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
 	if (opts.SourcesLagCritical <= 0 && opts.SourcesSeenCritical <= 0) || si.Config.Name == "" || si.Config.Mirror == nil {
 		return
 	}
@@ -184,8 +176,8 @@ func (s *Stream) checkMirror(si *api.StreamInfo, check *monitor.Result, opts Str
 	}
 
 	check.Pd(
-		&monitor.PerfDataItem{Name: "lag", Crit: float64(opts.SourcesLagCritical), Value: float64(state.Lag), Help: "Number of operations this peer is behind its origin"},
-		&monitor.PerfDataItem{Name: "active", Crit: opts.SourcesSeenCritical.Seconds(), Unit: "s", Value: state.Active.Seconds(), Help: "Indicates if this peer is active and catching up if lagged"},
+		&PerfDataItem{Name: "lag", Crit: float64(opts.SourcesLagCritical), Value: float64(state.Lag), Help: "Number of operations this peer is behind its origin"},
+		&PerfDataItem{Name: "active", Crit: opts.SourcesSeenCritical.Seconds(), Unit: "s", Value: state.Active.Seconds(), Help: "Indicates if this peer is active and catching up if lagged"},
 	)
 
 	ok := true
@@ -207,11 +199,11 @@ func (s *Stream) checkMirror(si *api.StreamInfo, check *monitor.Result, opts Str
 	}
 }
 
-func (s *Stream) checkSources(si *api.StreamInfo, check *monitor.Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckSources(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
 	sources := si.Sources
 	count := len(sources)
 
-	check.Pd(&monitor.PerfDataItem{Name: "sources", Value: float64(len(sources)), Warn: float64(opts.MinSources), Crit: float64(opts.MaxSources), Help: "Number of sources being consumed by this stream"})
+	check.Pd(&PerfDataItem{Name: "sources", Value: float64(len(sources)), Warn: float64(opts.MinSources), Crit: float64(opts.MaxSources), Help: "Number of sources being consumed by this stream"})
 
 	switch {
 	case opts.MinSources > 0 && count < opts.MinSources:
@@ -242,8 +234,8 @@ func (s *Stream) checkSources(si *api.StreamInfo, check *monitor.Result, opts St
 	}
 
 	check.Pd(
-		&monitor.PerfDataItem{Name: "sources_lagged", Value: float64(lagged), Help: "Number of sources that are behind more than the configured threshold"},
-		&monitor.PerfDataItem{Name: "sources_inactive", Value: float64(inactive), Help: "Number of sources that are inactive"},
+		&PerfDataItem{Name: "sources_lagged", Value: float64(lagged), Help: "Number of sources that are behind more than the configured threshold"},
+		&PerfDataItem{Name: "sources_inactive", Value: float64(inactive), Help: "Number of sources that are inactive"},
 	)
 
 	if lagged > 0 {
@@ -260,7 +252,7 @@ func (s *Stream) checkSources(si *api.StreamInfo, check *monitor.Result, opts St
 	}
 }
 
-func (s *Stream) checkSubjects(si *api.StreamInfo, check *monitor.Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckSubjects(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
 	if opts.SubjectsWarn <= 0 && opts.SubjectsCrit <= 0 {
 		return
 	}
@@ -268,7 +260,7 @@ func (s *Stream) checkSubjects(si *api.StreamInfo, check *monitor.Result, opts S
 	ns := si.State.NumSubjects
 	lt := opts.SubjectsWarn < opts.SubjectsCrit
 
-	check.Pd(&monitor.PerfDataItem{Name: "subjects", Value: float64(ns), Warn: float64(opts.SubjectsWarn), Crit: float64(opts.SubjectsCrit), Help: "Number of subjects stored in the stream"})
+	check.Pd(&PerfDataItem{Name: "subjects", Value: float64(ns), Warn: float64(opts.SubjectsWarn), Crit: float64(opts.SubjectsCrit), Help: "Number of subjects stored in the stream"})
 
 	switch {
 	case lt && ns >= opts.SubjectsCrit:
@@ -289,12 +281,12 @@ func (s *Stream) checkSubjects(si *api.StreamInfo, check *monitor.Result, opts S
 }
 
 // TODO: support inverting logic and also in cli
-func (s *Stream) checkMessages(si *api.StreamInfo, check *monitor.Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckMessages(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
 	if opts.MessagesCrit <= 0 && opts.MessagesWarn <= 0 {
 		return
 	}
 
-	check.Pd(&monitor.PerfDataItem{Name: "messages", Value: float64(si.State.Msgs), Warn: float64(opts.MessagesWarn), Crit: float64(opts.MessagesCrit), Help: "Messages stored in the stream"})
+	check.Pd(&PerfDataItem{Name: "messages", Value: float64(si.State.Msgs), Warn: float64(opts.MessagesWarn), Crit: float64(opts.MessagesCrit), Help: "Messages stored in the stream"})
 
 	if opts.MessagesCrit > 0 && si.State.Msgs <= opts.MessagesCrit {
 		log.Debugf("CRITICAL: %d messages", si.State.Msgs)
@@ -311,7 +303,7 @@ func (s *Stream) checkMessages(si *api.StreamInfo, check *monitor.Result, opts S
 	check.Ok("%d messages", si.State.Msgs)
 }
 
-func (s *Stream) checkCluster(si *api.StreamInfo, check *monitor.Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckCluster(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
 	nfo := si.Cluster
 	if nfo == nil && opts.ClusterExpectedPeers <= 0 {
 		return

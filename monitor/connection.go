@@ -22,18 +22,18 @@ import (
 
 // ConnectionCheckOptions configures the NATS Connection check
 type ConnectionCheckOptions struct {
-	// ConnectTimeWarning warning threshold for time to establish the connection
-	ConnectTimeWarning time.Duration `json:"connect_time_warning" yaml:"connect_time_warning"`
-	// ConnectTimeCritical critical threshold for time to establish the connection
-	ConnectTimeCritical time.Duration `json:"connect_time_critical" yaml:"connect_time_critical"`
-	// ServerRttWarning warning threshold for the connection rtt check
-	ServerRttWarning time.Duration `json:"server_rtt_warning" yaml:"server_rtt_warning"`
-	// ServerRttCritical critical threshold for the connection rtt check
-	ServerRttCritical time.Duration `json:"server_rtt_critical" yaml:"server_rtt_critical"`
-	// RequestRttWarning warning threshold for the request-respond rtt check
-	RequestRttWarning time.Duration `json:"request_rtt_warning" yaml:"request_rtt_warning"`
-	// RequestRttCritical critical threshold for the request-respond rtt check
-	RequestRttCritical time.Duration `json:"request_rtt_critical" yaml:"request_rtt_critical"`
+	// ConnectTimeWarning warning threshold for time to establish the connection (seconds)
+	ConnectTimeWarning float64 `json:"connect_time_warning" yaml:"connect_time_warning"`
+	// ConnectTimeCritical critical threshold for time to establish the connection (seconds)
+	ConnectTimeCritical float64 `json:"connect_time_critical" yaml:"connect_time_critical"`
+	// ServerRttWarning warning threshold for the connection rtt check (seconds)
+	ServerRttWarning float64 `json:"server_rtt_warning" yaml:"server_rtt_warning"`
+	// ServerRttCritical critical threshold for the connection rtt check (seconds)
+	ServerRttCritical float64 `json:"server_rtt_critical" yaml:"server_rtt_critical"`
+	// RequestRttWarning warning threshold for the request-respond rtt check (seconds)
+	RequestRttWarning float64 `json:"request_rtt_warning" yaml:"request_rtt_warning"`
+	// RequestRttCritical critical threshold for the request-respond rtt check (seconds)
+	RequestRttCritical float64 `json:"request_rtt_critical" yaml:"request_rtt_critical"`
 }
 
 func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, check *Result, opts ConnectionCheckOptions) error {
@@ -43,11 +43,11 @@ func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, 
 		return nil
 	}
 	ct := time.Since(connStart)
-	check.Pd(&PerfDataItem{Name: "connect_time", Value: ct.Seconds(), Warn: opts.ConnectTimeWarning.Seconds(), Crit: opts.ConnectTimeCritical.Seconds(), Unit: "s", Help: "Time taken to connect to NATS"})
+	check.Pd(&PerfDataItem{Name: "connect_time", Value: ct.Seconds(), Warn: opts.ConnectTimeWarning, Crit: opts.ConnectTimeCritical, Unit: "s", Help: "Time taken to connect to NATS"})
 
-	if ct >= opts.ConnectTimeCritical {
+	if ct >= time.Duration(opts.ConnectTimeCritical*float64(time.Second)) {
 		check.Critical("connected to %s, connect time exceeded %v", nc.ConnectedUrl(), opts.ConnectTimeCritical)
-	} else if ct >= opts.ConnectTimeWarning {
+	} else if ct >= time.Duration(opts.ConnectTimeWarning*float64(time.Second)) {
 		check.Warn("connected to %s, connect time exceeded %v", nc.ConnectedUrl(), opts.ConnectTimeWarning)
 	} else {
 		check.Ok("connected to %s in %s", nc.ConnectedUrl(), ct)
@@ -56,10 +56,10 @@ func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, 
 	rtt, err := nc.RTT()
 	check.CriticalIfErr(err, "rtt failed: %s", err)
 
-	check.Pd(&PerfDataItem{Name: "rtt", Value: rtt.Seconds(), Warn: opts.ServerRttWarning.Seconds(), Crit: opts.ServerRttCritical.Seconds(), Unit: "s", Help: "The round-trip-time of the connection"})
-	if rtt >= opts.ServerRttCritical {
+	check.Pd(&PerfDataItem{Name: "rtt", Value: rtt.Seconds(), Warn: opts.ServerRttWarning, Crit: opts.ServerRttCritical, Unit: "s", Help: "The round-trip-time of the connection"})
+	if rtt >= time.Duration(opts.ServerRttCritical*float64(time.Second)) {
 		check.Critical("rtt time exceeded %v", opts.ServerRttCritical)
-	} else if rtt >= opts.ServerRttWarning {
+	} else if rtt >= time.Duration(opts.ServerRttWarning*float64(time.Second)) {
 		check.Critical("rtt time exceeded %v", opts.ServerRttWarning)
 	} else {
 		check.Ok("rtt time %v", rtt)
@@ -79,15 +79,15 @@ func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, 
 	check.CriticalIfErr(err, "did not receive from %s: %s", ib, err)
 
 	reqt := time.Since(start)
-	check.Pd(&PerfDataItem{Name: "request_time", Value: reqt.Seconds(), Warn: opts.RequestRttWarning.Seconds(), Crit: opts.RequestRttCritical.Seconds(), Unit: "s", Help: "Time taken for a full Request-Reply operation"})
+	check.Pd(&PerfDataItem{Name: "request_time", Value: reqt.Seconds(), Warn: opts.RequestRttWarning, Crit: opts.RequestRttCritical, Unit: "s", Help: "Time taken for a full Request-Reply operation"})
 
 	if !bytes.Equal(received.Data, msg) {
 		check.Critical("did not receive expected message")
 	}
 
-	if reqt >= opts.RequestRttCritical {
+	if reqt >= time.Duration(opts.RequestRttCritical*float64(time.Second)) {
 		check.Critical("round trip request took %f", reqt.Seconds())
-	} else if reqt >= opts.RequestRttWarning {
+	} else if reqt >= time.Duration(opts.RequestRttWarning*float64(time.Second)) {
 		check.Warn("round trip request took %f", reqt.Seconds())
 	} else {
 		check.Ok("round trip took %fs", reqt.Seconds())

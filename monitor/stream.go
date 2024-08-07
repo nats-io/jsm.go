@@ -15,10 +15,10 @@ package monitor
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go"
 )
 
 const (
@@ -38,20 +38,35 @@ const (
 
 type StreamHealthCheckF func(*jsm.Stream, *Result, StreamHealthCheckOptions, api.Logger)
 
+// StreamHealthCheckOptions configures the stream check
 type StreamHealthCheckOptions struct {
-	Enabled              bool
-	SourcesLagCritical   uint64
-	SourcesSeenCritical  time.Duration
-	MinSources           int
-	MaxSources           int
-	ClusterExpectedPeers int
-	ClusterLagCritical   uint64
-	ClusterSeenCritical  time.Duration
-	MessagesWarn         uint64
-	MessagesCrit         uint64
-	SubjectsWarn         int
-	SubjectsCrit         int
-	HealthChecks         []StreamHealthCheckF
+	// StreamName stream to monitor
+	StreamName string `json:"stream_name" yaml:"stream_name"`
+	// SourcesLagCritical critical threshold for how many operations behind sources may be
+	SourcesLagCritical uint64 `json:"sources_lag_critical" yaml:"sources_lag_critical"`
+	// SourcesSeenCritical critical threshold for how long a source stream must have been visible (seconds)
+	SourcesSeenCritical float64 `json:"sources_seen_critical" yaml:"sources_seen_critical"`
+	// MinSources minimum number of sources to allow
+	MinSources int `json:"min_sources" yaml:"min_sources"`
+	// MaxSources maximum number of sources to allow
+	MaxSources int `json:"max_sources" yaml:"max_sources"`
+	// ClusterExpectedPeers how many peers should be in a clustered stream (Replica count)
+	ClusterExpectedPeers int `json:"cluster_expected_peers" yaml:"cluster_expected_peers"`
+	// ClusterLagCritical critical threshold for how many operations behind cluster peers may be
+	ClusterLagCritical uint64 `json:"cluster_lag_critical" yaml:"cluster_lag_critical"`
+	// ClusterSeenCritical critical threshold for how long ago a cluster peer should have been seen
+	ClusterSeenCritical float64 `json:"cluster_seen_critical" yaml:"cluster_seen_critical"`
+	// MessagesWarn is the warning level for number of messages in the stream
+	MessagesWarn uint64 `json:"messages_warn" yaml:"messages_warn"`
+	// MessagesCrit is the critical level for number of messages in the stream
+	MessagesCrit uint64 `json:"messages_critical" yaml:"messages_critical"`
+	// SubjectsWarn is the warning level for number of subjects in the stream
+	SubjectsWarn int `json:"subjects_warn" yaml:"subjects_warn"`
+	// SubjectsCrit is the critical level for number of subjects in the stream
+	SubjectsCrit int `json:"subjects_critical" yaml:"subjects_critical"`
+
+	Enabled      bool                 `json:"-" yaml:"-"`
+	HealthChecks []StreamHealthCheckF `json:"-" yaml:"-"`
 }
 
 type monitorMetaParser struct {
@@ -65,6 +80,10 @@ func ExtractStreamHealthCheckOptions(metadata map[string]string, extraChecks ...
 		HealthChecks: extraChecks,
 	}
 
+	return populateStreamHealthCheckOptions(metadata, opts)
+}
+
+func populateStreamHealthCheckOptions(metadata map[string]string, opts *StreamHealthCheckOptions) (*StreamHealthCheckOptions, error) {
 	var err error
 	parser := []monitorMetaParser{
 		{MonitorMetaEnabled, func(v string) error {
@@ -76,7 +95,8 @@ func ExtractStreamHealthCheckOptions(metadata map[string]string, extraChecks ...
 			return err
 		}},
 		{StreamMonitorMetaSeenCritical, func(v string) error {
-			opts.SourcesSeenCritical, err = jsm.ParseDuration(v)
+			p, err := jsm.ParseDuration(v)
+			opts.ClusterSeenCritical = p.Seconds()
 			return err
 		}},
 		{StreamMonitorMetaMinSources, func(v string) error {
@@ -96,7 +116,12 @@ func ExtractStreamHealthCheckOptions(metadata map[string]string, extraChecks ...
 			return err
 		}},
 		{StreamMonitorMetaPeerSeenCritical, func(v string) error {
-			opts.ClusterSeenCritical, err = jsm.ParseDuration(v)
+			p, err := jsm.ParseDuration(v)
+			if err != nil {
+				return err
+			}
+			opts.ClusterSeenCritical = p.Seconds()
+
 			return err
 		}},
 		{StreamMonitorMetaMessagesWarn, func(v string) error {
@@ -129,7 +154,32 @@ func ExtractStreamHealthCheckOptions(metadata map[string]string, extraChecks ...
 	return opts, nil
 }
 
-func StreamHealthCheck(stream *jsm.Stream, check *Result, opts StreamHealthCheckOptions, log api.Logger) error {
+func StreamHealthCheck(server string, nopts []nats.Option, check *Result, opts StreamHealthCheckOptions, log api.Logger) error {
+	if opts.StreamName == "" {
+		check.Critical("stream name is required")
+		return nil
+	}
+
+	nc, err := nats.Connect(server, nopts...)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
+	}
+
+	mgr, err := jsm.New(nc)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
+	}
+
+	stream, err := mgr.LoadStream(opts.StreamName)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
+	}
+
+	_, err = populateStreamHealthCheckOptions(stream.Metadata(), &opts)
+	if check.CriticalIfErr(err, "could not configure based on metadata: %v", err) {
+		return nil
+	}
+
 	// make sure latest info cache is set as checks accesses it directly
 	nfo, err := stream.LatestInformation()
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
@@ -177,7 +227,7 @@ func streamCheckMirror(si *api.StreamInfo, check *Result, opts StreamHealthCheck
 
 	check.Pd(
 		&PerfDataItem{Name: "lag", Crit: float64(opts.SourcesLagCritical), Value: float64(state.Lag), Help: "Number of operations this peer is behind its origin"},
-		&PerfDataItem{Name: "active", Crit: opts.SourcesSeenCritical.Seconds(), Unit: "s", Value: state.Active.Seconds(), Help: "Indicates if this peer is active and catching up if lagged"},
+		&PerfDataItem{Name: "active", Crit: opts.SourcesSeenCritical, Unit: "s", Value: state.Active.Seconds(), Help: "Indicates if this peer is active and catching up if lagged"},
 	)
 
 	ok := true
@@ -188,7 +238,7 @@ func streamCheckMirror(si *api.StreamInfo, check *Result, opts StreamHealthCheck
 		ok = false
 	}
 
-	if opts.SourcesSeenCritical > 0 && state.Active >= opts.SourcesSeenCritical {
+	if opts.SourcesSeenCritical > 0 && state.Active >= secondsToDuration(opts.SourcesSeenCritical) {
 		log.Debugf("CRITICAL: Mirror Seen > %v", state.Active)
 		check.Critical("Mirror Seen %v", state.Active)
 		ok = false
@@ -228,7 +278,7 @@ func streamCheckSources(si *api.StreamInfo, check *Result, opts StreamHealthChec
 			lagged++
 		}
 
-		if opts.SourcesSeenCritical > 0 && s.Active >= opts.SourcesSeenCritical {
+		if opts.SourcesSeenCritical > 0 && s.Active >= secondsToDuration(opts.SourcesSeenCritical) {
 			inactive++
 		}
 	}
@@ -342,7 +392,7 @@ func streamCheckCluster(si *api.StreamInfo, check *Result, opts StreamHealthChec
 			lagged++
 		}
 
-		if opts.ClusterSeenCritical > 0 && p.Active > opts.ClusterSeenCritical {
+		if opts.ClusterSeenCritical > 0 && p.Active > secondsToDuration(opts.ClusterSeenCritical) {
 			inactive++
 		}
 

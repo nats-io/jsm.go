@@ -22,11 +22,14 @@ import (
 )
 
 type CheckMetaOptions struct {
-	ExpectServers int           `json:"expect_servers" yaml:"expect_servers"`
-	LagCritical   uint64        `json:"lag_critical" yaml:"lag_critical"`
-	SeenCritical  time.Duration `json:"seen_critical" yaml:"seen_critical"`
+	// ExpectServers the expected number of known servers in the meta cluster
+	ExpectServers int `json:"expect_servers" yaml:"expect_servers"`
+	// LagCritical the critical threshold for how many operations behind a peer may be
+	LagCritical uint64 `json:"lag_critical" yaml:"lag_critical"`
+	// SeenCritical the critical threshold for how long ago a peer was seen (seconds)
+	SeenCritical float64 `json:"seen_critical" yaml:"seen_critical"`
 
-	Resolver func(conn *nats.Conn) (*JSZResponse, error) `json:"-" yaml:"-"`
+	Resolver func(*nats.Conn) (*JSZResponse, error) `json:"-" yaml:"-"`
 }
 
 type JSZResponse struct {
@@ -34,18 +37,26 @@ type JSZResponse struct {
 	Server server.ServerInfo `json:"server"`
 }
 
-func CheckJetstreamMeta(nc *nats.Conn, check *Result, opts CheckMetaOptions) error {
+func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts CheckMetaOptions) error {
+	var nc *nats.Conn
+	var err error
+
 	if opts.Resolver == nil {
+		nc, err = nats.Connect(servers, nopts...)
+		if check.CriticalIfErr(err, "connection failed: %v", err) {
+			return nil
+		}
+
 		opts.Resolver = func(conn *nats.Conn) (*JSZResponse, error) {
 			jszresp := &JSZResponse{}
 			jreq, err := json.Marshal(&server.JSzOptions{LeaderOnly: true})
 			if check.CriticalIfErr(err, "request failed: %v", err) {
-				return nil, nil
+				return nil, err
 			}
 
 			res, err := nc.Request("$SYS.REQ.SERVER.PING.JSZ", jreq, time.Second)
 			if check.CriticalIfErr(err, "JSZ API request failed: %s", err) {
-				return nil, nil
+				return nil, err
 			}
 
 			err = json.Unmarshal(res.Data, jszresp)
@@ -94,7 +105,7 @@ func CheckJetstreamMeta(nc *nats.Conn, check *Result, opts CheckMetaOptions) err
 		if peer.Offline {
 			offline++
 		}
-		if peer.Active > opts.SeenCritical {
+		if peer.Active > secondsToDuration(opts.SeenCritical) {
 			inactive++
 		}
 		if peer.Lag > opts.LagCritical {
@@ -113,7 +124,7 @@ func CheckJetstreamMeta(nc *nats.Conn, check *Result, opts CheckMetaOptions) err
 		check.Critical("%d not current", notCurrent)
 	}
 	if inactive > 0 {
-		check.Critical("%d inactive more than %s", inactive, opts.SeenCritical)
+		check.Critical("%d inactive more than %s", inactive, secondsToDuration(opts.SeenCritical))
 	}
 	if offline > 0 {
 		check.Critical("%d offline", offline)

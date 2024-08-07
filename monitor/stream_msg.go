@@ -19,7 +19,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go"
 )
 
 type SubjectMessageReader interface {
@@ -33,16 +35,26 @@ type CheckStreamMessageOptions struct {
 	// Subject the name of the subject to get the message from
 	Subject string `json:"subject" yaml:"subject"`
 	// AgeWarning warning threshold for message age
-	AgeWarning time.Duration `json:"age_warning" yaml:"age_warning"`
+	AgeWarning float64 `json:"age_warning" yaml:"age_warning"`
 	// AgeCritical critical threshold for message age
-	AgeCritical time.Duration `json:"age_critical" yaml:"age_critical"`
+	AgeCritical float64 `json:"age_critical" yaml:"age_critical"`
 	// Content regular expression body must match against
 	Content string `json:"content_regex" yaml:"content_regex"`
 	// BodyAsTimestamp use the body as a unix timestamp instead of message timestamp when calculating age
 	BodyAsTimestamp bool `json:"body_as_timestamp" yaml:"body_as_timestamp"`
 }
 
-func CheckStreamMessage(mgr SubjectMessageReader, check *Result, opts CheckStreamMessageOptions) error {
+func CheckStreamMessage(server string, nopts []nats.Option, check *Result, opts CheckStreamMessageOptions) error {
+	nc, err := nats.Connect(server, nopts...)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
+	}
+
+	mgr, err := jsm.New(nc)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
+	}
+
 	msg, err := mgr.ReadLastMessageForSubject(opts.StreamName, opts.Subject)
 	if api.IsNatsError(err, 10037) {
 		check.Critical("no message found")
@@ -63,8 +75,8 @@ func CheckStreamMessage(mgr SubjectMessageReader, check *Result, opts CheckStrea
 		Help:  "The age of the message",
 		Name:  "age",
 		Value: time.Since(ts).Round(time.Millisecond).Seconds(),
-		Warn:  opts.AgeWarning.Seconds(),
-		Crit:  opts.AgeCritical.Seconds(),
+		Warn:  opts.AgeWarning,
+		Crit:  opts.AgeCritical,
 		Unit:  "s",
 	})
 
@@ -78,9 +90,9 @@ func CheckStreamMessage(mgr SubjectMessageReader, check *Result, opts CheckStrea
 	since := time.Since(ts)
 
 	if opts.AgeWarning > 0 || opts.AgeCritical > 0 {
-		if opts.AgeCritical > 0 && since > opts.AgeCritical {
+		if opts.AgeCritical > 0 && since > secondsToDuration(opts.AgeCritical) {
 			check.Critical("%v old", since.Round(time.Millisecond))
-		} else if opts.AgeWarning > 0 && since > opts.AgeWarning {
+		} else if opts.AgeWarning > 0 && since > secondsToDuration(opts.AgeWarning) {
 			check.Warn("%v old", time.Since(ts).Round(time.Millisecond))
 		}
 	}

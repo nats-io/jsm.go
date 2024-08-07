@@ -15,7 +15,6 @@ package monitor
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
@@ -23,26 +22,31 @@ import (
 )
 
 type JetStreamAccountOptions struct {
-	MemoryWarning       int           `json:"memory_warning" yaml:"memory_warning"`
-	MemoryCritical      int           `json:"memory_critical" yaml:"memory_critical"`
-	FileWarning         int           `json:"file_warning" yaml:"file_warning"`
-	FileCritical        int           `json:"file_critical" yaml:"file_critical"`
-	StreamWarning       int           `json:"stream_warning" yaml:"stream_warning"`
-	StreamCritical      int           `json:"stream_critical" yaml:"stream_critical"`
-	ConsumersWarning    int           `json:"consumers_warning" yaml:"consumers_warning"`
-	ConsumersCritical   int           `json:"consumers_critical" yaml:"consumers_critical"`
-	CheckReplicas       bool          `json:"check_replicas" yaml:"check_replicas"`
-	ReplicaSeenCritical time.Duration `json:"replica_seen_critical" yaml:"replica_seen_critical"`
-	ReplicaLagCritical  uint64        `json:"replica_lag_critical" yaml:"replica_lag_critical"`
+	MemoryWarning       int     `json:"memory_warning" yaml:"memory_warning"`
+	MemoryCritical      int     `json:"memory_critical" yaml:"memory_critical"`
+	FileWarning         int     `json:"file_warning" yaml:"file_warning"`
+	FileCritical        int     `json:"file_critical" yaml:"file_critical"`
+	StreamWarning       int     `json:"stream_warning" yaml:"stream_warning"`
+	StreamCritical      int     `json:"stream_critical" yaml:"stream_critical"`
+	ConsumersWarning    int     `json:"consumers_warning" yaml:"consumers_warning"`
+	ConsumersCritical   int     `json:"consumers_critical" yaml:"consumers_critical"`
+	CheckReplicas       bool    `json:"check_replicas" yaml:"check_replicas"`
+	ReplicaSeenCritical float64 `json:"replica_seen_critical" yaml:"replica_seen_critical"`
+	ReplicaLagCritical  uint64  `json:"replica_lag_critical" yaml:"replica_lag_critical"`
 
 	Resolver func() *api.JetStreamAccountStats `json:"-" yaml:"-"`
 }
 
-func CheckJetStreamAccount(nc *nats.Conn, check *Result, opts JetStreamAccountOptions) error {
+func CheckJetStreamAccount(server string, nopts []nats.Option, check *Result, opts JetStreamAccountOptions) error {
 	var mgr *jsm.Manager
 	var err error
 
 	if opts.Resolver == nil {
+		nc, err := nats.Connect(server, nopts...)
+		if check.CriticalIfErr(err, "connection failed: %v", err) {
+			return nil
+		}
+
 		mgr, err = jsm.New(nc)
 		if check.CriticalIfErr(err, "setup failed: %v", err) {
 			return nil
@@ -114,7 +118,7 @@ func checkStreamClusterHealth(check *Result, opts *JetStreamAccountOptions, info
 				continue
 			}
 
-			if r.Active > opts.ReplicaSeenCritical {
+			if r.Active > secondsToDuration(opts.ReplicaSeenCritical) {
 				seenCritCnt++
 				continue
 			}
@@ -155,9 +159,9 @@ func checkStreamClusterHealth(check *Result, opts *JetStreamAccountOptions, info
 	check.Pd(&PerfDataItem{
 		Name:  "replicas_not_seen",
 		Value: float64(seenCritCnt),
-		Crit:  opts.ReplicaSeenCritical.Seconds(),
+		Crit:  opts.ReplicaSeenCritical,
 		Unit:  "s",
-		Help:  fmt.Sprintf("Streams with replicas seen > %d ago", opts.ReplicaSeenCritical),
+		Help:  fmt.Sprintf("Streams with replicas seen > %s ago", secondsToDuration(opts.ReplicaSeenCritical)),
 	})
 
 	check.Pd(&PerfDataItem{

@@ -26,7 +26,7 @@ import (
 
 func TestCheckMessage(t *testing.T) {
 	t.Run("Body timestamp", func(t *testing.T) {
-		withJetStream(t, func(_ *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
 			check := &monitor.Result{}
 
 			mgr, err := jsm.New(nc)
@@ -38,11 +38,11 @@ func TestCheckMessage(t *testing.T) {
 			opts := monitor.CheckStreamMessageOptions{
 				StreamName:      "TEST",
 				Subject:         "TEST",
-				AgeCritical:     5 * time.Second,
-				AgeWarning:      time.Second,
+				AgeCritical:     5,
+				AgeWarning:      1,
 				BodyAsTimestamp: true,
 			}
-			assertNoError(t, monitor.CheckStreamMessage(mgr, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.OKs)
 			assertListEquals(t, check.Criticals, "no message found")
@@ -52,7 +52,7 @@ func TestCheckMessage(t *testing.T) {
 			checkErr(t, err, "publish failed: %v", err)
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(mgr, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)
 			assertListEquals(t, check.OKs, "Valid message on TEST > TEST")
@@ -62,7 +62,7 @@ func TestCheckMessage(t *testing.T) {
 			checkErr(t, err, "publish failed: %v", err)
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(mgr, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
 			assertListIsEmpty(t, check.Criticals)
 			if len(check.Warnings) != 1 {
 				t.Fatalf("expected 1 warning got: %v", check.Warnings)
@@ -73,7 +73,7 @@ func TestCheckMessage(t *testing.T) {
 			checkErr(t, err, "publish failed: %v", err)
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(mgr, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			if len(check.Criticals) != 1 {
 				t.Fatalf("expected 1 critical got: %v", check.Criticals)
@@ -81,7 +81,7 @@ func TestCheckMessage(t *testing.T) {
 
 			opts.BodyAsTimestamp = false
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(mgr, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)
 			assertListEquals(t, check.OKs, "Valid message on TEST > TEST")

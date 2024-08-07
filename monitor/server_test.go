@@ -29,7 +29,7 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "x", Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "x", Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Warnings)
 		assertListIsEmpty(t, check.OKs)
@@ -42,7 +42,7 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Warnings)
 		assertListIsEmpty(t, check.OKs)
@@ -56,13 +56,13 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListEquals(t, check.Criticals, "JetStream not enabled")
 
 		vz.JetStream.Config = &server.JetStreamConfig{}
 		check = &monitor.Result{}
-		err = monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
+		err = monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "JetStream enabled")
@@ -75,13 +75,13 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListEquals(t, check.Criticals, "TLS not required")
 
 		vz.TLSRequired = true
 		check = &monitor.Result{}
-		err = monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
+		err = monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "TLS required")
@@ -94,12 +94,12 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
 		assertListEquals(t, check.Criticals, "Authentication not required")
 
 		vz.AuthRequired = true
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "Authentication required")
 	})
@@ -117,10 +117,10 @@ func TestCheckVarz(t *testing.T) {
 
 		// invalid thresholds
 		check := &monitor.Result{}
-		opts.UptimeCritical = 20 * time.Minute
-		opts.UptimeWarning = 10 * time.Minute
+		opts.UptimeCritical = 20 * time.Minute.Seconds()
+		opts.UptimeWarning = 10 * time.Minute.Seconds()
 
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "Up invalid thresholds")
 		assertListIsEmpty(t, check.OKs)
 
@@ -128,9 +128,9 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-1 * time.Second)
-		opts.UptimeCritical = 10 * time.Minute
-		opts.UptimeWarning = 20 * time.Minute
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		opts.UptimeCritical = 10 * time.Minute.Seconds()
+		opts.UptimeWarning = 20 * time.Minute.Seconds()
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "Up 1.00s")
 		assertListIsEmpty(t, check.OKs)
 		assertHasPDItem(t, check, "uptime=1.0000s;1200.0000;600.000")
@@ -139,9 +139,9 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-599 * time.Second)
-		opts.UptimeCritical = 10 * time.Minute
-		opts.UptimeWarning = 20 * time.Minute
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		opts.UptimeCritical = 10 * time.Minute.Seconds()
+		opts.UptimeWarning = 20 * time.Minute.Seconds()
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "Up 9m59s")
 		assertListIsEmpty(t, check.OKs)
 		assertHasPDItem(t, check, "uptime=599.0000s;1200.0000;600.000")
@@ -150,9 +150,9 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-600 * time.Second)
-		opts.UptimeCritical = 10 * time.Minute
-		opts.UptimeWarning = 20 * time.Minute
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		opts.UptimeCritical = 10 * time.Minute.Seconds()
+		opts.UptimeWarning = 20 * time.Minute.Seconds()
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "Up 10m0s")
 		assertListIsEmpty(t, check.OKs)
 		assertHasPDItem(t, check, "uptime=600.0000s;1200.0000;600.000")
@@ -161,9 +161,9 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-601 * time.Second)
-		opts.UptimeCritical = 10 * time.Minute
-		opts.UptimeWarning = 20 * time.Minute
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		opts.UptimeCritical = 10 * time.Minute.Seconds()
+		opts.UptimeWarning = 20 * time.Minute.Seconds()
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.Warnings, "Up 10m1s")
 		assertListIsEmpty(t, check.OKs)
@@ -173,7 +173,7 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-1199 * time.Second)
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.Warnings, "Up 19m59s")
 		assertListIsEmpty(t, check.OKs)
@@ -183,7 +183,7 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-1200 * time.Second)
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.Warnings, "Up 20m0s")
 		assertListIsEmpty(t, check.OKs)
@@ -193,7 +193,7 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-1201 * time.Second)
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.Warnings)
 		assertListEquals(t, check.OKs, "Up 20m1s")
@@ -203,7 +203,7 @@ func TestCheckVarz(t *testing.T) {
 		check = &monitor.Result{}
 		vz.Now = time.Now()
 		vz.Start = vz.Now.Add(-1260 * time.Second)
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.Warnings)
 		assertListEquals(t, check.OKs, "Up 21m0s")
@@ -225,7 +225,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.CPUCritical = 60
 		opts.CPUWarning = 70
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "CPU invalid thresholds")
 		assertListIsEmpty(t, check.OKs)
 
@@ -233,7 +233,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.CPUCritical = 50
 		opts.CPUWarning = 30
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "CPU 50.00")
 		assertListIsEmpty(t, check.OKs)
 		assertHasPDItem(t, check, "cpu=50%;30;50")
@@ -242,7 +242,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.CPUCritical = 60
 		opts.CPUWarning = 50
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Warnings, "CPU 50.00")
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.OKs)
@@ -252,7 +252,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.CPUCritical = 80
 		opts.CPUWarning = 70
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.OKs, "CPU 50.00")
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.Warnings)
@@ -276,7 +276,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.ConnectionsCritical = 1024
 		opts.ConnectionsWarning = 800
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "Connections 1024.00")
 		assertListIsEmpty(t, check.OKs)
 		assertListIsEmpty(t, check.Warnings)
@@ -286,7 +286,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.ConnectionsCritical = 1200
 		opts.ConnectionsWarning = 1300
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Criticals, "Connections 1024.00")
 		assertListIsEmpty(t, check.OKs)
 		assertListIsEmpty(t, check.Warnings)
@@ -296,7 +296,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.ConnectionsCritical = 2000
 		opts.ConnectionsWarning = 1024
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Warnings, "Connections 1024.00")
 		assertListIsEmpty(t, check.OKs)
 		assertListIsEmpty(t, check.Criticals)
@@ -306,7 +306,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.ConnectionsCritical = 1000
 		opts.ConnectionsWarning = 1300
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.Warnings, "Connections 1024.00")
 		assertListIsEmpty(t, check.OKs)
 		assertListIsEmpty(t, check.Criticals)
@@ -316,7 +316,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.ConnectionsCritical = 2000
 		opts.ConnectionsWarning = 1300
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListEquals(t, check.OKs, "Connections 1024.00")
 		assertListIsEmpty(t, check.Warnings)
 		assertListIsEmpty(t, check.Criticals)
@@ -326,7 +326,7 @@ func TestCheckVarz(t *testing.T) {
 		opts.ConnectionsCritical = 800
 		opts.ConnectionsWarning = 900
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer(nil, check, time.Second, opts))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
 		assertListIsEmpty(t, check.Warnings)
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "Connections 1024.00")

@@ -92,7 +92,7 @@ func TestStream_checkSources(t *testing.T) {
 			Active: 2 * time.Second,
 		})
 		streamCheckSources(si, check, StreamHealthCheckOptions{
-			SourcesSeenCritical: time.Millisecond,
+			SourcesSeenCritical: float64(1) / 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "2 sources are inactive")
 	})
@@ -109,7 +109,7 @@ func TestStream_checkSources(t *testing.T) {
 		})
 		streamCheckSources(si, check, StreamHealthCheckOptions{
 			SourcesLagCritical:  500,
-			SourcesSeenCritical: time.Second,
+			SourcesSeenCritical: 1,
 			MinSources:          2,
 			MaxSources:          10,
 		}, api.NewDiscardLogger())
@@ -360,14 +360,14 @@ func TestStream_checkMirror(t *testing.T) {
 		}
 
 		streamCheckMirror(si, check, StreamHealthCheckOptions{
-			SourcesSeenCritical: time.Millisecond,
+			SourcesSeenCritical: float64(1) / 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Mirror Seen 1ms")
 
 		check = &Result{}
 		si.Mirror.Active = time.Second
 		streamCheckMirror(si, check, StreamHealthCheckOptions{
-			SourcesSeenCritical: time.Millisecond,
+			SourcesSeenCritical: float64(1) / 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Mirror Seen 1s")
 	})
@@ -389,7 +389,7 @@ func TestStream_checkMirror(t *testing.T) {
 
 		streamCheckMirror(si, check, StreamHealthCheckOptions{
 			SourcesLagCritical:  200,
-			SourcesSeenCritical: time.Second,
+			SourcesSeenCritical: 1,
 		}, api.NewDiscardLogger())
 
 		requireEmpty(t, check.Criticals)
@@ -499,7 +499,7 @@ func TestStream_checkCluster(t *testing.T) {
 
 		streamCheckCluster(si, check, StreamHealthCheckOptions{
 			ClusterExpectedPeers: 3,
-			ClusterSeenCritical:  time.Minute,
+			ClusterSeenCritical:  60,
 		}, api.NewDiscardLogger())
 
 		requireElement(t, check.Criticals, "1 replicas inactive")
@@ -538,7 +538,7 @@ func TestStream_checkCluster(t *testing.T) {
 		streamCheckCluster(si, check, StreamHealthCheckOptions{
 			ClusterExpectedPeers: 3,
 			ClusterLagCritical:   20,
-			ClusterSeenCritical:  time.Minute,
+			ClusterSeenCritical:  60,
 		}, api.NewDiscardLogger())
 
 		requireEmpty(t, check.Criticals)

@@ -164,14 +164,28 @@ func (r *Result) renderHuman() string {
 	return buf.String()
 }
 
-func (r *Result) renderPrometheus() string {
-	if r.Check == "" {
-		r.Check = r.Name
-	}
+func (r *Result) Collect(ch chan<- prometheus.Metric) {
+	r.prepare()
 
-	registry := prometheus.NewRegistry()
-	prometheus.DefaultRegisterer = registry
-	prometheus.DefaultGatherer = registry
+	for _, c := range append(r.perfdataCollectors(), r.statusCollector()) {
+		c.Collect(ch)
+	}
+}
+
+func (r *Result) statusCollector() *prometheus.GaugeVec {
+	status := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: prometheus.BuildFQName(r.NameSpace, r.Check, "status_code"),
+		Help: fmt.Sprintf("Nagios compatible status code for %s", r.Check),
+	}, []string{"item", "status"})
+
+	sname := strings.ReplaceAll(r.Name, `"`, `.`)
+	status.WithLabelValues(sname, string(r.Status)).Set(float64(r.nagiosCode()))
+
+	return status
+}
+
+func (r *Result) perfdataCollectors() []*prometheus.GaugeVec {
+	var res []*prometheus.GaugeVec
 
 	sname := strings.ReplaceAll(r.Name, `"`, `.`)
 	for _, pd := range r.PerfData {
@@ -184,17 +198,28 @@ func (r *Result) renderPrometheus() string {
 			Name: prometheus.BuildFQName(r.NameSpace, r.Check, pd.Name),
 			Help: help,
 		}, []string{"item"})
-		prometheus.MustRegister(gauge)
 		gauge.WithLabelValues(sname).Set(pd.Value)
+		res = append(res, gauge)
 	}
 
-	status := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: prometheus.BuildFQName(r.NameSpace, r.Check, "status_code"),
-		Help: fmt.Sprintf("Nagios compatible status code for %s", r.Check),
-	}, []string{"item", "status"})
-	prometheus.MustRegister(status)
+	return res
+}
 
-	status.WithLabelValues(sname, string(r.Status)).Set(float64(r.nagiosCode()))
+func (r *Result) renderPrometheus() string {
+	if r.Check == "" {
+		r.Check = r.Name
+	}
+
+	registry := prometheus.NewRegistry()
+	prometheus.DefaultRegisterer = registry
+	prometheus.DefaultGatherer = registry
+
+	for _, gauge := range r.perfdataCollectors() {
+		prometheus.MustRegister(gauge)
+	}
+
+	status := r.statusCollector()
+	prometheus.MustRegister(status)
 
 	var buf bytes.Buffer
 
@@ -243,7 +268,7 @@ func (r *Result) renderNagios() string {
 	return fmt.Sprintf("%s %s | %s", r.Status, strings.Join(res, " "), r.PerfData)
 }
 
-func (r *Result) String() string {
+func (r *Result) prepare() {
 	if r.Status == "" {
 		r.Status = UnknownStatus
 	}
@@ -259,6 +284,10 @@ func (r *Result) String() string {
 	default:
 		r.Status = OKStatus
 	}
+}
+
+func (r *Result) String() string {
+	r.prepare()
 
 	switch r.RenderFormat {
 	case JSONFormat:

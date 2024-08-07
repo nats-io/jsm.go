@@ -25,10 +25,10 @@ import (
 type CredentialCheckOptions struct {
 	// File is the file holding the credential
 	File string `json:"file" yaml:"file"`
-	// ValidityWarning is the warning threshold for credential validity
-	ValidityWarning time.Duration `json:"validity_warning" yaml:"validity_warning"`
-	// ValidityCritical is the critical threshold for credential validity
-	ValidityCritical time.Duration `json:"validity_critical" yaml:"validity_critical"`
+	// ValidityWarning is the warning threshold for credential validity (seconds)
+	ValidityWarning float64 `json:"validity_warning" yaml:"validity_warning"`
+	// ValidityCritical is the critical threshold for credential validity (seconds)
+	ValidityCritical float64 `json:"validity_critical" yaml:"validity_critical"`
 	// RequiresExpiry requires the credential to have a validity set
 	RequiresExpiry bool `json:"requires_expiry" yaml:"requires_expiry"`
 }
@@ -65,8 +65,8 @@ func CheckCredential(check *Result, opts CredentialCheckOptions) error {
 	now := time.Now().UTC().Unix()
 	cd := claims.Claims()
 	until := cd.Expires - now
-	crit := int64(opts.ValidityCritical.Seconds())
-	warn := int64(opts.ValidityWarning.Seconds())
+	crit := int64(secondsToDuration(opts.ValidityCritical))
+	warn := int64(secondsToDuration(opts.ValidityWarning))
 
 	check.Pd(&PerfDataItem{Help: "Expiry time in seconds", Name: "expiry", Value: float64(until), Warn: float64(warn), Crit: float64(crit), Unit: "s"})
 
@@ -74,9 +74,9 @@ func CheckCredential(check *Result, opts CredentialCheckOptions) error {
 	case cd.Expires == 0 && opts.RequiresExpiry:
 		check.Critical("never expires")
 	case opts.ValidityCritical > 0 && (until <= crit):
-		check.Critical("expires sooner than %s", f(opts.ValidityCritical))
+		check.Critical("expires sooner than %s", f(secondsToDuration(opts.ValidityCritical)))
 	case opts.ValidityWarning > 0 && (until <= warn):
-		check.Warn("expires sooner than %s", f(opts.ValidityWarning))
+		check.Warn("expires sooner than %s", f(secondsToDuration(opts.ValidityWarning)))
 	default:
 		check.Ok("expires in %s", time.Unix(cd.Expires, 0).UTC())
 	}

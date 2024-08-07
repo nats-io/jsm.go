@@ -104,9 +104,9 @@ func withJetStream(t *testing.T, cb func(srv *server.Server, nc *nats.Conn)) {
 
 func TestCheckKVBucketAndKey(t *testing.T) {
 	t.Run("Bucket", func(t *testing.T) {
-		withJetStream(t, func(_ *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
 			check := &monitor.Result{}
-			err := monitor.CheckKVBucketAndKey(nc, check, monitor.KVCheckOptions{
+			err := monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.KVCheckOptions{
 				Bucket: "TEST",
 			})
 			checkErr(t, err, "check failed: %v", err)
@@ -121,7 +121,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "kv create failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, monitor.KVCheckOptions{
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.KVCheckOptions{
 				Bucket:         "TEST",
 				ValuesCritical: -1,
 				ValuesWarning:  -1,
@@ -149,7 +149,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			}
 
 			check := &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)
@@ -159,7 +159,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=1;1;2 bytes=41B replicas=1")
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -170,7 +170,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=2;1;2 bytes=83B replicas=1")
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -186,7 +186,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=3;5;3 bytes=125B replicas=1")
 			assertListIsEmpty(t, check.Warnings)
@@ -197,7 +197,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=4;5;3 bytes=167B replicas=1")
 			assertListIsEmpty(t, check.Criticals)
@@ -210,7 +210,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=6;5;3 bytes=251B replicas=1")
 			assertListIsEmpty(t, check.Warnings)
@@ -235,7 +235,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			}
 
 			check := &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -245,7 +245,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "put failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST", "key KEY found")
@@ -253,7 +253,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 
 			bucket.Delete("KEY")
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(nc, check, opts)
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST")

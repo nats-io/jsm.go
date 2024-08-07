@@ -58,7 +58,7 @@ func TestCheckAccountInfo(t *testing.T) {
 	t.Run("No limits, default thresholds", func(t *testing.T) {
 		opts, info, check := setDefaults()
 		info.Limits = api.JetStreamAccountLimits{}
-		assertNoError(t, monitor.CheckJetStreamAccount(nil, check, *opts))
+		assertNoError(t, monitor.CheckJetStreamAccount("", nil, check, *opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.Warnings)
 		assertHasPDItem(t, check, "memory=128B memory_pct=0%;75;90 storage=1024B storage_pct=0%;75;90 streams=10 streams_pct=0% consumers=100 consumers_pct=0%")
@@ -66,7 +66,7 @@ func TestCheckAccountInfo(t *testing.T) {
 
 	t.Run("Limits, default thresholds", func(t *testing.T) {
 		opts, _, check := setDefaults()
-		assertNoError(t, monitor.CheckJetStreamAccount(nil, check, *opts))
+		assertNoError(t, monitor.CheckJetStreamAccount("", nil, check, *opts))
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.Warnings)
 		assertHasPDItem(t, check, "memory=128B memory_pct=12%;75;90 storage=1024B storage_pct=5%;75;90 streams=10 streams_pct=5% consumers=100 consumers_pct=10%")
@@ -76,7 +76,7 @@ func TestCheckAccountInfo(t *testing.T) {
 		t.Run("Usage exceeds max", func(t *testing.T) {
 			opts, info, check := setDefaults()
 			info.Streams = 300
-			assertNoError(t, monitor.CheckJetStreamAccount(nil, check, *opts))
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, check, *opts))
 			assertListEquals(t, check.Criticals, "streams: exceed server limits")
 			assertListIsEmpty(t, check.Warnings)
 			assertHasPDItem(t, check, "memory=128B memory_pct=12%;75;90 storage=1024B storage_pct=5%;75;90 streams=300 streams_pct=150% consumers=100 consumers_pct=10%")
@@ -86,14 +86,14 @@ func TestCheckAccountInfo(t *testing.T) {
 			opts, _, check := setDefaults()
 			opts.MemoryWarning = 90
 			opts.MemoryCritical = 80
-			assertNoError(t, monitor.CheckJetStreamAccount(nil, check, *opts))
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, check, *opts))
 			assertListEquals(t, check.Criticals, "memory: invalid thresholds")
 		})
 
 		t.Run("Exceeds warning threshold", func(t *testing.T) {
 			opts, info, check := setDefaults()
 			info.Memory = 800
-			assertNoError(t, monitor.CheckJetStreamAccount(nil, check, *opts))
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, check, *opts))
 			assertHasPDItem(t, check, "memory=800B memory_pct=78%;75;90 storage=1024B storage_pct=5%;75;90 streams=10 streams_pct=5% consumers=100 consumers_pct=10%")
 			assertListIsEmpty(t, check.Criticals)
 			assertListEquals(t, check.Warnings, "78% memory")
@@ -103,7 +103,7 @@ func TestCheckAccountInfo(t *testing.T) {
 			opts, info, check := setDefaults()
 
 			info.Memory = 960
-			assertNoError(t, monitor.CheckJetStreamAccount(nil, check, *opts))
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, check, *opts))
 			assertHasPDItem(t, check, "memory=960B memory_pct=93%;75;90 storage=1024B storage_pct=5%;75;90 streams=10 streams_pct=5% consumers=100 consumers_pct=10%")
 			assertListEquals(t, check.Criticals, "93% memory")
 			assertListIsEmpty(t, check.Warnings)

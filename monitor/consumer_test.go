@@ -76,7 +76,7 @@ func TestConsumer_checkLastAck(t *testing.T) {
 	t.Run("Should handle no ack floor", func(t *testing.T) {
 		check, ci := setup()
 		consumerCheckLastAck(ci, check, ConsumerHealthCheckOptions{
-			LastAckCritical: time.Second,
+			LastAckCritical: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "No acks")
 	})
@@ -86,7 +86,7 @@ func TestConsumer_checkLastAck(t *testing.T) {
 		last := time.Now().Add(-time.Hour)
 		ci.AckFloor.Last = &last
 		consumerCheckLastAck(ci, check, ConsumerHealthCheckOptions{
-			LastAckCritical: time.Second,
+			LastAckCritical: 1,
 		}, api.NewDiscardLogger())
 		requireLen(t, check.Criticals, 1)
 		requireRegexElement(t, check.Criticals, "Last ack .+ ago")
@@ -97,7 +97,7 @@ func TestConsumer_checkLastAck(t *testing.T) {
 		last := time.Now()
 		ci.AckFloor.Last = &last
 		consumerCheckLastAck(ci, check, ConsumerHealthCheckOptions{
-			LastAckCritical: time.Second,
+			LastAckCritical: 1,
 		}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireLen(t, check.OKs, 1)
@@ -120,7 +120,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 	t.Run("Should handle no delivery", func(t *testing.T) {
 		check, ci := setup()
 		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
-			LastDeliveryCritical: time.Second,
+			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "No deliveries")
 	})
@@ -131,7 +131,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 		ci.Delivered.Last = &last
 
 		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
-			LastDeliveryCritical: time.Second,
+			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 
 		requireLen(t, check.Criticals, 1)
@@ -144,7 +144,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 		ci.Delivered.Last = &last
 
 		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
-			LastDeliveryCritical: time.Second,
+			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 
 		requireLen(t, check.Criticals, 1)
@@ -157,7 +157,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 		ci.Delivered.Last = &last
 
 		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
-			LastDeliveryCritical: time.Second,
+			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 
 		requireEmpty(t, check.Criticals)

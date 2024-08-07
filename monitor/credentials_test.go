@@ -16,7 +16,6 @@ package monitor_test
 import (
 	"os"
 	"testing"
-	"time"
 
 	"github.com/nats-io/jsm.go/monitor"
 )
@@ -83,7 +82,7 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 		check := &monitor.Result{}
 		assertNoError(t, monitor.CheckCredential(check, monitor.CredentialCheckOptions{
 			File:             writeCred(t, noExpiry),
-			ValidityCritical: 100 * 24 * 365 * time.Hour,
+			ValidityCritical: 100 * 24 * 365 * 60 * 60,
 		}))
 		assertListEquals(t, check.Criticals, "expires sooner than 100y0d0h0m0s")
 		assertListIsEmpty(t, check.Warnings)
@@ -94,7 +93,7 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 		check := &monitor.Result{}
 		assertNoError(t, monitor.CheckCredential(check, monitor.CredentialCheckOptions{
 			File:            writeCred(t, noExpiry),
-			ValidityWarning: 100 * 24 * 365 * time.Hour,
+			ValidityWarning: 100 * 24 * 365 * 60 * 60,
 		}))
 		assertListEquals(t, check.Warnings, "expires sooner than 100y0d0h0m0s")
 		assertListIsEmpty(t, check.Criticals)

@@ -22,28 +22,50 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// ServerCheckOptions configures the server check
 type ServerCheckOptions struct {
-	Name                   string        `json:"name" yaml:"name"`
-	CPUWarning             int           `json:"cpu_warning" yaml:"cpu_warning"`
-	CPUCritical            int           `json:"cpu_critical" yaml:"cpu_critical"`
-	MemoryWarning          int           `json:"memory_warning" yaml:"memory_warning"`
-	MemoryCritical         int           `json:"memory_critical" yaml:"memory_critical"`
-	ConnectionsWarning     int           `json:"connections_warning" yaml:"connections_warning"`
-	ConnectionsCritical    int           `json:"connections_critical" yaml:"connections_critical"`
-	SubscriptionsWarning   int           `json:"subscriptions_warning" yaml:"subscriptions_warning"`
-	SubscriptionsCritical  int           `json:"subscriptions_critical" yaml:"subscriptions_critical"`
-	UptimeWarning          time.Duration `json:"uptime_warning" yaml:"uptime_warning"`
-	UptimeCritical         time.Duration `json:"uptime_critical" yaml:"uptime_critical"`
-	AuthenticationRequired bool          `json:"authentication_required" yaml:"authentication_required"`
-	TLSRequired            bool          `json:"tls_required" yaml:"tls_required"`
-	JetStreamRequired      bool          `json:"jet_stream_required" yaml:"jet_stream_required"`
+	// Name is the server to get details for
+	Name string `json:"name" yaml:"name"`
+	// CPUWarning is the warning threshold for CPU usage
+	CPUWarning int `json:"cpu_warning" yaml:"cpu_warning"`
+	// CPUCritical is the critical threshold for CPU usage
+	CPUCritical int `json:"cpu_critical" yaml:"cpu_critical"`
+	// MemoryWarning is the warning threshold for Memory usage
+	MemoryWarning int `json:"memory_warning" yaml:"memory_warning"`
+	// MemoryCritical is the critical threshold for Memory usage
+	MemoryCritical int `json:"memory_critical" yaml:"memory_critical"`
+	// ConnectionsWarning is the warning threshold for how many connections the server should have
+	ConnectionsWarning int `json:"connections_warning" yaml:"connections_warning"`
+	// ConnectionsCritical is the critical threshold for how many connections the server should have
+	ConnectionsCritical int `json:"connections_critical" yaml:"connections_critical"`
+	// SubscriptionsWarning is the warning threshold for how many subscriptions the server should have
+	SubscriptionsWarning int `json:"subscriptions_warning" yaml:"subscriptions_warning"`
+	// SubscriptionsCritical is the critical threshold for how many subscriptions the server should have
+	SubscriptionsCritical int `json:"subscriptions_critical" yaml:"subscriptions_critical"`
+	// UptimeWarning is warning threshold for the uptime of the server (seconds)
+	UptimeWarning float64 `json:"uptime_warning" yaml:"uptime_warning"`
+	// UptimeCritical is warning threshold for the uptime of the server (seconds)
+	UptimeCritical float64 `json:"uptime_critical" yaml:"uptime_critical"`
+	// AuthenticationRequired checks if authentication is required on the server
+	AuthenticationRequired bool `json:"authentication_required" yaml:"authentication_required"`
+	// TLSRequired checks if TLS is required on the server
+	TLSRequired bool `json:"tls_required" yaml:"tls_required"`
+	// JetStreamRequired checks if JetStream is enabled on the server
+	JetStreamRequired bool `json:"jet_stream_required" yaml:"jet_stream_required"`
 
 	Resolver func(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz, error) `json:"-" yaml:"-"`
 }
 
-func CheckServer(nc *nats.Conn, check *Result, timeout time.Duration, opts ServerCheckOptions) error {
+func CheckServer(server string, nopts []nats.Option, check *Result, timeout time.Duration, opts ServerCheckOptions) error {
+	var nc *nats.Conn
+	var err error
+
 	if opts.Resolver == nil {
 		opts.Resolver = fetchVarz
+		nc, err = nats.Connect(server, nopts...)
+		if check.CriticalIfErr(err, "connection failed: %v", err) {
+			return nil
+		}
 	}
 
 	vz, err := opts.Resolver(nc, opts.Name, timeout)
@@ -91,9 +113,9 @@ func CheckServer(nc *nats.Conn, check *Result, timeout time.Duration, opts Serve
 			return nil
 		}
 
-		if up <= opts.UptimeCritical {
+		if up <= secondsToDuration(opts.UptimeCritical) {
 			check.Critical("Up %s", f(up))
-		} else if up <= opts.UptimeWarning {
+		} else if up <= secondsToDuration(opts.UptimeWarning) {
 			check.Warn("Up %s", f(up))
 		} else {
 			check.Ok("Up %s", f(up))
@@ -101,7 +123,7 @@ func CheckServer(nc *nats.Conn, check *Result, timeout time.Duration, opts Serve
 	}
 
 	check.Pd(
-		&PerfDataItem{Name: "uptime", Value: up.Seconds(), Warn: opts.UptimeWarning.Seconds(), Crit: opts.UptimeCritical.Seconds(), Unit: "s", Help: "NATS Server uptime in seconds"},
+		&PerfDataItem{Name: "uptime", Value: up.Seconds(), Warn: opts.UptimeWarning, Crit: opts.UptimeCritical, Unit: "s", Help: "NATS Server uptime in seconds"},
 		&PerfDataItem{Name: "cpu", Value: vz.CPU, Warn: float64(opts.CPUWarning), Crit: float64(opts.CPUCritical), Unit: "%", Help: "NATS Server CPU usage in percentage"},
 		&PerfDataItem{Name: "mem", Value: float64(vz.Mem), Warn: float64(opts.MemoryWarning), Crit: float64(opts.MemoryCritical), Help: "NATS Server memory usage in bytes"},
 		&PerfDataItem{Name: "connections", Value: float64(vz.Connections), Warn: float64(opts.ConnectionsWarning), Crit: float64(opts.ConnectionsCritical), Help: "Active connections"},

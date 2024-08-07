@@ -25,7 +25,7 @@ import (
 func TestCheckJSZ(t *testing.T) {
 	t.Run("nil meta", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				return &monitor.JSZResponse{}, nil
 			},
@@ -35,7 +35,7 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("no meta leader", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}
 				r.Data.Meta = &server.MetaClusterInfo{}
@@ -49,7 +49,7 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("invalid peer count", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			ExpectServers: 2,
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}
@@ -65,9 +65,9 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("good peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			ExpectServers: 3,
-			SeenCritical:  time.Second,
+			SeenCritical:  1,
 			LagCritical:   10,
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}
@@ -88,9 +88,9 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("not current peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			ExpectServers: 3,
-			SeenCritical:  time.Second,
+			SeenCritical:  1,
 			LagCritical:   10,
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}
@@ -113,9 +113,9 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("offline peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			ExpectServers: 3,
-			SeenCritical:  time.Second,
+			SeenCritical:  1,
 			LagCritical:   10,
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}
@@ -137,9 +137,9 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("inactive peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			ExpectServers: 3,
-			SeenCritical:  time.Second,
+			SeenCritical:  1,
 			LagCritical:   10,
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}
@@ -161,9 +161,9 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("lagged peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			ExpectServers: 3,
-			SeenCritical:  time.Second,
+			SeenCritical:  1,
 			LagCritical:   10,
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}
@@ -184,9 +184,9 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("multiple errors", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta(nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
 			ExpectServers: 3,
-			SeenCritical:  time.Second,
+			SeenCritical:  1,
 			LagCritical:   10,
 			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
 				r := &monitor.JSZResponse{}

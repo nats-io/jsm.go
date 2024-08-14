@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -229,7 +230,7 @@ func ParseAndValidateMessage(m []byte, validator StructValidator) (schemaType st
 
 	ok, errs := validator.ValidateStruct(msg, schemaType)
 	if !ok {
-		return schemaType, nil, fmt.Errorf(strings.Join(errs, ","))
+		return schemaType, nil, errors.New(strings.Join(errs, ","))
 	}
 
 	return schemaType, msg, nil

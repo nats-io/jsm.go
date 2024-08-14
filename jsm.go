@@ -18,6 +18,7 @@ package jsm
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -78,7 +79,7 @@ func ParseErrorResponse(m *nats.Msg) error {
 
 	d := string(m.Data)
 	if strings.HasPrefix(d, api.ErrPrefix) {
-		return fmt.Errorf(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(d, api.ErrPrefix), " '"), "'"))
+		return errors.New(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(d, api.ErrPrefix), " '"), "'"))
 	}
 
 	resp := api.JSApiResponse{}

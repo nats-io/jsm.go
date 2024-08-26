@@ -1024,3 +1024,36 @@ func TestConsumerDescription(t *testing.T) {
 		t.Fatalf("invalid description %q", c.Description())
 	}
 }
+
+func TestConsumerPedantic(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.ConsumerLimits(api.StreamConsumerLimits{
+		MaxAckPending: 10,
+	}))
+	checkErr(t, err, "create failed")
+
+	c, err := s.NewConsumer(jsm.MaxAckPending(0))
+	checkErr(t, err, "create failed")
+
+	if c.MaxAckPending() != 10 {
+		t.Fatalf("expected max ack to be overrode, got %v", c.MaxAckPending())
+	}
+
+	mgr, err = jsm.New(nc, jsm.WithPedanticRequests())
+	checkErr(t, err, "mgr failed")
+
+	if !mgr.IsPedantic() {
+		t.Fatalf("expected mgr to be pedantic")
+	}
+
+	s, err = mgr.LoadStream("TEST")
+	checkErr(t, err, "load stream failed")
+
+	_, err = s.NewConsumerFromDefault(api.ConsumerConfig{}, jsm.MaxAckPending(0))
+	if !api.IsNatsErr(err, 10157) {
+		t.Fatalf("expected pednatic error, got: %v", err)
+	}
+}

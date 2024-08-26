@@ -1244,3 +1244,28 @@ func TestStreamRepublish(t *testing.T) {
 		t.Fatalf("Expected 2 mapped subjects to get messages: %#v", received)
 	}
 }
+
+func TestStreamPedantic(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.MaxAge(time.Second))
+	checkErr(t, err, "create failed")
+
+	if s.MaxAge() != time.Second {
+		t.Fatalf("expected max age to be overrode, got: %v", s.MaxAge())
+	}
+	checkErr(t, s.Delete(), "delete failed")
+
+	mgr, err = jsm.New(nc, jsm.WithPedanticRequests())
+	checkErr(t, err, "manager failed")
+	if !mgr.IsPedantic() {
+		t.Fatalf("expected mgr to be pedantic")
+	}
+
+	_, err = mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.MaxAge(time.Second))
+	if !api.IsNatsErr(err, 10157) {
+		t.Fatalf("expected pednatic error, got: %v", err)
+	}
+}

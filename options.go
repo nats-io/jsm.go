@@ -63,3 +63,10 @@ func WithDomain(d string) Option {
 		o.domain = d
 	}
 }
+
+// WithPedanticRequests enables pedantic mode in certain API calls that would avoid the server changing user configurations during request handling
+func WithPedanticRequests() Option {
+	return func(o *Manager) {
+		o.pedantic = true
+	}
+}

@@ -106,6 +106,8 @@ type JSApiConsumerCreateRequest struct {
 	Stream string         `json:"stream_name"`
 	Config ConsumerConfig `json:"config"`
 	Action ConsumerAction `json:"action"`
+	// Pedantic disables server features that would set defaults and adjust the provided config
+	Pedantic bool `json:"pedantic,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.consumer_create_response

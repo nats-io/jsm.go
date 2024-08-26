@@ -96,7 +96,13 @@ func (m *Manager) NewStreamFromDefault(name string, dflt api.StreamConfig, opts 
 	}
 
 	var resp api.JSApiStreamCreateResponse
-	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamCreateT, name), &cfg, &resp)
+
+	req := api.JSApiStreamCreateRequest{
+		Pedantic:     m.pedantic,
+		StreamConfig: *cfg,
+	}
+
+	err = m.jsonRequest(fmt.Sprintf(api.JSApiStreamCreateT, name), &req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -550,8 +556,13 @@ func (s *Stream) UpdateConfiguration(cfg api.StreamConfig, opts ...StreamOption)
 		return err
 	}
 
+	req := api.JSApiStreamCreateRequest{
+		Pedantic:     s.mgr.pedantic,
+		StreamConfig: *ncfg,
+	}
+
 	var resp api.JSApiStreamUpdateResponse
-	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamUpdateT, s.Name()), ncfg, &resp)
+	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamUpdateT, s.Name()), &req, &resp)
 	if err != nil {
 		return err
 	}

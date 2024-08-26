@@ -84,8 +84,9 @@ func (m *Manager) NewConsumerFromDefault(stream string, dflt api.ConsumerConfig,
 	}
 
 	req := api.JSApiConsumerCreateRequest{
-		Stream: stream,
-		Config: *cfg,
+		Stream:   stream,
+		Config:   *cfg,
+		Pedantic: m.pedantic,
 	}
 
 	createdInfo, err := m.createConsumer(req)

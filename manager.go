@@ -37,6 +37,7 @@ type Manager struct {
 	apiPrefix   string
 	eventPrefix string
 	domain      string
+	pedantic    bool
 
 	sync.Mutex
 }
@@ -60,6 +61,11 @@ func New(nc *nats.Conn, opts ...Option) (*Manager, error) {
 	}
 
 	return m, nil
+}
+
+// IsPedantic checks if the manager is in pedantic mode
+func (m *Manager) IsPedantic() bool {
+	return m.pedantic
 }
 
 // IsJetStreamEnabled determines if JetStream is enabled for the current account

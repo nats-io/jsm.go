@@ -21,6 +21,11 @@
     "action" : {
       "type": "string",
       "description": "The consumer create action"
+    },
+    "pedantic": {
+      "type": "boolean",
+      "description": "Enables pedantic mode where the server will not apply defaults or change the request",
+      "default": false
     }
   }
 }

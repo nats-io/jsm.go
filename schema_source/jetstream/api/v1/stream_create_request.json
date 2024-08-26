@@ -7,6 +7,16 @@
   "allOf": [
     {
       "$ref": "definitions.json#/definitions/stream_configuration"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "pedantic": {
+          "type": "boolean",
+          "description": "Enables pedantic mode where the server will not apply defaults or change the request",
+          "default": false
+        }
+      }
     }
   ]
 }

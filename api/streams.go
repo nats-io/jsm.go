@@ -82,6 +82,8 @@ type JSApiStreamInfoRequest struct {
 // io.nats.jetstream.api.v1.stream_create_request
 type JSApiStreamCreateRequest struct {
 	StreamConfig
+	// Pedantic disables server features that would set defaults and adjust the provided config
+	Pedantic bool `json:"pedantic,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_names_request

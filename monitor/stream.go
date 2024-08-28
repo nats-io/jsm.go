@@ -200,13 +200,9 @@ func StreamHealthCheck(server string, nopts []nats.Option, check *Result, opts S
 }
 
 func streamCheckMirror(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
-	if (opts.SourcesLagCritical <= 0 && opts.SourcesSeenCritical <= 0) || si.Config.Name == "" || si.Config.Mirror == nil {
-		return
-	}
-
-	if si.Config.Name == "" {
-		log.Debugf("CRITICAL: no configuration present")
-		check.Critical("no configuration present")
+	// We check sources here because they are mutually exclusive with mirrors. If sources are set, mirrors
+	// can't be so we can bail out of this check early
+	if (opts.SourcesLagCritical <= 0 && opts.SourcesSeenCritical <= 0) || si.Config.Name == "" || len(si.Sources) > 0 {
 		return
 	}
 
@@ -355,11 +351,12 @@ func streamCheckMessages(si *api.StreamInfo, check *Result, opts StreamHealthChe
 
 func streamCheckCluster(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
 	nfo := si.Cluster
-	if nfo == nil && opts.ClusterExpectedPeers <= 0 {
+
+	if (nfo == nil || si.Config.Replicas <= 1) && opts.ClusterExpectedPeers <= 0 {
 		return
 	}
 
-	if nfo == nil {
+	if nfo == nil || si.Config.Replicas <= 1 {
 		log.Debugf("Stream is not clustered")
 		check.Critical("Stream is not clustered")
 		return

@@ -425,7 +425,11 @@ func TestStream_checkCluster(t *testing.T) {
 				Replicas: []*api.PeerInfo{
 					{Name: "p1"},
 				},
-			}}
+			},
+			Config: api.StreamConfig{
+				Replicas: 2,
+			},
+		}
 
 		streamCheckCluster(si, check, StreamHealthCheckOptions{
 			ClusterExpectedPeers: 3,
@@ -442,6 +446,9 @@ func TestStream_checkCluster(t *testing.T) {
 					{Name: "p2"},
 					{Name: "p3"},
 				},
+			},
+			Config: api.StreamConfig{
+				Replicas: 3,
 			},
 		}
 
@@ -476,6 +483,9 @@ func TestStream_checkCluster(t *testing.T) {
 					{Name: "p3", Lag: 10},
 				},
 			},
+			Config: api.StreamConfig{
+				Replicas: 3,
+			},
 		}
 
 		streamCheckCluster(si, check, StreamHealthCheckOptions{
@@ -494,6 +504,9 @@ func TestStream_checkCluster(t *testing.T) {
 					{Name: "p2", Lag: 10, Active: time.Second},
 					{Name: "p3", Lag: 10, Active: time.Hour},
 				},
+			},
+			Config: api.StreamConfig{
+				Replicas: 3,
 			},
 		}
 
@@ -515,6 +528,9 @@ func TestStream_checkCluster(t *testing.T) {
 					{Name: "p3", Lag: 10, Active: time.Hour},
 				},
 			},
+			Config: api.StreamConfig{
+				Replicas: 3,
+			},
 		}
 
 		streamCheckCluster(si, check, StreamHealthCheckOptions{
@@ -533,6 +549,9 @@ func TestStream_checkCluster(t *testing.T) {
 					{Name: "p2", Lag: 10, Active: time.Second},
 					{Name: "p3", Lag: 10, Active: time.Second},
 				},
+			},
+			Config: api.StreamConfig{
+				Replicas: 3,
 			},
 		}
 		streamCheckCluster(si, check, StreamHealthCheckOptions{

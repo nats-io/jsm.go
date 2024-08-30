@@ -1253,8 +1253,8 @@ func TestStreamPedantic(t *testing.T) {
 	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.MaxAge(time.Second))
 	checkErr(t, err, "create failed")
 
-	if s.MaxAge() != time.Second {
-		t.Fatalf("expected max age to be overrode, got: %v", s.MaxAge())
+	if s.DuplicateWindow() != time.Second {
+		t.Fatalf("expected duplicate window to be overrode, got: %v", s.DuplicateWindow())
 	}
 	checkErr(t, s.Delete(), "delete failed")
 
@@ -1265,6 +1265,44 @@ func TestStreamPedantic(t *testing.T) {
 	}
 
 	_, err = mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.MaxAge(time.Second))
+	if !api.IsNatsErr(err, 10157) {
+		t.Fatalf("expected pednatic error, got: %v", err)
+	}
+}
+
+func TestStreamPedanticMirrorDirect(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.NoAllowDirect())
+	checkErr(t, err, "create failed")
+	if s.DirectAllowed() {
+		t.Fatalf("expected direct to be false")
+	}
+
+	m, err := mgr.NewStreamFromDefault("TEST_MIRROR", api.StreamConfig{}, jsm.MirrorDirect(), jsm.AllowDirect(), jsm.Mirror(&api.StreamSource{Name: "TEST"}))
+	checkErr(t, err, "create failed")
+	if m.MirrorDirectAllowed() {
+		t.Fatalf("mirror direct was allowed")
+	}
+
+	checkErr(t, s.Delete(), "delete failed")
+	checkErr(t, m.Delete(), "delete failed")
+
+	mgr, err = jsm.New(nc, jsm.WithPedanticRequests())
+	checkErr(t, err, "manager failed")
+	if !mgr.IsPedantic() {
+		t.Fatalf("expected mgr to be pedantic")
+	}
+
+	s, err = mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.NoAllowDirect())
+	checkErr(t, err, "create failed")
+	if s.DirectAllowed() {
+		t.Fatalf("expected direct to be false")
+	}
+
+	_, err = mgr.NewStreamFromDefault("TEST_MIRROR", api.StreamConfig{}, jsm.MirrorDirect(), jsm.AllowDirect(), jsm.Mirror(&api.StreamSource{Name: "TEST"}))
 	if !api.IsNatsErr(err, 10157) {
 		t.Fatalf("expected pednatic error, got: %v", err)
 	}

@@ -107,7 +107,7 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 	delivered, _ := strconv.Atoi(parts[4+offset])
 	streamSeq, _ := strconv.ParseUint(parts[5+offset], 10, 64)
 	consumerSeq, _ := strconv.ParseUint(parts[6+offset], 10, 64)
-	tsi, _ := strconv.Atoi(parts[7+offset])
+	tsi, _ := strconv.ParseInt(parts[7+offset], 10, 64)
 	ts := time.Unix(0, int64(tsi))
 	pending := uint64(math.MaxUint64)
 	pending, _ = strconv.ParseUint(parts[8+offset], 10, 64)

@@ -9,14 +9,14 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/klauspost/compress v1.17.9
 	github.com/nats-io/jwt/v2 v2.5.8
-	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20240825211147-3fd298ed30c7
+	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20240907185554-7f92c34c1415
 	github.com/nats-io/nats.go v1.37.0
 	github.com/nats-io/nkeys v0.4.7
 	github.com/nats-io/nuid v1.0.1
-	github.com/prometheus/client_golang v1.19.1
-	github.com/prometheus/common v0.55.0
-	golang.org/x/net v0.28.0
-	golang.org/x/text v0.17.0
+	github.com/prometheus/client_golang v1.20.3
+	github.com/prometheus/common v0.59.1
+	golang.org/x/net v0.29.0
+	golang.org/x/text v0.18.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -32,8 +32,8 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/sys v0.24.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 )

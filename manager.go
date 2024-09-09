@@ -38,6 +38,7 @@ type Manager struct {
 	eventPrefix string
 	domain      string
 	pedantic    bool
+	apiLEvel    *int
 
 	sync.Mutex
 }
@@ -93,7 +94,29 @@ func (m *Manager) JetStreamAccountInfo() (info *api.JetStreamAccountStats, err e
 		return nil, err
 	}
 
+	m.Lock()
+	m.apiLEvel = &resp.JetStreamAccountStats.API.Level
+	m.Unlock()
+
 	return resp.JetStreamAccountStats, nil
+}
+
+// MetaApiLevel determines the JetStream API level supported by the meta leader
+func (m *Manager) MetaApiLevel(refresh bool) (int, error) {
+	m.Lock()
+	mlvl := m.apiLEvel
+	m.Unlock()
+
+	if !refresh && mlvl != nil {
+		return *mlvl, nil
+	}
+
+	nfo, err := m.JetStreamAccountInfo()
+	if err != nil {
+		return 0, err
+	}
+
+	return nfo.API.Level, nil
 }
 
 // IsStreamMaxBytesRequired determines if the JetStream account requires streams to set a byte limit

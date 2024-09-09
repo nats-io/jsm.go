@@ -121,6 +121,7 @@ type JetStreamAccountStats struct {
 }
 
 type JetStreamAPIStats struct {
+	Level  int    `json:"level"`
 	Total  uint64 `json:"total"`
 	Errors uint64 `json:"errors"`
 }

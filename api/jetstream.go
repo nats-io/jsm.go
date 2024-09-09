@@ -26,6 +26,12 @@ const (
 	JSMetricPrefix   = "$JS.EVENT.METRIC"
 	JSAdvisoryPrefix = "$JS.EVENT.ADVISORY"
 	JSApiAccountInfo = "$JS.API.INFO"
+
+	JSMetaCreatedServerLevel   = "_nats.created.server.api_level"
+	JSMetaCreatedServerVersion = "_nats.created.server.version"
+	JSMetaCurrentServerLevel   = "_nats.server.api_level"
+	JSMetaCurrentServerVersion = "_nats.server.version"
+	JsMetaRequiredServerLevel  = "_nats.server.require.api_level"
 )
 
 // Responses to requests sent to a server from a client.

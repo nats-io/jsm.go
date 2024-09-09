@@ -16,10 +16,12 @@ package jsm
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/expr-lang/expr"
+	"github.com/nats-io/jsm.go/api"
 	"gopkg.in/yaml.v3"
 )
 
@@ -42,9 +44,18 @@ type streamQuery struct {
 	expression     string
 	leader         string
 	matchers       []streamMatcher
+	apiLevel       int
 }
 
 type StreamQueryOpt func(query *streamQuery) error
+
+// StreamQueryApiLevelMin limits results to assets requiring API Level above or equal to level
+func StreamQueryApiLevelMin(level int) StreamQueryOpt {
+	return func(q *streamQuery) error {
+		q.apiLevel = level
+		return nil
+	}
+}
 
 // StreamQueryExpression filters the stream using the expr expression language
 func StreamQueryExpression(e string) StreamQueryOpt {
@@ -195,6 +206,7 @@ func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 		q.matchSourced,
 		q.matchMirrored,
 		q.matchLeaderServer,
+		q.matchApiLevel,
 	}
 
 	streams, _, err := m.Streams(nil)
@@ -447,6 +459,33 @@ func (q *streamQuery) matchConsumerLimit(streams []*Stream) ([]*Stream, error) {
 		}
 
 		if (q.invert && state.Consumers >= *q.consumersLimit) || !q.invert && state.Consumers <= *q.consumersLimit {
+			matched = append(matched, stream)
+		}
+	}
+
+	return matched, nil
+}
+
+func (q *streamQuery) matchApiLevel(streams []*Stream) ([]*Stream, error) {
+	if q.apiLevel <= 0 {
+		return streams, nil
+	}
+
+	var matched []*Stream
+
+	for _, stream := range streams {
+		var v string
+		var requiredLevel int
+
+		meta := stream.Configuration().Metadata
+		if len(meta) > 0 {
+			v = meta[api.JsMetaRequiredServerLevel]
+			if v != "" {
+				requiredLevel, _ = strconv.Atoi(v)
+			}
+		}
+
+		if (!q.invert && requiredLevel >= q.apiLevel) || (q.invert && requiredLevel < q.apiLevel) {
 			matched = append(matched, stream)
 		}
 	}

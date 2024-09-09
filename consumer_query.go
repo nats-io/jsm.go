@@ -16,9 +16,11 @@ package jsm
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/expr-lang/expr"
+	"github.com/nats-io/jsm.go/api"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,11 +43,20 @@ type consumerQuery struct {
 	ackPending        int
 	pending           uint64
 	leader            string
+	apiLevel          int
 	ageLimit          time.Duration
 	lastDeliveryLimit time.Duration
 }
 
 type ConsumerQueryOpt func(query *consumerQuery) error
+
+// ConsumerQueryApiLevelMin limits results to assets requiring API Level above or equal to level
+func ConsumerQueryApiLevelMin(level int) ConsumerQueryOpt {
+	return func(q *consumerQuery) error {
+		q.apiLevel = level
+		return nil
+	}
+}
 
 // ConsumerQueryExpression filters the consumers using the expr expression language
 func ConsumerQueryExpression(e string) ConsumerQueryOpt {
@@ -177,6 +188,7 @@ func (s *Stream) QueryConsumers(opts ...ConsumerQueryOpt) ([]*Consumer, error) {
 		q.matchDelivery,
 		q.matchReplicas,
 		q.matchLeaderServer,
+		q.matchApiLevel,
 	}
 
 	var consumers []*Consumer
@@ -295,6 +307,22 @@ func (q *consumerQuery) matchPush(consumers []*Consumer) ([]*Consumer, error) {
 func (q *consumerQuery) matchPull(consumers []*Consumer) ([]*Consumer, error) {
 	return q.cbMatcher(consumers, q.isPull != nil, func(consumer *Consumer) bool {
 		return (!q.invert && consumer.IsPullMode()) || (q.invert && !consumer.IsPullMode())
+	})
+}
+
+func (q *consumerQuery) matchApiLevel(consumers []*Consumer) ([]*Consumer, error) {
+	return q.cbMatcher(consumers, q.apiLevel > 0, func(consumer *Consumer) bool {
+		var v string
+		var requiredLevel int
+
+		if len(consumer.Metadata()) > 0 {
+			v = consumer.Metadata()[api.JsMetaRequiredServerLevel]
+			if v != "" {
+				requiredLevel, _ = strconv.Atoi(v)
+			}
+		}
+
+		return (!q.invert && requiredLevel >= q.apiLevel) || (q.invert && requiredLevel < q.apiLevel)
 	})
 }
 

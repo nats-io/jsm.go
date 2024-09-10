@@ -27,6 +27,8 @@ const (
 	JSAdvisoryPrefix = "$JS.EVENT.ADVISORY"
 	JSApiAccountInfo = "$JS.API.INFO"
 
+	// also update FilterServerMetadata when this changes
+
 	JSMetaCreatedServerLevel   = "_nats.created.server.api_level"
 	JSMetaCreatedServerVersion = "_nats.created.server.version"
 	JSMetaCurrentServerLevel   = "_nats.server.api_level"

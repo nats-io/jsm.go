@@ -16,6 +16,7 @@ package test
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/nats-io/jsm.go/api"
@@ -143,5 +144,40 @@ func TestIsNatsError(t *testing.T) {
 
 	if jsm.IsNatsError(fmt.Errorf("error"), 10077) {
 		t.Fatalf("Non api error is 10077")
+	}
+}
+
+func TestFilterServerMetadata(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.StreamMetadata(map[string]string{
+		"io.nats.monitor.enabled":       "1",
+		"io.nats.monitor.lag-critical":  "100",
+		"io.nats.monitor.msgs-critical": "500",
+		"io.nats.monitor.msgs-warn":     "999",
+		"io.nats.monitor.peer-expect":   "3",
+		"io.nats.monitor.seen-critical": "5m",
+	}))
+	checkErr(t, err, "create failed")
+
+	if _, ok := s.Metadata()[api.JsMetaRequiredServerLevel]; !ok {
+		t.Fatalf("No server metadata added")
+	}
+
+	newMeta := jsm.FilterServerMetadata(s.Metadata())
+
+	expected := map[string]string{
+		"io.nats.monitor.enabled":       "1",
+		"io.nats.monitor.lag-critical":  "100",
+		"io.nats.monitor.msgs-critical": "500",
+		"io.nats.monitor.msgs-warn":     "999",
+		"io.nats.monitor.peer-expect":   "3",
+		"io.nats.monitor.seen-critical": "5m",
+	}
+
+	if !reflect.DeepEqual(newMeta, expected) {
+		t.Fatalf("all server data was not removed: %v", newMeta)
 	}
 }

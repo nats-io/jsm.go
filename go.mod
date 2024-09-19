@@ -8,12 +8,12 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/klauspost/compress v1.17.9
-	github.com/nats-io/jwt/v2 v2.5.8
-	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20240907185554-7f92c34c1415
+	github.com/nats-io/jwt/v2 v2.6.0
+	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20240919192050-816061f4f441
 	github.com/nats-io/nats.go v1.37.0
 	github.com/nats-io/nkeys v0.4.7
 	github.com/nats-io/nuid v1.0.1
-	github.com/prometheus/client_golang v1.20.3
+	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/common v0.59.1
 	golang.org/x/net v0.29.0
 	golang.org/x/text v0.18.0

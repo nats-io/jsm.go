@@ -159,7 +159,7 @@ func ParseJSMsgMetadataDirect(headers nats.Header) (*MsgInfo, error) {
 	}
 	nfo.ts = ts
 
-	return &MsgInfo{}, nil
+	return nfo, nil
 }
 
 // ParseJSMsgMetadata parse the reply subject metadata to determine message metadata

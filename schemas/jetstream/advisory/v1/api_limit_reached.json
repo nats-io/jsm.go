@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/advisory/v1/api_limit_reached.json",
+  "description": "An Advisory when the server takes action after very high number of pending API operations",
+  "title": "io.nats.jetstream.advisory.v1.api_limit_reached",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "timestamp",
+    "server",
+    "dropped"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "io.nats.jetstream.advisory.v1.api_limit_reached"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique correlation ID for this event"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "The time this event was created in RFC3339 format"
+    },
+    "server": {
+      "type": "string",
+      "description": "The server this event originates from, either a generated ID or the configured name",
+      "minLength": 1
+    },
+    "domain": {
+      "type": "string",
+      "minimum": 1,
+      "description": "The domain of the JetStreamServer"
+    },
+    "dropped": {
+      "type": "integer",
+      "description": "The number of messages removed from the QPI queue"
+    }
+  }
+}

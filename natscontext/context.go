@@ -41,6 +41,7 @@ import (
 
 	"github.com/nats-io/nats-server/v2/server/certstore"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nkeys"
 )
 
 type Option func(c *settings)
@@ -331,7 +332,33 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 	case c.User() != "":
 		nopts = append(nopts, nats.UserInfo(c.User(), c.Password()))
 	case c.Creds() != "":
-		nopts = append(nopts, nats.UserCredentials(c.Creds()))
+		if strings.HasPrefix(c.Creds(), "op://") {
+			cmd := exec.Command("op", "read", c.Creds())
+			out, err := cmd.Output()
+			if err != nil {
+				return nil, err
+			}
+			jwt, err := nkeys.ParseDecoratedJWT(out)
+			if err != nil {
+				return nil, err
+			}
+			kp, err := nkeys.ParseDecoratedNKey(out)
+			if err != nil {
+				return nil, err
+			}
+			wipeSlice(out)
+
+			userCB := func() (string, error) {
+				return jwt, nil
+			}
+			sigCB := func(nonce []byte) ([]byte, error) {
+				return kp.Sign(nonce)
+			}
+			nopts = append(nopts, nats.UserJWT(userCB, sigCB))
+		} else {
+			nopts = append(nopts, nats.UserCredentials(c.Creds()))
+		}
+
 	case c.NKey() != "":
 		nko, err := nats.NkeyOptionFromSeed(c.NKey())
 		if err != nil {
@@ -983,3 +1010,9 @@ func WithWindowsCaCertsMatch(match ...string) Option {
 
 // WindowsCaCertsMatch are criteria used to search for Certificate Authorities in the windows certificate store
 func (c *Context) WindowsCaCertsMatch() []string { return c.config.WinCertStoreCaMatch }
+
+func wipeSlice(buf []byte) {
+	for i := range buf {
+		buf[i] = 'x'
+	}
+}

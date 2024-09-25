@@ -7,7 +7,7 @@ require (
 	github.com/expr-lang/expr v1.16.9
 	github.com/google/go-cmp v0.6.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
-	github.com/klauspost/compress v1.17.9
+	github.com/klauspost/compress v1.17.10
 	github.com/nats-io/jwt/v2 v2.6.0
 	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20240919192050-816061f4f441
 	github.com/nats-io/nats.go v1.37.0

@@ -20,6 +20,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -50,6 +51,7 @@ type Result struct {
 	RenderFormat RenderFormat `json:"-"`
 	NameSpace    string       `json:"-"`
 	OutFile      string       `json:"-"`
+	Trace        bool         `json:"-"`
 }
 
 func (r *Result) Pd(pd ...*PerfDataItem) {
@@ -302,6 +304,16 @@ func (r *Result) String() string {
 }
 
 func (r *Result) GenericExit() {
+	// GenericExit is often called in defer and this will swallow panics as it will exit before the panic handler is called
+	// so we try to add some flavor here at least
+	err := recover()
+	if err != nil {
+		r.Critical("check caused a panic: %v", err)
+		if r.Trace {
+			debug.PrintStack()
+		}
+	}
+
 	if r.OutFile != "" {
 		f, err := os.CreateTemp(filepath.Dir(r.OutFile), "")
 		if err != nil {

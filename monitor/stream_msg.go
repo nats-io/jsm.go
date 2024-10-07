@@ -24,10 +24,6 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type SubjectMessageReader interface {
-	ReadLastMessageForSubject(stream string, sub string) (msg *api.StoredMsg, err error)
-}
-
 // CheckStreamMessageOptions configures the stream message check
 type CheckStreamMessageOptions struct {
 	// StreamName the name of the stream holding the message

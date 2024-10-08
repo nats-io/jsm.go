@@ -502,6 +502,18 @@ func (c *Context) loadActiveContext() error {
 	// performing environment variable expansion for the path of the cerds.
 	c.config.Creds = os.ExpandEnv(c.config.Creds)
 
+	usr, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	// expand tilde to current user's home directory
+	c.config.Creds = strings.Replace(c.config.Creds, "~", usr.HomeDir, 1)
+	c.config.NKey = strings.Replace(c.config.NKey, "~", usr.HomeDir, 1)
+	c.config.Cert = strings.Replace(c.config.Cert, "~", usr.HomeDir, 1)
+	c.config.Key = strings.Replace(c.config.Key, "~", usr.HomeDir, 1)
+	c.config.CA = strings.Replace(c.config.CA, "~", usr.HomeDir, 1)
+
 	if c.config.NSCLookup != "" {
 		err := c.resolveNscLookup()
 		if err != nil {

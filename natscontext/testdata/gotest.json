@@ -1,4 +1,9 @@
 {
   "url": "demo.nats.io",
-  "token": "use-nkeys!"
+  "token": "use-nkeys!",
+  "nkey": "~/.keys/nats/example/prod.nkey",
+  "creds": "~/.keys/nats/example/creds",
+  "key": "~/.keys/nats/example/public.key",
+  "cert": "~/.keys/nats/example/public.crt",
+  "ca": "~/.keys/nats/example/public.ca"
 }

@@ -356,11 +356,11 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 			}
 			nopts = append(nopts, nats.UserJWT(userCB, sigCB))
 		} else {
-			nopts = append(nopts, nats.UserCredentials(c.Creds()))
+			nopts = append(nopts, nats.UserCredentials(expandHomedir(c.Creds())))
 		}
 
 	case c.NKey() != "":
-		nko, err := nats.NkeyOptionFromSeed(c.NKey())
+		nko, err := nats.NkeyOptionFromSeed(expandHomedir(c.NKey()))
 		if err != nil {
 			return nil, err
 		}
@@ -369,15 +369,15 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 	}
 
 	if c.Token() != "" {
-		nopts = append(nopts, nats.Token(c.Token()))
+		nopts = append(nopts, nats.Token(expandHomedir(c.Token())))
 	}
 
 	if c.Certificate() != "" && c.Key() != "" {
-		nopts = append(nopts, nats.ClientCert(c.Certificate(), c.Key()))
+		nopts = append(nopts, nats.ClientCert(expandHomedir(c.Certificate()), expandHomedir(c.Key())))
 	}
 
 	if c.CA() != "" {
-		nopts = append(nopts, nats.RootCAs(c.CA()))
+		nopts = append(nopts, nats.RootCAs(expandHomedir(c.CA())))
 	}
 
 	if c.SocksProxy() != "" {
@@ -502,18 +502,6 @@ func (c *Context) loadActiveContext() error {
 	// performing environment variable expansion for the path of the cerds.
 	c.config.Creds = os.ExpandEnv(c.config.Creds)
 
-	usr, err := user.Current()
-	if err != nil {
-		return err
-	}
-
-	// expand tilde to current user's home directory
-	c.config.Creds = strings.Replace(c.config.Creds, "~", usr.HomeDir, 1)
-	c.config.NKey = strings.Replace(c.config.NKey, "~", usr.HomeDir, 1)
-	c.config.Cert = strings.Replace(c.config.Cert, "~", usr.HomeDir, 1)
-	c.config.Key = strings.Replace(c.config.Key, "~", usr.HomeDir, 1)
-	c.config.CA = strings.Replace(c.config.CA, "~", usr.HomeDir, 1)
-
 	if c.config.NSCLookup != "" {
 		err := c.resolveNscLookup()
 		if err != nil {
@@ -562,6 +550,19 @@ func (c *Context) resolveNscLookup() error {
 	}
 
 	return nil
+}
+
+func expandHomedir(path string) string {
+	if path[0] != '~' {
+		return path
+	}
+
+	usr, err := user.Current()
+	if err != nil {
+		return path
+	}
+
+	return strings.Replace(path, "~", usr.HomeDir, 1)
 }
 
 func validName(name string) bool {

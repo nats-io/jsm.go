@@ -127,21 +127,4 @@ func TestContext(t *testing.T) {
 	if err != nil || (config.Name != "gotest" && config.ServerURL() != "demo.nats.io" && config.Token() != "use-nkeys!") {
 		t.Fatalf("could not load context file: %s", err)
 	}
-
-	// test tilde expansion
-	if config.NKey() == "~/.keys/nats/example/prod.nkey" {
-		t.Fatalf("invalid expansion of HOME directory - %s", config.NKey())
-	}
-	if config.Creds() == "~/.keys/nats/example/creds" {
-		t.Fatalf("invalid expansion of HOME directory - %s", config.Creds())
-	}
-	if config.Certificate() == "~/.keys/nats/example/public.crt" {
-		t.Fatalf("invalid expansion of HOME directory - %s", config.Certificate())
-	}
-	if config.Key() == "~/.keys/nats/example/public.key" {
-		t.Fatalf("invalid expansion of HOME directory - %s", config.Key())
-	}
-	if config.CA() == "~/.keys/nats/example/public.ca" {
-		t.Fatalf("invalid expansion of HOME directory - %s", config.CA())
-	}
 }

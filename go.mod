@@ -6,15 +6,15 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.16.9
 	github.com/google/go-cmp v0.6.0
-	github.com/jedib0t/go-pretty/v6 v6.6.0
-	github.com/klauspost/compress v1.17.10
-	github.com/nats-io/jwt/v2 v2.7.0
-	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241004162106-225cd3dd6eca
+	github.com/jedib0t/go-pretty/v6 v6.6.1
+	github.com/klauspost/compress v1.17.11
+	github.com/nats-io/jwt/v2 v2.7.2
+	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241030181516-1ee2b8a11af8
 	github.com/nats-io/nats.go v1.37.0
 	github.com/nats-io/nkeys v0.4.7
 	github.com/nats-io/nuid v1.0.1
-	github.com/prometheus/client_golang v1.20.4
-	github.com/prometheus/common v0.60.0
+	github.com/prometheus/client_golang v1.20.5
+	github.com/prometheus/common v0.60.1
 	golang.org/x/net v0.30.0
 	golang.org/x/text v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -32,6 +32,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	go.uber.org/automaxprocs v1.6.0 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/time v0.7.0 // indirect

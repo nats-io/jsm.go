@@ -431,7 +431,7 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 	}
 
 	tlsc := &tls.Config{}
-	err = certstore.TLSConfig(storeType, matchBy, c.config.WinCertStoreMatch, c.config.WinCertStoreCaMatch, tlsc)
+	err = certstore.TLSConfig(storeType, matchBy, c.config.WinCertStoreMatch, c.config.WinCertStoreCaMatch, true, tlsc)
 	if err != nil {
 		return nil, err
 	}

@@ -76,13 +76,6 @@ func (m *Manager) NewConsumerFromDefault(stream string, dflt api.ConsumerConfig,
 		return nil, fmt.Errorf("configuration validation failed: %s", strings.Join(errs, ", "))
 	}
 
-	// TODO: Remove this once natscli and the Terraform NATS provider are using update consumer
-	// if we have a single filter subject in the array use the single filter string instead (which will then use the extended create request subject format)
-	if len(cfg.FilterSubjects) == 1 {
-		cfg.FilterSubject = cfg.FilterSubjects[0]
-		cfg.FilterSubjects = nil
-	}
-
 	req := api.JSApiConsumerCreateRequest{
 		Stream:   stream,
 		Config:   *cfg,

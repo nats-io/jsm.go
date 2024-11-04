@@ -296,6 +296,26 @@
           "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
           "type": "string",
           "format": "date-time"
+        },
+        "priority_groups": {
+          "description": "List of priority groups this consumer supports",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "priority_policy": {
+          "description": "The policy the consumer is set to",
+          "type": "string",
+          "enum": [
+            "none",
+            "overflow",
+            "pinned_client"
+          ]
+        },
+        "pinned_ttl": {
+          "description": "For pinned_client priority policy how long before the client times out"
         }
       }
     },

@@ -629,6 +629,40 @@ func PauseUntil(deadline time.Time) ConsumerOption {
 	}
 }
 
+// PinnedClientPriorityGroups sets the consumer to be a pinned client priority consumer with a certain list of groups. When groups is empty the 'none' policy is set
+func PinnedClientPriorityGroups(ttl time.Duration, groups ...string) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if len(groups) == 0 {
+			o.PriorityGroups = []string{}
+			o.PriorityPolicy = api.PriorityNone
+			o.PinnedTTL = 0
+			return nil
+		}
+
+		o.PriorityPolicy = api.PriorityPinnedClient
+		o.PriorityGroups = groups
+		o.PinnedTTL = ttl
+
+		return nil
+	}
+}
+
+// OverflowPriorityGroups sets the consumer to support overflow pull requests
+func OverflowPriorityGroups(groups ...string) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if len(groups) == 0 {
+			o.PriorityGroups = []string{}
+			o.PriorityPolicy = api.PriorityNone
+			return nil
+		}
+
+		o.PriorityPolicy = api.PriorityOverflow
+		o.PriorityGroups = groups
+
+		return nil
+	}
+}
+
 // UpdateConfiguration updates the consumer configuration
 // At present the description, ack wait, max deliver, sample frequency, max ack pending, max waiting and header only settings can be changed
 func (c *Consumer) UpdateConfiguration(opts ...ConsumerOption) error {
@@ -944,13 +978,37 @@ func (c *Consumer) Resume() error {
 	return nil
 }
 
-func (c *Consumer) Name() string                     { return c.name }
-func (c *Consumer) IsSampled() bool                  { return c.SampleFrequency() != "" }
-func (c *Consumer) IsPullMode() bool                 { return c.cfg.DeliverSubject == "" }
-func (c *Consumer) IsPushMode() bool                 { return !c.IsPullMode() }
-func (c *Consumer) IsDurable() bool                  { return c.cfg.Durable != "" }
-func (c *Consumer) IsEphemeral() bool                { return !c.IsDurable() }
-func (c *Consumer) IsHeadersOnly() bool              { return c.cfg.HeadersOnly }
+// Unpin requests that the server unpins the current client from a grouped consumer
+func (c *Consumer) Unpin(group string) error {
+	if group == "" {
+		return fmt.Errorf("group is required")
+	}
+
+	if c.cfg.PriorityPolicy == api.PriorityPinnedClient {
+		return fmt.Errorf("consumer is not configured for pinned clients")
+	}
+
+	var resp *api.JSApiConsumerUnpinResponse
+
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerUnpinT, c.StreamName(), c.Name()), api.JSApiConsumerUnpinRequest{Group: group}, &resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Consumer) Name() string             { return c.name }
+func (c *Consumer) IsSampled() bool          { return c.SampleFrequency() != "" }
+func (c *Consumer) IsPullMode() bool         { return c.cfg.DeliverSubject == "" }
+func (c *Consumer) IsPushMode() bool         { return !c.IsPullMode() }
+func (c *Consumer) IsDurable() bool          { return c.cfg.Durable != "" }
+func (c *Consumer) IsEphemeral() bool        { return !c.IsDurable() }
+func (c *Consumer) IsHeadersOnly() bool      { return c.cfg.HeadersOnly }
+func (c *Consumer) IsOverflowPriority() bool { return c.cfg.PriorityPolicy == api.PriorityOverflow }
+func (c *Consumer) IsPinnedClientPriority() bool {
+	return c.cfg.PriorityPolicy == api.PriorityPinnedClient
+}
 func (c *Consumer) StreamName() string               { return c.stream }
 func (c *Consumer) DeliverySubject() string          { return c.cfg.DeliverSubject }
 func (c *Consumer) DurableName() string              { return c.cfg.Durable }
@@ -984,4 +1042,10 @@ func (c *Consumer) StartTime() time.Time {
 		return time.Time{}
 	}
 	return *c.cfg.OptStartTime
+}
+func (c *Consumer) PriorityGroups() []string {
+	return c.cfg.PriorityGroups
+}
+func (c *Consumer) PriorityPolicy() api.PriorityPolicy {
+	return c.cfg.PriorityPolicy
 }

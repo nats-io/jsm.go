@@ -70,6 +70,26 @@
         }
       }
     },
+    "priority_group_state": {
+      "required": ["group"],
+      "type": "object",
+      "description": "Status of a specific consumer priority group",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": "The group this status is for",
+          "minLength": 1
+        },
+        "pinned_client_id": {
+          "type": "string",
+          "description": "The generated ID of the pinned client"
+        },
+        "pinned_ts": {
+          "description": "The timestamp when the client was pinned",
+          "$ref": "#/definitions/golang_time"
+        }
+      }
+    },
     "external_stream_source": {
       "required": ["api"],
       "type": "object",
@@ -465,6 +485,10 @@
       "pattern": "^[^.*>]+$",
       "minLength": 1
     },
+    "priority_policy": {
+      "type": "string",
+      "enum": ["none","overflow","pinned_client"]
+    },
     "deliver_policy": {
       "oneOf": [
         {"$ref": "#/definitions/all_deliver_policy"},
@@ -648,6 +672,13 @@
         "pause_until": {
           "description": "A deadline time for when the consumer will be paused. Only usable if 'paused' is true",
           "$ref": "#/definitions/golang_time"
+        },
+        "priority_groups": {
+          "description": "The state of Priority Groups",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/priority_group_state"
+          }
         }
       }
     },
@@ -796,6 +827,21 @@
         "pause_until": {
           "description": "When creating a consumer supplying a time in the future will act as a deadline for when the consumer will be paused till",
           "$ref": "#/definitions/golang_time"
+        },
+        "priority_groups": {
+          "description": "List of priority groups this consumer supports",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "priority_policy": {
+          "description": "The policy the consumer is set to",
+          "$ref": "#/definitions/priority_policy"
+        },
+        "pinned_ttl": {
+          "description": "For pinned_client priority policy how long before the client times out"
         }
       }
     },

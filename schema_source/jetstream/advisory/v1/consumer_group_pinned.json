@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/advisory/v1/consumer_group_pinned.json",
+  "description": "An Advisory sent when a pinned_client grouped consumer pinned a client",
+  "title": "io.nats.jetstream.advisory.v1.consumer_group_pinned",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "timestamp",
+    "server",
+    "stream",
+    "consumer",
+    "group",
+    "pinned_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "io.nats.jetstream.advisory.v1.consumer_group_pinned"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique correlation ID for this event"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "The time this event was created in RFC3339 format"
+    },
+    "account": {
+      "type": "string",
+      "description": "The account hosting the consumer"
+    },
+    "stream": {
+      "type": "string",
+      "description": "The stream hosting the consumer"
+    },
+    "consumer": {
+      "type": "string",
+      "description": "The consumer name"
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The domain of the JetStreamServer"
+    },
+    "group": {
+      "type": "string",
+      "description": "The group that unpinned a client"
+    },
+    "pinned_id": {
+      "type": "string",
+      "description": "The unique server-assigned ID for the client"
+    }
+  }
+}

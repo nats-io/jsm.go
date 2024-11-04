@@ -1057,3 +1057,41 @@ func TestConsumerPedantic(t *testing.T) {
 		t.Fatalf("expected pednatic error, got: %v", err)
 	}
 }
+
+func TestConsumerPinnedClientPriorityGroups(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
+	checkErr(t, err, "create failed")
+
+	c, err := s.NewConsumer(jsm.PinnedClientPriorityGroups(time.Minute, "foo"))
+	checkErr(t, err, "create failed")
+
+	if !c.IsPinnedClientPriority() {
+		t.Fatalf("expected pinned client priority to be set")
+	}
+	if !cmp.Equal(c.PriorityGroups(), []string{"foo"}) {
+		t.Fatalf("invalid priority group to be [foo], got %v", c.PriorityGroups())
+	}
+}
+
+func TestConsumerOverflowPriorityGroups(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
+	checkErr(t, err, "create failed")
+
+	c, err := s.NewConsumer(jsm.OverflowPriorityGroups("foo"))
+	checkErr(t, err, "create failed")
+
+	if !c.IsOverflowPriority() {
+		t.Fatalf("expected overflow priority to be set got %v", c.PriorityPolicy())
+	}
+	if !cmp.Equal(c.PriorityGroups(), []string{"foo"}) {
+		t.Fatalf("invalid priority group to be [foo], got %v", c.PriorityGroups())
+	}
+}

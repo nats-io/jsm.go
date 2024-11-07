@@ -984,7 +984,7 @@ func (c *Consumer) Unpin(group string) error {
 		return fmt.Errorf("group is required")
 	}
 
-	if c.cfg.PriorityPolicy == api.PriorityPinnedClient {
+	if c.cfg.PriorityPolicy != api.PriorityPinnedClient {
 		return fmt.Errorf("consumer is not configured for pinned clients")
 	}
 

@@ -29,10 +29,10 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nats-io/jwt/v2 v2.7.2 h1:SCRjfDLJ2q8naXp8YlGJJS5/yj3wGSODFYVi4nnwVMw=
 github.com/nats-io/jwt/v2 v2.7.2/go.mod h1:kB6QUmqHG6Wdrzj0KP2L+OX4xiTPBeV+NHVstFaATXU=
-github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241004162106-225cd3dd6eca h1:EcjPbDziop5sCVOpWOhUXTcQPAg1of3p+MgczwJubUo=
-github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241004162106-225cd3dd6eca/go.mod h1:LkVD8QXFfIxYsQCn3r0NHJk48PIg2XY1RqVBDTQwYuU=
-github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241030181516-1ee2b8a11af8 h1:XMoB88mOGh1u64NNvtBEfidj+rEewunIfLCdmrhsNmY=
-github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241030181516-1ee2b8a11af8/go.mod h1:VY1OpHND54C9/rK09yrZt7raHmTUioMOKPqJvRD3GDw=
+github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241105211031-4122ab992c1a h1:dHIQ0YB484btLEUs9hBNYd3OgbVegvaWA16fA5v2GdA=
+github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241105211031-4122ab992c1a/go.mod h1:VY1OpHND54C9/rK09yrZt7raHmTUioMOKPqJvRD3GDw=
+github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241107032117-dd0bedda7b6e h1:IOoXHQJxuz++vUwiiM4nKMQynU5LrFbjZvS2JXFGoFg=
+github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241107032117-dd0bedda7b6e/go.mod h1:VY1OpHND54C9/rK09yrZt7raHmTUioMOKPqJvRD3GDw=
 github.com/nats-io/nats.go v1.37.0 h1:07rauXbVnnJvv1gfIyghFEo6lUcYRY0WXc3x7x0vUxE=
 github.com/nats-io/nats.go v1.37.0/go.mod h1:Ubdu4Nh9exXdSz0RVWRFBbRfrbSxOYd26oF0wkWclB8=
 github.com/nats-io/nkeys v0.4.7 h1:RwNJbbIdYCoClSDNY7QVKZlyb/wfT6ugvFCiKy6vDvI=

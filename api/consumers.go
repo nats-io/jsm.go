@@ -39,6 +39,7 @@ const (
 	JSApiRequestNext                       = "$JS.API.CONSUMER.MSG.NEXT.*.*"
 	JSApiConsumerLeaderStepDownT           = "$JS.API.CONSUMER.LEADER.STEPDOWN.%s.%s"
 	JSApiConsumerPauseT                    = "$JS.API.CONSUMER.PAUSE.%s.%s"
+	JSApiConsumerUnpinT                    = "$JS.API.CONSUMER.UNPIN.%s.%s"
 	JSMetricConsumerAckPre                 = JSMetricPrefix + ".CONSUMER.ACK"
 	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"
 )
@@ -93,6 +94,16 @@ func (a *ConsumerAction) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unknown consumer action: %v", string(data))
 	}
 	return nil
+}
+
+// io.nats.jetstream.api.v1.consumer_unpin_response
+type JSApiConsumerUnpinRequest struct {
+	Group string `json:"group"`
+}
+
+// io.nats.jetstream.api.v1.consumer_unpin_response
+type JSApiConsumerUnpinResponse struct {
+	JSApiResponse
 }
 
 // io.nats.jetstream.api.v1.consumer_delete_response
@@ -333,6 +344,53 @@ func (p DeliverPolicy) MarshalJSON() ([]byte, error) {
 	}
 }
 
+// PriorityPolicy determines policy for selecting messages based on priority.
+type PriorityPolicy int
+
+const (
+	PriorityNone PriorityPolicy = iota
+	PriorityOverflow
+	PriorityPinnedClient
+)
+
+func (p PriorityPolicy) String() string {
+	switch p {
+	case PriorityOverflow:
+		return "Overflow"
+	case PriorityPinnedClient:
+		return "Pinned Client"
+	default:
+		return "None"
+	}
+}
+
+func (p *PriorityPolicy) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("none"):
+		*p = PriorityNone
+	case jsonString("overflow"):
+		*p = PriorityOverflow
+	case jsonString("pinned_client"):
+		*p = PriorityPinnedClient
+	default:
+		return fmt.Errorf("unknown priority policy: %v", string(data))
+	}
+	return nil
+}
+
+func (p PriorityPolicy) MarshalJSON() ([]byte, error) {
+	switch p {
+	case PriorityNone:
+		return json.Marshal("none")
+	case PriorityOverflow:
+		return json.Marshal("overflow")
+	case PriorityPinnedClient:
+		return json.Marshal("pinned_client")
+	default:
+		return nil, fmt.Errorf("unknown priority policy: %v", p)
+	}
+}
+
 // ConsumerConfig is the configuration for a JetStream consumes
 //
 // NATS Schema Type io.nats.jetstream.api.v1.consumer_configuration
@@ -371,6 +429,11 @@ type ConsumerConfig struct {
 	// PauseUntil is for suspending the consumer until the deadline.
 	PauseUntil time.Time `json:"pause_until,omitempty"`
 
+	// Priority groups
+	PriorityGroups []string       `json:"priority_groups,omitempty"`
+	PriorityPolicy PriorityPolicy `json:"priority_policy,omitempty"`
+	PinnedTTL      time.Duration  `json:"priority_timeout,omitempty"`
+
 	// Don't add to general clients.
 	Direct bool `json:"direct,omitempty"`
 }
@@ -384,21 +447,29 @@ type SequenceInfo struct {
 
 // ConsumerInfo reports the current state of a consumer
 type ConsumerInfo struct {
-	Stream         string         `json:"stream_name"`
-	Name           string         `json:"name"`
-	Config         ConsumerConfig `json:"config"`
-	Created        time.Time      `json:"created"`
-	Delivered      SequenceInfo   `json:"delivered"`
-	AckFloor       SequenceInfo   `json:"ack_floor"`
-	NumAckPending  int            `json:"num_ack_pending"`
-	NumRedelivered int            `json:"num_redelivered"`
-	NumWaiting     int            `json:"num_waiting"`
-	NumPending     uint64         `json:"num_pending"`
-	Cluster        *ClusterInfo   `json:"cluster,omitempty"`
-	PushBound      bool           `json:"push_bound,omitempty"`
-	Paused         bool           `json:"paused,omitempty"`
-	PauseRemaining time.Duration  `json:"pause_remaining,omitempty"`
-	TimeStamp      time.Time      `json:"ts"`
+	Stream         string               `json:"stream_name"`
+	Name           string               `json:"name"`
+	Config         ConsumerConfig       `json:"config"`
+	Created        time.Time            `json:"created"`
+	Delivered      SequenceInfo         `json:"delivered"`
+	AckFloor       SequenceInfo         `json:"ack_floor"`
+	NumAckPending  int                  `json:"num_ack_pending"`
+	NumRedelivered int                  `json:"num_redelivered"`
+	NumWaiting     int                  `json:"num_waiting"`
+	NumPending     uint64               `json:"num_pending"`
+	Cluster        *ClusterInfo         `json:"cluster,omitempty"`
+	PushBound      bool                 `json:"push_bound,omitempty"`
+	Paused         bool                 `json:"paused,omitempty"`
+	PauseRemaining time.Duration        `json:"pause_remaining,omitempty"`
+	TimeStamp      time.Time            `json:"ts"`
+	PriorityGroups []PriorityGroupState `json:"priority_groups,omitempty"`
+}
+
+// PriorityGroupState is the state of a consumer group
+type PriorityGroupState struct {
+	Group          string    `json:"group"`
+	PinnedClientID string    `json:"pinned_client_id,omitempty"`
+	PinnedTS       time.Time `json:"pinned_ts,omitempty"`
 }
 
 // JSApiConsumerGetNextRequest is for getting next messages for pull based consumers

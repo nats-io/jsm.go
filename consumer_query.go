@@ -300,7 +300,7 @@ func (q *consumerQuery) matchWaiting(consumers []*Consumer) ([]*Consumer, error)
 }
 
 func (q *consumerQuery) matchPinned(consumers []*Consumer) ([]*Consumer, error) {
-	return q.cbMatcher(consumers, q.isBound != nil, func(consumer *Consumer) bool {
+	return q.cbMatcher(consumers, q.isPinned != nil, func(consumer *Consumer) bool {
 		if !consumer.IsPinnedClientPriority() {
 			return false
 		}
@@ -313,7 +313,7 @@ func (q *consumerQuery) matchPinned(consumers []*Consumer) ([]*Consumer, error) 
 				pinned++
 			}
 		}
-		isPinned := pinned == len(nfo.PriorityGroups)
+		isPinned := pinned == len(nfo.Config.PriorityGroups)
 
 		return (!q.invert && isPinned) || (q.invert && !isPinned)
 	})

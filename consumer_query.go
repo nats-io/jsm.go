@@ -39,6 +39,7 @@ type consumerQuery struct {
 	isPull            *bool
 	isPush            *bool
 	isBound           *bool
+	isPinned          *bool
 	waiting           int
 	ackPending        int
 	pending           uint64
@@ -86,6 +87,14 @@ func ConsumerQueryIsPull() ConsumerQueryOpt {
 func ConsumerQueryIsPush() ConsumerQueryOpt {
 	return func(q *consumerQuery) error {
 		q.isPush = truePtr()
+		return nil
+	}
+}
+
+// ConsumerQueryIsPinned finds consumers with pinned clients on all their groups
+func ConsumerQueryIsPinned() ConsumerQueryOpt {
+	return func(q *consumerQuery) error {
+		q.isPinned = truePtr()
 		return nil
 	}
 }
@@ -181,6 +190,7 @@ func (s *Stream) QueryConsumers(opts ...ConsumerQueryOpt) ([]*Consumer, error) {
 		q.matchPull,
 		q.matchPush,
 		q.matchBound,
+		q.matchPinned,
 		q.matchAckPending,
 		q.matchWaiting,
 		q.matchPending,
@@ -286,6 +296,26 @@ func (q *consumerQuery) matchWaiting(consumers []*Consumer) ([]*Consumer, error)
 		nfo, _ := consumer.LatestState()
 
 		return nfo.NumWaiting > 0 && (!q.invert && nfo.NumWaiting < q.waiting) || (q.invert && nfo.NumWaiting > q.waiting)
+	})
+}
+
+func (q *consumerQuery) matchPinned(consumers []*Consumer) ([]*Consumer, error) {
+	return q.cbMatcher(consumers, q.isBound != nil, func(consumer *Consumer) bool {
+		if !consumer.IsPinnedClientPriority() {
+			return false
+		}
+
+		nfo, _ := consumer.LatestState()
+
+		var pinned int
+		for _, group := range nfo.PriorityGroups {
+			if group.PinnedClientID != "" {
+				pinned++
+			}
+		}
+		isPinned := pinned == len(nfo.PriorityGroups)
+
+		return (!q.invert && isPinned) || (q.invert && !isPinned)
 	})
 }
 

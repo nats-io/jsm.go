@@ -283,3 +283,52 @@ func TestConsumer_checkOutstandingAck(t *testing.T) {
 		requireElement(t, check.OKs, "Ack Pending: 10")
 	})
 }
+
+func TestConsumer_consumerCheckPinned(t *testing.T) {
+	setup := func() (*Result, *api.ConsumerInfo) {
+		return &Result{}, &api.ConsumerInfo{}
+	}
+
+	t.Run("Should skip with pinning check disabled", func(t *testing.T) {
+		check, ci := setup()
+		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireEmpty(t, check.Warnings)
+		requireEmpty(t, check.OKs)
+	})
+
+	t.Run("Should handle non pinned client consumers", func(t *testing.T) {
+		check, ci := setup()
+		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{Pinned: true}, api.NewDiscardLogger())
+		requireElement(t, check.Criticals, "Not pinned client priority mode")
+		requireEmpty(t, check.Warnings)
+		requireEmpty(t, check.OKs)
+	})
+
+	t.Run("Should detect invalid pinned counts", func(t *testing.T) {
+		check, ci := setup()
+		ci.Config.PriorityGroups = []string{"ONE", "TWO"}
+		ci.Config.PriorityPolicy = api.PriorityPinnedClient
+		ci.PriorityGroups = []api.PriorityGroupState{
+			{Group: "ONE", PinnedClientID: "1"},
+		}
+		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{Pinned: true}, api.NewDiscardLogger())
+		requireElement(t, check.Criticals, "1 / 2 pinned clients")
+		requireEmpty(t, check.Warnings)
+		requireEmpty(t, check.OKs)
+	})
+
+	t.Run("Should handle healthy consumers", func(t *testing.T) {
+		check, ci := setup()
+		ci.Config.PriorityGroups = []string{"ONE", "TWO"}
+		ci.Config.PriorityPolicy = api.PriorityPinnedClient
+		ci.PriorityGroups = []api.PriorityGroupState{
+			{Group: "ONE", PinnedClientID: "1"},
+			{Group: "TWO", PinnedClientID: "2"},
+		}
+		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{Pinned: true}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireEmpty(t, check.Warnings)
+		requireElement(t, check.OKs, "2 pinned clients")
+	})
+}

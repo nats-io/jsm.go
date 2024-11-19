@@ -29,6 +29,7 @@ const (
 	ConsumerMonitorMetaLastDeliveredCritical  = "io.nats.monitor.last-delivery-critical"
 	ConsumerMonitorMetaLastAckCritical        = "io.nats.monitor.last-ack-critical"
 	ConsumerMonitorMetaRedeliveryCritical     = "io.nats.monitor.redelivery-critical"
+	ConsumerMonitorMetaPinned                 = "io.nats.monitor.pinned"
 )
 
 type ConsumerHealthCheckF func(*jsm.Consumer, *Result, ConsumerHealthCheckOptions, api.Logger)
@@ -51,6 +52,8 @@ type ConsumerHealthCheckOptions struct {
 	LastAckCritical float64 `json:"last_ack_critical" yaml:"last_ack_critical"`
 	// RedeliveryCritical critical threshold for number of reported redeliveries
 	RedeliveryCritical int `json:"redelivery_critical" yaml:"redelivery_critical"`
+	// Pinned requires consumer be priority based and all groups have pinned clients
+	Pinned bool `json:"pinned" yaml:"pinned"`
 
 	Enabled      bool                   `json:"-" yaml:"-"`
 	HealthChecks []ConsumerHealthCheckF `json:"-" yaml:"-"`
@@ -101,6 +104,10 @@ func populateConsumerHealthCheckOptions(metadata map[string]string, opts *Consum
 		}},
 		{ConsumerMonitorMetaRedeliveryCritical, func(v string) error {
 			opts.RedeliveryCritical, err = strconv.Atoi(v)
+			return err
+		}},
+		{ConsumerMonitorMetaPinned, func(v string) error {
+			opts.Pinned, err = strconv.ParseBool(v)
 			return err
 		}},
 	}
@@ -165,12 +172,42 @@ func ConsumerHealthCheck(server string, nopts []nats.Option, check *Result, opts
 	consumerCheckRedelivery(&nfo, check, opts, log)
 	consumerCheckLastDelivery(&nfo, check, opts, log)
 	consumerCheckLastAck(&nfo, check, opts, log)
+	consumerCheckPinned(&nfo, check, opts, log)
 
 	for _, hc := range opts.HealthChecks {
 		hc(consumer, check, opts, log)
 	}
 
 	return nil
+}
+
+func consumerCheckPinned(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+	var pinned int
+
+	for _, group := range nfo.PriorityGroups {
+		if group.PinnedClientID != "" {
+			pinned++
+		}
+	}
+
+	if nfo.Config.PriorityPolicy == api.PriorityPinnedClient {
+		check.Pd(&PerfDataItem{Name: "pinned_groups", Value: float64(pinned), Help: "The number of consumers groups with pinned clients"})
+		check.Pd(&PerfDataItem{Name: "groups", Value: float64(len(nfo.Config.PriorityGroups)), Help: "The total number of consumers groups"})
+	}
+
+	if !opts.Pinned {
+		return
+	}
+
+	switch {
+	case len(nfo.PriorityGroups) == 0 || len(nfo.Config.PriorityGroups) == 0 || nfo.Config.PriorityPolicy != api.PriorityPinnedClient:
+		check.Critical("Not pinned client priority mode")
+	case pinned != len(nfo.Config.PriorityGroups):
+		log.Debugf("CRITICAL: %d / %d pinned clients", pinned, len(nfo.Config.PriorityGroups))
+		check.Critical("%d / %d pinned clients", pinned, len(nfo.Config.PriorityGroups))
+	default:
+		check.Ok("%d pinned clients", pinned)
+	}
 }
 
 func consumerCheckLastAck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {

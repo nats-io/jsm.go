@@ -6,10 +6,10 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.16.9
 	github.com/google/go-cmp v0.6.0
-	github.com/jedib0t/go-pretty/v6 v6.6.1
+	github.com/jedib0t/go-pretty/v6 v6.6.2
 	github.com/klauspost/compress v1.17.11
 	github.com/nats-io/jwt/v2 v2.7.2
-	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241119025009-2dadd723643c
+	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241126010352-fa50c751ab3c
 	github.com/nats-io/nats.go v1.37.0
 	github.com/nats-io/nkeys v0.4.7
 	github.com/nats-io/nuid v1.0.1
@@ -23,6 +23,7 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/google/go-tpm v0.9.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
@@ -35,5 +36,5 @@ require (
 	golang.org/x/crypto v0.29.0 // indirect
 	golang.org/x/sys v0.27.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
-	google.golang.org/protobuf v1.35.1 // indirect
+	google.golang.org/protobuf v1.35.2 // indirect
 )

@@ -164,6 +164,7 @@ type snapshotProgress struct {
 	chunksReceived            uint32
 	chunksSent                uint32
 	chunksToSend              int
+	dataSize                  int64
 	bytesReceived             uint64
 	uncompressedBytesReceived uint64
 	bytesExpected             uint64
@@ -370,6 +371,7 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 		progress = &snapshotProgress{
 			startTime:     time.Now(),
 			chunkSize:     req.ChunkSize,
+			dataSize:      sopts.dataFileSize,
 			bytesExpected: resp.State.Bytes,
 			scb:           sopts.scb,
 			rcb:           sopts.rcb,
@@ -389,7 +391,6 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 
 		// tell the caller we are starting and what to expect
 		progress.notify()
-
 	} else {
 		writer = io.MultiWriter(dataBuffer)
 	}
@@ -566,7 +567,7 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 		progress = &snapshotProgress{
 			startTime:    time.Now(),
 			chunkSize:    sopts.chunkSz,
-			chunksToSend: 1 + int(sopts.chunkSz)/sopts.chunkSz,
+			chunksToSend: 1 + int(sopts.dataFileSize)/sopts.chunkSz,
 			sending:      true,
 			rcb:          sopts.rcb,
 			scb:          sopts.scb,

@@ -670,6 +670,15 @@ func (s *Stream) LatestState() (state api.StreamState, err error) {
 	return nfo.State, nil
 }
 
+func (s *Stream) ClusterInfo() (api.ClusterInfo, error) {
+	nfo, err := s.LatestInformation()
+	if err != nil {
+		return api.ClusterInfo{}, err
+	}
+
+	return *nfo.Cluster, nil
+}
+
 // State retrieves the Stream State
 func (s *Stream) State(req ...api.JSApiStreamInfoRequest) (stats api.StreamState, err error) {
 	info, err := s.Information(req...)

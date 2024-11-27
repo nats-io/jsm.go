@@ -6,12 +6,12 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.16.9
 	github.com/google/go-cmp v0.6.0
-	github.com/jedib0t/go-pretty/v6 v6.6.2
+	github.com/jedib0t/go-pretty/v6 v6.6.3
 	github.com/klauspost/compress v1.17.11
 	github.com/nats-io/jwt/v2 v2.7.2
-	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241126010352-fa50c751ab3c
+	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241127165413-cfaad68e19db
 	github.com/nats-io/nats.go v1.37.0
-	github.com/nats-io/nkeys v0.4.7
+	github.com/nats-io/nkeys v0.4.8
 	github.com/nats-io/nuid v1.0.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.60.1

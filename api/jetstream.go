@@ -29,11 +29,9 @@ const (
 
 	// also update FilterServerMetadata when this changes
 
-	JSMetaCreatedServerLevel   = "_nats.created.server.api_level"
-	JSMetaCreatedServerVersion = "_nats.created.server.version"
-	JSMetaCurrentServerLevel   = "_nats.server.api_level"
-	JSMetaCurrentServerVersion = "_nats.server.version"
-	JsMetaRequiredServerLevel  = "_nats.server.require.api_level"
+	JSMetaCurrentServerLevel   = "_nats.level"
+	JSMetaCurrentServerVersion = "_nats.ver"
+	JsMetaRequiredServerLevel  = "_nats.req.level"
 )
 
 // Responses to requests sent to a server from a client.

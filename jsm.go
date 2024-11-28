@@ -312,7 +312,7 @@ func ParseDuration(d string) (time.Duration, error) {
 	return time.Duration(neg) * r, nil
 }
 
-// FilterServerMetadata removes a copy of metadata with the server generated metadata removed
+// FilterServerMetadata copies metadata with the server generated metadata removed
 func FilterServerMetadata(metadata map[string]string) map[string]string {
 	if metadata == nil {
 		return nil
@@ -322,10 +322,7 @@ func FilterServerMetadata(metadata map[string]string) map[string]string {
 	reserved := []string{
 		api.JSMetaCurrentServerVersion,
 		api.JSMetaCurrentServerLevel,
-		api.JSMetaCreatedServerVersion,
-		api.JSMetaCreatedServerVersion,
 		api.JsMetaRequiredServerLevel,
-		api.JSMetaCreatedServerLevel,
 	}
 
 	for k, v := range metadata {

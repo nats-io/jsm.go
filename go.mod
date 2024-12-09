@@ -15,6 +15,7 @@ require (
 	github.com/nats-io/nuid v1.0.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.60.1
+	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/net v0.31.0
 	golang.org/x/text v0.20.0
 	gopkg.in/yaml.v3 v3.0.1

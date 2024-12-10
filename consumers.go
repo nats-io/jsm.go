@@ -892,6 +892,15 @@ func (c *Consumer) LatestState() (api.ConsumerInfo, error) {
 	return c.State()
 }
 
+func (c *Consumer) ClusterInfo() (api.ClusterInfo, error) {
+	nfo, err := c.LatestState()
+	if err != nil {
+		return api.ClusterInfo{}, err
+	}
+
+	return *nfo.Cluster, nil
+}
+
 // State loads a snapshot of consumer state including delivery counts, retries and more
 func (c *Consumer) State() (api.ConsumerInfo, error) {
 	s, err := c.mgr.loadConsumerInfo(c.stream, c.name)

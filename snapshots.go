@@ -52,7 +52,8 @@ type snapshotOptions struct {
 }
 
 const (
-	ClientInfoHdr string = "Nats-Request-Info"
+	StatusHdr      string = "Status"
+	DescriptionHdr string = "Description"
 )
 
 // ErrMemoryStreamNotSupported is an error indicating a memory stream was being snapshotted which is not supported
@@ -397,17 +398,16 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 
 	sub, err := s.mgr.nc.Subscribe(ib, func(m *nats.Msg) {
 		if len(m.Data) == 0 {
-			m.Sub.Unsubscribe()
-			cancel()
-
-			clientInfoHeader := m.Header.Get(ClientInfoHdr)
+			statusValue := m.Header.Get(StatusHdr)
 
 			// if the server returns a non-204 status code in the message header, return an error
-			if clientInfoHeader != "" && !strings.Contains(clientInfoHeader, "204") {
-				errc <- errors.New(clientInfoHeader)
-				return
+			if statusValue != "" && !strings.Contains(statusValue, "204") {
+				descriptionValue := m.Header.Get(DescriptionHdr)
+				errc <- fmt.Errorf("%s %s", statusValue, descriptionValue)
 			}
 
+			m.Sub.Unsubscribe()
+			cancel()
 			return
 		}
 

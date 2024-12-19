@@ -538,6 +538,21 @@ func FirstSequence(seq uint64) StreamOption {
 	}
 }
 
+func AllowMsgTTL() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.AllowMsgTTL = true
+		return nil
+	}
+}
+
+func LimitsAppliedTTL(ttl time.Duration) StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.AllowMsgTTL = true
+		o.LimitsTTL = ttl
+		return nil
+	}
+}
+
 func SubjectTransform(subjectTransform *api.SubjectTransformConfig) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.SubjectTransform = subjectTransform
@@ -1116,4 +1131,6 @@ func (s *Stream) IsRepublishing() bool                     { return s.Republish(
 func (s *Stream) Metadata() map[string]string              { return s.cfg.Metadata }
 func (s *Stream) Compression() api.Compression             { return s.cfg.Compression }
 func (s *Stream) FirstSequence() uint64                    { return s.cfg.FirstSeq }
+func (s *Stream) AllowMsgTTL() bool                        { return s.cfg.AllowMsgTTL }
+func (s *Stream) LimitsTTL() time.Duration                 { return s.cfg.LimitsTTL }
 func (s *Stream) ConsumerLimits() api.StreamConsumerLimits { return s.cfg.ConsumerLimits }

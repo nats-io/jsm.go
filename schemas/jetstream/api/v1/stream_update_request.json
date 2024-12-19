@@ -431,6 +431,18 @@
               "minimum": -9223372036854775807
             }
           }
+        },
+        "allow_msg_ttl": {
+          "description": "Enables per-message TTL using headers",
+          "type": "boolean",
+          "default": false
+        },
+        "limits_ttl": {
+          "description": "Writes messages into the stream when certain limits are applied, using this ttl",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
         }
       }
     }

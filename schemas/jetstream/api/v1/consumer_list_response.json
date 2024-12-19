@@ -576,11 +576,32 @@
                 "type": "string",
                 "format": "date-time"
               },
-              "pinned_ids": {
-                "description": "The IDs pinned by each consumer priority group",
-                "type": "object",
-                "additionalProperties": {
-                  "type": "string"
+              "priority_groups": {
+                "description": "The state of Priority Groups",
+                "type": "array",
+                "items": {
+                  "required": [
+                    "group"
+                  ],
+                  "type": "object",
+                  "description": "Status of a specific consumer priority group",
+                  "properties": {
+                    "group": {
+                      "type": "string",
+                      "description": "The group this status is for",
+                      "minLength": 1
+                    },
+                    "pinned_client_id": {
+                      "type": "string",
+                      "description": "The generated ID of the pinned client"
+                    },
+                    "pinned_ts": {
+                      "description": "The timestamp when the client was pinned",
+                      "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
                 }
               }
             }

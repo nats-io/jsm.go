@@ -580,6 +580,11 @@ type StreamConfig struct {
 	FirstSeq uint64 `json:"first_seq,omitempty" yaml:"first_seq"`
 	// Metadata is additional metadata for the Consumer.
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata"`
+	// AllowMsgTTL allows header initiated per-message TTLs. If disabled,
+	// then the `NATS-TTL` header will be ignored.
+	AllowMsgTTL bool `json:"allow_msg_ttl,omitempty" yaml:"allow_msg_ttl"`
+	// LimitsTTL activates writing of messages when limits are applied with a specific TTL.
+	LimitsTTL time.Duration `json:"limits_ttl,omitempty" yaml:"limits_ttl"`
 	// The following defaults will apply to consumers when created against
 	// this stream, unless overridden manually. They also represent the maximum values that
 	// these properties may have

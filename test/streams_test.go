@@ -834,6 +834,21 @@ func TestPlacementTags(t *testing.T) {
 	}
 }
 
+func TestPlacementPreferred(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.PlacementPreferredLeader("n1")(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.Placement.Preferred, "n1") {
+		t.Fatalf("expected 'n1'' got %v", &cfg.Placement.Preferred)
+	}
+
+	err = jsm.PlacementPreferredLeader("n2")(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.Placement.Preferred, "n2") {
+		t.Fatalf("expected 'n2' got %v", cfg.Placement.Preferred)
+	}
+}
+
 func TestSources(t *testing.T) {
 	cfg := testStreamConfig()
 	expected := []*api.StreamSource{{Name: "one"}, {Name: "two"}}

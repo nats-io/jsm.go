@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/api/v1/consumer_leader_stepdown_request.json",
+  "description": "A request for the JetStream $JS.API.CONSUMER.LEADER.STEPDOWN API",
+  "title": "io.nats.jetstream.api.v1.consumer_leader_stepdown_request",
+  "type": "object",
+  "properties": {
+    "placement": {
+      "description": "Placement directives to consider when placing the leader",
+      "type": "object",
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "description": "The desired cluster name"
+        },
+        "tags": {
+          "description": "Tags required on servers hosting this stream or leader",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "preferred": {
+          "description": "A preferred server name to move the leader to",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

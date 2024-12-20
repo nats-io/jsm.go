@@ -39,7 +39,7 @@ type Balancer struct {
 }
 
 type balanceEntity interface {
-	LeaderStepDown() error
+	LeaderStepDown(...*api.Placement) error
 	Name() string
 	ClusterInfo() (api.ClusterInfo, error)
 }

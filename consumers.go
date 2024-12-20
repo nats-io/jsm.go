@@ -935,10 +935,17 @@ func (c *Consumer) Delete() (err error) {
 	return fmt.Errorf("unknown response while removing consumer %s", c.Name())
 }
 
-// LeaderStepDown requests the current RAFT group leader in a clustered JetStream to stand down forcing a new election
-func (c *Consumer) LeaderStepDown() error {
+// LeaderStepDown requests the current RAFT group leader in a clustered JetStream to stand down forcing a new election, the election of the next leader can be influenced by placement
+func (c *Consumer) LeaderStepDown(placement ...*api.Placement) error {
+	var p *api.Placement
+	if len(placement) > 1 {
+		return fmt.Errorf("only one placement option allowed")
+	} else if len(placement) == 1 {
+		p = placement[0]
+	}
+
 	var resp api.JSApiConsumerLeaderStepDownResponse
-	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerLeaderStepDownT, c.StreamName(), c.Name()), nil, &resp)
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerLeaderStepDownT, c.StreamName(), c.Name()), api.JSApiConsumerLeaderStepdownRequest{Placement: p}, &resp)
 	if err != nil {
 		return err
 	}

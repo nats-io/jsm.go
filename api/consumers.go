@@ -158,6 +158,11 @@ type JSApiConsumerListResponse struct {
 	Missing   []string        `json:"missing,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.consumer_leader_stepdown_request
+type JSApiConsumerLeaderStepdownRequest struct {
+	Placement *Placement `json:"placement,omitempty"`
+}
+
 // io.nats.jetstream.api.v1.consumer_leader_stepdown_response
 type JSApiConsumerLeaderStepDownResponse struct {
 	JSApiResponse

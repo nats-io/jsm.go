@@ -246,6 +246,11 @@ type JSApiStreamRemovePeerResponse struct {
 	Success bool `json:"success,omitempty"`
 }
 
+// io.nats.jetstream.api.v1.stream_leader_stepdown_request
+type JSApiStreamLeaderStepdownRequest struct {
+	Placement *Placement `json:"placement,omitempty"`
+}
+
 // io.nats.jetstream.api.v1.stream_leader_stepdown_response
 type JSApiStreamLeaderStepDownResponse struct {
 	JSApiResponse

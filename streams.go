@@ -810,10 +810,17 @@ func (s *Stream) RemoveRAFTPeer(peer string) error {
 	return nil
 }
 
-// LeaderStepDown requests the current RAFT group leader in a clustered JetStream to stand down forcing a new election
-func (s *Stream) LeaderStepDown() error {
+// LeaderStepDown requests the current RAFT group leader in a clustered JetStream to stand down forcing a new election, the election of the next leader can be influenced by placement
+func (s *Stream) LeaderStepDown(placement ...*api.Placement) error {
+	var p *api.Placement
+	if len(placement) > 1 {
+		return fmt.Errorf("only one placement option allowed")
+	} else if len(placement) == 1 {
+		p = placement[0]
+	}
+
 	var resp api.JSApiStreamLeaderStepDownResponse
-	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamLeaderStepDownT, s.Name()), nil, &resp)
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamLeaderStepDownT, s.Name()), api.JSApiStreamLeaderStepdownRequest{Placement: p}, &resp)
 	if err != nil {
 		return err
 	}

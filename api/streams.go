@@ -587,10 +587,11 @@ type StreamConsumerLimits struct {
 	MaxAckPending     int           `json:"max_ack_pending,omitempty" yaml:"max_ack_pending"`
 }
 
-// Placement describes stream placement requirements for a stream
+// Placement describes stream placement requirements for a stream or leader
 type Placement struct {
-	Cluster string   `json:"cluster,omitempty" yaml:"cluster"`
-	Tags    []string `json:"tags,omitempty" yaml:"tags"`
+	Cluster   string   `json:"cluster,omitempty" yaml:"cluster"`
+	Tags      []string `json:"tags,omitempty" yaml:"tags"`
+	Preferred string   `json:"preferred,omitempty" yaml:"preferred"`
 }
 
 // StreamSourceInfo shows information about an upstream stream source.

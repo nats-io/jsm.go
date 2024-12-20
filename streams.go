@@ -417,6 +417,18 @@ func PlacementTags(tags ...string) StreamOption {
 	}
 }
 
+func PlacementPreferredLeader(leader string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		if o.Placement == nil {
+			o.Placement = &api.Placement{}
+		}
+
+		o.Placement.Preferred = leader
+
+		return nil
+	}
+}
+
 func Mirror(stream *api.StreamSource) StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.Mirror = stream

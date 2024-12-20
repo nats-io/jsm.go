@@ -193,14 +193,18 @@
                   "properties": {
                     "cluster": {
                       "type": "string",
-                      "description": "The desired cluster name to place the stream"
+                      "description": "The desired cluster name"
                     },
                     "tags": {
-                      "description": "Tags required on servers hosting this stream",
+                      "description": "Tags required on servers hosting this stream or leader",
                       "type": "array",
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "preferred": {
+                      "description": "A preferred server name to move the leader to",
+                      "type": "string"
                     }
                   }
                 },

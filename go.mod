@@ -10,13 +10,13 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/nats-io/jwt/v2 v2.7.3
 	github.com/nats-io/nats-server/v2 v2.11.0-dev.0.20241219180704-470a7acda496
-	github.com/nats-io/nats.go v1.37.0
+	github.com/nats-io/nats.go v1.38.0
 	github.com/nats-io/nkeys v0.4.9
 	github.com/nats-io/nuid v1.0.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.61.0
-	golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e
-	golang.org/x/net v0.32.0
+	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
+	golang.org/x/net v0.33.0
 	golang.org/x/text v0.21.0
 	gopkg.in/yaml.v3 v3.0.1
 )

@@ -19,91 +19,15 @@ import (
 	"os"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	"github.com/nats-io/jsm.go/audit/archive"
 )
 
 // CheckFunc implements a check over gathered audit
 type CheckFunc func(check Check, reader *archive.Reader, examples *ExamplesCollection) (Outcome, error)
-
-// CheckConfiguration describes and holds the configuration for a check
-type CheckConfiguration struct {
-	Key         string            `json:"key"`
-	Check       string            `json:"check"`
-	Description string            `json:"description"`
-	Default     float64           `json:"default"`
-	Unit        ConfigurationUnit `json:"unit"`
-	SetValue    *float64          `json:"set_value,omitempty"`
-}
-
-type ConfigurationUnit string
-
-const (
-	PercentageUnit ConfigurationUnit = "%"
-	IntUnit        ConfigurationUnit = "int"
-	UIntUnit       ConfigurationUnit = "uint"
-)
-
-// Value retrieves the set value or default value
-func (c *CheckConfiguration) Value() float64 {
-	if c.SetValue != nil {
-		return *c.SetValue
-	}
-
-	return c.Default
-}
-
-func (c *CheckConfiguration) String() string {
-	return humanize.Commaf(c.Value())
-}
-
-// Set supports fisk
-func (c *CheckConfiguration) Set(v string) error {
-	var f float64
-	var err error
-
-	if c.Unit == PercentageUnit {
-		f, err = strconv.ParseFloat(strings.TrimRight(v, "%"), 64)
-		if err != nil {
-			return err
-		}
-		if f < 0 {
-			return fmt.Errorf("percentage values must be positive")
-		}
-		if f > 100 {
-			return fmt.Errorf("percentage values may not exceed 100")
-		}
-
-		if f > 1 {
-			f = f / 100
-		}
-	} else {
-		f, err = strconv.ParseFloat(v, 64)
-		if err != nil {
-			return err
-		}
-
-		if c.Unit == UIntUnit {
-			if f < 0 {
-				return fmt.Errorf("value must be positive")
-			}
-		}
-	}
-
-	c.SetValue = &f
-
-	return nil
-}
-
-// SetVal supports fisk
-//func (c *CheckConfiguration) SetVal(s fisk.Settings) {
-//	s.SetValue(c)
-//}
 
 // Check is the basic unit of analysis that is run against a data archive
 type Check struct {
@@ -114,14 +38,24 @@ type Check struct {
 	Handler       CheckFunc                      `json:"-"`
 }
 
-var registeredChecks = map[string]Check{}
-var checksConfiguration = map[string]*CheckConfiguration{}
-var registeredChecksMu sync.Mutex
+// CheckCollection is a collection holding registered checks
+type CheckCollection struct {
+	registered    map[string]Check
+	configuration map[string]*CheckConfiguration
+	mu            sync.Mutex
+}
 
-// MustRegisterCheck allows a new check to be registered as a plugin, panics on error
-func MustRegisterCheck(checks ...Check) {
-	registeredChecksMu.Lock()
-	defer registeredChecksMu.Unlock()
+// Register adds a check to the collection
+func (c *CheckCollection) Register(checks ...Check) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.registered == nil {
+		c.registered = make(map[string]Check)
+	}
+	if c.configuration == nil {
+		c.configuration = make(map[string]*CheckConfiguration)
+	}
 
 	for _, check := range checks {
 		if check.Code == "" {
@@ -141,7 +75,7 @@ func MustRegisterCheck(checks ...Check) {
 			check.Configuration = make(map[string]*CheckConfiguration)
 		}
 
-		if _, ok := registeredChecks[check.Name]; ok {
+		if _, ok := c.registered[check.Name]; ok {
 			panic(fmt.Sprintf("check %q already registered", check.Name))
 		}
 
@@ -154,10 +88,46 @@ func MustRegisterCheck(checks ...Check) {
 			}
 
 			cfg.Check = check.Code
-			checksConfiguration[configItemKey(check.Code, cfg.Key)] = cfg
+			c.configuration[configItemKey(check.Code, cfg.Key)] = cfg
 		}
 
-		registeredChecks[check.Name] = check
+		c.registered[check.Name] = check
+	}
+
+	return nil
+}
+
+// MewCollection creates a new collection with no checks loaded
+func MewCollection() *CheckCollection {
+	return &CheckCollection{}
+}
+
+// NewDefaultCheckCollection creates a new collection and loads the standard set of checks
+func NewDefaultCheckCollection() (*CheckCollection, error) {
+	c := &CheckCollection{}
+
+	for _, f := range []func(*CheckCollection) error{
+		RegisterAccountChecks,
+		RegisterClusterChecks,
+		RegisterLeafnodeChecks,
+		RegisterMetaChecks,
+		RegisterServerChecks,
+		RegisterJetStreamChecks,
+	} {
+		err := f(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
+}
+
+// MustRegister calls Register and panics on error
+func (c *CheckCollection) MustRegister(checks ...Check) {
+	err := c.Register(checks...)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -203,14 +173,14 @@ func (o Outcome) String() string {
 	}
 }
 
-// GetDefaultChecks creates the default list of check using default parameters
-func GetDefaultChecks() []Check {
+// Checks creates the default list of check using default parameters
+func (c *CheckCollection) Checks() []Check {
 	var res []Check
 
-	registeredChecksMu.Lock()
-	defer registeredChecksMu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	for _, check := range registeredChecks {
+	for _, check := range c.registered {
 		res = append(res, check)
 	}
 
@@ -221,21 +191,21 @@ func GetDefaultChecks() []Check {
 	return res
 }
 
-// GetConfigurationItems loads a list of config items sorted by check
+// ConfigurationItems loads a list of config items sorted by check
 //
 // Use in fisk applications like:
 //
-//	 cfg := audit.GetConfigurationItems()
+//	 cfg := audit.ConfigurationItems()
 //	 for _, v := range cfg {
 //		v.SetVal(analyze.Flag(fmt.Sprintf("%s_%s", strings.ToLower(v.Check), v.Key), v.Description).Default(fmt.Sprintf("%.2f", v.Default)))
 //	 }
-func GetConfigurationItems() []CheckConfiguration {
+func (c *CheckCollection) ConfigurationItems() []CheckConfiguration {
 	var res []CheckConfiguration
 
-	registeredChecksMu.Lock()
-	defer registeredChecksMu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	for _, check := range checksConfiguration {
+	for _, check := range c.configuration {
 		res = append(res, *check)
 	}
 
@@ -246,8 +216,8 @@ func GetConfigurationItems() []CheckConfiguration {
 	return res
 }
 
-// RunCheck is a wrapper to run a check, handling setup and errors
-func RunCheck(check Check, ar *archive.Reader, limit uint) (Outcome, *ExamplesCollection) {
+// runCheck is a wrapper to run a check, handling setup and errors
+func runCheck(check Check, ar *archive.Reader, limit uint) (Outcome, *ExamplesCollection) {
 	examples := newExamplesCollection(limit)
 	outcome, err := check.Handler(check, ar, examples)
 	if err != nil {
@@ -291,8 +261,7 @@ func LoadAnalysis(path string) (*Analysis, error) {
 	return &analyzes, nil
 }
 
-// RunChecks runs all the checks
-func RunChecks(checks []Check, ar *archive.Reader, limit uint, skip []string) *Analysis {
+func (c *CheckCollection) Run(ar *archive.Reader, limit uint, skip []string) *Analysis {
 	result := &Analysis{
 		Type:     "io.nats.audit.v1.analysis",
 		Time:     time.Now().UTC(),
@@ -311,14 +280,14 @@ func RunChecks(checks []Check, ar *archive.Reader, limit uint, skip []string) *A
 		result.Outcomes[outcome.String()] = 0
 	}
 
-	for _, check := range checks {
+	for _, check := range c.Checks() {
 		should := !slices.ContainsFunc(skip, func(s string) bool {
 			return strings.EqualFold(check.Code, s)
 		})
 
 		var res CheckResult
 		if should {
-			outcome, examples := RunCheck(check, ar, limit)
+			outcome, examples := runCheck(check, ar, limit)
 			res = CheckResult{
 				Check:   check,
 				Outcome: outcome,

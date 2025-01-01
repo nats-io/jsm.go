@@ -21,8 +21,8 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 )
 
-func init() {
-	MustRegisterCheck(
+func RegisterMetaChecks(collection *CheckCollection) error {
+	return collection.Register(
 		Check{
 			Code:        "META_001",
 			Name:        "Meta cluster offline replicas",

@@ -21,8 +21,8 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-func init() {
-	MustRegisterCheck(
+func RegisterLeafnodeChecks(collection *CheckCollection) error {
+	return collection.Register(
 		Check{
 			Code:        "LEAF_001",
 			Name:        "Whitespace in leafnode server names",

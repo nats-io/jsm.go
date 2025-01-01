@@ -21,8 +21,8 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 )
 
-func init() {
-	MustRegisterCheck(
+func RegisterJetStreamChecks(collection *CheckCollection) error {
+	return collection.Register(
 		Check{
 			Code:        "STREAM_001",
 			Name:        "Stream Lagging Replicas",

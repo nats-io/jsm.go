@@ -24,9 +24,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/choria-io/fisk"
-	"github.com/nats-io/natscli/columns"
-	"github.com/nats-io/natscli/internal/archive"
+	"github.com/dustin/go-humanize"
+	"github.com/nats-io/jsm.go/audit/archive"
 )
 
 // CheckFunc implements a check over gathered audit
@@ -60,7 +59,7 @@ func (c *CheckConfiguration) Value() float64 {
 }
 
 func (c *CheckConfiguration) String() string {
-	return columns.F(c.Value())
+	return humanize.Commaf(c.Value())
 }
 
 // Set supports fisk
@@ -102,9 +101,9 @@ func (c *CheckConfiguration) Set(v string) error {
 }
 
 // SetVal supports fisk
-func (c *CheckConfiguration) SetVal(s fisk.Settings) {
-	s.SetValue(c)
-}
+//func (c *CheckConfiguration) SetVal(s fisk.Settings) {
+//	s.SetValue(c)
+//}
 
 // Check is the basic unit of analysis that is run against a data archive
 type Check struct {

@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
-	"github.com/nats-io/natscli/internal/archive"
 )
 
 func init() {

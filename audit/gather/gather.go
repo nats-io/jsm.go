@@ -29,9 +29,9 @@ import (
 
 	"github.com/klauspost/compress/s2"
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/natscli/internal/archive"
 )
 
 type EndpointSelection struct {

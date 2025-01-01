@@ -25,8 +25,8 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 )
 
-func init() {
-	MustRegisterCheck(
+func RegisterClusterChecks(collection *CheckCollection) error {
+	return collection.Register(
 		Check{
 			Code:        "CLUSTER_001",
 			Name:        "Cluster Memory Usage Outliers",

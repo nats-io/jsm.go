@@ -23,8 +23,8 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 )
 
-func init() {
-	MustRegisterCheck(
+func RegisterServerChecks(collection *CheckCollection) error {
+	return collection.Register(
 		Check{
 			Code:        "SERVER_001",
 			Name:        "Server Health",

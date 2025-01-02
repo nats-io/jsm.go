@@ -16,6 +16,7 @@ package audit
 import (
 	"strings"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 	"golang.org/x/exp/maps"
@@ -25,6 +26,7 @@ func RegisterLeafnodeChecks(collection *CheckCollection) error {
 	return collection.Register(
 		Check{
 			Code:        "LEAF_001",
+			Suite:       "leaf",
 			Name:        "Whitespace in leafnode server names",
 			Description: "No Leafnode contains whitespace in its name",
 			Handler:     checkLeafnodeServerNamesForWhitespace,
@@ -32,7 +34,7 @@ func RegisterLeafnodeChecks(collection *CheckCollection) error {
 	)
 }
 
-func checkLeafnodeServerNamesForWhitespace(_ Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	for _, clusterName := range r.GetClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
@@ -44,7 +46,7 @@ func checkLeafnodeServerNamesForWhitespace(_ Check, r *archive.Reader, examples 
 			var serverLeafz server.Leafz
 			err := r.Load(&serverLeafz, clusterTag, serverTag, archive.TagServerLeafs())
 			if err != nil {
-				logWarning("Artifact 'LEAFZ' is missing for server %s", serverName)
+				log.Warnf("Artifact 'LEAFZ' is missing for server %s", serverName)
 				continue
 			}
 
@@ -62,7 +64,7 @@ func checkLeafnodeServerNamesForWhitespace(_ Check, r *archive.Reader, examples 
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d clusters with leafnode names containing whitespace", examples.Count())
+		log.Errorf("Found %d clusters with leafnode names containing whitespace", examples.Count())
 		return Fail, nil
 	}
 

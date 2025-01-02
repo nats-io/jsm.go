@@ -23,15 +23,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
+	"golang.org/x/exp/maps"
 )
 
 // CheckFunc implements a check over gathered audit
-type CheckFunc func(check Check, reader *archive.Reader, examples *ExamplesCollection) (Outcome, error)
+type CheckFunc func(check *Check, reader *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error)
 
 // Check is the basic unit of analysis that is run against a data archive
 type Check struct {
 	Code          string                         `json:"code"`
+	Suite         string                         `json:"suite"`
 	Name          string                         `json:"name"`
 	Description   string                         `json:"description"`
 	Configuration map[string]*CheckConfiguration `json:"configuration"`
@@ -40,9 +43,36 @@ type Check struct {
 
 // CheckCollection is a collection holding registered checks
 type CheckCollection struct {
-	registered    map[string]Check
+	registered    map[string]*Check
 	configuration map[string]*CheckConfiguration
+	suites        map[string][]*Check
+	skipCheck     []string
+	skipSuite     []string
 	mu            sync.Mutex
+}
+
+// SkipChecks marks certain tests to be skipped while running the collection
+func (c *CheckCollection) SkipChecks(checks ...string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, check := range checks {
+		if !slices.Contains(c.skipCheck, check) {
+			c.skipCheck = append(c.skipCheck, check)
+		}
+	}
+}
+
+// SkipSuites marks certain test suites to be skipped while running the collection
+func (c *CheckCollection) SkipSuites(suites ...string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, suite := range suites {
+		if !slices.Contains(c.skipSuite, suite) {
+			c.skipSuite = append(c.skipSuite, suite)
+		}
+	}
 }
 
 // Register adds a check to the collection
@@ -51,7 +81,10 @@ func (c *CheckCollection) Register(checks ...Check) error {
 	defer c.mu.Unlock()
 
 	if c.registered == nil {
-		c.registered = make(map[string]Check)
+		c.registered = make(map[string]*Check)
+	}
+	if c.suites == nil {
+		c.suites = make(map[string][]*Check)
 	}
 	if c.configuration == nil {
 		c.configuration = make(map[string]*CheckConfiguration)
@@ -59,39 +92,45 @@ func (c *CheckCollection) Register(checks ...Check) error {
 
 	for _, check := range checks {
 		if check.Code == "" {
-			panic("check code is required")
+			return fmt.Errorf("check code is required")
+		}
+		if check.Suite == "" {
+			return fmt.Errorf("check suite is required")
 		}
 		if check.Name == "" {
-			panic("check name is required")
+			return fmt.Errorf("check name is required")
 		}
 		if check.Description == "" {
-			panic("check description is required")
+			return fmt.Errorf("check description is required")
 		}
 		if check.Handler == nil {
-			panic("check implementation is required")
+			return fmt.Errorf("check implementation is required")
 		}
-
 		if check.Configuration == nil {
 			check.Configuration = make(map[string]*CheckConfiguration)
 		}
 
 		if _, ok := c.registered[check.Name]; ok {
-			panic(fmt.Sprintf("check %q already registered", check.Name))
+			return fmt.Errorf("check %q already registered", check.Name)
 		}
 
 		for _, cfg := range check.Configuration {
 			if cfg.Key == "" {
-				panic("configuration key is required")
+				return fmt.Errorf("configuration key is required")
 			}
 			if cfg.Description == "" {
-				panic("configuration description is required")
+				return fmt.Errorf("configuration description is required")
 			}
 
 			cfg.Check = check.Code
 			c.configuration[configItemKey(check.Code, cfg.Key)] = cfg
 		}
 
-		c.registered[check.Name] = check
+		c.registered[check.Name] = &check
+		if _, ok := c.suites[check.Suite]; !ok {
+			c.suites[check.Suite] = []*Check{}
+		}
+		c.suites[check.Suite] = append(c.suites[check.Suite], &check)
 	}
 
 	return nil
@@ -173,24 +212,6 @@ func (o Outcome) String() string {
 	}
 }
 
-// Checks creates the default list of check using default parameters
-func (c *CheckCollection) Checks() []Check {
-	var res []Check
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for _, check := range c.registered {
-		res = append(res, check)
-	}
-
-	sort.Slice(res, func(i, j int) bool {
-		return res[i].Code < res[j].Code
-	})
-
-	return res
-}
-
 // ConfigurationItems loads a list of config items sorted by check
 //
 // Use in fisk applications like:
@@ -199,14 +220,14 @@ func (c *CheckCollection) Checks() []Check {
 //	 for _, v := range cfg {
 //		v.SetVal(analyze.Flag(fmt.Sprintf("%s_%s", strings.ToLower(v.Check), v.Key), v.Description).Default(fmt.Sprintf("%.2f", v.Default)))
 //	 }
-func (c *CheckCollection) ConfigurationItems() []CheckConfiguration {
-	var res []CheckConfiguration
+func (c *CheckCollection) ConfigurationItems() []*CheckConfiguration {
+	var res []*CheckConfiguration
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	for _, check := range c.configuration {
-		res = append(res, *check)
+		res = append(res, check)
 	}
 
 	sort.Slice(res, func(i, j int) bool {
@@ -217,9 +238,9 @@ func (c *CheckCollection) ConfigurationItems() []CheckConfiguration {
 }
 
 // runCheck is a wrapper to run a check, handling setup and errors
-func runCheck(check Check, ar *archive.Reader, limit uint) (Outcome, *ExamplesCollection) {
+func runCheck(check *Check, ar *archive.Reader, limit uint, log api.Logger) (Outcome, *ExamplesCollection) {
 	examples := newExamplesCollection(limit)
-	outcome, err := check.Handler(check, ar, examples)
+	outcome, err := check.Handler(check, ar, examples, log)
 	if err != nil {
 		examples.Error = err.Error()
 		return Skipped, examples
@@ -237,12 +258,13 @@ type CheckResult struct {
 
 // Analysis represents the result of an entire analysis
 type Analysis struct {
-	Type     string                `json:"type"`
-	Time     time.Time             `json:"time"`
-	Metadata archive.AuditMetadata `json:"metadata"`
-	Skipped  []string              `json:"skipped"`
-	Results  []CheckResult         `json:"checks"`
-	Outcomes map[string]int        `json:"outcomes"`
+	Type          string                `json:"type"`
+	Time          time.Time             `json:"time"`
+	Metadata      archive.AuditMetadata `json:"metadata"`
+	SkippedChecks []string              `json:"skipped_checks"`
+	SkippedSuites []string              `json:"skipped_suites"`
+	Results       []CheckResult         `json:"checks"`
+	Outcomes      map[string]int        `json:"outcomes"`
 }
 
 // LoadAnalysis loads an analysis report from a file
@@ -261,35 +283,63 @@ func LoadAnalysis(path string) (*Analysis, error) {
 	return &analyzes, nil
 }
 
-func (c *CheckCollection) Run(ar *archive.Reader, limit uint, skip []string) *Analysis {
-	result := &Analysis{
-		Type:     "io.nats.audit.v1.analysis",
-		Time:     time.Now().UTC(),
-		Skipped:  skip,
-		Results:  []CheckResult{},
-		Outcomes: make(map[string]int),
+func (c *CheckCollection) EachCheck(cb func(c *Check)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	suites := maps.Keys(c.suites)
+	sort.Strings(suites)
+
+	for _, suite := range suites {
+		sort.Slice(c.suites[suite], func(i, j int) bool {
+			return c.suites[suite][i].Name < c.suites[suite][j].Name
+		})
+
+		for _, check := range c.suites[suite] {
+			cb(check)
+		}
 	}
+}
+
+func (c *CheckCollection) Run(ar *archive.Reader, limit uint, log api.Logger) *Analysis {
+	result := &Analysis{
+		Type:          "io.nats.audit.v1.analysis",
+		Time:          time.Now().UTC(),
+		SkippedChecks: c.skipCheck,
+		SkippedSuites: c.skipSuite,
+		Results:       []CheckResult{},
+		Outcomes:      make(map[string]int),
+	}
+
+	if result.SkippedChecks == nil {
+		result.SkippedChecks = []string{}
+	}
+	sort.Strings(result.SkippedChecks)
+	if result.SkippedSuites == nil {
+		result.SkippedSuites = []string{}
+	}
+	sort.Strings(result.SkippedSuites)
 
 	ar.Load(&result.Metadata, archive.TagSpecial("audit_gather_metadata"))
-
-	if result.Skipped == nil {
-		result.Skipped = []string{}
-	}
 
 	for _, outcome := range Outcomes {
 		result.Outcomes[outcome.String()] = 0
 	}
 
-	for _, check := range c.Checks() {
-		should := !slices.ContainsFunc(skip, func(s string) bool {
+	c.EachCheck(func(check *Check) {
+		should := !slices.ContainsFunc(c.skipCheck, func(s string) bool {
 			return strings.EqualFold(check.Code, s)
+		})
+
+		should = should && !slices.ContainsFunc(c.skipSuite, func(s string) bool {
+			return strings.EqualFold(check.Suite, s)
 		})
 
 		var res CheckResult
 		if should {
-			outcome, examples := runCheck(check, ar, limit)
+			outcome, examples := runCheck(check, ar, limit, log)
 			res = CheckResult{
-				Check:   check,
+				Check:   *check,
 				Outcome: outcome,
 			}
 
@@ -298,7 +348,7 @@ func (c *CheckCollection) Run(ar *archive.Reader, limit uint, skip []string) *An
 			}
 		} else {
 			res = CheckResult{
-				Check:   check,
+				Check:   *check,
 				Outcome: Skipped,
 			}
 		}
@@ -307,7 +357,7 @@ func (c *CheckCollection) Run(ar *archive.Reader, limit uint, skip []string) *An
 
 		result.Results = append(result.Results, res)
 		result.Outcomes[res.Outcome.String()]++
-	}
+	})
 
 	return result
 }

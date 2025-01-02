@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 )
@@ -25,12 +26,14 @@ func RegisterMetaChecks(collection *CheckCollection) error {
 	return collection.Register(
 		Check{
 			Code:        "META_001",
+			Suite:       "meta",
 			Name:        "Meta cluster offline replicas",
 			Description: "All nodes part of the meta group are online",
 			Handler:     checkMetaClusterOfflineReplicas,
 		},
 		Check{
 			Code:        "META_002",
+			Suite:       "meta",
 			Name:        "Meta cluster leader",
 			Description: "All nodes part of the meta group agree on the meta cluster leader",
 			Handler:     checkMetaClusterLeader,
@@ -39,7 +42,7 @@ func RegisterMetaChecks(collection *CheckCollection) error {
 }
 
 // checkMetaClusterLeader verify that all server agree on the same meta group leader in each known cluster
-func checkMetaClusterLeader(_ Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	serverVarsTag := archive.TagServerVars()
 	jsTag := archive.TagServerJetStream()
 
@@ -53,7 +56,7 @@ func checkMetaClusterLeader(_ Check, r *archive.Reader, examples *ExamplesCollec
 			var jetStreamInfo server.JSInfo
 			err := r.Load(&jetStreamInfo, clusterTag, serverTag, jsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
+				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
@@ -66,14 +69,14 @@ func checkMetaClusterLeader(_ Check, r *archive.Reader, examples *ExamplesCollec
 			var serverVarz server.Varz
 			err = r.Load(&serverVarz, clusterTag, serverTag, serverVarsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'VARZ' is missing for server %s cluster %s", serverName, clusterName)
+				log.Warnf("Artifact 'VARZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load VARZ for server %s: %w", serverName, err)
 			}
 
 			if serverVarz.JetStream.Meta == nil {
-				logWarning("%s / %s does not have meta group info", clusterName, serverName)
+				log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
 				continue
 			}
 
@@ -95,7 +98,7 @@ func checkMetaClusterLeader(_ Check, r *archive.Reader, examples *ExamplesCollec
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d instance of replicas disagreeing on meta-cluster leader", examples.Count())
+		log.Errorf("Found %d instance of replicas disagreeing on meta-cluster leader", examples.Count())
 		return Fail, nil
 	}
 
@@ -103,7 +106,7 @@ func checkMetaClusterLeader(_ Check, r *archive.Reader, examples *ExamplesCollec
 }
 
 // checkMetaClusterOfflineReplicas verify that all meta-cluster replicas are online for each known cluster
-func checkMetaClusterOfflineReplicas(_ Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	serverVarsTag := archive.TagServerVars()
 	jsTag := archive.TagServerJetStream()
 
@@ -116,7 +119,7 @@ func checkMetaClusterOfflineReplicas(_ Check, r *archive.Reader, examples *Examp
 			var jetStreamInfo server.JSInfo
 			err := r.Load(&jetStreamInfo, clusterTag, serverTag, jsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
+				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
@@ -129,14 +132,14 @@ func checkMetaClusterOfflineReplicas(_ Check, r *archive.Reader, examples *Examp
 			var serverVarz server.Varz
 			err = r.Load(&serverVarz, clusterTag, serverTag, serverVarsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'VARZ' is missing for server %s cluster %s", serverName, clusterName)
+				log.Warnf("Artifact 'VARZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load VARZ for server %s: %w", serverName, err)
 			}
 
 			if serverVarz.JetStream.Meta == nil {
-				logWarning("%s / %s does not have meta group info", clusterName, serverName)
+				log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
 				continue
 			}
 
@@ -155,7 +158,7 @@ func checkMetaClusterOfflineReplicas(_ Check, r *archive.Reader, examples *Examp
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d instance of replicas marked offline by peers", examples.Count())
+		log.Errorf("Found %d instance of replicas marked offline by peers", examples.Count())
 		return Fail, nil
 	}
 

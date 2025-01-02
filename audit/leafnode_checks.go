@@ -35,12 +35,12 @@ func RegisterLeafnodeChecks(collection *CheckCollection) error {
 }
 
 func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
 		leafnodesWithWhitespace := map[string]struct{}{}
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var serverLeafz server.Leafz
@@ -59,7 +59,7 @@ func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples
 		}
 
 		if len(leafnodesWithWhitespace) > 0 {
-			examples.add("Cluster %s: %v", clusterName, maps.Keys(leafnodesWithWhitespace))
+			examples.Add("Cluster %s: %v", clusterName, maps.Keys(leafnodesWithWhitespace))
 		}
 	}
 

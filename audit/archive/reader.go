@@ -316,15 +316,15 @@ func NewReader(archivePath string) (*Reader, error) {
 	}, nil
 }
 
-// GetAccountNames list the unique names of accounts found in the archive
+// AccountNames list the unique names of accounts found in the archive
 // The list of names is sorted alphabetically
-func (r *Reader) GetAccountNames() []string {
+func (r *Reader) AccountNames() []string {
 	return slices.Clone(r.accountNames)
 }
 
-// GetAccountStreamNames list the unique stream names found in the archive for the given account
+// AccountStreamNames list the unique stream names found in the archive for the given account
 // The list of names is sorted alphabetically
-func (r *Reader) GetAccountStreamNames(accountName string) []string {
+func (r *Reader) AccountStreamNames(accountName string) []string {
 	streams, present := r.accountStreamNames[accountName]
 	if present {
 		return slices.Clone(streams)
@@ -332,15 +332,15 @@ func (r *Reader) GetAccountStreamNames(accountName string) []string {
 	return make([]string, 0)
 }
 
-// GetClusterNames list the unique names of clusters found in the archive
+// ClusterNames list the unique names of clusters found in the archive
 // The list of names is sorted alphabetically
-func (r *Reader) GetClusterNames() []string {
+func (r *Reader) ClusterNames() []string {
 	return slices.Clone(r.clusterNames)
 }
 
-// GetClusterServerNames list the unique server names found in the archive for the given cluster
+// ClusterServerNames list the unique server names found in the archive for the given cluster
 // The list of names is sorted alphabetically
-func (r *Reader) GetClusterServerNames(clusterName string) []string {
+func (r *Reader) ClusterServerNames(clusterName string) []string {
 	servers, present := r.clustersServerNames[clusterName]
 	if present {
 		return slices.Clone(servers)
@@ -348,9 +348,9 @@ func (r *Reader) GetClusterServerNames(clusterName string) []string {
 	return make([]string, 0)
 }
 
-// GetStreamServerNames list the unique server names found in the archive for the given stream in the given account
+// StreamServerNames list the unique server names found in the archive for the given stream in the given account
 // The list of names is sorted alphabetically
-func (r *Reader) GetStreamServerNames(accountName, streamName string) []string {
+func (r *Reader) StreamServerNames(accountName, streamName string) []string {
 	servers, present := r.streamServerNames[accountName+"/"+streamName]
 	if present {
 		return slices.Clone(servers)

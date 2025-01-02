@@ -77,7 +77,7 @@ func RegisterClusterChecks(collection *CheckCollection) error {
 // checkClusterMemoryUsageOutliers verifies the memory usage of any given node in a cluster is not significantly higher than its peers
 func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	typeTag := archive.TagServerVars()
-	clusterNames := r.GetClusterNames()
+	clusterNames := r.ClusterNames()
 	outlierThreshold := check.Configuration["memory"].Value()
 
 	clustersWithIssuesMap := make(map[string]any, len(clusterNames))
@@ -85,7 +85,7 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 	for _, clusterName := range clusterNames {
 		clusterTag := archive.TagCluster(clusterName)
 
-		serverNames := r.GetClusterServerNames(clusterName)
+		serverNames := r.ClusterServerNames(clusterName)
 		clusterMemoryUsageMap := make(map[string]float64, len(serverNames))
 		clusterMemoryUsageTotal := float64(0)
 		numServers := 0 // cannot use len(serverNames) as some artifacts may be missing
@@ -112,7 +112,7 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 
 		for serverName, serverMemoryUsage := range clusterMemoryUsageMap {
 			if serverMemoryUsage > threshold {
-				examples.add(
+				examples.Add(
 					"Cluster %s avg: %s, server %s: %s",
 					clusterName,
 					humanize.IBytes(uint64(clusterMemoryUsageMean)),
@@ -139,14 +139,14 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 
 // checkClusterUniformGatewayConfig verify that gateways configuration matches for all nodes in each cluster
 func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
 		// For each cluster, build a map where they key is a server name in the cluster
 		// And the value is a list of configured remote target clusters
 		configuredOutboundGateways := make(map[string][]string)
 		configuredInboundGateways := make(map[string][]string)
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var gateways server.Gatewayz
@@ -208,7 +208,7 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 						len(previousTargetClusterNames),
 					)
 					if !reflect.DeepEqual(targetClusterNames, previousTargetClusterNames) {
-						examples.add(
+						examples.Add(
 							"Cluster %s, %s gateways server %s: %v != server %s: %v",
 							clusterName,
 							t.gatewayType,
@@ -237,9 +237,9 @@ func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *Example
 	jsTag := archive.TagServerJetStream()
 	haAssetsThreshold := check.Configuration["assets"].Value()
 
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var serverJSInfo server.JSInfo
@@ -252,7 +252,7 @@ func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *Example
 			}
 
 			if float64(serverJSInfo.HAAssets) > haAssetsThreshold {
-				examples.add("%s: %d HA assets", serverName, serverJSInfo.HAAssets)
+				examples.Add("%s: %d HA assets", serverName, serverJSInfo.HAAssets)
 			}
 		}
 	}
@@ -266,9 +266,9 @@ func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *Example
 }
 
 func checkClusterNamesForWhitespace(_ *Check, reader *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range reader.GetClusterNames() {
+	for _, clusterName := range reader.ClusterNames() {
 		if strings.ContainsAny(clusterName, " \n") {
-			examples.add("Cluster: %s", clusterName)
+			examples.Add("Cluster: %s", clusterName)
 		}
 	}
 

@@ -46,11 +46,11 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 	serverVarsTag := archive.TagServerVars()
 	jsTag := archive.TagServerJetStream()
 
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 		leaderFollowers := make(map[string][]string)
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var jetStreamInfo server.JSInfo
@@ -93,7 +93,7 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 		}
 
 		if len(leaderFollowers) > 1 {
-			examples.add("Members of %s disagree on meta leader (%v)", clusterName, leaderFollowers)
+			examples.Add("Members of %s disagree on meta leader (%v)", clusterName, leaderFollowers)
 		}
 	}
 
@@ -110,10 +110,10 @@ func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *Exam
 	serverVarsTag := archive.TagServerVars()
 	jsTag := archive.TagServerJetStream()
 
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var jetStreamInfo server.JSInfo
@@ -145,7 +145,7 @@ func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *Exam
 
 			for _, peerInfo := range serverVarz.JetStream.Meta.Replicas {
 				if peerInfo.Offline {
-					examples.add(
+					examples.Add(
 						"%s - %s reports peer %s as offline",
 						clusterName,
 						serverName,

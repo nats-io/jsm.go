@@ -87,7 +87,7 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 // checkStreamLaggingReplicas verifies that in each known stream no replica is too far behind the most up to date (based on stream last sequence)
 func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	typeTag := archive.TagStreamInfo()
-	accountNames := r.GetAccountNames()
+	accountNames := r.AccountNames()
 	lastSequenceLagThreshold := check.Configuration["last_seq"].Value()
 
 	if len(accountNames) == 0 {
@@ -100,7 +100,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 
 	for _, accountName := range accountNames {
 		accountTag := archive.TagAccount(accountName)
-		streamNames := r.GetAccountStreamNames(accountName)
+		streamNames := r.AccountStreamNames(accountName)
 
 		if len(streamNames) == 0 {
 			log.Debugf("No streams found in account: %s", accountName)
@@ -112,7 +112,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 			accountsWithStreams[accountName] = nil
 
 			streamTag := archive.TagStream(streamName)
-			serverNames := r.GetStreamServerNames(accountName, streamName)
+			serverNames := r.StreamServerNames(accountName, streamName)
 
 			log.Debugf(
 				"Inspecting account '%s' stream '%s', found %d servers: %v",
@@ -180,7 +180,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 				for serverName, streamDetail := range replicasStreamDetails {
 					lastSeq := streamDetail.State.LastSeq
 					if lastSeq < threshold {
-						examples.add(
+						examples.Add(
 							"%s/%s server %s lastSequence: %d is behind highest lastSequence: %d on server: %s",
 							accountName,
 							streamName,
@@ -210,13 +210,13 @@ func checkStreamHighCardinality(check *Check, r *archive.Reader, examples *Examp
 	streamDetailsTag := archive.TagStreamInfo()
 	numSubjectsThreshold := check.Configuration["subjects"].Value()
 
-	for _, accountName := range r.GetAccountNames() {
+	for _, accountName := range r.AccountNames() {
 		accountTag := archive.TagAccount(accountName)
 
-		for _, streamName := range r.GetAccountStreamNames(accountName) {
+		for _, streamName := range r.AccountStreamNames(accountName) {
 			streamTag := archive.TagStream(streamName)
 
-			serverNames := r.GetStreamServerNames(accountName, streamName)
+			serverNames := r.StreamServerNames(accountName, streamName)
 			for _, serverName := range serverNames {
 				serverTag := archive.TagServer(serverName)
 
@@ -230,7 +230,7 @@ func checkStreamHighCardinality(check *Check, r *archive.Reader, examples *Examp
 				}
 
 				if float64(streamDetails.State.NumSubjects) > numSubjectsThreshold {
-					examples.add("%s/%s: %d subjects", accountName, streamName, streamDetails.State.NumSubjects)
+					examples.Add("%s/%s: %d subjects", accountName, streamName, streamDetails.State.NumSubjects)
 					continue // no need to check other servers for this stream
 				}
 			}
@@ -259,7 +259,7 @@ func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollec
 		}
 		threshold := int64(float64(limit) * percentThreshold)
 		if value > threshold {
-			examples.add(
+			examples.Add(
 				"stream %s (in %s on %s) using %.1f%% of %s limit (%d/%d)",
 				streamName,
 				accountName,
@@ -274,13 +274,13 @@ func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollec
 
 	streamDetailsTag := archive.TagStreamInfo()
 
-	for _, accountName := range r.GetAccountNames() {
+	for _, accountName := range r.AccountNames() {
 		accountTag := archive.TagAccount(accountName)
 
-		for _, streamName := range r.GetAccountStreamNames(accountName) {
+		for _, streamName := range r.AccountStreamNames(accountName) {
 			streamTag := archive.TagStream(streamName)
 
-			serverNames := r.GetStreamServerNames(accountName, streamName)
+			serverNames := r.StreamServerNames(accountName, streamName)
 			for _, serverName := range serverNames {
 				serverTag := archive.TagServer(serverName)
 

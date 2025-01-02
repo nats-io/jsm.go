@@ -14,9 +14,7 @@
 package audit
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -256,33 +254,6 @@ type CheckResult struct {
 	Examples      ExamplesCollection `json:"examples"`
 }
 
-// Analysis represents the result of an entire analysis
-type Analysis struct {
-	Type          string                `json:"type"`
-	Time          time.Time             `json:"time"`
-	Metadata      archive.AuditMetadata `json:"metadata"`
-	SkippedChecks []string              `json:"skipped_checks"`
-	SkippedSuites []string              `json:"skipped_suites"`
-	Results       []CheckResult         `json:"checks"`
-	Outcomes      map[string]int        `json:"outcomes"`
-}
-
-// LoadAnalysis loads an analysis report from a file
-func LoadAnalysis(path string) (*Analysis, error) {
-	ab, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	analyzes := Analysis{}
-	err = json.Unmarshal(ab, &analyzes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &analyzes, nil
-}
-
 func (c *CheckCollection) EachCheck(cb func(c *Check)) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -304,7 +275,7 @@ func (c *CheckCollection) EachCheck(cb func(c *Check)) {
 func (c *CheckCollection) Run(ar *archive.Reader, limit uint, log api.Logger) *Analysis {
 	result := &Analysis{
 		Type:          "io.nats.audit.v1.analysis",
-		Time:          time.Now().UTC(),
+		Timestamp:     time.Now().UTC(),
 		SkippedChecks: c.skipCheck,
 		SkippedSuites: c.skipSuite,
 		Results:       []CheckResult{},

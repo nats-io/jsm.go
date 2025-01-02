@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 )
@@ -27,18 +28,21 @@ func RegisterServerChecks(collection *CheckCollection) error {
 	return collection.Register(
 		Check{
 			Code:        "SERVER_001",
+			Suite:       "server",
 			Name:        "Server Health",
 			Description: "All known nodes are healthy",
 			Handler:     checkServerHealth,
 		},
 		Check{
 			Code:        "SERVER_002",
+			Suite:       "server",
 			Name:        "Server Version",
 			Description: "All known nodes are running the same software version",
 			Handler:     checkServerVersion,
 		},
 		Check{
 			Code:        "SERVER_003",
+			Suite:       "server",
 			Name:        "Server CPU Usage",
 			Description: "CPU usage for all known nodes is below a given threshold",
 			Configuration: map[string]*CheckConfiguration{
@@ -53,12 +57,14 @@ func RegisterServerChecks(collection *CheckCollection) error {
 		},
 		Check{
 			Code:        "SERVER_004",
+			Suite:       "server",
 			Name:        "Server Slow Consumers",
 			Description: "No node is reporting slow consumers",
 			Handler:     checkSlowConsumers,
 		},
 		Check{
 			Code:        "SERVER_005",
+			Suite:       "server",
 			Name:        "Server Resources Limits ",
 			Description: "Resource are below a given threshold compared to the configured limit",
 			Configuration: map[string]*CheckConfiguration{
@@ -79,6 +85,7 @@ func RegisterServerChecks(collection *CheckCollection) error {
 		},
 		Check{
 			Code:        "SERVER_006",
+			Suite:       "server",
 			Name:        "Whitespace in JetStream domains",
 			Description: "No JetStream server is configured with whitespace in its domain",
 			Handler:     checkJetStreamDomainsForWhitespace,
@@ -87,7 +94,7 @@ func RegisterServerChecks(collection *CheckCollection) error {
 }
 
 // checkServerHealth verify all known servers are reporting healthy
-func checkServerHealth(_ Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	notHealthy, healthy := 0, 0
 
 	for _, clusterName := range r.GetClusterNames() {
@@ -100,7 +107,7 @@ func checkServerHealth(_ Check, r *archive.Reader, examples *ExamplesCollection)
 
 			err := r.Load(&health, clusterTag, serverTag, archive.TagServerHealth())
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'HEALTHZ' is missing for server %s", serverName)
+				log.Warnf("Artifact 'HEALTHZ' is missing for server %s", serverName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load health for server %s: %w", serverName, err)
@@ -116,16 +123,16 @@ func checkServerHealth(_ Check, r *archive.Reader, examples *ExamplesCollection)
 	}
 
 	if notHealthy > 0 {
-		logCritical("%d/%d servers are not healthy", notHealthy, healthy+notHealthy)
+		log.Errorf("%d/%d servers are not healthy", notHealthy, healthy+notHealthy)
 		return PassWithIssues, nil
 	}
 
-	logInfo("%d/%d servers are healthy", healthy, healthy)
+	log.Infof("%d/%d servers are healthy", healthy, healthy)
 	return Pass, nil
 }
 
 // checkServerVersions verify all known servers are running the same version
-func checkServerVersion(_ Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	versionsToServersMap := make(map[string][]string)
 
 	var lastVersionSeen string
@@ -139,7 +146,7 @@ func checkServerVersion(_ Check, r *archive.Reader, examples *ExamplesCollection
 
 			err := r.Load(&serverVarz, clusterTag, serverTag, archive.TagServerVars())
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'VARZ' is missing for server %s", serverName)
+				log.Warnf("Artifact 'VARZ' is missing for server %s", serverName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
@@ -161,22 +168,22 @@ func checkServerVersion(_ Check, r *archive.Reader, examples *ExamplesCollection
 	}
 
 	if len(versionsToServersMap) == 0 {
-		logWarning("No servers version information found")
+		log.Warnf("No servers version information found")
 		return Skipped, nil
 	} else if len(versionsToServersMap) > 1 {
-		logCritical("Servers are running %d different versions", len(versionsToServersMap))
+		log.Errorf("Servers are running %d different versions", len(versionsToServersMap))
 		return Fail, nil
 	}
 
 	// Map contains exactly one element (i.e. one version)
 	examples.clear()
 
-	logInfo("All servers are running version %s", lastVersionSeen)
+	log.Infof("All servers are running version %s", lastVersionSeen)
 	return Pass, nil
 }
 
 // checkServerCPUUsage verify CPU usage is below the given threshold for each server
-func checkServerCPUUsage(check Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	severVarsTag := archive.TagServerVars()
 	cpuThreshold := check.Configuration["cpu"].Value()
 
@@ -187,7 +194,7 @@ func checkServerCPUUsage(check Check, r *archive.Reader, examples *ExamplesColle
 			var serverVarz server.Varz
 			err := r.Load(&serverVarz, serverTag, clusterTag, severVarsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'VARZ' is missing for server %s", serverName)
+				log.Warnf("Artifact 'VARZ' is missing for server %s", serverName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load VARZ for server %s: %w", serverName, err)
@@ -203,7 +210,7 @@ func checkServerCPUUsage(check Check, r *archive.Reader, examples *ExamplesColle
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d servers with >%.0f%% CPU usage", examples.Count(), cpuThreshold)
+		log.Errorf("Found %d servers with >%.0f%% CPU usage", examples.Count(), cpuThreshold)
 		return Fail, nil
 	}
 
@@ -211,7 +218,7 @@ func checkServerCPUUsage(check Check, r *archive.Reader, examples *ExamplesColle
 }
 
 // checkSlowConsumers verify that no server is reporting slow consumers
-func checkSlowConsumers(_ Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	totalSlowConsumers := int64(0)
 
 	for _, clusterName := range r.GetClusterNames() {
@@ -234,16 +241,16 @@ func checkSlowConsumers(_ Check, r *archive.Reader, examples *ExamplesCollection
 	}
 
 	if totalSlowConsumers > 0 {
-		logCritical("Total slow consumers: %d", totalSlowConsumers)
+		log.Errorf("Total slow consumers: %d", totalSlowConsumers)
 		return PassWithIssues, nil
 	}
 
-	logInfo("No slow consumers detected")
+	log.Infof("No slow consumers detected")
 	return Pass, nil
 }
 
 // checkServerResourceLimits verifies that the resource usage of memory and store is not approaching the reserved amount for each known server
-func checkServerResourceLimits(check Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkServerResourceLimits(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	jsTag := archive.TagServerJetStream()
 
 	memoryUsageThreshold := check.Configuration["memory"].Value()
@@ -257,7 +264,7 @@ func checkServerResourceLimits(check Check, r *archive.Reader, examples *Example
 			var serverJSInfo server.JSInfo
 			err := r.Load(&serverJSInfo, clusterTag, serverTag, jsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
+				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
@@ -290,14 +297,14 @@ func checkServerResourceLimits(check Check, r *archive.Reader, examples *Example
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d instances of servers approaching reserved usage limit", examples.Count())
+		log.Errorf("Found %d instances of servers approaching reserved usage limit", examples.Count())
 		return PassWithIssues, nil
 	}
 
 	return Pass, nil
 }
 
-func checkJetStreamDomainsForWhitespace(_ Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	for _, clusterName := range r.GetClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
@@ -307,7 +314,7 @@ func checkJetStreamDomainsForWhitespace(_ Check, r *archive.Reader, examples *Ex
 			var serverJsz server.JSInfo
 			err := r.Load(&serverJsz, clusterTag, serverTag, archive.TagServerJetStream())
 			if err != nil {
-				logWarning("Artifact 'JSZ' is missing for server %s", serverName)
+				log.Warnf("Artifact 'JSZ' is missing for server %s", serverName)
 				continue
 			}
 
@@ -319,7 +326,7 @@ func checkJetStreamDomainsForWhitespace(_ Check, r *archive.Reader, examples *Ex
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d servers with JetStream domains containing whitespace", examples.Count())
+		log.Errorf("Found %d servers with JetStream domains containing whitespace", examples.Count())
 		return Fail, nil
 	}
 

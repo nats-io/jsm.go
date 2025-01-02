@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 )
@@ -25,6 +26,7 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 	return collection.Register(
 		Check{
 			Code:        "STREAM_001",
+			Suite:       "jetstream",
 			Name:        "Stream Lagging Replicas",
 			Description: "All replicas of a stream are keeping up",
 			Configuration: map[string]*CheckConfiguration{
@@ -39,6 +41,7 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 		},
 		Check{
 			Code:        "STREAM_002",
+			Suite:       "jetstream",
 			Name:        "Stream High Cardinality",
 			Description: "Streams unique subjects do not exceed a given threshold",
 			Configuration: map[string]*CheckConfiguration{
@@ -53,6 +56,7 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 		},
 		Check{
 			Code:        "STREAM_003",
+			Suite:       "jetstream",
 			Name:        "Stream Limits",
 			Description: "Stream usage is below the configured limits",
 			Configuration: map[string]*CheckConfiguration{
@@ -81,13 +85,13 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 }
 
 // checkStreamLaggingReplicas verifies that in each known stream no replica is too far behind the most up to date (based on stream last sequence)
-func checkStreamLaggingReplicas(check Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	typeTag := archive.TagStreamInfo()
 	accountNames := r.GetAccountNames()
 	lastSequenceLagThreshold := check.Configuration["last_seq"].Value()
 
 	if len(accountNames) == 0 {
-		logInfo("No accounts found in archive")
+		log.Infof("No accounts found in archive")
 	}
 
 	accountsWithStreams := make(map[string]any)
@@ -99,7 +103,7 @@ func checkStreamLaggingReplicas(check Check, r *archive.Reader, examples *Exampl
 		streamNames := r.GetAccountStreamNames(accountName)
 
 		if len(streamNames) == 0 {
-			logDebug("No streams found in account: %s", accountName)
+			log.Debugf("No streams found in account: %s", accountName)
 		}
 
 		for _, streamName := range streamNames {
@@ -110,7 +114,7 @@ func checkStreamLaggingReplicas(check Check, r *archive.Reader, examples *Exampl
 			streamTag := archive.TagStream(streamName)
 			serverNames := r.GetStreamServerNames(accountName, streamName)
 
-			logDebug(
+			log.Debugf(
 				"Inspecting account '%s' stream '%s', found %d servers: %v",
 				accountName,
 				streamName,
@@ -127,7 +131,7 @@ func checkStreamLaggingReplicas(check Check, r *archive.Reader, examples *Exampl
 				streamDetails := &server.StreamDetail{}
 				err := r.Load(streamDetails, accountTag, streamTag, serverTag, typeTag)
 				if errors.Is(err, archive.ErrNoMatches) {
-					logWarning(
+					log.Warnf(
 						"Artifact not found: %s for stream %s in account %s by server %s",
 						typeTag.Value,
 						streamName,
@@ -159,7 +163,7 @@ func checkStreamLaggingReplicas(check Check, r *archive.Reader, examples *Exampl
 						highestLastSeqServer = serverName
 					}
 				}
-				logDebug(
+				log.Debugf(
 					"Stream %s / %s highest last sequence: %d @ %s",
 					accountName,
 					streamName,
@@ -192,17 +196,17 @@ func checkStreamLaggingReplicas(check Check, r *archive.Reader, examples *Exampl
 		}
 	}
 
-	logInfo("Inspected %d streams across %d accounts", len(streamsInspected), len(accountsWithStreams))
+	log.Infof("Inspected %d streams across %d accounts", len(streamsInspected), len(accountsWithStreams))
 
 	if laggingReplicas > 0 {
-		logCritical("Found %d replicas lagging >%.0f%% behind", laggingReplicas, lastSequenceLagThreshold)
+		log.Errorf("Found %d replicas lagging >%.0f%% behind", laggingReplicas, lastSequenceLagThreshold)
 		return Fail, nil
 	}
 	return Pass, nil
 }
 
 // checkHighSubjectCardinalityStreams verify that the number of unique subjects is below some magic number for each known stream
-func checkStreamHighCardinality(check Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkStreamHighCardinality(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	streamDetailsTag := archive.TagStreamInfo()
 	numSubjectsThreshold := check.Configuration["subjects"].Value()
 
@@ -219,7 +223,7 @@ func checkStreamHighCardinality(check Check, r *archive.Reader, examples *Exampl
 				var streamDetails server.StreamDetail
 				err := r.Load(&streamDetails, serverTag, accountTag, streamTag, streamDetailsTag)
 				if errors.Is(err, archive.ErrNoMatches) {
-					logWarning("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
+					log.Warnf("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
 					continue
 				} else if err != nil {
 					return Skipped, fmt.Errorf("failed to load STREAM_DETAILS for stream %s in account %s: %w", streamName, accountName, err)
@@ -234,7 +238,7 @@ func checkStreamHighCardinality(check Check, r *archive.Reader, examples *Exampl
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d streams with subjects cardinality exceeding %s", examples.Count(), numSubjectsThreshold)
+		log.Errorf("Found %d streams with subjects cardinality exceeding %s", examples.Count(), numSubjectsThreshold)
 		return PassWithIssues, nil
 	}
 
@@ -242,7 +246,7 @@ func checkStreamHighCardinality(check Check, r *archive.Reader, examples *Exampl
 }
 
 // checkStreamLimits verifies that the number of messages/bytes/consumers is below a given threshold from the the configured limit for each known stream
-func checkStreamLimits(check Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	messagesThreshold := check.Configuration["messages"].Value()
 	bytesThreshold := check.Configuration["bytes"].Value()
 	consumersThreshold := check.Configuration["consumers"].Value()
@@ -283,7 +287,7 @@ func checkStreamLimits(check Check, r *archive.Reader, examples *ExamplesCollect
 				var streamDetails server.StreamDetail
 				err := r.Load(&streamDetails, serverTag, accountTag, streamTag, streamDetailsTag)
 				if errors.Is(err, archive.ErrNoMatches) {
-					logWarning("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
+					log.Warnf("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
 					continue
 				} else if err != nil {
 					return Skipped, fmt.Errorf("failed to load STREAM_DETAILS for stream %s in account %s: %w", streamName, accountName, err)
@@ -323,7 +327,7 @@ func checkStreamLimits(check Check, r *archive.Reader, examples *ExamplesCollect
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d instances of streams approaching limit", examples.Count())
+		log.Errorf("Found %d instances of streams approaching limit", examples.Count())
 		return PassWithIssues, nil
 	}
 

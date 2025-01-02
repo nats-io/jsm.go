@@ -57,6 +57,17 @@ func (l *logger) Infof(format string, a ...any) {
 	}
 }
 
+func (l *logger) Warnf(format string, a ...any) {
+	if l.lvl >= api.WarnLevel {
+		l.logFunc(format, a...)
+	}
+
+	// always capture these
+	if l.capture != nil {
+		fmt.Fprintf(l.capture, format+"\n", a...)
+	}
+}
+
 func (l *logger) Errorf(format string, a ...any) {
 	if l.lvl >= api.ErrorLevel {
 		l.logFunc(format, a...)

@@ -21,15 +21,17 @@ type Logger interface {
 	Tracef(format string, a ...any)
 	Debugf(format string, a ...any)
 	Infof(format string, a ...any)
+	Warnf(format string, a ...any)
 	Errorf(format string, a ...any)
 }
 
 type Level uint
 
 const (
-	TraceLevel Level = 3
-	DebugLevel Level = 2
-	InfoLevel  Level = 1
+	TraceLevel Level = 4
+	DebugLevel Level = 3
+	InfoLevel  Level = 2
+	WarnLevel  Level = 1
 	ErrorLevel Level = 0
 )
 
@@ -60,6 +62,12 @@ func (d *dfltLogger) Debugf(format string, a ...any) {
 
 func (d *dfltLogger) Infof(format string, a ...any) {
 	if d.lvl >= InfoLevel {
+		d.logFunc(format, a...)
+	}
+}
+
+func (d *dfltLogger) Warnf(format string, a ...any) {
+	if d.lvl >= WarnLevel {
 		d.logFunc(format, a...)
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 )
@@ -24,6 +25,7 @@ import (
 func RegisterAccountChecks(collection *CheckCollection) error {
 	return collection.Register(Check{
 		Code:        "ACCOUNTS_001",
+		Suite:       "accounts",
 		Name:        "Account Limits",
 		Description: "Account usage is below the configured limits",
 		Configuration: map[string]*CheckConfiguration{
@@ -45,7 +47,7 @@ func RegisterAccountChecks(collection *CheckCollection) error {
 }
 
 // checkAccountLimits verifies that the number of connections & subscriptions is not approaching the limit set for the account
-func checkAccountLimits(check Check, r *archive.Reader, examples *ExamplesCollection) (Outcome, error) {
+func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	connectionsThreshold := check.Configuration["connections"].Value()
 	subscriptionsThreshold := check.Configuration["subscriptions"].Value()
 
@@ -81,7 +83,7 @@ func checkAccountLimits(check Check, r *archive.Reader, examples *ExamplesCollec
 			var accountz server.Accountz
 			err := r.Load(&accountz, clusterTag, serverTag, accountsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
-				logWarning("Artifact 'ACCOUNTZ' is missing for server %s cluster %s", serverName, clusterName)
+				log.Warnf("Artifact 'ACCOUNTZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load ACCOUNTZ for server %s: %w", serverName, err)
@@ -93,7 +95,7 @@ func checkAccountLimits(check Check, r *archive.Reader, examples *ExamplesCollec
 				var accountInfo server.AccountInfo
 				err := r.Load(&accountInfo, serverTag, accountTag, accountDetailsTag)
 				if errors.Is(err, archive.ErrNoMatches) {
-					logWarning("Account details is missing for account %s, server %s", accountName, serverName)
+					log.Warnf("Account details is missing for account %s, server %s", accountName, serverName)
 					continue
 				} else if err != nil {
 					return Skipped, fmt.Errorf("failed to load Account details from server %s for account %s, error: %w", serverTag.Value, accountName, err)
@@ -153,7 +155,7 @@ func checkAccountLimits(check Check, r *archive.Reader, examples *ExamplesCollec
 	}
 
 	if examples.Count() > 0 {
-		logCritical("Found %d instances of accounts approaching limit", examples.Count())
+		log.Errorf("Found %d instances of accounts approaching limit", examples.Count())
 		return PassWithIssues, nil
 	}
 

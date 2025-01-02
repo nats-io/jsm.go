@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/choria-io/fisk"
 	"github.com/dustin/go-humanize"
 )
 
@@ -91,6 +92,6 @@ func (c *CheckConfiguration) Set(v string) error {
 }
 
 // SetVal supports fisk
-//func (c *CheckConfiguration) SetVal(s fisk.Settings) {
-//	s.SetValue(c)
-//}
+func (c *CheckConfiguration) SetVal(s fisk.Settings) {
+	s.SetValue(c)
+}

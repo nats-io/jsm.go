@@ -292,7 +292,7 @@ func (c *CheckCollection) EachCheck(cb func(c *Check)) {
 
 	for _, suite := range suites {
 		sort.Slice(c.suites[suite], func(i, j int) bool {
-			return c.suites[suite][i].Name < c.suites[suite][j].Name
+			return c.suites[suite][i].Code < c.suites[suite][j].Code
 		})
 
 		for _, check := range c.suites[suite] {

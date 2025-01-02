@@ -90,17 +90,61 @@ func RegisterServerChecks(collection *CheckCollection) error {
 			Description: "No JetStream server is configured with whitespace in its domain",
 			Handler:     checkJetStreamDomainsForWhitespace,
 		},
+		Check{
+			Code:        "SERVER_007",
+			Suite:       "server",
+			Name:        "Authentication required",
+			Description: "Each server requires authentication",
+			Handler:     checkServerAuthRequired,
+		},
 	)
+}
+
+func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
+	notHealthy, healthy := 0, 0
+
+	for _, clusterName := range r.ClusterNames() {
+		clusterTag := archive.TagCluster(clusterName)
+
+		for _, serverName := range r.ClusterServerNames(clusterName) {
+			serverTag := archive.TagServer(serverName)
+
+			var varz server.Varz
+			err := r.Load(&varz, clusterTag, serverTag, archive.TagServerVars())
+			if errors.Is(err, archive.ErrNoMatches) {
+				log.Warnf("Artifact 'VARZ' is missing for server %s", serverName)
+				continue
+			} else if err != nil {
+				return Skipped, fmt.Errorf("failed to load variables for server %s: %w", serverName, err)
+			}
+
+			if varz.AuthRequired {
+				healthy++
+			} else {
+				examples.Add("%s: authentication not required", serverName)
+				notHealthy++
+			}
+		}
+	}
+
+	if notHealthy > 0 {
+		log.Errorf("%d/%d servers do not require authentication", notHealthy, healthy+notHealthy)
+		return PassWithIssues, nil
+	}
+
+	log.Infof("%d/%d servers require authentication", healthy, healthy)
+
+	return Pass, nil
 }
 
 // checkServerHealth verify all known servers are reporting healthy
 func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	notHealthy, healthy := 0, 0
 
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var health server.HealthStatus
@@ -114,7 +158,7 @@ func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection
 			}
 
 			if health.Status != "ok" {
-				examples.add("%s: %d - %s", serverName, health.StatusCode, health.Status)
+				examples.Add("%s: %d - %s", serverName, health.StatusCode, health.Status)
 				notHealthy += 1
 			} else {
 				healthy += 1
@@ -136,10 +180,10 @@ func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 	versionsToServersMap := make(map[string][]string)
 
 	var lastVersionSeen string
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var serverVarz server.Varz
@@ -159,7 +203,7 @@ func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 				// First time encountering this version, create map entry
 				versionsToServersMap[version] = []string{}
 				// Add one example server for each version
-				examples.add("%s - %s", serverName, version)
+				examples.Add("%s - %s", serverName, version)
 			}
 			// Add this server to the list running this version
 			versionsToServersMap[version] = append(versionsToServersMap[version], serverName)
@@ -187,9 +231,9 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 	severVarsTag := archive.TagServerVars()
 	cpuThreshold := check.Configuration["cpu"].Value()
 
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 			var serverVarz server.Varz
 			err := r.Load(&serverVarz, serverTag, clusterTag, severVarsTag)
@@ -204,7 +248,7 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 			averageCpuUtilization := serverVarz.CPU / float64(serverVarz.Cores)
 
 			if averageCpuUtilization > cpuThreshold {
-				examples.add("%s - %s: %.1f%%", clusterName, serverName, averageCpuUtilization)
+				examples.Add("%s - %s: %.1f%%", clusterName, serverName, averageCpuUtilization)
 			}
 		}
 	}
@@ -221,10 +265,10 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	totalSlowConsumers := int64(0)
 
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var serverVarz server.Varz
@@ -234,7 +278,7 @@ func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 			}
 
 			if slowConsumers := serverVarz.SlowConsumers; slowConsumers > 0 {
-				examples.add("%s/%s: %d slow consumers", clusterName, serverName, slowConsumers)
+				examples.Add("%s/%s: %d slow consumers", clusterName, serverName, slowConsumers)
 				totalSlowConsumers += slowConsumers
 			}
 		}
@@ -256,9 +300,9 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 	memoryUsageThreshold := check.Configuration["memory"].Value()
 	storeUsageThreshold := check.Configuration["store"].Value()
 
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var serverJSInfo server.JSInfo
@@ -273,7 +317,7 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 			if serverJSInfo.ReservedMemory > 0 {
 				threshold := uint64(float64(serverJSInfo.ReservedMemory) * memoryUsageThreshold)
 				if serverJSInfo.Memory > threshold {
-					examples.add(
+					examples.Add(
 						"%s memory usage: %s of %s",
 						serverName,
 						humanize.IBytes(serverJSInfo.Memory),
@@ -285,7 +329,7 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 			if serverJSInfo.ReservedStore > 0 {
 				threshold := uint64(float64(serverJSInfo.ReservedStore) * storeUsageThreshold)
 				if serverJSInfo.Store > threshold {
-					examples.add(
+					examples.Add(
 						"%s store usage: %s of %s",
 						serverName,
 						humanize.IBytes(serverJSInfo.Store),
@@ -305,10 +349,10 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 }
 
 func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var serverJsz server.JSInfo
@@ -320,7 +364,7 @@ func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *E
 
 			// check if jetstream domain contains whitespace
 			if strings.ContainsAny(serverJsz.Config.Domain, " \n") {
-				examples.add("Cluster %s Server %s Domain %s", clusterName, serverName, serverJsz.Config.Domain)
+				examples.Add("Cluster %s Server %s Domain %s", clusterName, serverName, serverJsz.Config.Domain)
 			}
 		}
 	}

@@ -60,7 +60,7 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 
 		threshold := int64(float64(limit) * percentThreshold)
 		if value > threshold {
-			examples.add(
+			examples.Add(
 				"account %s (on %s) using %.1f%% of %s limit (%d/%d)",
 				accountName,
 				serverName,
@@ -74,10 +74,10 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 
 	accountsTag := archive.TagServerAccounts()
 	accountDetailsTag := archive.TagAccountInfo()
-	for _, clusterName := range r.GetClusterNames() {
+	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
 
-		for _, serverName := range r.GetClusterServerNames(clusterName) {
+		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
 			var accountz server.Accountz

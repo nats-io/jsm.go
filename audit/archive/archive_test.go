@@ -365,32 +365,32 @@ func Test_CreateThenReadArchiveUsingTags(t *testing.T) {
 		}
 	}
 
-	clusterNames := ar.GetClusterNames()
+	clusterNames := ar.ClusterNames()
 	if slices.Compare(clusterNames, expectedClusters) != 0 {
 		t.Fatalf("Expected clusters: %v, got: %v", expectedClusters, clusterNames)
 	}
 
 	for _, clusterName := range clusterNames {
-		serverNames := ar.GetClusterServerNames(clusterName)
+		serverNames := ar.ClusterServerNames(clusterName)
 		if slices.Compare(clusters[clusterName], serverNames) != 0 {
 			t.Fatalf("Expected cluster %s servers: %v, got: %v", clusterName, clusters[clusterName], serverNames)
 		}
 	}
 
 	expectedAccountNames := []string{globalAccountName}
-	accountNames := ar.GetAccountNames()
+	accountNames := ar.AccountNames()
 	if slices.Compare(expectedAccountNames, accountNames) != 0 {
 		t.Fatalf("Expected accounts: %v, got: %v", expectedAccountNames, accountNames)
 	}
 
 	expectedStreamNames := []string{"ORDERS"}
-	streamNames := ar.GetAccountStreamNames(globalAccountName)
+	streamNames := ar.AccountStreamNames(globalAccountName)
 	if slices.Compare(expectedStreamNames, streamNames) != 0 {
 		t.Fatalf("Expected account %s streams: %v, got: %v", globalAccountName, expectedStreamNames, streamNames)
 	}
 
 	expectedReplicaNames := []string{"A", "B", "E"}
-	replicaNames := ar.GetStreamServerNames(globalAccountName, "ORDERS")
+	replicaNames := ar.StreamServerNames(globalAccountName, "ORDERS")
 	if slices.Compare(expectedReplicaNames, replicaNames) != 0 {
 		t.Fatalf("Expected stream %s/%s replicas: %v, got: %v", globalAccountName, "ORDERS", expectedReplicaNames, replicaNames)
 	}
@@ -464,19 +464,19 @@ func Test_IterateResourcesUsingTags(t *testing.T) {
 		t.Fatalf("Failed to open archive: %s", err)
 	}
 
-	clusterNames := ar.GetClusterNames()
+	clusterNames := ar.ClusterNames()
 	slices.SortFunc(clusterNames, strings.Compare)
 
 	if !slices.Equal(clusterNames, expectedClusterNames) {
 		t.Fatalf("Expected clusters: %v, actual: %v", expectedClusterNames, clusterNames)
 	}
 
-	if len(ar.GetClusterServerNames("NO_SUCH_CLUSTER")) != 0 {
+	if len(ar.ClusterServerNames("NO_SUCH_CLUSTER")) != 0 {
 		t.Fatalf("Looking up non-existent cluster produced some results")
 	}
 
 	for clusterName, expectedServerNames := range clusterServerMap {
-		serverNames := ar.GetClusterServerNames(clusterName)
+		serverNames := ar.ClusterServerNames(clusterName)
 		slices.SortFunc(expectedServerNames, strings.Compare)
 		slices.SortFunc(serverNames, strings.Compare)
 		if !slices.Equal(serverNames, expectedServerNames) {

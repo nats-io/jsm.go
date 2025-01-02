@@ -36,7 +36,8 @@ func newExamplesCollection(limit uint) *ExamplesCollection {
 	}
 }
 
-func (c *ExamplesCollection) add(format string, a ...any) {
+// Add adds a example issue to the collection
+func (c *ExamplesCollection) Add(format string, a ...any) {
 	c.Examples = append(c.Examples, fmt.Sprintf(format, a...))
 }
 

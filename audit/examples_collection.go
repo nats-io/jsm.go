@@ -59,7 +59,7 @@ func (c *ExamplesCollection) Count() int {
 func (c *ExamplesCollection) String() string {
 	examples := c.Examples[:]
 	omitted := 0
-	if len(c.Examples) > int(c.Limit) {
+	if c.Limit > 0 && len(c.Examples) > int(c.Limit) {
 		examples = examples[:c.Limit]
 		omitted = len(c.Examples) - len(examples)
 	}

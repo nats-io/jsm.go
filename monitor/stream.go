@@ -154,6 +154,14 @@ func populateStreamHealthCheckOptions(metadata map[string]string, opts *StreamHe
 	return opts, nil
 }
 
+func StreamInfoHealthCheck(nfo *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
+	streamCheckCluster(nfo, check, opts, log)
+	streamCheckMessages(nfo, check, opts, log)
+	streamCheckSubjects(nfo, check, opts, log)
+	streamCheckSources(nfo, check, opts, log)
+	streamCheckMirror(nfo, check, opts, log)
+}
+
 func StreamHealthCheck(server string, nopts []nats.Option, check *Result, opts StreamHealthCheckOptions, log api.Logger) error {
 	if opts.StreamName == "" {
 		check.Critical("stream name is required")
@@ -186,11 +194,7 @@ func StreamHealthCheck(server string, nopts []nats.Option, check *Result, opts S
 		return nil
 	}
 
-	streamCheckCluster(nfo, check, opts, log)
-	streamCheckMessages(nfo, check, opts, log)
-	streamCheckSubjects(nfo, check, opts, log)
-	streamCheckSources(nfo, check, opts, log)
-	streamCheckMirror(nfo, check, opts, log)
+	StreamInfoHealthCheck(nfo, check, opts, log)
 
 	for _, hc := range opts.HealthChecks {
 		hc(stream, check, opts, log)

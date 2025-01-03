@@ -19,13 +19,13 @@ import (
 
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
-	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/jsm.go/monitor"
 )
 
 func RegisterJetStreamChecks(collection *CheckCollection) error {
 	return collection.Register(
 		Check{
-			Code:        "STREAM_001",
+			Code:        "JETSTREAM_001",
 			Suite:       "jetstream",
 			Name:        "Stream Lagging Replicas",
 			Description: "All replicas of a stream are keeping up",
@@ -40,7 +40,7 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 			Handler: checkStreamLaggingReplicas,
 		},
 		Check{
-			Code:        "STREAM_002",
+			Code:        "JETSTREAM_002",
 			Suite:       "jetstream",
 			Name:        "Stream High Cardinality",
 			Description: "Streams unique subjects do not exceed a given threshold",
@@ -55,7 +55,7 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 			Handler: checkStreamHighCardinality,
 		},
 		Check{
-			Code:        "STREAM_003",
+			Code:        "JETSTREAM_003",
 			Suite:       "jetstream",
 			Name:        "Stream Limits",
 			Description: "Stream usage is below the configured limits",
@@ -80,6 +80,20 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 				},
 			},
 			Handler: checkStreamLimits,
+		},
+		Check{
+			Code:        "JETSTREAM_004",
+			Suite:       "jetstream",
+			Name:        "Stream Metadata based monitoring",
+			Description: "Perform stream monitoring using the 'nats server check stream' metadata",
+			Handler:     checkStreamMetadataMonitoring,
+		},
+		Check{
+			Code:        "JETSTREAM_005",
+			Suite:       "jetstream",
+			Name:        "Consumer Metadata based monitoring",
+			Description: "Perform consumer monitoring using the 'nats server check consumer' metadata",
+			Handler:     checkConsumerMetadataMonitoring,
 		},
 	)
 }
@@ -107,7 +121,6 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 		}
 
 		for _, streamName := range streamNames {
-
 			// Track accounts with at least one streams
 			accountsWithStreams[accountName] = nil
 
@@ -123,12 +136,12 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 			)
 
 			// Create map server->streamDetails
-			replicasStreamDetails := make(map[string]*server.StreamDetail, len(serverNames))
+			replicasStreamDetails := make(map[string]*api.StreamInfo, len(serverNames))
 			streamIsEmpty := true
 
 			for _, serverName := range serverNames {
 				serverTag := archive.TagServer(serverName)
-				streamDetails := &server.StreamDetail{}
+				streamDetails := &api.StreamInfo{}
 				err := r.Load(streamDetails, accountTag, streamTag, serverTag, typeTag)
 				if errors.Is(err, archive.ErrNoMatches) {
 					log.Warnf(
@@ -220,7 +233,7 @@ func checkStreamHighCardinality(check *Check, r *archive.Reader, examples *Examp
 			for _, serverName := range serverNames {
 				serverTag := archive.TagServer(serverName)
 
-				var streamDetails server.StreamDetail
+				var streamDetails api.StreamInfo
 				err := r.Load(&streamDetails, serverTag, accountTag, streamTag, streamDetailsTag)
 				if errors.Is(err, archive.ErrNoMatches) {
 					log.Warnf("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
@@ -284,7 +297,7 @@ func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollec
 			for _, serverName := range serverNames {
 				serverTag := archive.TagServer(serverName)
 
-				var streamDetails server.StreamDetail
+				var streamDetails api.StreamInfo
 				err := r.Load(&streamDetails, serverTag, accountTag, streamTag, streamDetailsTag)
 				if errors.Is(err, archive.ErrNoMatches) {
 					log.Warnf("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
@@ -329,6 +342,142 @@ func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollec
 	if examples.Count() > 0 {
 		log.Errorf("Found %d instances of streams approaching limit", examples.Count())
 		return PassWithIssues, nil
+	}
+
+	return Pass, nil
+}
+
+func checkStreamMetadataMonitoring(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
+	streamDetailsTag := archive.TagStreamInfo()
+
+	var foundCrit bool
+
+	for _, accountName := range r.AccountNames() {
+		accountTag := archive.TagAccount(accountName)
+
+		for _, streamName := range r.AccountStreamNames(accountName) {
+			streamTag := archive.TagStream(streamName)
+
+			serverNames := r.StreamServerNames(accountName, streamName)
+			for _, serverName := range serverNames {
+				serverTag := archive.TagServer(serverName)
+
+				var streamDetails api.StreamInfo
+				err := r.Load(&streamDetails, serverTag, accountTag, streamTag, streamDetailsTag)
+				if errors.Is(err, archive.ErrNoMatches) {
+					log.Warnf("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
+					continue
+				} else if err != nil {
+					return Skipped, fmt.Errorf("failed to load STREAM_DETAILS for stream %s in account %s: %w", streamName, accountName, err)
+				}
+
+				if streamDetails.Cluster.Leader == serverName {
+					check := &monitor.Result{Name: fmt.Sprintf("%s.%s", accountName, streamName), Check: "stream"}
+
+					opts, err := monitor.ExtractStreamHealthCheckOptions(streamDetails.Config.Metadata)
+					if err != nil {
+						return Skipped, fmt.Errorf("failed to run health check for stream %s in account %s: %w", streamName, accountName, err)
+					}
+
+					if !opts.Enabled {
+						continue
+					}
+
+					opts.StreamName = streamName
+					monitor.StreamInfoHealthCheck(&streamDetails, check, *opts, log)
+
+					for _, warning := range check.Warnings {
+						examples.Add("WARNING: stream %s in %s: %s", streamName, accountName, warning)
+					}
+
+					for _, crit := range check.Criticals {
+						examples.Add("CRITICAL: stream %s in %s: %s", streamName, accountName, crit)
+						foundCrit = true
+					}
+				}
+			}
+		}
+	}
+
+	if examples.Count() > 0 {
+		log.Errorf("Found %d instances of streams checks failing", examples.Count())
+		if foundCrit {
+			return Fail, nil
+		}
+		return PassWithIssues, nil
+
+	}
+
+	return Pass, nil
+}
+
+func checkConsumerMetadataMonitoring(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
+	streamDetailsTag := archive.TagStreamInfo()
+
+	var foundCrit bool
+	type streamWithConsumers struct {
+		api.StreamInfo
+		ConsumerDetail []api.ConsumerInfo `json:"consumer_detail"`
+	}
+
+	for _, accountName := range r.AccountNames() {
+		accountTag := archive.TagAccount(accountName)
+
+		for _, streamName := range r.AccountStreamNames(accountName) {
+			streamTag := archive.TagStream(streamName)
+
+			serverNames := r.StreamServerNames(accountName, streamName)
+			for _, serverName := range serverNames {
+				serverTag := archive.TagServer(serverName)
+
+				var streamDetails streamWithConsumers
+				err := r.Load(&streamDetails, serverTag, accountTag, streamTag, streamDetailsTag)
+				if errors.Is(err, archive.ErrNoMatches) {
+					log.Warnf("Artifact 'STREAM_DETAILS' is missing for stream %s in account %s", streamName, accountName)
+					continue
+				} else if err != nil {
+					return Skipped, fmt.Errorf("failed to load STREAM_DETAILS for stream %s in account %s: %w", streamName, accountName, err)
+				}
+
+				for _, nfo := range streamDetails.ConsumerDetail {
+					if nfo.Cluster.Leader == serverName {
+						check := &monitor.Result{Name: fmt.Sprintf("%s.%s.%s", accountName, streamName, nfo.Name), Check: "consumer"}
+
+						opts, err := monitor.ExtractConsumerHealthCheckOptions(nfo.Config.Metadata)
+						if err != nil {
+							return Skipped, fmt.Errorf("failed to run health check for consumer %s > %s in account %s: %w", streamName, nfo.Name, accountName, err)
+						}
+
+						if !opts.Enabled {
+							continue
+						}
+
+						opts.StreamName = streamName
+						opts.ConsumerName = nfo.Name
+
+						monitor.ConsumerInfoHealthCheck(&nfo, check, *opts, log)
+
+						for _, warning := range check.Warnings {
+							examples.Add("WARNING: consumer %s in stream %s in %s: %s", nfo.Name, streamName, accountName, warning)
+						}
+
+						for _, crit := range check.Criticals {
+							examples.Add("CRITICAL: consumer %s in stream %s in %s: %s", nfo.Name, streamName, accountName, crit)
+							foundCrit = true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if examples.Count() > 0 {
+		log.Errorf("Found %d instances of consumer checks failing", examples.Count())
+		if foundCrit {
+			return Fail, nil
+		}
+		return PassWithIssues, nil
+
 	}
 
 	return Pass, nil

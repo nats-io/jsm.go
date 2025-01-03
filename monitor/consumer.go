@@ -124,6 +124,16 @@ func populateConsumerHealthCheckOptions(metadata map[string]string, opts *Consum
 	return opts, nil
 }
 
+func ConsumerInfoHealthCheck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+	consumerCheckOutstandingAck(nfo, check, opts, log)
+	consumerCheckWaiting(nfo, check, opts, log)
+	consumerCheckUnprocessed(nfo, check, opts, log)
+	consumerCheckRedelivery(nfo, check, opts, log)
+	consumerCheckLastDelivery(nfo, check, opts, log)
+	consumerCheckLastAck(nfo, check, opts, log)
+	consumerCheckPinned(nfo, check, opts, log)
+}
+
 func ConsumerHealthCheck(server string, nopts []nats.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
 	if opts.StreamName == "" {
 		check.Critical("stream name is required")
@@ -166,13 +176,7 @@ func ConsumerHealthCheck(server string, nopts []nats.Option, check *Result, opts
 		check.Pd(&PerfDataItem{Name: "last_ack", Value: time.Since(*nfo.AckFloor.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was acknowledged", Crit: opts.LastAckCritical})
 	}
 
-	consumerCheckOutstandingAck(&nfo, check, opts, log)
-	consumerCheckWaiting(&nfo, check, opts, log)
-	consumerCheckUnprocessed(&nfo, check, opts, log)
-	consumerCheckRedelivery(&nfo, check, opts, log)
-	consumerCheckLastDelivery(&nfo, check, opts, log)
-	consumerCheckLastAck(&nfo, check, opts, log)
-	consumerCheckPinned(&nfo, check, opts, log)
+	ConsumerInfoHealthCheck(&nfo, check, opts, log)
 
 	for _, hc := range opts.HealthChecks {
 		hc(consumer, check, opts, log)

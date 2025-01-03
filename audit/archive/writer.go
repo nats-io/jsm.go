@@ -102,7 +102,7 @@ func (w *Writer) SetTime(t time.Time) {
 
 // AddRaw adds the given artifact to the archive similarly to Add.
 // The artifact is assumed to be already serialized and is copied as-is byte for byte.
-func (w *Writer) AddRaw(reader *bytes.Reader, extension string, tags ...*Tag) error {
+func (w *Writer) AddRaw(reader io.Reader, extension string, tags ...*Tag) error {
 	if w.zipWriter == nil {
 		return fmt.Errorf("attempting to write into a closed writer")
 	}

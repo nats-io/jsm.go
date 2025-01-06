@@ -290,6 +290,11 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			return
 		}
 
+		if apiResponse.Error != nil {
+			g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
+			return
+		}
+
 		serverId, serverName := apiResponse.Server.ID, apiResponse.Server.Name
 
 		// Ignore responses from servers not discovered earlier.
@@ -390,6 +395,11 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 				err := json.Unmarshal(b, &apiResponse)
 				if err != nil {
 					g.log.Errorf("Failed to deserialize %s response for account %s: %s", endpoint.ApiSuffix, accountId, err)
+					return
+				}
+
+				if apiResponse.Error != nil {
+					g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
 					return
 				}
 
@@ -564,6 +574,11 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				continue
 			}
 
+			if apiResponse.Error != nil {
+				g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
+				continue
+			}
+
 			buff := bytes.NewBuffer([]byte{})
 			err = json.Indent(buff, apiResponse.Data, "", "  ")
 			if err != nil {
@@ -628,6 +643,11 @@ func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (
 			return
 		}
 
+		if apiResponse.Error != nil {
+			g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
+			return
+		}
+
 		g.log.Infof("Discovered %d accounts on server %s", len(accountsResponse.Accounts), serverName)
 
 		// Track how many servers known any given account
@@ -667,6 +687,11 @@ func (g *gather) discoverServers() (map[string]*server.ServerInfo, error) {
 		var apiResponse server.ServerAPIResponse
 		if err := json.Unmarshal(b, &apiResponse); err != nil {
 			g.log.Errorf("Failed to deserialize PING response: %s", err)
+			return
+		}
+
+		if apiResponse.Error != nil {
+			g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
 			return
 		}
 

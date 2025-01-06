@@ -85,14 +85,14 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 			Code:        "JETSTREAM_004",
 			Suite:       "jetstream",
 			Name:        "Stream Metadata based monitoring",
-			Description: "Perform stream monitoring using the 'nats server check stream' metadata",
+			Description: "Stream health using the 'nats server check stream' metadata",
 			Handler:     checkStreamMetadataMonitoring,
 		},
 		Check{
 			Code:        "JETSTREAM_005",
 			Suite:       "jetstream",
 			Name:        "Consumer Metadata based monitoring",
-			Description: "Perform consumer monitoring using the 'nats server check consumer' metadata",
+			Description: "Consumer health using the 'nats server check consumer' metadata",
 			Handler:     checkConsumerMetadataMonitoring,
 		},
 	)

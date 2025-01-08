@@ -59,7 +59,7 @@ func RegisterClusterChecks(collection *CheckCollection) error {
 					Key:         "assets",
 					Description: "Number of HA assets per server",
 					Default:     1000,
-					Unit:        IntUnit,
+					Unit:        UIntUnit,
 				},
 			},
 			Handler: checkClusterHighHAAssets,

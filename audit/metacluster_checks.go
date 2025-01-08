@@ -53,14 +53,16 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
-			var jetStreamInfo server.JSInfo
-			err := r.Load(&jetStreamInfo, clusterTag, serverTag, jsTag)
+			var resp server.ServerAPIJszResponse
+			var jetStreamInfo *server.JSInfo
+			err := r.Load(&resp, clusterTag, serverTag, jsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
 				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
 			}
+			jetStreamInfo = resp.Data
 
 			if jetStreamInfo.Disabled {
 				continue

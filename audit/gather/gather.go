@@ -57,15 +57,6 @@ type Configuration struct {
 	ServerProfileNames     []string
 }
 
-// ServerAPIResponseNoData is a modified version of server.ServerAPIResponse that inhibits deserialization of the
-// `data` field by using `json.RawMessage`. This is necessary because deserializing into a generic object (i.e. map)
-// can cause loss of precision for large numbers.
-type ServerAPIResponseNoData struct {
-	Server *server.ServerInfo `json:"server"`
-	Data   json.RawMessage    `json:"data,omitempty"`
-	Error  *server.ApiError   `json:"error,omitempty"`
-}
-
 func NewCaptureConfiguration() *Configuration {
 	return &Configuration{
 		LogLevel: api.InfoLevel,
@@ -281,9 +272,9 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 		RaftGroups: true,
 	}
 
-	jsInfoResponses := make(map[string]*server.JSInfo, numServers)
+	jsInfoResponses := make(map[string]*server.ServerAPIJszResponse, numServers)
 	err := g.doReqAsync(context.TODO(), jszOptions, "$SYS.REQ.SERVER.PING.JSZ", numServers, func(b []byte) {
-		var apiResponse ServerAPIResponseNoData
+		var apiResponse server.ServerAPIJszResponse
 		err := json.Unmarshal(b, &apiResponse)
 		if err != nil {
 			g.log.Errorf("Failed to deserialize JS info response for account %s: %s", accountId, err)
@@ -310,25 +301,18 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			return
 		}
 
-		jsInfoResponse := &server.JSInfo{}
-		err = json.Unmarshal(apiResponse.Data, jsInfoResponse)
-		if err != nil {
-			g.log.Errorf("Failed to deserialize JS info response data for account %s: %s", accountId, err)
-			return
-		}
-
-		if len(jsInfoResponse.AccountDetails) == 0 {
+		if len(apiResponse.Data.AccountDetails) == 0 {
 			// No account details in response, don't bother saving this
 			//g.log.Errorf("🐛 Skip JSZ response from %s, no accounts details", serverName)
 			return
-		} else if len(jsInfoResponse.AccountDetails) > 1 {
+		} else if len(apiResponse.Data.AccountDetails) > 1 {
 			// Server will respond with multiple accounts if the one specified in the request is not found
 			// https://github.com/nats-io/nats-server/pull/5229
 			//g.log.Errorf("🐛 Skip JSZ response from %s, account not found", serverName)
 			return
 		}
 
-		jsInfoResponses[serverName] = jsInfoResponse
+		jsInfoResponses[serverName] = &apiResponse
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve account %s streams: %w", accountId, err)
@@ -339,7 +323,7 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 	// Capture stream info from each known replica
 	for serverName, jsInfo := range jsInfoResponses {
 		// Cases where len(jsInfo.AccountDetails) != 1 are filtered above
-		accountDetail := jsInfo.AccountDetails[0]
+		accountDetail := jsInfo.Data.AccountDetails[0]
 
 		for _, streamInfo := range accountDetail.Streams {
 			streamName := streamInfo.Name
@@ -391,7 +375,7 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 			endpointResponses := make(map[Responder]io.Reader, serversCount)
 
 			err := g.doReqAsync(context.TODO(), nil, subject, serversCount, func(b []byte) {
-				var apiResponse ServerAPIResponseNoData
+				var apiResponse server.ServerAPIResponse
 				err := json.Unmarshal(b, &apiResponse)
 				if err != nil {
 					g.log.Errorf("Failed to deserialize %s response for account %s: %s", endpoint.ApiSuffix, accountId, err)
@@ -414,7 +398,7 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 				}
 
 				buff := bytes.NewBuffer([]byte{})
-				err = json.Indent(buff, apiResponse.Data, "", "  ")
+				err = json.Indent(buff, b, "", "  ")
 				if err != nil {
 					g.log.Errorf("Failed to indent %s response for account %s: %s", endpoint.ApiSuffix, accountId, err)
 					return
@@ -526,9 +510,7 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 				clusterTag,
 			}
 
-			profileDataBytes := apiResponse.Data.Profile
-
-			err = g.aw.AddRaw(bytes.NewReader(profileDataBytes), "prof", tags...)
+			err = g.aw.AddRaw(bytes.NewReader(responseBytes), "prof", tags...)
 			if err != nil {
 				return fmt.Errorf("failed to add %s profile from to archive: %w", profileName, err)
 			}
@@ -568,7 +550,7 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 			responseBytes := responses[0]
 
-			var apiResponse ServerAPIResponseNoData
+			var apiResponse server.ServerAPIResponse
 			if err = json.Unmarshal(responseBytes, &apiResponse); err != nil {
 				g.log.Errorf("Failed to deserialize %s response from server %s: %s", endpoint.ApiSuffix, serverName, err)
 				continue
@@ -580,7 +562,7 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 			}
 
 			buff := bytes.NewBuffer([]byte{})
-			err = json.Indent(buff, apiResponse.Data, "", "  ")
+			err = json.Indent(buff, responseBytes, "", "  ")
 			if err != nil {
 				g.log.Errorf("Failed to indent %s response data from server %s: %s", endpoint.ApiSuffix, serverName, err)
 				continue
@@ -619,7 +601,7 @@ func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (
 	var accountIdsToServersCountMap = make(map[string]int)
 	var systemAccount = ""
 	err := g.doReqAsync(context.TODO(), nil, "$SYS.REQ.SERVER.PING.ACCOUNTZ", len(serverInfoMap), func(b []byte) {
-		var apiResponse ServerAPIResponseNoData
+		var apiResponse server.ServerAPIAccountzResponse
 		err := json.Unmarshal(b, &apiResponse)
 		if err != nil {
 			g.log.Errorf("Failed to deserialize accounts response, ignoring")
@@ -636,22 +618,15 @@ func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (
 			return
 		}
 
-		var accountsResponse server.Accountz
-		err = json.Unmarshal(apiResponse.Data, &accountsResponse)
-		if err != nil {
-			g.log.Errorf("Failed to deserialize accounts response body: %s", err)
-			return
-		}
-
 		if apiResponse.Error != nil {
 			g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
 			return
 		}
 
-		g.log.Infof("Discovered %d accounts on server %s", len(accountsResponse.Accounts), serverName)
+		g.log.Infof("Discovered %d accounts on server %s", len(apiResponse.Data.Accounts), serverName)
 
 		// Track how many servers known any given account
-		for _, accountId := range accountsResponse.Accounts {
+		for _, accountId := range apiResponse.Data.Accounts {
 			_, accountKnown := accountIdsToServersCountMap[accountId]
 			if !accountKnown {
 				accountIdsToServersCountMap[accountId] = 0
@@ -660,14 +635,14 @@ func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (
 		}
 
 		// Track system account (normally, only one for the entire ensemble)
-		if accountsResponse.SystemAccount == "" {
+		if apiResponse.Data.SystemAccount == "" {
 			g.log.Errorf("Server %s system account is not set", serverName)
 		} else if systemAccount == "" {
-			systemAccount = accountsResponse.SystemAccount
+			systemAccount = apiResponse.Data.SystemAccount
 			g.log.Infof("Discovered system account name: %s", systemAccount)
-		} else if systemAccount != accountsResponse.SystemAccount {
+		} else if systemAccount != apiResponse.Data.SystemAccount {
 			// This should not happen under normal circumstances!
-			g.log.Errorf("Multiple system accounts detected (%s, %s)", systemAccount, accountsResponse.SystemAccount)
+			g.log.Errorf("Multiple system accounts detected (%s, %s)", systemAccount, apiResponse.Data.SystemAccount)
 		}
 	})
 	if err != nil {

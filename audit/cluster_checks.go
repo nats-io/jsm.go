@@ -93,14 +93,16 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 		for _, serverName := range serverNames {
 			serverTag := archive.TagServer(serverName)
 
-			var serverVarz server.Varz
-			err := r.Load(&serverVarz, clusterTag, serverTag, typeTag)
+			var resp server.ServerAPIVarzResponse
+			var serverVarz *server.Varz
+			err := r.Load(&resp, clusterTag, serverTag, typeTag)
 			if errors.Is(err, archive.ErrNoMatches) {
 				log.Warnf("Artifact 'VARZ' is missing for server %s in cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load VARZ for server %s in cluster %s: %w", serverName, clusterName, err)
 			}
+			serverVarz = resp.Data
 
 			numServers += 1
 			clusterMemoryUsageMap[serverTag.Value] = float64(serverVarz.Mem)
@@ -149,13 +151,15 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
-			var gateways server.Gatewayz
-			err := r.Load(&gateways, clusterTag, serverTag, archive.TagServerGateways())
+			var resp server.ServerAPIGatewayzResponse
+			var gateways *server.Gatewayz
+			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerGateways())
 			if errors.Is(err, archive.ErrNoMatches) {
 				log.Warnf("Artifact 'GATEWAYZ' is missing for server %s cluster %s", serverName, clusterName)
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load GATEWAYZ for server %s: %w", serverName, err)
 			}
+			gateways = resp.Data
 
 			// Create list of configured outbound gateways for this server
 			serverConfiguredOutboundGateways := make([]string, 0, len(gateways.OutboundGateways))
@@ -242,14 +246,16 @@ func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *Example
 		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
-			var serverJSInfo server.JSInfo
-			err := r.Load(&serverJSInfo, clusterTag, serverTag, jsTag)
+			var resp server.ServerAPIJszResponse
+			var serverJSInfo *server.JSInfo
+			err := r.Load(&resp, clusterTag, serverTag, jsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
 				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
 			}
+			serverJSInfo = resp.Data
 
 			if float64(serverJSInfo.HAAssets) > haAssetsThreshold {
 				examples.Add("%s: %d HA assets", serverName, serverJSInfo.HAAssets)

@@ -80,14 +80,16 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
-			var accountz server.Accountz
-			err := r.Load(&accountz, clusterTag, serverTag, accountsTag)
+			var resp server.ServerAPIAccountzResponse
+			var accountz *server.Accountz
+			err := r.Load(&resp, clusterTag, serverTag, accountsTag)
 			if errors.Is(err, archive.ErrNoMatches) {
 				log.Warnf("Artifact 'ACCOUNTZ' is missing for server %s cluster %s", serverName, clusterName)
 				continue
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load ACCOUNTZ for server %s: %w", serverName, err)
 			}
+			accountz = resp.Data
 
 			for _, accountName := range accountz.Accounts {
 				accountTag := archive.TagAccount(accountName)

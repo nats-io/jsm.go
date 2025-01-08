@@ -16,7 +16,6 @@ package audit
 import (
 	"errors"
 	"fmt"
-
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
@@ -99,46 +98,33 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 
 // checkMetaClusterOfflineReplicas verify that all meta-cluster replicas are online for each known cluster
 func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	jsTag := archive.TagServerJetStream()
-
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIJszResponse
-			var jetStreamInfo *server.JSInfo
-			err := r.Load(&resp, clusterTag, serverTag, jsTag)
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
-			}
-			jetStreamInfo = resp.Data
-
-			if jetStreamInfo.Disabled {
-				continue
-			}
-
-			if jetStreamInfo.Meta == nil {
-				log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
-				continue
-			}
-
-			for _, peerInfo := range jetStreamInfo.Meta.Replicas {
-				if peerInfo.Offline {
-					examples.Add(
-						"%s - %s reports peer %s as offline",
-						clusterName,
-						serverName,
-						peerInfo.Name,
-					)
-				}
-			}
-
+	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
+
+		if jsz.Data.Disabled {
+			return nil
+		}
+
+		if jsz.Data.Meta == nil {
+			log.Warnf("%s / %s does not have meta group info", clusterTag, serverTag)
+			return nil
+		}
+
+		for _, peerInfo := range jsz.Data.Meta.Replicas {
+			if peerInfo.Offline {
+				examples.Add("%s - %s reports peer %s as offline", clusterTag, serverTag, peerInfo.Name)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
 	if examples.Count() > 0 {

@@ -430,6 +430,40 @@ func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, e
 	})
 }
 
+// EachClusterServerAccountz iterates over all servers ordered by cluster and calls the callback function with the loaded Accountz response
+//
+// The callback function will receive any error encountered during loading the server varz file and should check that and handle it
+// If the callback returns an error iteration is stopped and that error is returned
+//
+// Errors returned match those documented in Load() otherwise any other error that are encountered
+func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIAccountzResponse) error) (int, error) {
+	return r.eachClusterServer(TagServerAccounts(), server.ServerAPIAccountzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
+		az := resp.(*server.ServerAPIAccountzResponse)
+		if az == nil || az.Data == nil {
+			err = ErrNoMatches
+		}
+
+		return cb(clusterTag, serverTag, err, az)
+	})
+}
+
+// EachClusterServerLeafz iterates over all servers ordered by cluster and calls the callback function with the loaded Leafz response
+//
+// The callback function will receive any error encountered during loading the server varz file and should check that and handle it
+// If the callback returns an error iteration is stopped and that error is returned
+//
+// Errors returned match those documented in Load() otherwise any other error that are encountered
+func (r *Reader) EachClusterServerLeafz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPILeafzResponse) error) (int, error) {
+	return r.eachClusterServer(TagServerLeafs(), server.ServerAPIAccountzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
+		az := resp.(*server.ServerAPILeafzResponse)
+		if az == nil || az.Data == nil {
+			err = ErrNoMatches
+		}
+
+		return cb(clusterTag, serverTag, err, az)
+	})
+}
+
 // helper to iterate all servers, creates instances of targetType based on tag.  targetType must be a non pointer like server.ServerAPIJszResponse{}
 func (r *Reader) eachClusterServer(tag *Tag, targetType any, cb func(clusterTag *Tag, serverTag *Tag, err error, resp any) error) (int, error) {
 	found := 0

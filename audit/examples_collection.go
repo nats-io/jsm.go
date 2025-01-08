@@ -41,7 +41,8 @@ func (c *ExamplesCollection) Add(format string, a ...any) {
 	c.Examples = append(c.Examples, fmt.Sprintf(format, a...))
 }
 
-func (c *ExamplesCollection) clear() {
+// Clear removes all added examples
+func (c *ExamplesCollection) Clear() {
 	c.Examples = []string{}
 }
 

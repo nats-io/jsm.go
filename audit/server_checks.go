@@ -16,12 +16,11 @@ package audit
 import (
 	"errors"
 	"fmt"
-	"strings"
-
 	"github.com/dustin/go-humanize"
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
+	"strings"
 )
 
 func RegisterServerChecks(collection *CheckCollection) error {
@@ -101,163 +100,129 @@ func RegisterServerChecks(collection *CheckCollection) error {
 }
 
 func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	notHealthy, healthy := 0, 0
-
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIVarzResponse
-			var varz *server.Varz
-			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerVars())
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'VARZ' is missing for server %s", serverName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load variables for server %s: %w", serverName, err)
-			}
-			varz = resp.Data
-
-			if varz.AuthRequired {
-				healthy++
-			} else {
-				examples.Add("%s: authentication not required", serverName)
-				notHealthy++
-			}
+	total, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
+
+		if !vz.Data.AuthRequired {
+			examples.Add("%s: authentication not required", serverTag)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
-	if notHealthy > 0 {
-		log.Errorf("%d/%d servers do not require authentication", notHealthy, healthy+notHealthy)
+	if examples.Count() > 0 {
+		log.Errorf("%d/%d servers do not require authentication", examples.Count(), total)
 		return PassWithIssues, nil
 	}
 
-	log.Infof("%d/%d servers require authentication", healthy, healthy)
+	log.Infof("%d/%d servers require authentication", total, total)
 
 	return Pass, nil
 }
 
 // checkServerHealth verify all known servers are reporting healthy
 func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	notHealthy, healthy := 0, 0
-
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIHealthzResponse
-			var health *server.HealthStatus
-			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerHealth())
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'HEALTHZ' is missing for server %s", serverName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load health for server %s: %w", serverName, err)
-			}
-			health = resp.Data
-
-			if health.Status != "ok" {
-				examples.Add("%s: %d - %s", serverName, health.StatusCode, health.Status)
-				notHealthy += 1
-			} else {
-				healthy += 1
-			}
+	total, err := r.EachClusterServerHealthz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, hz *server.ServerAPIHealthzResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
+
+		if hz.Data.Status != "ok" {
+			examples.Add("%s: %d - %s", serverTag, hz.Data.StatusCode, hz.Data.Status)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
-	if notHealthy > 0 {
-		log.Errorf("%d/%d servers are not healthy", notHealthy, healthy+notHealthy)
+	if examples.Count() > 0 {
+		log.Errorf("%d/%d servers are not healthy", examples.Count(), total)
 		return PassWithIssues, nil
 	}
 
-	log.Infof("%d/%d servers are healthy", healthy, healthy)
+	log.Infof("%d/%d servers are healthy", total, total)
+
 	return Pass, nil
 }
 
 // checkServerVersions verify all known servers are running the same version
 func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	versionsToServersMap := make(map[string][]string)
-
+	seenVersions := make(map[string]struct{})
 	var lastVersionSeen string
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
 
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIVarzResponse
-			var serverVarz *server.Varz
-			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerVars())
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'VARZ' is missing for server %s", serverName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
-			}
-			serverVarz = resp.Data
-
-			version := serverVarz.Version
-
-			_, exists := versionsToServersMap[version]
-			if !exists {
-				// First time encountering this version, create map entry
-				versionsToServersMap[version] = []string{}
-				// Add one example server for each version
-				examples.Add("%s - %s", serverName, version)
-			}
-			// Add this server to the list running this version
-			versionsToServersMap[version] = append(versionsToServersMap[version], serverName)
-			lastVersionSeen = version
+	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
+
+		lastVersionSeen = vz.Data.Version
+		_, exists := seenVersions[lastVersionSeen]
+		if !exists {
+			seenVersions[lastVersionSeen] = struct{}{}
+			examples.Add("%s - %s", serverTag, lastVersionSeen)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
-	if len(versionsToServersMap) == 0 {
+	if len(seenVersions) == 0 {
 		log.Warnf("No servers version information found")
 		return Skipped, nil
-	} else if len(versionsToServersMap) > 1 {
-		log.Errorf("Servers are running %d different versions", len(versionsToServersMap))
+	} else if len(seenVersions) > 1 {
+		log.Errorf("Servers are running %d different versions", len(seenVersions))
 		return Fail, nil
 	}
 
 	// Map contains exactly one element (i.e. one version)
-	examples.clear()
+	examples.Clear()
 
 	log.Infof("All servers are running version %s", lastVersionSeen)
+
 	return Pass, nil
 }
 
 // checkServerCPUUsage verify CPU usage is below the given threshold for each server
 func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	severVarsTag := archive.TagServerVars()
 	cpuThreshold := check.Configuration["cpu"].Value()
 
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIVarzResponse
-			var serverVarz *server.Varz
-			err := r.Load(&resp, serverTag, clusterTag, severVarsTag)
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'VARZ' is missing for server %s", serverName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load VARZ for server %s: %w", serverName, err)
-			}
-			serverVarz = resp.Data
-
-			// Example: 350% usage with 4 cores => 87.5% averaged
-			averageCpuUtilization := serverVarz.CPU / float64(serverVarz.Cores)
-
-			if averageCpuUtilization > cpuThreshold {
-				examples.Add("%s - %s: %.1f%%", clusterName, serverName, averageCpuUtilization)
-			}
+	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag.Value)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
 		}
+
+		// Example: 350% usage with 4 cores => 87.5% averaged
+		averageCpuUtilization := vz.Data.CPU / float64(vz.Data.Cores)
+
+		if averageCpuUtilization > cpuThreshold {
+			examples.Add("%s - %s: %.1f%%", clusterTag, serverTag, averageCpuUtilization)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
 	if examples.Count() > 0 {
@@ -270,85 +235,65 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 
 // checkSlowConsumers verify that no server is reporting slow consumers
 func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	totalSlowConsumers := int64(0)
-
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIVarzResponse
-			var serverVarz *server.Varz
-			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerVars())
-			if err != nil {
-				return Skipped, fmt.Errorf("failed to load Varz for server %s: %w", serverName, err)
-			}
-			serverVarz = resp.Data
-
-			if slowConsumers := serverVarz.SlowConsumers; slowConsumers > 0 {
-				examples.Add("%s/%s: %d slow consumers", clusterName, serverName, slowConsumers)
-				totalSlowConsumers += slowConsumers
-			}
+	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag.Value)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
 		}
+
+		if slowConsumers := vz.Data.SlowConsumers; slowConsumers > 0 {
+			examples.Add("%s/%s: %d slow consumers", clusterTag, serverTag, slowConsumers)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
-	if totalSlowConsumers > 0 {
-		log.Errorf("Total slow consumers: %d", totalSlowConsumers)
+	if examples.Count() > 0 {
+		log.Errorf("Total slow consumers: %d", examples.Count())
 		return PassWithIssues, nil
 	}
 
 	log.Infof("No slow consumers detected")
+
 	return Pass, nil
 }
 
 // checkServerResourceLimits verifies that the resource usage of memory and store is not approaching the reserved amount for each known server
 func checkServerResourceLimits(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	jsTag := archive.TagServerJetStream()
-
 	memoryUsageThreshold := check.Configuration["memory"].Value()
 	storeUsageThreshold := check.Configuration["store"].Value()
 
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
+	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag.Value)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
+		}
 
-			var resp server.ServerAPIJszResponse
-			var serverJSInfo *server.JSInfo
-			err := r.Load(&resp, clusterTag, serverTag, jsTag)
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
-			}
-			serverJSInfo = resp.Data
-
-			if serverJSInfo.ReservedMemory > 0 {
-				threshold := uint64(float64(serverJSInfo.ReservedMemory) * memoryUsageThreshold)
-				if serverJSInfo.Memory > threshold {
-					examples.Add(
-						"%s memory usage: %s of %s",
-						serverName,
-						humanize.IBytes(serverJSInfo.Memory),
-						humanize.IBytes(serverJSInfo.ReservedMemory),
-					)
-				}
-			}
-
-			if serverJSInfo.ReservedStore > 0 {
-				threshold := uint64(float64(serverJSInfo.ReservedStore) * storeUsageThreshold)
-				if serverJSInfo.Store > threshold {
-					examples.Add(
-						"%s store usage: %s of %s",
-						serverName,
-						humanize.IBytes(serverJSInfo.Store),
-						humanize.IBytes(serverJSInfo.ReservedStore),
-					)
-				}
+		if jsz.Data.ReservedMemory > 0 {
+			threshold := uint64(float64(jsz.Data.ReservedMemory) * memoryUsageThreshold)
+			if jsz.Data.Memory > threshold {
+				examples.Add("%s memory usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Memory), humanize.IBytes(jsz.Data.ReservedMemory))
 			}
 		}
+
+		if jsz.Data.ReservedStore > 0 {
+			threshold := uint64(float64(jsz.Data.ReservedStore) * storeUsageThreshold)
+			if jsz.Data.Store > threshold {
+				examples.Add("%s store usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Store), humanize.IBytes(jsz.Data.ReservedStore))
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
 	if examples.Count() > 0 {
@@ -360,31 +305,28 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 }
 
 func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIJszResponse
-			var serverJsz *server.JSInfo
-			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerJetStream())
-			if err != nil {
-				log.Warnf("Artifact 'JSZ' is missing for server %s", serverName)
-				continue
-			}
-			serverJsz = resp.Data
-
-			// check if jetstream domain contains whitespace
-			if strings.ContainsAny(serverJsz.Config.Domain, " \n") {
-				examples.Add("Cluster %s Server %s Domain %s", clusterName, serverName, serverJsz.Config.Domain)
-			}
+	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag.Value)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
 		}
+
+		// check if jetstream domain contains whitespace
+		if strings.ContainsAny(jsz.Data.Config.Domain, " \n") {
+			examples.Add("Cluster %s Server %s Domain %s", clusterTag, serverTag, jsz.Data.Config.Domain)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
 	if examples.Count() > 0 {
 		log.Errorf("Found %d servers with JetStream domains containing whitespace", examples.Count())
-		return Fail, nil
+		return PassWithIssues, nil
 	}
 
 	return Pass, nil

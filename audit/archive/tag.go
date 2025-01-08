@@ -25,6 +25,8 @@ type Tag struct {
 	Value string
 }
 
+func (t *Tag) String() string { return t.Value }
+
 const (
 	serverTagLabel      TagLabel = "server"
 	clusterTagLabel     TagLabel = "cluster"

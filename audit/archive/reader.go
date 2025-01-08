@@ -17,6 +17,9 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
+	"reflect"
+
+	"github.com/nats-io/nats-server/v2/server"
 	"io"
 	"os"
 	"slices"
@@ -374,4 +377,80 @@ func shrinkMapOfSets[T any](m map[string]map[string]T) ([]string, map[string][]s
 	}
 	slices.Sort(keysList)
 	return keysList, newMap
+}
+
+// EachClusterServerVarz iterates over all servers ordered by cluster and calls the callback function with the loaded Varz response
+//
+// The callback function will receive any error encountered during loading the server varz file and should check that and handle it
+// If the callback returns an error iteration is stopped and that error is returned
+//
+// Errors returned match those documented in Load() otherwise any other error that are encountered
+func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIVarzResponse) error) (int, error) {
+	return r.eachClusterServer(TagServerVars(), server.ServerAPIVarzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
+		vz := resp.(*server.ServerAPIVarzResponse)
+		if vz == nil || vz.Data == nil {
+			err = ErrNoMatches
+		}
+
+		return cb(clusterTag, serverTag, err, vz)
+	})
+}
+
+// EachClusterServerHealthz iterates over all servers ordered by cluster and calls the callback function with the loaded Healthz response
+//
+// The callback function will receive any error encountered during loading the server varz file and should check that and handle it
+// If the callback returns an error iteration is stopped and that error is returned
+//
+// Errors returned match those documented in Load() otherwise any other error that are encountered
+func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIHealthzResponse) error) (int, error) {
+	return r.eachClusterServer(TagServerJetStream(), server.ServerAPIHealthzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
+		hz := resp.(*server.ServerAPIHealthzResponse)
+		if hz == nil || hz.Data == nil {
+			err = ErrNoMatches
+		}
+
+		return cb(clusterTag, serverTag, err, hz)
+	})
+}
+
+// EachClusterServerJsz iterates over all servers ordered by cluster and calls the callback function with the loaded Jsz response
+//
+// The callback function will receive any error encountered during loading the server varz file and should check that and handle it
+// If the callback returns an error iteration is stopped and that error is returned
+//
+// Errors returned match those documented in Load() otherwise any other error that are encountered
+func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIJszResponse) error) (int, error) {
+	return r.eachClusterServer(TagServerJetStream(), server.ServerAPIJszResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
+		jsz := resp.(*server.ServerAPIJszResponse)
+		if jsz == nil || jsz.Data == nil {
+			err = ErrNoMatches
+		}
+
+		return cb(clusterTag, serverTag, err, jsz)
+	})
+}
+
+// helper to iterate all servers, creates instances of targetType based on tag.  targetType must be a non pointer like server.ServerAPIJszResponse{}
+func (r *Reader) eachClusterServer(tag *Tag, targetType any, cb func(clusterTag *Tag, serverTag *Tag, err error, resp any) error) (int, error) {
+	found := 0
+
+	for _, clusterName := range r.ClusterNames() {
+		clusterTag := TagCluster(clusterName)
+		servers := r.ClusterServerNames(clusterName)
+		found = len(servers)
+
+		for _, serverName := range servers {
+			serverTag := TagServer(serverName)
+
+			resp := reflect.New(reflect.TypeOf(targetType)).Interface()
+			err := r.Load(&resp, clusterTag, serverTag, tag)
+
+			err = cb(clusterTag, serverTag, err, resp)
+			if err != nil {
+				return found, err
+			}
+		}
+	}
+
+	return found, nil
 }

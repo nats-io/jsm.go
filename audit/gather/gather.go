@@ -695,7 +695,7 @@ func Gather(nc *nats.Conn, conf *Configuration) error {
 		cfg:     conf,
 		nc:      nc,
 		capture: &captureLogBuffer,
-		log:     NewLogger(&captureLogBuffer, conf.LogLevel),
+		log:     newLogger(&captureLogBuffer, conf.LogLevel),
 	}
 
 	return g.start()

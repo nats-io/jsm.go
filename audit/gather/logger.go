@@ -14,7 +14,7 @@ type logger struct {
 	logFunc func(format string, a ...any)
 }
 
-func NewLogger(capture io.Writer, level api.Level) api.Logger {
+func newLogger(capture io.Writer, level api.Level) api.Logger {
 	l := &logger{
 		lvl:     level,
 		logFunc: log.Printf,

@@ -229,6 +229,13 @@ func (c *CheckCollection) ConfigurationItems() []*CheckConfiguration {
 	}
 
 	sort.Slice(res, func(i, j int) bool {
+		switch strings.Compare(res[i].Check, res[j].Check) {
+		case -1:
+			return true
+		case 1:
+			return false
+		}
+
 		return res[i].Key < res[j].Key
 	})
 

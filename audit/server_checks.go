@@ -206,10 +206,10 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 
 	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
 		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag.Value)
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
 			return nil
 		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
 
 		// Example: 350% usage with 4 cores => 87.5% averaged
@@ -237,10 +237,10 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
 		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag.Value)
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
 			return nil
 		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
 
 		if slowConsumers := vz.Data.SlowConsumers; slowConsumers > 0 {
@@ -270,10 +270,10 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 
 	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
 		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag.Value)
+			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
 			return nil
 		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
 
 		if jsz.Data.ReservedMemory > 0 {
@@ -307,10 +307,10 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
 		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag.Value)
+			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
 			return nil
 		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag.Value, err)
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
 
 		// check if jetstream domain contains whitespace

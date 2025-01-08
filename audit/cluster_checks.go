@@ -114,13 +114,7 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 
 		for serverName, serverMemoryUsage := range clusterMemoryUsageMap {
 			if serverMemoryUsage > threshold {
-				examples.Add(
-					"Cluster %s avg: %s, server %s: %s",
-					clusterName,
-					humanize.IBytes(uint64(clusterMemoryUsageMean)),
-					serverName,
-					humanize.IBytes(uint64(serverMemoryUsage)),
-				)
+				examples.Add("Cluster %s avg: %s, server %s: %s", clusterName, humanize.IBytes(uint64(clusterMemoryUsageMean)), serverName, humanize.IBytes(uint64(serverMemoryUsage)))
 				clustersWithIssuesMap[clusterName] = nil
 			}
 		}
@@ -202,15 +196,7 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 			var previousTargetClusterNames []string
 			for serverName, targetClusterNames := range t.configuredGateways {
 				if previousTargetClusterNames != nil {
-					log.Debugf(
-						"Cluster %s - Comparing configured %s gateways of %s (%d) to %s (%d)",
-						clusterName,
-						t.gatewayType,
-						serverName,
-						len(targetClusterNames),
-						previousServerName,
-						len(previousTargetClusterNames),
-					)
+					log.Debugf("Cluster %s - Comparing configured %s gateways of %s (%d) to %s (%d)", clusterName, t.gatewayType, serverName, len(targetClusterNames), previousServerName, len(previousTargetClusterNames))
 					if !reflect.DeepEqual(targetClusterNames, previousTargetClusterNames) {
 						examples.Add(
 							"Cluster %s, %s gateways server %s: %v != server %s: %v",
@@ -238,33 +224,28 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 
 // checkClusterHighHAAssets verifies the number of HA assets is below some the given number for each known server in each known cluster
 func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	jsTag := archive.TagServerJetStream()
 	haAssetsThreshold := check.Configuration["assets"].Value()
 
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			var resp server.ServerAPIJszResponse
-			var serverJSInfo *server.JSInfo
-			err := r.Load(&resp, clusterTag, serverTag, jsTag)
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
-			}
-			serverJSInfo = resp.Data
-
-			if float64(serverJSInfo.HAAssets) > haAssetsThreshold {
-				examples.Add("%s: %d HA assets", serverName, serverJSInfo.HAAssets)
-			}
+	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
+
+		if float64(jsz.Data.HAAssets) > haAssetsThreshold {
+			examples.Add("%s: %d HA assets", serverTag, jsz.Data.HAAssets)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
 	}
 
 	if examples.Count() > 0 {
-		log.Errorf("Found %d servers with >%d HA assets", examples.Count(), haAssetsThreshold)
+		log.Errorf("Found %d servers with JetStream domains containing whitespace", examples.Count())
 		return PassWithIssues, nil
 	}
 

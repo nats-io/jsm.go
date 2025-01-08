@@ -127,13 +127,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 			streamTag := archive.TagStream(streamName)
 			serverNames := r.StreamServerNames(accountName, streamName)
 
-			log.Debugf(
-				"Inspecting account '%s' stream '%s', found %d servers: %v",
-				accountName,
-				streamName,
-				len(serverNames),
-				serverNames,
-			)
+			log.Debugf("Inspecting account '%s' stream '%s', found %d servers: %v", accountName, streamName, len(serverNames), serverNames)
 
 			// Create map server->streamDetails
 			replicasStreamDetails := make(map[string]*api.StreamInfo, len(serverNames))
@@ -144,13 +138,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 				streamDetails := &api.StreamInfo{}
 				err := r.Load(streamDetails, accountTag, streamTag, serverTag, typeTag)
 				if errors.Is(err, archive.ErrNoMatches) {
-					log.Warnf(
-						"Artifact not found: %s for stream %s in account %s by server %s",
-						typeTag.Value,
-						streamName,
-						accountName,
-						serverName,
-					)
+					log.Warnf("Artifact not found: %s for stream %s in account %s by server %s", typeTag, streamName, accountName, serverName)
 					continue
 				} else if err != nil {
 					return Skipped, fmt.Errorf("failed to lookup stream artifact: %w", err)
@@ -176,13 +164,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 						highestLastSeqServer = serverName
 					}
 				}
-				log.Debugf(
-					"Stream %s / %s highest last sequence: %d @ %s",
-					accountName,
-					streamName,
-					highestLastSeq,
-					highestLastSeqServer,
-				)
+				log.Debugf("Stream %s / %s highest last sequence: %d @ %s", accountName, streamName, highestLastSeq, highestLastSeqServer)
 
 				// Check if some server's sequence is below warning threshold
 				maxDelta := uint64(float64(highestLastSeq) * lastSequenceLagThreshold)
@@ -193,15 +175,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 				for serverName, streamDetail := range replicasStreamDetails {
 					lastSeq := streamDetail.State.LastSeq
 					if lastSeq < threshold {
-						examples.Add(
-							"%s/%s server %s lastSequence: %d is behind highest lastSequence: %d on server: %s",
-							accountName,
-							streamName,
-							serverName,
-							lastSeq,
-							highestLastSeq,
-							highestLastSeqServer,
-						)
+						examples.Add("%s/%s server %s lastSequence: %d is behind highest lastSequence: %d on server: %s", accountName, streamName, serverName, lastSeq, highestLastSeq, highestLastSeqServer)
 						laggingReplicas += 1
 					}
 				}
@@ -272,16 +246,7 @@ func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollec
 		}
 		threshold := int64(float64(limit) * percentThreshold)
 		if value > threshold {
-			examples.Add(
-				"stream %s (in %s on %s) using %.1f%% of %s limit (%d/%d)",
-				streamName,
-				accountName,
-				serverName,
-				float64(value)*100/float64(limit),
-				limitName,
-				value,
-				limit,
-			)
+			examples.Add("stream %s (in %s on %s) using %.1f%% of %s limit (%d/%d)", streamName, accountName, serverName, float64(value)*100/float64(limit), limitName, value, limit)
 		}
 	}
 

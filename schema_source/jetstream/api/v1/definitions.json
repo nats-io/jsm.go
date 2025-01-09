@@ -1204,6 +1204,15 @@
         "consumer_limits": {
           "description": "Limits of certain values that consumers can set, defaults for those who don't set these settings",
           "$ref": "#/definitions/stream_consumer_limits"
+        },
+        "allow_msg_ttl": {
+          "description": "Enables per-message TTL using headers",
+          "type": "boolean",
+          "default": false
+        },
+        "limits_ttl": {
+          "description": "Writes messages into the stream when certain limits are applied, using this ttl",
+          "$ref": "#/definitions/golang_duration_nanos"
         }
       }
     },

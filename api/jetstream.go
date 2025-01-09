@@ -32,6 +32,7 @@ const (
 	JSMetaCurrentServerLevel   = "_nats.level"
 	JSMetaCurrentServerVersion = "_nats.ver"
 	JsMetaRequiredServerLevel  = "_nats.req.level"
+	JSMessageTTL               = "Nats-TTL"
 )
 
 // Responses to requests sent to a server from a client.

@@ -1,3 +1,4 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/nats-io/jsm.go.svg)](https://pkg.go.dev/github.com/nats-io/jsm.go)
 ## Overview
 
 This is a Go based library to manage and interact with JetStream.

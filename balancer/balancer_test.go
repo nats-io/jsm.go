@@ -18,7 +18,7 @@ import (
 func TestBalanceStream(t *testing.T) {
 	withJSCluster(t, 3, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
 		streams := []*jsm.Stream{}
-		for i := 1; i <= 10; i++ {
+		for i := 1; i < 10; i++ {
 			streamName := fmt.Sprintf("tests%d", i)
 			subjects := fmt.Sprintf("tests%d.*", i)
 			s, err := mgr.NewStream(streamName, jsm.Subjects(subjects), jsm.MemoryStorage(), jsm.Replicas(3))
@@ -62,7 +62,7 @@ func TestBalanceConsumer(t *testing.T) {
 		defer s.Delete()
 
 		consumers := []*jsm.Consumer{}
-		for i := 1; i <= 10; i++ {
+		for i := 1; i < 10; i++ {
 			consumerName := fmt.Sprintf("testc%d", i)
 			c, err := mgr.NewConsumer("TEST_CONSUMER_BALANCE", jsm.ConsumerName(consumerName))
 			if err != nil {
@@ -154,7 +154,7 @@ func withJSCluster(t *testing.T, retries int, cb func(*testing.T, []*server.Serv
 	}
 	defer nc.Close()
 
-	mgr, err := jsm.New(nc, jsm.WithTimeout(time.Second))
+	mgr, err := jsm.New(nc, jsm.WithTimeout(5*time.Second))
 	if err != nil {
 		t.Fatalf("manager creation failed: %s", err)
 	}

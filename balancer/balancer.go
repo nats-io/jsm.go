@@ -31,9 +31,9 @@ import (
 // step down a number of streams/consumers until the even distribution is met.
 // Which streams/consumers are stepped down is determined randomly. We use
 // preferred placement to move the leadership to a server with less than
-// the even distribution. If stepping down fails, we will move on the next
-// randomly selected server. If we get a second, similar failure the Balancer
-// will return an error.
+// the even distribution on the same cluster. If stepping down fails, we
+// will move on the next randomly selected server. If we get a second, similar
+// failure the Balancer will return an error.
 type Balancer struct {
 	nc  *nats.Conn
 	log api.Logger
@@ -49,6 +49,7 @@ type peer struct {
 	name     string
 	entities []balanceEntity
 	offset   int
+	clusters map[string]bool
 }
 
 // New returns a new instance of the Balancer
@@ -73,8 +74,8 @@ func New(nc *nats.Conn, log api.Logger) (*Balancer, error) {
 	}, nil
 }
 
-func (b *Balancer) calcOffset(server *map[string]*peer, evenDistribution int) {
-	for _, s := range *server {
+func (b *Balancer) calcOffset(servers *map[string]*peer, evenDistribution int) {
+	for _, s := range *servers {
 		s.offset = len(s.entities) - evenDistribution
 	}
 }
@@ -102,19 +103,22 @@ func (b *Balancer) mapEntityToServers(entity balanceEntity, serverMap map[string
 		tmp := peer{
 			name:     leaderName,
 			entities: []balanceEntity{},
+			clusters: map[string]bool{},
 		}
 		serverMap[leaderName] = &tmp
 	}
 	serverMap[leaderName].entities = append(serverMap[leaderName].entities, entity)
+	serverMap[leaderName].clusters[info.Name] = true
 
 	for _, replica := range info.Replicas {
 		_, ok = serverMap[replica.Name]
 		if !ok {
-			tmp := peer{
+			tmp := &peer{
 				name:     replica.Name,
 				entities: []balanceEntity{},
+				clusters: map[string]bool{info.Name: true},
 			}
-			serverMap[replica.Name] = &tmp
+			serverMap[replica.Name] = tmp
 		}
 	}
 
@@ -123,34 +127,38 @@ func (b *Balancer) mapEntityToServers(entity balanceEntity, serverMap map[string
 
 func (b *Balancer) calcDistribution(entities, servers int) int {
 	evenDistributionf := float64(entities) / float64(servers)
-	return int(math.Floor(evenDistributionf + 0.5))
+	if evenDistributionf == float64(int64(evenDistributionf)) {
+		return int(evenDistributionf)
+	}
+	return int(math.Ceil(evenDistributionf + 0.5))
 }
 
 func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, typeHint string) (int, error) {
-	//var err error
 	steppedDown := 0
-
 	for !b.isBalanced(servers) {
 		for _, s := range servers {
 			if s.offset > 0 {
 				b.log.Infof("Found server '%s' with offset of %d. Rebalancing", s.name, s.offset)
 				retries := 0
-				for i := 0; i <= s.offset; i++ {
+				for s.offset > 0 {
 					// find a random stream (or consumer) to move to another server
 					randomIndex := rand.Intn(len(s.entities))
 					entity := s.entities[randomIndex]
+					clusterinfo, err := entity.ClusterInfo()
+					if err != nil {
+						return 0, fmt.Errorf("unable to get clusterinfo for %s '%s'. %s", typeHint, entity.Name(), err)
+					}
 
 					for _, ns := range servers {
-						if ns.offset < 0 {
+						if ns.offset < 0 && ns.clusters[clusterinfo.Name] {
 							b.log.Infof("Requesting leader '%s' step down for %s '%s'. New preferred leader is %s.", s.name, typeHint, entity.Name(), ns.name)
-							placement := api.Placement{Preferred: ns.name}
+							placement := api.Placement{Preferred: ns.name, Cluster: clusterinfo.Name}
 							err := entity.LeaderStepDown(&placement)
 							if err != nil {
 								b.log.Errorf("Unable to step down leader for  %s - %s", entity.Name(), err)
 								// If we failed to step down the stream, decrement the iterator so that we don't kick one too few
 								// Limit this to one retry, if we can't step down multiple leaders something is wrong
 								if retries == 0 {
-									i--
 									retries++
 									s.entities = slices.Delete(s.entities, randomIndex, randomIndex+1)
 									break
@@ -162,6 +170,7 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, typeH
 							steppedDown += 1
 							ns.offset += 1
 							s.offset -= 1
+							// Remove the entity we just moved from the server so it can't be randomly selected again
 							s.entities = slices.Delete(s.entities, randomIndex, randomIndex+1)
 							break
 						}

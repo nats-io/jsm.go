@@ -15,24 +15,46 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-func TestBalanceStream(t *testing.T) {
-	withJSCluster(t, 3, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
+func TestBalancer(t *testing.T) {
+	withJSCluster(t, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
+		var err error
+		waitTime := 100 * time.Millisecond
 		streams := []*jsm.Stream{}
-		for i := 1; i < 10; i++ {
+		for i := 1; i <= 3; i++ {
 			streamName := fmt.Sprintf("tests%d", i)
 			subjects := fmt.Sprintf("tests%d.*", i)
 			s, err := mgr.NewStream(streamName, jsm.Subjects(subjects), jsm.MemoryStorage(), jsm.Replicas(3))
 			if err != nil {
 				t.Fatalf("could not create stream %s", err)
 			}
-			streams = append(streams, s)
-			defer s.Delete()
-		}
+			info, _ := s.ClusterInfo()
+			if info.Leader != "s1" {
+				placement := api.Placement{Preferred: "s1"}
+				err = s.LeaderStepDown(&placement)
+				if err != nil {
+					t.Fatalf("could not move stream %s", err)
+				}
+			}
 
-		servers[2].DisableJetStream()
-		err := servers[2].EnableJetStream(nil)
-		if err != nil {
-			return err
+			var ns *jsm.Stream
+
+			for i := 1; i <= 5; i++ {
+				ns, err = mgr.LoadStream(streamName)
+				if err != nil {
+					t.Fatal(err)
+				}
+				info, _ := ns.ClusterInfo()
+				if info.Leader != "" {
+					break
+				}
+				if i == 5 {
+					t.Fatalf("could not load stream %s after %dms", streamName, i*int(waitTime))
+				}
+				time.Sleep(waitTime)
+			}
+
+			streams = append(streams, ns)
+			defer s.Delete()
 		}
 
 		b, err := New(nc, api.NewDefaultLogger(api.DebugLevel))
@@ -48,42 +70,46 @@ func TestBalanceStream(t *testing.T) {
 		if count == 0 {
 			return err
 		}
-		return nil
-	})
-}
-
-func TestBalanceConsumer(t *testing.T) {
-	withJSCluster(t, 3, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
-		s, err := mgr.NewStream("TEST_CONSUMER_BALANCE", jsm.Subjects("test.*"), jsm.MemoryStorage(), jsm.Replicas(3))
-		if err != nil {
-			return err
-		}
-
-		defer s.Delete()
 
 		consumers := []*jsm.Consumer{}
-		for i := 1; i < 10; i++ {
+		for i := 1; i <= 3; i++ {
 			consumerName := fmt.Sprintf("testc%d", i)
-			c, err := mgr.NewConsumer("TEST_CONSUMER_BALANCE", jsm.ConsumerName(consumerName))
+			c, err := mgr.NewConsumer("tests1", jsm.DurableName(consumerName), jsm.ConsumerOverrideReplicas(3))
 			if err != nil {
 				return err
 			}
-			consumers = append(consumers, c)
+
+			info, _ := c.ClusterInfo()
+			if info.Leader != "s1" {
+				placement := api.Placement{Preferred: "s1"}
+				err = c.LeaderStepDown(&placement)
+				if err != nil {
+					t.Fatalf("could not move consumer %s", err)
+				}
+			}
+
+			var nc *jsm.Consumer
+
+			for i := 1; i <= 5; i++ {
+				nc, err = mgr.LoadConsumer("tests1", consumerName)
+				if err == nil {
+					info, _ := nc.ClusterInfo()
+					if info.Leader != "" {
+						break
+					}
+				}
+
+				if i == 5 {
+					t.Fatalf("could not load stream %s after %dms", consumerName, i*int(waitTime))
+				}
+				time.Sleep(waitTime)
+			}
+
+			consumers = append(consumers, nc)
 			defer c.Delete()
 		}
 
-		servers[2].DisableJetStream()
-		err = servers[2].EnableJetStream(nil)
-		if err != nil {
-			return err
-		}
-
-		b, err := New(nc, api.NewDefaultLogger(api.DebugLevel))
-		if err != nil {
-			return err
-		}
-
-		count, err := b.BalanceConsumers(consumers)
+		count, err = b.BalanceConsumers(consumers)
 		if err != nil {
 			return err
 		}
@@ -96,7 +122,7 @@ func TestBalanceConsumer(t *testing.T) {
 	})
 }
 
-func withJSCluster(t *testing.T, retries int, cb func(*testing.T, []*server.Server, *nats.Conn, *jsm.Manager) error) {
+func withJSCluster(t *testing.T, cb func(*testing.T, []*server.Server, *nats.Conn, *jsm.Manager) error) {
 	t.Helper()
 
 	d, err := os.MkdirTemp("", "jstest")
@@ -159,7 +185,7 @@ func withJSCluster(t *testing.T, retries int, cb func(*testing.T, []*server.Serv
 		t.Fatalf("manager creation failed: %s", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
@@ -172,12 +198,7 @@ func withJSCluster(t *testing.T, retries int, cb func(*testing.T, []*server.Serv
 				continue
 			}
 
-			for i := 0; i < retries; i++ {
-				err = cb(t, servers, nc, mgr)
-				if err == nil {
-					break
-				}
-			}
+			err = cb(t, servers, nc, mgr)
 
 			if err != nil {
 				t.Fatal(err)

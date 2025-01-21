@@ -1210,9 +1210,14 @@
           "type": "boolean",
           "default": false
         },
-        "limits_ttl": {
-          "description": "Writes messages into the stream when certain limits are applied, using this ttl",
-          "$ref": "#/definitions/golang_duration_nanos"
+        "subject_delete_markers": {
+          "description": "Enables placing markers in the stream for certain message delete operations",
+          "type": "boolean",
+          "default": false
+        },
+        "subject_delete_marker_ttl": {
+          "description": "When placing a marker, how long should it be valid, defaults to 15m",
+          "type": "string"
         }
       }
     },

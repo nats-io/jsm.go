@@ -181,7 +181,7 @@
               "maximum": 9223372036854775807
             },
             "max_deliver": {
-              "description": "The number of times a message will be redelivered to consumers if not acknowledged in time",
+              "description": "The number of times a message will be delivered to consumers if not acknowledged in time",
               "default": -1,
               "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
               "type": "integer",

@@ -725,7 +725,7 @@
         },
         "max_deliver": {
           "$ref": "#/definitions/golang_int",
-          "description": "The number of times a message will be redelivered to consumers if not acknowledged in time",
+          "description": "The number of times a message will be delivered to consumers if not acknowledged in time",
           "default": -1
         },
         "filter_subject": {

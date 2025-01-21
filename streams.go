@@ -545,10 +545,23 @@ func AllowMsgTTL() StreamOption {
 	}
 }
 
-func LimitsAppliedTTL(ttl time.Duration) StreamOption {
+func AllowSubjectDeleteMarkers() StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.AllowMsgTTL = true
-		o.LimitsTTL = ttl
+		o.SubjectDeleteMarkers = true
+		return nil
+	}
+}
+
+func SubjectDeleteMarkerTTL(d string) StreamOption {
+	return func(o *api.StreamConfig) error {
+		err := AllowSubjectDeleteMarkers()(o)
+		if err != nil {
+			return err
+		}
+
+		o.SubjectDeleteMarkerTTL = d
+
 		return nil
 	}
 }
@@ -1132,5 +1145,6 @@ func (s *Stream) Metadata() map[string]string              { return s.cfg.Metada
 func (s *Stream) Compression() api.Compression             { return s.cfg.Compression }
 func (s *Stream) FirstSequence() uint64                    { return s.cfg.FirstSeq }
 func (s *Stream) AllowMsgTTL() bool                        { return s.cfg.AllowMsgTTL }
-func (s *Stream) LimitsTTL() time.Duration                 { return s.cfg.LimitsTTL }
+func (s *Stream) SubjectDeleteMarkers() bool               { return s.cfg.SubjectDeleteMarkers }
+func (s *Stream) SubjectDeleteMarkerTTL() string           { return s.cfg.SubjectDeleteMarkerTTL }
 func (s *Stream) ConsumerLimits() api.StreamConsumerLimits { return s.cfg.ConsumerLimits }

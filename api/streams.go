@@ -583,8 +583,10 @@ type StreamConfig struct {
 	// AllowMsgTTL allows header initiated per-message TTLs. If disabled,
 	// then the `NATS-TTL` header will be ignored.
 	AllowMsgTTL bool `json:"allow_msg_ttl,omitempty" yaml:"allow_msg_ttl"`
-	// LimitsTTL activates writing of messages when limits are applied with a specific TTL.
-	LimitsTTL time.Duration `json:"limits_ttl,omitempty" yaml:"limits_ttl"`
+	// Enables placing markers in the stream for certain message delete operations
+	SubjectDeleteMarkers bool `json:"subject_delete_markers,omitempty"`
+	// When placing a marker, how long should it be valid, defaults to 15m
+	SubjectDeleteMarkerTTL string `json:"subject_delete_marker_ttl,omitempty"`
 	// The following defaults will apply to consumers when created against
 	// this stream, unless overridden manually. They also represent the maximum values that
 	// these properties may have

@@ -293,9 +293,9 @@ func (p *ReplayPolicy) UnmarshalYAML(data *yaml.Node) error {
 func (p ReplayPolicy) MarshalYAML() (any, error) {
 	switch p {
 	case ReplayInstant:
-		return "original", nil
-	case ReplayOriginal:
 		return "instant", nil
+	case ReplayOriginal:
+		return "original", nil
 	default:
 		return nil, fmt.Errorf("unknown replay policy: %v", p)
 	}
@@ -316,10 +316,10 @@ func (p *ReplayPolicy) UnmarshalJSON(data []byte) error {
 
 func (p ReplayPolicy) MarshalJSON() ([]byte, error) {
 	switch p {
-	case ReplayOriginal:
-		return json.Marshal("original")
 	case ReplayInstant:
 		return json.Marshal("instant")
+	case ReplayOriginal:
+		return json.Marshal("original")
 	default:
 		return nil, fmt.Errorf("unknown replay policy %v", p)
 	}

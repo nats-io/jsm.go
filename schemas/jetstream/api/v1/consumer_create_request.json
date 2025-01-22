@@ -137,11 +137,31 @@
           "type": "string",
           "maxLength": 4096
         },
+        "deliver_policy": {
+          "description": "The point in the stream from which to receive messages",
+          "type": "string",
+          "enum": [
+            "all",
+            "last",
+            "new",
+            "by_start_sequence",
+            "by_start_time",
+            "last_per_subject"
+          ],
+          "default": "all"
+        },
         "deliver_subject": {
+          "description": "The subject to delivery messages to",
+          "type": "string",
+          "minLength": 1
+        },
+        "deliver_group": {
+          "description": "The queue group name used to distribute messages among subscribers",
           "type": "string",
           "minLength": 1
         },
         "ack_policy": {
+          "description": "The requirement of client acknowledgments",
           "type": "string",
           "enum": [
             "none",
@@ -179,6 +199,7 @@
           }
         },
         "replay_policy": {
+          "description": "The rate at which messages will be pushed to a client",
           "type": "string",
           "enum": [
             "instant",
@@ -187,6 +208,7 @@
           "default": "instant"
         },
         "sample_freq": {
+          "description": "Sets the percentage of acknowledgments that should be sampled for observability",
           "type": "string"
         },
         "rate_limit_bps": {
@@ -314,8 +336,21 @@
             "pinned_client"
           ]
         },
-        "pinned_ttl": {
+        "priority_timeout": {
           "description": "For pinned_client priority policy how long before the client times out"
+        },
+        "opt_start_seq": {
+          "description": "Start sequence used with the DeliverByStartSequence deliver policy.",
+          "minimum": 0,
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "maximum": 18446744073709551615
+        },
+        "opt_start_time": {
+          "description": "Start time used with the DeliverByStartSequence deliver policy",
+          "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+          "type": "string",
+          "format": "date-time"
         }
       }
     },

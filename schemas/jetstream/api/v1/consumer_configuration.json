@@ -4,11 +4,7 @@
   "description": "The data structure that describe the configuration of a NATS JetStream Consumer",
   "title": "io.nats.jetstream.api.v1.consumer_configuration",
   "type": "object",
-  "required": [
-    "deliver_policy",
-    "ack_policy",
-    "replay_policy"
-  ],
+  "required": [],
   "allOf": [
     {
       "oneOf": [
@@ -139,7 +135,7 @@
       "default": "all"
     },
     "deliver_subject": {
-      "description": "The subject to delivery messages to",
+      "description": "The subject push consumers delivery messages to",
       "type": "string",
       "minLength": 1
     },

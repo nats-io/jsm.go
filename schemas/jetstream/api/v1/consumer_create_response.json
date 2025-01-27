@@ -38,11 +38,7 @@
           "format": "date-time"
         },
         "config": {
-          "required": [
-            "deliver_policy",
-            "ack_policy",
-            "replay_policy"
-          ],
+          "required": [],
           "allOf": [
             {
               "oneOf": [
@@ -173,7 +169,7 @@
               "default": "all"
             },
             "deliver_subject": {
-              "description": "The subject to delivery messages to",
+              "description": "The subject push consumers delivery messages to",
               "type": "string",
               "minLength": 1
             },

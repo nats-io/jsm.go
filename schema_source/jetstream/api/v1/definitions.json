@@ -687,11 +687,7 @@
       }
     },
     "consumer_configuration": {
-      "required":[
-        "deliver_policy",
-        "ack_policy",
-        "replay_policy"
-      ],
+      "required":[],
       "allOf": [{"$ref": "#/definitions/deliver_policy"}],
       "properties": {
         "durable_name": {
@@ -715,7 +711,7 @@
           "default": "all"
         },
         "deliver_subject": {
-          "description": "The subject to delivery messages to",
+          "description": "The subject push consumers delivery messages to",
           "type": "string",
           "minLength": 1
         },

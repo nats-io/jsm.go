@@ -553,7 +553,7 @@ func AllowSubjectDeleteMarkers() StreamOption {
 	}
 }
 
-func SubjectDeleteMarkerTTL(d string) StreamOption {
+func SubjectDeleteMarkerTTL(d time.Duration) StreamOption {
 	return func(o *api.StreamConfig) error {
 		err := AllowSubjectDeleteMarkers()(o)
 		if err != nil {
@@ -1146,5 +1146,5 @@ func (s *Stream) Compression() api.Compression             { return s.cfg.Compre
 func (s *Stream) FirstSequence() uint64                    { return s.cfg.FirstSeq }
 func (s *Stream) AllowMsgTTL() bool                        { return s.cfg.AllowMsgTTL }
 func (s *Stream) SubjectDeleteMarkers() bool               { return s.cfg.SubjectDeleteMarkers }
-func (s *Stream) SubjectDeleteMarkerTTL() string           { return s.cfg.SubjectDeleteMarkerTTL }
+func (s *Stream) SubjectDeleteMarkerTTL() time.Duration    { return s.cfg.SubjectDeleteMarkerTTL }
 func (s *Stream) ConsumerLimits() api.StreamConsumerLimits { return s.cfg.ConsumerLimits }

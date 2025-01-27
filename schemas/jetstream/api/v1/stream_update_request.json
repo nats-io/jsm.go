@@ -444,7 +444,10 @@
         },
         "subject_delete_marker_ttl": {
           "description": "When placing a marker, how long should it be valid, defaults to 15m",
-          "type": "string"
+          "minimum": 0,
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807
         }
       }
     }

@@ -586,7 +586,7 @@ type StreamConfig struct {
 	// Enables placing markers in the stream for certain message delete operations
 	SubjectDeleteMarkers bool `json:"subject_delete_markers,omitempty" yaml:"subject_delete_markers"`
 	// When placing a marker, how long should it be valid, defaults to 15m
-	SubjectDeleteMarkerTTL string `json:"subject_delete_marker_ttl,omitempty" yaml:"subject_delete_marker_ttl"`
+	SubjectDeleteMarkerTTL time.Duration `json:"subject_delete_marker_ttl,omitempty" yaml:"subject_delete_marker_ttl"`
 	// The following defaults will apply to consumers when created against
 	// this stream, unless overridden manually. They also represent the maximum values that
 	// these properties may have

@@ -527,7 +527,7 @@ type ConsumerConfig struct {
 	DeliverPolicy      DeliverPolicy   `json:"deliver_policy" yaml:"deliver_policy"`
 	DeliverSubject     string          `json:"deliver_subject,omitempty" yaml:"deliver_subject"`
 	DeliverGroup       string          `json:"deliver_group,omitempty" yaml:"deliver_group"`
-	Durable            string          `json:"durable_name,omitempty" yaml:"durable_name"` // Durable is deprecated. All consumers will have names. picked by clients.
+	Durable            string          `json:"durable_name,omitempty" yaml:"durable_name"`
 	Name               string          `json:"name,omitempty" yaml:"name"`
 	FilterSubject      string          `json:"filter_subject,omitempty" yaml:"filter_subject"`
 	FilterSubjects     []string        `json:"filter_subjects,omitempty" yaml:"filter_subjects"`

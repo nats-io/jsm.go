@@ -328,7 +328,7 @@
           }
         },
         "priority_policy": {
-          "description": "The policy the consumer is set to",
+          "description": "The priority policy the consumer is set to",
           "type": "string",
           "enum": [
             "none",

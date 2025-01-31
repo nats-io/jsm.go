@@ -441,13 +441,8 @@
           "type": "boolean",
           "default": false
         },
-        "subject_delete_markers": {
-          "description": "Enables placing markers in the stream for certain message delete operations",
-          "type": "boolean",
-          "default": false
-        },
         "subject_delete_marker_ttl": {
-          "description": "When placing a marker, how long should it be valid, defaults to 15m",
+          "description": "Enables and sets a duration for adding server markers for delete, purge and max age limits",
           "minimum": 0,
           "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
           "type": "integer",

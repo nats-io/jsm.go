@@ -117,8 +117,9 @@ type JSApiStreamListRequest struct {
 
 // io.nats.jetstream.api.v1.stream_msg_delete_request
 type JSApiMsgDeleteRequest struct {
-	Seq     uint64 `json:"seq"`
-	NoErase bool   `json:"no_erase,omitempty"`
+	Seq      uint64 `json:"seq"`
+	NoErase  bool   `json:"no_erase,omitempty"`
+	NoMarker bool   `json:"no_marker,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_msg_delete_response
@@ -171,6 +172,8 @@ type JSApiStreamPurgeRequest struct {
 	Subject string `json:"filter,omitempty"`
 	// Number of messages to keep.
 	Keep uint64 `json:"keep,omitempty"`
+	// Avoids purge markers
+	NoMarker bool `json:"no_marker,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_msg_get_response
@@ -583,9 +586,7 @@ type StreamConfig struct {
 	// AllowMsgTTL allows header initiated per-message TTLs. If disabled,
 	// then the `NATS-TTL` header will be ignored.
 	AllowMsgTTL bool `json:"allow_msg_ttl,omitempty" yaml:"allow_msg_ttl"`
-	// Enables placing markers in the stream for certain message delete operations
-	SubjectDeleteMarkers bool `json:"subject_delete_markers,omitempty" yaml:"subject_delete_markers"`
-	// When placing a marker, how long should it be valid, defaults to 15m
+	// SubjectDeleteMarkerTTL enables and sets a duration for adding server markers for delete, purge and max age limits
 	SubjectDeleteMarkerTTL time.Duration `json:"subject_delete_marker_ttl,omitempty" yaml:"subject_delete_marker_ttl"`
 	// The following defaults will apply to consumers when created against
 	// this stream, unless overridden manually. They also represent the maximum values that

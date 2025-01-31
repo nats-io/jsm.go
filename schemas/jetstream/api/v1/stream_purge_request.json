@@ -22,6 +22,10 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 18446744073709551615
+    },
+    "no_marker": {
+      "type": "boolean",
+      "description": "Prevents placing a purge marker in streams with markers enabled"
     }
   }
 }

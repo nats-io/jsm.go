@@ -1011,6 +1011,30 @@ func TestFirstSequence(t *testing.T) {
 	}
 }
 
+func TestStreamSubjectDeleteMarkerTTL(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test"))
+	checkErr(t, err, "create failed")
+
+	if s.SubjectDeleteMarkerTTL() != 0 {
+		t.Fatalf("Expected DeleteMarkerTTL to be 0 got %v", s.SubjectDeleteMarkerTTL())
+	}
+
+	err = s.Delete()
+	checkErr(t, err, "delete failed")
+
+	s, err = mgr.NewStream("m1", jsm.Subjects("test"), jsm.AllowMsgTTL(), jsm.SubjectDeleteMarkerTTL(time.Minute))
+	checkErr(t, err, "create failed")
+
+	if s.SubjectDeleteMarkerTTL() != time.Minute {
+		t.Fatalf("Expected DeleteMarkerTTL to be 1 minute got %v", s.SubjectDeleteMarkerTTL())
+	}
+
+}
+
 func TestStreamSealed(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()
@@ -1118,6 +1142,7 @@ func TestStream_Compression(t *testing.T) {
 		t.Fatalf("s2 compression was not reported correctly")
 	}
 }
+
 func TestStream_DetectGaps(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()

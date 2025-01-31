@@ -630,7 +630,7 @@ func TestStream_DeleteMessage(t *testing.T) {
 	_, err = stream.ReadMessage(1)
 	checkErr(t, err, "load failed")
 
-	err = stream.DeleteMessage(1)
+	err = stream.DeleteMessageRequest(api.JSApiMsgDeleteRequest{Seq: 1})
 	checkErr(t, err, "delete failed")
 
 	msg, err := stream.ReadMessage(1)
@@ -1060,7 +1060,7 @@ func TestStreamSealed(t *testing.T) {
 		t.Fatalf("expected a sealed stream")
 	}
 
-	err = s.DeleteMessage(1)
+	err = s.DeleteMessageRequest(api.JSApiMsgDeleteRequest{Seq: 1})
 	if !jsm.IsNatsError(err, 10109) {
 		t.Fatalf("expected err 10109 got %v", err)
 	}
@@ -1157,7 +1157,7 @@ func TestStream_DetectGaps(t *testing.T) {
 	}
 
 	for _, seq := range []uint64{1, 3, 10, 11, 12, 20, 21, 22, 2000, 2001, 2002, 2005} {
-		checkErr(t, s.DeleteMessage(seq), "delete failed")
+		checkErr(t, s.DeleteMessageRequest(api.JSApiMsgDeleteRequest{Seq: seq}), "delete failed")
 	}
 
 	gaps := [][2]uint64{}

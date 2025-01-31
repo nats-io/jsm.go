@@ -117,9 +117,12 @@ type JSApiStreamListRequest struct {
 
 // io.nats.jetstream.api.v1.stream_msg_delete_request
 type JSApiMsgDeleteRequest struct {
-	Seq      uint64 `json:"seq"`
-	NoErase  bool   `json:"no_erase,omitempty"`
-	NoMarker bool   `json:"no_marker,omitempty"`
+	// Seq is the message sequence to delete
+	Seq uint64 `json:"seq"`
+	// NoErase avoids overwriting the message data with random bytes
+	NoErase bool `json:"no_erase,omitempty"`
+	// NoMarker avoids placing a delete marker on streams with Markers enabled
+	NoMarker bool `json:"no_marker,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_msg_delete_response

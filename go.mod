@@ -16,7 +16,7 @@ require (
 	github.com/nats-io/nuid v1.0.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.62.0
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
+	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c
 	golang.org/x/net v0.34.0
 	golang.org/x/text v0.21.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -34,9 +34,8 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	google.golang.org/protobuf v1.36.3 // indirect
+	google.golang.org/protobuf v1.36.4 // indirect
 )

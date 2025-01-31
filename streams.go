@@ -780,20 +780,33 @@ func (s *Stream) ReadMessage(seq uint64) (msg *api.StoredMsg, err error) {
 }
 
 // FastDeleteMessage deletes a specific message from the Stream without erasing the data, see DeleteMessage() for a safe delete
+//
+// Deprecated: Use DeleteMessageRequest()
 func (s *Stream) FastDeleteMessage(seq uint64) error {
-	return s.mgr.DeleteStreamMessage(s.Name(), seq, true)
+	return s.DeleteMessageRequest(api.JSApiMsgDeleteRequest{Seq: seq, NoErase: true})
 }
 
 // DeleteMessage deletes a specific message from the Stream by overwriting it with random data, see FastDeleteMessage() to remove the message without over writing data
+//
+// Deprecated: Use DeleteMessageRequest()
 func (s *Stream) DeleteMessage(seq uint64) (err error) {
+	return s.DeleteMessageRequest(api.JSApiMsgDeleteRequest{Seq: seq})
+}
+
+// DeleteMessageRequest deletes a specific message from the Stream with a full request
+func (s *Stream) DeleteMessageRequest(req api.JSApiMsgDeleteRequest) (err error) {
+	if req.Seq == 0 {
+		return fmt.Errorf("sequence number is required")
+	}
+
 	var resp api.JSApiMsgDeleteResponse
-	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), api.JSApiMsgDeleteRequest{Seq: seq}, &resp)
+	err = s.mgr.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, s.Name()), req, &resp)
 	if err != nil {
 		return err
 	}
 
 	if !resp.Success {
-		return fmt.Errorf("unknown error while deleting message %d", seq)
+		return fmt.Errorf("unknown error while deleting message %d", req.Seq)
 	}
 
 	return nil

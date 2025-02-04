@@ -75,6 +75,12 @@ func (r *Result) Ok(format string, a ...any) {
 	r.OKs = append(r.OKs, fmt.Sprintf(format, a...))
 }
 
+func (r *Result) OkIfNoWarningsOrCriticals(format string, a ...any) {
+	if len(r.Warnings) == 0 && len(r.Criticals) == 0 {
+		r.Ok(format, a...)
+	}
+}
+
 func (r *Result) CriticalExitIfErr(err error, format string, a ...any) bool {
 	if err == nil {
 		return false

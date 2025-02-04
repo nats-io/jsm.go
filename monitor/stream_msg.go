@@ -85,12 +85,10 @@ func CheckStreamMessage(server string, nopts []nats.Option, check *Result, opts 
 
 	since := time.Since(ts)
 
-	if opts.AgeWarning > 0 || opts.AgeCritical > 0 {
-		if opts.AgeCritical > 0 && since > secondsToDuration(opts.AgeCritical) {
-			check.Critical("%v old", since.Round(time.Millisecond))
-		} else if opts.AgeWarning > 0 && since > secondsToDuration(opts.AgeWarning) {
-			check.Warn("%v old", time.Since(ts).Round(time.Millisecond))
-		}
+	if opts.AgeCritical > 0 && since > secondsToDuration(opts.AgeCritical) {
+		check.Critical("%v old", since.Round(time.Millisecond))
+	} else if opts.AgeWarning > 0 && since > secondsToDuration(opts.AgeWarning) {
+		check.Warn("%v old", time.Since(ts).Round(time.Millisecond))
 	}
 
 	if opts.Content != "" {
@@ -104,7 +102,7 @@ func CheckStreamMessage(server string, nopts []nats.Option, check *Result, opts 
 		}
 	}
 
-	check.Ok("Valid message on %s > %s", opts.StreamName, opts.Subject)
+	check.OkIfNoWarningsOrCriticals("Valid message on %s > %s", opts.StreamName, opts.Subject)
 
 	return nil
 }

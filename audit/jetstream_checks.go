@@ -349,7 +349,7 @@ func checkStreamMetadataMonitoring(_ *Check, r *archive.Reader, examples *Exampl
 					}
 
 					opts.StreamName = streamName
-					monitor.StreamInfoHealthCheck(&streamDetails, check, *opts, log)
+					monitor.CheckStreamInfoHealth(&streamDetails, check, *opts, log)
 
 					for _, warning := range check.Warnings {
 						examples.Add("WARNING: stream %s in %s: %s", streamName, accountName, warning)

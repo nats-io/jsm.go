@@ -22,8 +22,8 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// ServerCheckOptions configures the server check
-type ServerCheckOptions struct {
+// CheckServerOptions configures the server check
+type CheckServerOptions struct {
 	// Name is the server to get details for
 	Name string `json:"name" yaml:"name"`
 	// CPUWarning is the warning threshold for CPU usage
@@ -56,7 +56,7 @@ type ServerCheckOptions struct {
 	Resolver func(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz, error) `json:"-" yaml:"-"`
 }
 
-func CheckServer(server string, nopts []nats.Option, check *Result, timeout time.Duration, opts ServerCheckOptions) error {
+func CheckServer(server string, nopts []nats.Option, check *Result, timeout time.Duration, opts CheckServerOptions) error {
 	var nc *nats.Conn
 	var err error
 
@@ -168,8 +168,6 @@ func CheckServer(server string, nopts []nats.Option, check *Result, timeout time
 }
 
 func fetchVarz(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz, error) {
-	var vz json.RawMessage
-
 	if name == "" {
 		return nil, fmt.Errorf("server name is required")
 	}
@@ -184,28 +182,19 @@ func fetchVarz(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz,
 		return nil, err
 	}
 
-	reqresp := map[string]json.RawMessage{}
-	err = json.Unmarshal(res.Data, &reqresp)
+	resp := &server.ServerAPIVarzResponse{}
+	err = json.Unmarshal(res.Data, &resp)
 	if err != nil {
 		return nil, err
 	}
 
-	errresp, ok := reqresp["error"]
-	if ok {
-		return nil, fmt.Errorf("invalid response received: %#v", errresp)
+	if resp.Error != nil {
+		return nil, fmt.Errorf("invalid response received: %#v", resp.Error.Error())
 	}
 
-	vz = reqresp["data"]
-
-	if len(vz) == 0 {
+	if resp.Data == nil {
 		return nil, fmt.Errorf("no data received for %s", name)
 	}
 
-	varz := &server.Varz{}
-	err = json.Unmarshal(vz, varz)
-	if err != nil {
-		return nil, err
-	}
-
-	return varz, nil
+	return resp.Data, nil
 }

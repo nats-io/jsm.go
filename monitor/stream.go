@@ -36,10 +36,10 @@ const (
 	StreamMonitorMetaSubjectsCritical = "io.nats.monitor.subjects-critical"
 )
 
-type StreamHealthCheckF func(*jsm.Stream, *Result, StreamHealthCheckOptions, api.Logger)
+type StreamHealthCheckF func(*jsm.Stream, *Result, CheckStreamHealthOptions, api.Logger)
 
-// StreamHealthCheckOptions configures the stream check
-type StreamHealthCheckOptions struct {
+// CheckStreamHealthOptions configures the stream check
+type CheckStreamHealthOptions struct {
 	// StreamName stream to monitor
 	StreamName string `json:"stream_name" yaml:"stream_name"`
 	// SourcesLagCritical critical threshold for how many operations behind sources may be
@@ -74,16 +74,16 @@ type monitorMetaParser struct {
 	fn func(string) error
 }
 
-// ExtractStreamHealthCheckOptions checks stream metadata and populate StreamHealthCheckOptions based on it
-func ExtractStreamHealthCheckOptions(metadata map[string]string, extraChecks ...StreamHealthCheckF) (*StreamHealthCheckOptions, error) {
-	opts := &StreamHealthCheckOptions{
+// ExtractStreamHealthCheckOptions checks stream metadata and populate CheckStreamHealthOptions based on it
+func ExtractStreamHealthCheckOptions(metadata map[string]string, extraChecks ...StreamHealthCheckF) (*CheckStreamHealthOptions, error) {
+	opts := &CheckStreamHealthOptions{
 		HealthChecks: extraChecks,
 	}
 
 	return populateStreamHealthCheckOptions(metadata, opts)
 }
 
-func populateStreamHealthCheckOptions(metadata map[string]string, opts *StreamHealthCheckOptions) (*StreamHealthCheckOptions, error) {
+func populateStreamHealthCheckOptions(metadata map[string]string, opts *CheckStreamHealthOptions) (*CheckStreamHealthOptions, error) {
 	var err error
 	parser := []monitorMetaParser{
 		{MonitorMetaEnabled, func(v string) error {
@@ -154,7 +154,7 @@ func populateStreamHealthCheckOptions(metadata map[string]string, opts *StreamHe
 	return opts, nil
 }
 
-func StreamInfoHealthCheck(nfo *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
+func CheckStreamInfoHealth(nfo *api.StreamInfo, check *Result, opts CheckStreamHealthOptions, log api.Logger) {
 	streamCheckCluster(nfo, check, opts, log)
 	streamCheckMessages(nfo, check, opts, log)
 	streamCheckSubjects(nfo, check, opts, log)
@@ -162,7 +162,7 @@ func StreamInfoHealthCheck(nfo *api.StreamInfo, check *Result, opts StreamHealth
 	streamCheckMirror(nfo, check, opts, log)
 }
 
-func StreamHealthCheck(server string, nopts []nats.Option, check *Result, opts StreamHealthCheckOptions, log api.Logger) error {
+func CheckStreamHealth(server string, nopts []nats.Option, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
 	if opts.StreamName == "" {
 		check.Critical("stream name is required")
 		return nil
@@ -194,7 +194,7 @@ func StreamHealthCheck(server string, nopts []nats.Option, check *Result, opts S
 		return nil
 	}
 
-	StreamInfoHealthCheck(nfo, check, opts, log)
+	CheckStreamInfoHealth(nfo, check, opts, log)
 
 	for _, hc := range opts.HealthChecks {
 		hc(stream, check, opts, log)
@@ -203,7 +203,7 @@ func StreamHealthCheck(server string, nopts []nats.Option, check *Result, opts S
 	return nil
 }
 
-func streamCheckMirror(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckMirror(si *api.StreamInfo, check *Result, opts CheckStreamHealthOptions, log api.Logger) {
 	// We check sources here because they are mutually exclusive with mirrors. If sources are set, mirrors
 	// can't be so we can bail out of this check early
 	if (opts.SourcesLagCritical <= 0 && opts.SourcesSeenCritical <= 0) || si.Config.Name == "" || len(si.Sources) > 0 {
@@ -249,7 +249,7 @@ func streamCheckMirror(si *api.StreamInfo, check *Result, opts StreamHealthCheck
 	}
 }
 
-func streamCheckSources(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckSources(si *api.StreamInfo, check *Result, opts CheckStreamHealthOptions, log api.Logger) {
 	sources := si.Sources
 	count := len(sources)
 
@@ -302,7 +302,7 @@ func streamCheckSources(si *api.StreamInfo, check *Result, opts StreamHealthChec
 	}
 }
 
-func streamCheckSubjects(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckSubjects(si *api.StreamInfo, check *Result, opts CheckStreamHealthOptions, log api.Logger) {
 	if opts.SubjectsWarn <= 0 && opts.SubjectsCrit <= 0 {
 		return
 	}
@@ -331,7 +331,7 @@ func streamCheckSubjects(si *api.StreamInfo, check *Result, opts StreamHealthChe
 }
 
 // TODO: support inverting logic and also in cli
-func streamCheckMessages(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckMessages(si *api.StreamInfo, check *Result, opts CheckStreamHealthOptions, log api.Logger) {
 	if opts.MessagesCrit <= 0 && opts.MessagesWarn <= 0 {
 		return
 	}
@@ -353,7 +353,7 @@ func streamCheckMessages(si *api.StreamInfo, check *Result, opts StreamHealthChe
 	check.Ok("%d messages", si.State.Msgs)
 }
 
-func streamCheckCluster(si *api.StreamInfo, check *Result, opts StreamHealthCheckOptions, log api.Logger) {
+func streamCheckCluster(si *api.StreamInfo, check *Result, opts CheckStreamHealthOptions, log api.Logger) {
 	nfo := si.Cluster
 
 	if (nfo == nil || si.Config.Replicas <= 1) && opts.ClusterExpectedPeers <= 0 {

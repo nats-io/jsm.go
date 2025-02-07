@@ -21,7 +21,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type JetStreamAccountOptions struct {
+type CheckJetStreamAccountOptions struct {
 	MemoryWarning       int     `json:"memory_warning" yaml:"memory_warning"`
 	MemoryCritical      int     `json:"memory_critical" yaml:"memory_critical"`
 	FileWarning         int     `json:"file_warning" yaml:"file_warning"`
@@ -37,7 +37,7 @@ type JetStreamAccountOptions struct {
 	Resolver func() *api.JetStreamAccountStats `json:"-" yaml:"-"`
 }
 
-func CheckJetStreamAccount(server string, nopts []nats.Option, check *Result, opts JetStreamAccountOptions) error {
+func CheckJetStreamAccount(server string, nopts []nats.Option, check *Result, opts CheckJetStreamAccountOptions) error {
 	var mgr *jsm.Manager
 	var err error
 
@@ -82,7 +82,7 @@ func CheckJetStreamAccount(server string, nopts []nats.Option, check *Result, op
 	return nil
 }
 
-func checkStreamClusterHealth(check *Result, opts *JetStreamAccountOptions, info []*jsm.Stream) error {
+func checkStreamClusterHealth(check *Result, opts *CheckJetStreamAccountOptions, info []*jsm.Stream) error {
 	var okCnt, noLeaderCnt, notEnoughReplicasCnt, critCnt, lagCritCnt, seenCritCnt int
 
 	for _, s := range info {
@@ -177,7 +177,7 @@ func checkStreamClusterHealth(check *Result, opts *JetStreamAccountOptions, info
 	return nil
 }
 
-func checkJSAccountInfo(check *Result, opts *JetStreamAccountOptions, info *api.JetStreamAccountStats) error {
+func checkJSAccountInfo(check *Result, opts *CheckJetStreamAccountOptions, info *api.JetStreamAccountStats) error {
 	if info == nil {
 		return fmt.Errorf("invalid account status")
 	}

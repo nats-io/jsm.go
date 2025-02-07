@@ -60,7 +60,7 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 	}
 
 	t.Run("no expiry", func(t *testing.T) {
-		opts := monitor.CredentialCheckOptions{
+		opts := monitor.CheckCredentialOptions{
 			File:           writeCred(t, noExpiry),
 			RequiresExpiry: true,
 		}
@@ -80,7 +80,7 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 
 	t.Run("critical", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckCredential(check, monitor.CredentialCheckOptions{
+		assertNoError(t, monitor.CheckCredential(check, monitor.CheckCredentialOptions{
 			File:             writeCred(t, noExpiry),
 			ValidityCritical: 100 * 24 * 365 * 60 * 60,
 		}))
@@ -91,7 +91,7 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 
 	t.Run("warning", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckCredential(check, monitor.CredentialCheckOptions{
+		assertNoError(t, monitor.CheckCredential(check, monitor.CheckCredentialOptions{
 			File:            writeCred(t, noExpiry),
 			ValidityWarning: 100 * 24 * 365 * 60 * 60,
 		}))

@@ -15,13 +15,14 @@ package monitor
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
 
-type CheckMetaOptions struct {
+type CheckJetstreamMetaOptions struct {
 	// ExpectServers the expected number of known servers in the meta cluster
 	ExpectServers int `json:"expect_servers" yaml:"expect_servers"`
 	// LagCritical the critical threshold for how many operations behind a peer may be
@@ -29,15 +30,10 @@ type CheckMetaOptions struct {
 	// SeenCritical the critical threshold for how long ago a peer was seen (seconds)
 	SeenCritical float64 `json:"seen_critical" yaml:"seen_critical"`
 
-	Resolver func(*nats.Conn) (*JSZResponse, error) `json:"-" yaml:"-"`
+	Resolver func(*nats.Conn) (*server.ServerAPIJszResponse, error) `json:"-" yaml:"-"`
 }
 
-type JSZResponse struct {
-	Data   server.JSInfo     `json:"data"`
-	Server server.ServerInfo `json:"server"`
-}
-
-func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts CheckMetaOptions) error {
+func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts CheckJetstreamMetaOptions) error {
 	var nc *nats.Conn
 	var err error
 
@@ -47,8 +43,8 @@ func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts
 			return nil
 		}
 
-		opts.Resolver = func(conn *nats.Conn) (*JSZResponse, error) {
-			jszresp := &JSZResponse{}
+		opts.Resolver = func(conn *nats.Conn) (*server.ServerAPIJszResponse, error) {
+			jszresp := &server.ServerAPIJszResponse{}
 			jreq, err := json.Marshal(&server.JSzOptions{LeaderOnly: true})
 			if check.CriticalIfErr(err, "request failed: %v", err) {
 				return nil, err
@@ -60,7 +56,14 @@ func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts
 			}
 
 			err = json.Unmarshal(res.Data, jszresp)
-			check.CriticalIfErr(err, "invalid result received: %s", err)
+			if check.CriticalIfErr(err, "invalid result received: %s", err) {
+				return nil, err
+			}
+
+			if jszresp.Error == nil {
+				check.Critical("invalid result received: %s", jszresp.Error.Error())
+				return nil, fmt.Errorf("invalid result received: %s", jszresp.Error.Error())
+			}
 
 			return jszresp, nil
 		}
@@ -68,6 +71,11 @@ func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts
 
 	jszresp, err := opts.Resolver(nc)
 	if err != nil {
+		return nil
+	}
+
+	if jszresp.Data == nil {
+		check.Critical("no JSZ response received")
 		return nil
 	}
 

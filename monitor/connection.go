@@ -20,8 +20,8 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// ConnectionCheckOptions configures the NATS Connection check
-type ConnectionCheckOptions struct {
+// CheckConnectionOptions configures the NATS Connection check
+type CheckConnectionOptions struct {
 	// ConnectTimeWarning warning threshold for time to establish the connection (seconds)
 	ConnectTimeWarning float64 `json:"connect_time_warning" yaml:"connect_time_warning"`
 	// ConnectTimeCritical critical threshold for time to establish the connection (seconds)
@@ -36,7 +36,7 @@ type ConnectionCheckOptions struct {
 	RequestRttCritical float64 `json:"request_rtt_critical" yaml:"request_rtt_critical"`
 }
 
-func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, check *Result, opts ConnectionCheckOptions) error {
+func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, check *Result, opts CheckConnectionOptions) error {
 	connStart := time.Now()
 	nc, err := nats.Connect(server, nopts...)
 	if check.CriticalIfErr(err, "connection failed: %v", err) {

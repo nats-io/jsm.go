@@ -25,9 +25,11 @@ import (
 func TestCheckJSZ(t *testing.T) {
 	t.Run("nil meta", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				return &monitor.JSZResponse{}, nil
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				return &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{},
+				}, nil
 			},
 		}))
 		assertListEquals(t, check.Criticals, "no cluster information")
@@ -35,10 +37,14 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("no meta leader", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{}
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{},
+					},
+				}
+
 				return r, nil
 			},
 		}))
@@ -49,13 +55,17 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("invalid peer count", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
 			ExpectServers: 2,
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{
-					Leader: "L1",
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader: "L1",
+						},
+					},
 				}
+
 				return r, nil
 			},
 		}))
@@ -65,17 +75,20 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("good peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
 			ExpectServers: 3,
 			SeenCritical:  1,
 			LagCritical:   10,
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{
-					Leader: "l1",
-					Replicas: []*server.PeerInfo{
-						{Name: "replica1", Current: true, Active: 10 * time.Millisecond, Lag: 1},
-						{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader: "l1",
+							Replicas: []*server.PeerInfo{
+								{Name: "replica1", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+								{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+							},
+						},
 					},
 				}
 
@@ -88,17 +101,20 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("not current peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
 			ExpectServers: 3,
 			SeenCritical:  1,
 			LagCritical:   10,
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{
-					Leader: "l1",
-					Replicas: []*server.PeerInfo{
-						{Name: "replica1", Active: 10 * time.Millisecond, Lag: 1},
-						{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader: "l1",
+							Replicas: []*server.PeerInfo{
+								{Name: "replica1", Active: 10 * time.Millisecond, Lag: 1},
+								{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+							},
+						},
 					},
 				}
 
@@ -113,17 +129,20 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("offline peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
 			ExpectServers: 3,
 			SeenCritical:  1,
 			LagCritical:   10,
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{
-					Leader: "l1",
-					Replicas: []*server.PeerInfo{
-						{Name: "replica1", Current: true, Offline: true, Active: 10 * time.Millisecond, Lag: 1},
-						{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader: "l1",
+							Replicas: []*server.PeerInfo{
+								{Name: "replica1", Current: true, Offline: true, Active: 10 * time.Millisecond, Lag: 1},
+								{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+							},
+						},
 					},
 				}
 
@@ -137,17 +156,20 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("inactive peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
 			ExpectServers: 3,
 			SeenCritical:  1,
 			LagCritical:   10,
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{
-					Leader: "l1",
-					Replicas: []*server.PeerInfo{
-						{Name: "replica1", Current: true, Active: 10 * time.Hour, Lag: 1},
-						{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader: "l1",
+							Replicas: []*server.PeerInfo{
+								{Name: "replica1", Current: true, Active: 10 * time.Hour, Lag: 1},
+								{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+							},
+						},
 					},
 				}
 
@@ -161,17 +183,20 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("lagged peer", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
 			ExpectServers: 3,
 			SeenCritical:  1,
 			LagCritical:   10,
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{
-					Leader: "l1",
-					Replicas: []*server.PeerInfo{
-						{Name: "replica1", Current: true, Active: 10 * time.Millisecond, Lag: 10000},
-						{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader: "l1",
+							Replicas: []*server.PeerInfo{
+								{Name: "replica1", Current: true, Active: 10 * time.Millisecond, Lag: 10000},
+								{Name: "replica2", Current: true, Active: 10 * time.Millisecond, Lag: 1},
+							},
+						},
 					},
 				}
 
@@ -184,19 +209,22 @@ func TestCheckJSZ(t *testing.T) {
 
 	t.Run("multiple errors", func(t *testing.T) {
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckMetaOptions{
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
 			ExpectServers: 3,
 			SeenCritical:  1,
 			LagCritical:   10,
-			Resolver: func(_ *nats.Conn) (*monitor.JSZResponse, error) {
-				r := &monitor.JSZResponse{}
-				r.Data.Meta = &server.MetaClusterInfo{
-					Leader: "l1",
-					Replicas: []*server.PeerInfo{
-						{Name: "replica1", Current: true, Active: 10 * time.Millisecond, Lag: 10000},
-						{Name: "replica2", Current: true, Active: 10 * time.Hour, Lag: 1},
-						{Name: "replica3", Current: true, Offline: true, Active: 10 * time.Millisecond, Lag: 1},
-						{Name: "replica4", Active: 10 * time.Millisecond, Lag: 1},
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				r := &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader: "l1",
+							Replicas: []*server.PeerInfo{
+								{Name: "replica1", Current: true, Active: 10 * time.Millisecond, Lag: 10000},
+								{Name: "replica2", Current: true, Active: 10 * time.Hour, Lag: 1},
+								{Name: "replica3", Current: true, Offline: true, Active: 10 * time.Millisecond, Lag: 1},
+								{Name: "replica4", Active: 10 * time.Millisecond, Lag: 1},
+							},
+						},
 					},
 				}
 

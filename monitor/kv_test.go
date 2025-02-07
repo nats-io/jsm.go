@@ -106,7 +106,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 	t.Run("Bucket", func(t *testing.T) {
 		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
 			check := &monitor.Result{}
-			err := monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.KVCheckOptions{
+			err := monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.CheckKVBucketAndKeyOptions{
 				Bucket: "TEST",
 			})
 			checkErr(t, err, "check failed: %v", err)
@@ -121,7 +121,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "kv create failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.KVCheckOptions{
+			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.CheckKVBucketAndKeyOptions{
 				Bucket:         "TEST",
 				ValuesCritical: -1,
 				ValuesWarning:  -1,
@@ -142,7 +142,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			bucket, err := js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "TEST"})
 			checkErr(t, err, "kv create failed: %v", err)
 
-			opts := monitor.KVCheckOptions{
+			opts := monitor.CheckKVBucketAndKeyOptions{
 				Bucket:         "TEST",
 				ValuesWarning:  1,
 				ValuesCritical: 2,
@@ -227,7 +227,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			bucket, err := js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "TEST"})
 			checkErr(t, err, "kv create failed")
 
-			opts := monitor.KVCheckOptions{
+			opts := monitor.CheckKVBucketAndKeyOptions{
 				Bucket:         "TEST",
 				Key:            "KEY",
 				ValuesWarning:  -1,

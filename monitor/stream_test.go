@@ -32,7 +32,7 @@ func TestStream_checkSources(t *testing.T) {
 
 	t.Run("Should handle fewer than desired", func(t *testing.T) {
 		check, si := setup()
-		streamCheckSources(si, check, StreamHealthCheckOptions{
+		streamCheckSources(si, check, CheckStreamHealthOptions{
 			MinSources: 1,
 			MaxSources: 2,
 		}, api.NewDiscardLogger())
@@ -40,7 +40,7 @@ func TestStream_checkSources(t *testing.T) {
 
 		check, si = setup()
 		si.Sources = append(si.Sources, &api.StreamSourceInfo{})
-		streamCheckSources(si, check, StreamHealthCheckOptions{
+		streamCheckSources(si, check, CheckStreamHealthOptions{
 			MinSources: 2,
 			MaxSources: 3,
 		}, api.NewDiscardLogger())
@@ -51,7 +51,7 @@ func TestStream_checkSources(t *testing.T) {
 		check, si := setup()
 		si.Sources = append(si.Sources, &api.StreamSourceInfo{})
 		si.Sources = append(si.Sources, &api.StreamSourceInfo{})
-		streamCheckSources(si, check, StreamHealthCheckOptions{
+		streamCheckSources(si, check, CheckStreamHealthOptions{
 			MaxSources: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "2 sources")
@@ -61,7 +61,7 @@ func TestStream_checkSources(t *testing.T) {
 		check, si := setup()
 		si.Sources = append(si.Sources, &api.StreamSourceInfo{})
 		si.Sources = append(si.Sources, &api.StreamSourceInfo{})
-		streamCheckSources(si, check, StreamHealthCheckOptions{
+		streamCheckSources(si, check, CheckStreamHealthOptions{
 			MinSources: 2,
 			MaxSources: 3,
 		}, api.NewDiscardLogger())
@@ -77,7 +77,7 @@ func TestStream_checkSources(t *testing.T) {
 		si.Sources = append(si.Sources, &api.StreamSourceInfo{
 			Lag: 200,
 		})
-		streamCheckSources(si, check, StreamHealthCheckOptions{
+		streamCheckSources(si, check, CheckStreamHealthOptions{
 			SourcesLagCritical: 100,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "2 sources are lagged")
@@ -91,7 +91,7 @@ func TestStream_checkSources(t *testing.T) {
 		si.Sources = append(si.Sources, &api.StreamSourceInfo{
 			Active: 2 * time.Second,
 		})
-		streamCheckSources(si, check, StreamHealthCheckOptions{
+		streamCheckSources(si, check, CheckStreamHealthOptions{
 			SourcesSeenCritical: float64(1) / 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "2 sources are inactive")
@@ -107,7 +107,7 @@ func TestStream_checkSources(t *testing.T) {
 			Lag:    200,
 			Active: time.Millisecond,
 		})
-		streamCheckSources(si, check, StreamHealthCheckOptions{
+		streamCheckSources(si, check, CheckStreamHealthOptions{
 			SourcesLagCritical:  500,
 			SourcesSeenCritical: 1,
 			MinSources:          2,
@@ -134,7 +134,7 @@ func TestStream_checkMessages(t *testing.T) {
 		check, si := setup()
 
 		si.State.Msgs = 1000
-		streamCheckMessages(si, check, StreamHealthCheckOptions{}, api.NewDiscardLogger())
+		streamCheckMessages(si, check, CheckStreamHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -143,7 +143,7 @@ func TestStream_checkMessages(t *testing.T) {
 	t.Run("Should handle critical situations", func(t *testing.T) {
 		check, si := setup()
 		si.State.Msgs = 1000
-		streamCheckMessages(si, check, StreamHealthCheckOptions{
+		streamCheckMessages(si, check, CheckStreamHealthOptions{
 			MessagesCrit: 1000,
 		}, api.NewDiscardLogger())
 
@@ -152,7 +152,7 @@ func TestStream_checkMessages(t *testing.T) {
 
 		check, si = setup()
 		si.State.Msgs = 999
-		streamCheckMessages(si, check, StreamHealthCheckOptions{
+		streamCheckMessages(si, check, CheckStreamHealthOptions{
 			MessagesCrit: 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "999 messages")
@@ -162,7 +162,7 @@ func TestStream_checkMessages(t *testing.T) {
 	t.Run("Should handle warning situations", func(t *testing.T) {
 		check, si := setup()
 		si.State.Msgs = 1000
-		streamCheckMessages(si, check, StreamHealthCheckOptions{
+		streamCheckMessages(si, check, CheckStreamHealthOptions{
 			MessagesWarn: 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Warnings, "1000 messages")
@@ -172,7 +172,7 @@ func TestStream_checkMessages(t *testing.T) {
 		check, si = setup()
 		si.State.Msgs = 999
 
-		streamCheckMessages(si, check, StreamHealthCheckOptions{
+		streamCheckMessages(si, check, CheckStreamHealthOptions{
 			MessagesWarn: 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Warnings, "999 messages")
@@ -183,7 +183,7 @@ func TestStream_checkMessages(t *testing.T) {
 	t.Run("Should handle ok situations", func(t *testing.T) {
 		check, si := setup()
 		si.State.Msgs = 1000
-		streamCheckMessages(si, check, StreamHealthCheckOptions{
+		streamCheckMessages(si, check, CheckStreamHealthOptions{
 			MessagesWarn: 500,
 			MessagesCrit: 200,
 		}, api.NewDiscardLogger())
@@ -204,7 +204,7 @@ func TestStream_checkSubjects(t *testing.T) {
 
 	t.Run("Should handle no thresholds", func(t *testing.T) {
 		check, si := setup()
-		streamCheckSubjects(si, check, StreamHealthCheckOptions{}, api.NewDiscardLogger())
+		streamCheckSubjects(si, check, CheckStreamHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -215,7 +215,7 @@ func TestStream_checkSubjects(t *testing.T) {
 			check, si := setup()
 			si.State.NumSubjects = 100
 
-			streamCheckSubjects(si, check, StreamHealthCheckOptions{
+			streamCheckSubjects(si, check, CheckStreamHealthOptions{
 				SubjectsWarn: 200,
 				SubjectsCrit: 300,
 			}, api.NewDiscardLogger())
@@ -227,7 +227,7 @@ func TestStream_checkSubjects(t *testing.T) {
 		t.Run("Should handle more than subjects", func(t *testing.T) {
 			check, si := setup()
 			si.State.NumSubjects = 400
-			streamCheckSubjects(si, check, StreamHealthCheckOptions{
+			streamCheckSubjects(si, check, CheckStreamHealthOptions{
 				SubjectsWarn: 200,
 				SubjectsCrit: 300,
 			}, api.NewDiscardLogger())
@@ -237,7 +237,7 @@ func TestStream_checkSubjects(t *testing.T) {
 
 			check, si = setup()
 			si.State.NumSubjects = 250
-			streamCheckSubjects(si, check, StreamHealthCheckOptions{
+			streamCheckSubjects(si, check, CheckStreamHealthOptions{
 				SubjectsWarn: 200,
 				SubjectsCrit: 300,
 			}, api.NewDiscardLogger())
@@ -249,7 +249,7 @@ func TestStream_checkSubjects(t *testing.T) {
 		t.Run("Should handle valid subject counts", func(t *testing.T) {
 			check, si := setup()
 			si.State.NumSubjects = 100
-			streamCheckSubjects(si, check, StreamHealthCheckOptions{
+			streamCheckSubjects(si, check, CheckStreamHealthOptions{
 				SubjectsWarn: 200,
 				SubjectsCrit: 300,
 			}, api.NewDiscardLogger())
@@ -263,7 +263,7 @@ func TestStream_checkSubjects(t *testing.T) {
 		t.Run("Should handle fewer subjects", func(t *testing.T) {
 			check, si := setup()
 			si.State.NumSubjects = 100
-			streamCheckSubjects(si, check, StreamHealthCheckOptions{
+			streamCheckSubjects(si, check, CheckStreamHealthOptions{
 				SubjectsWarn: 300,
 				SubjectsCrit: 200,
 			}, api.NewDiscardLogger())
@@ -273,7 +273,7 @@ func TestStream_checkSubjects(t *testing.T) {
 
 			check, si = setup()
 			si.State.NumSubjects = 250
-			streamCheckSubjects(si, check, StreamHealthCheckOptions{
+			streamCheckSubjects(si, check, CheckStreamHealthOptions{
 				SubjectsWarn: 300,
 				SubjectsCrit: 200,
 			}, api.NewDiscardLogger())
@@ -285,7 +285,7 @@ func TestStream_checkSubjects(t *testing.T) {
 		t.Run("Should handle valid subject counts", func(t *testing.T) {
 			check, si := setup()
 			si.State.NumSubjects = 400
-			streamCheckSubjects(si, check, StreamHealthCheckOptions{
+			streamCheckSubjects(si, check, CheckStreamHealthOptions{
 				SubjectsWarn: 300,
 				SubjectsCrit: 200,
 			}, api.NewDiscardLogger())
@@ -300,7 +300,7 @@ func TestStream_checkSubjects(t *testing.T) {
 func TestStream_checkMirror(t *testing.T) {
 	t.Run("Should handle no thresholds", func(t *testing.T) {
 		check := &Result{}
-		streamCheckMirror(&api.StreamInfo{}, check, StreamHealthCheckOptions{}, api.NewDiscardLogger())
+		streamCheckMirror(&api.StreamInfo{}, check, CheckStreamHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -315,7 +315,7 @@ func TestStream_checkMirror(t *testing.T) {
 			},
 		}
 
-		streamCheckMirror(si, check, StreamHealthCheckOptions{
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
 			SourcesLagCritical:  1,
 			SourcesSeenCritical: 1,
 		}, api.NewDiscardLogger())
@@ -334,14 +334,14 @@ func TestStream_checkMirror(t *testing.T) {
 			},
 		}
 
-		streamCheckMirror(si, check, StreamHealthCheckOptions{
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
 			SourcesLagCritical: 100,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Mirror Lag 100")
 
 		check = &Result{}
 		si.Mirror.Lag = 200
-		streamCheckMirror(si, check, StreamHealthCheckOptions{
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
 			SourcesLagCritical: 100,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Mirror Lag 200")
@@ -359,14 +359,14 @@ func TestStream_checkMirror(t *testing.T) {
 			},
 		}
 
-		streamCheckMirror(si, check, StreamHealthCheckOptions{
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
 			SourcesSeenCritical: float64(1) / 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Mirror Seen 1ms")
 
 		check = &Result{}
 		si.Mirror.Active = time.Second
-		streamCheckMirror(si, check, StreamHealthCheckOptions{
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
 			SourcesSeenCritical: float64(1) / 1000,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Mirror Seen 1s")
@@ -387,7 +387,7 @@ func TestStream_checkMirror(t *testing.T) {
 			},
 		}
 
-		streamCheckMirror(si, check, StreamHealthCheckOptions{
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
 			SourcesLagCritical:  200,
 			SourcesSeenCritical: 1,
 		}, api.NewDiscardLogger())
@@ -401,7 +401,7 @@ func TestStream_checkMirror(t *testing.T) {
 func TestStream_checkCluster(t *testing.T) {
 	t.Run("Skip without threshold", func(t *testing.T) {
 		check := &Result{}
-		streamCheckCluster(&api.StreamInfo{}, check, StreamHealthCheckOptions{}, api.NewDiscardLogger())
+		streamCheckCluster(&api.StreamInfo{}, check, CheckStreamHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -409,7 +409,7 @@ func TestStream_checkCluster(t *testing.T) {
 
 	t.Run("Should be critical when the stream is not clustered and a threshold is given", func(t *testing.T) {
 		check := &Result{}
-		streamCheckCluster(&api.StreamInfo{}, check, StreamHealthCheckOptions{
+		streamCheckCluster(&api.StreamInfo{}, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Stream is not clustered")
@@ -431,7 +431,7 @@ func TestStream_checkCluster(t *testing.T) {
 			},
 		}
 
-		streamCheckCluster(si, check, StreamHealthCheckOptions{
+		streamCheckCluster(si, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Expected 3 replicas got 2")
@@ -452,7 +452,7 @@ func TestStream_checkCluster(t *testing.T) {
 			},
 		}
 
-		streamCheckCluster(si, check, StreamHealthCheckOptions{
+		streamCheckCluster(si, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "No leader")
@@ -466,7 +466,7 @@ func TestStream_checkCluster(t *testing.T) {
 			},
 		}
 
-		streamCheckCluster(si, check, StreamHealthCheckOptions{
+		streamCheckCluster(si, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 		}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
@@ -488,7 +488,7 @@ func TestStream_checkCluster(t *testing.T) {
 			},
 		}
 
-		streamCheckCluster(si, check, StreamHealthCheckOptions{
+		streamCheckCluster(si, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 			ClusterLagCritical:   100,
 		}, api.NewDiscardLogger())
@@ -510,7 +510,7 @@ func TestStream_checkCluster(t *testing.T) {
 			},
 		}
 
-		streamCheckCluster(si, check, StreamHealthCheckOptions{
+		streamCheckCluster(si, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 			ClusterSeenCritical:  60,
 		}, api.NewDiscardLogger())
@@ -533,7 +533,7 @@ func TestStream_checkCluster(t *testing.T) {
 			},
 		}
 
-		streamCheckCluster(si, check, StreamHealthCheckOptions{
+		streamCheckCluster(si, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 		}, api.NewDiscardLogger())
 
@@ -554,7 +554,7 @@ func TestStream_checkCluster(t *testing.T) {
 				Replicas: 3,
 			},
 		}
-		streamCheckCluster(si, check, StreamHealthCheckOptions{
+		streamCheckCluster(si, check, CheckStreamHealthOptions{
 			ClusterExpectedPeers: 3,
 			ClusterLagCritical:   20,
 			ClusterSeenCritical:  60,

@@ -19,8 +19,8 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// KVCheckOptions configures the KV check
-type KVCheckOptions struct {
+// CheckKVBucketAndKeyOptions configures the KV check
+type CheckKVBucketAndKeyOptions struct {
 	// Bucket is the bucket to check
 	Bucket string `json:"bucket" yaml:"bucket"`
 	// Key requires a key to have a non delete/purge value set
@@ -31,7 +31,7 @@ type KVCheckOptions struct {
 	ValuesCritical int64 `json:"values_critical" yaml:"values_critical"`
 }
 
-func CheckKVBucketAndKey(server string, nopts []nats.Option, check *Result, opts KVCheckOptions) error {
+func CheckKVBucketAndKey(server string, nopts []nats.Option, check *Result, opts CheckKVBucketAndKeyOptions) error {
 	nc, err := nats.Connect(server, nopts...)
 	if check.CriticalIfErr(err, "connection failed: %v", err) {
 		return nil

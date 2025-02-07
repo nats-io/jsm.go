@@ -21,8 +21,8 @@ import (
 	"github.com/nats-io/nkeys"
 )
 
-// CredentialCheckOptions configures the credentials check
-type CredentialCheckOptions struct {
+// CheckCredentialOptions configures the credentials check
+type CheckCredentialOptions struct {
 	// File is the file holding the credential
 	File string `json:"file" yaml:"file"`
 	// ValidityWarning is the warning threshold for credential validity (seconds)
@@ -33,7 +33,7 @@ type CredentialCheckOptions struct {
 	RequiresExpiry bool `json:"requires_expiry" yaml:"requires_expiry"`
 }
 
-func CheckCredential(check *Result, opts CredentialCheckOptions) error {
+func CheckCredential(check *Result, opts CheckCredentialOptions) error {
 	ok, err := fileAccessible(opts.File)
 	if err != nil {
 		check.Critical("credential not accessible: %v", err)

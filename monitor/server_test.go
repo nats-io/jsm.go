@@ -29,7 +29,7 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "x", Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "x", Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Warnings)
 		assertListIsEmpty(t, check.OKs)
@@ -42,7 +42,7 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Warnings)
 		assertListIsEmpty(t, check.OKs)
@@ -56,13 +56,13 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListEquals(t, check.Criticals, "JetStream not enabled")
 
 		vz.JetStream.Config = &server.JetStreamConfig{}
 		check = &monitor.Result{}
-		err = monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
+		err = monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", JetStreamRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "JetStream enabled")
@@ -75,13 +75,13 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		err := monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListEquals(t, check.Criticals, "TLS not required")
 
 		vz.TLSRequired = true
 		check = &monitor.Result{}
-		err = monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
+		err = monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", TLSRequired: true, Resolver: vzResolver})
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "TLS required")
@@ -94,12 +94,12 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		check := &monitor.Result{}
-		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
 		assertListEquals(t, check.Criticals, "Authentication not required")
 
 		vz.AuthRequired = true
 		check = &monitor.Result{}
-		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, monitor.ServerCheckOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", AuthenticationRequired: true, Resolver: vzResolver}))
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "Authentication required")
 	})
@@ -110,7 +110,7 @@ func TestCheckVarz(t *testing.T) {
 			return vz, nil
 		}
 
-		opts := monitor.ServerCheckOptions{
+		opts := monitor.CheckServerOptions{
 			Name:     "example.net",
 			Resolver: vzResolver,
 		}
@@ -216,7 +216,7 @@ func TestCheckVarz(t *testing.T) {
 			return vz, nil
 		}
 
-		opts := monitor.ServerCheckOptions{
+		opts := monitor.CheckServerOptions{
 			Name:     "example.net",
 			Resolver: vzResolver,
 		}
@@ -267,7 +267,7 @@ func TestCheckVarz(t *testing.T) {
 			return vz, nil
 		}
 
-		opts := monitor.ServerCheckOptions{
+		opts := monitor.CheckServerOptions{
 			Name:     "example.net",
 			Resolver: vzResolver,
 		}

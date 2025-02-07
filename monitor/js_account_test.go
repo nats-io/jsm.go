@@ -21,7 +21,7 @@ import (
 )
 
 func TestCheckAccountInfo(t *testing.T) {
-	setDefaults := func() (*monitor.JetStreamAccountOptions, *api.JetStreamAccountStats, *monitor.Result) {
+	setDefaults := func() (*monitor.CheckJetStreamAccountOptions, *api.JetStreamAccountStats, *monitor.Result) {
 		info := &api.JetStreamAccountStats{
 			JetStreamTier: api.JetStreamTier{
 				Memory:    128,
@@ -38,7 +38,7 @@ func TestCheckAccountInfo(t *testing.T) {
 		}
 
 		// cli defaults
-		cmd := &monitor.JetStreamAccountOptions{
+		cmd := &monitor.CheckJetStreamAccountOptions{
 			ConsumersCritical: -1,
 			ConsumersWarning:  -1,
 			StreamCritical:    -1,

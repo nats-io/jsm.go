@@ -40,13 +40,13 @@ type CheckStreamMessageOptions struct {
 	BodyAsTimestamp bool `json:"body_as_timestamp" yaml:"body_as_timestamp"`
 }
 
-func CheckStreamMessage(server string, nopts []nats.Option, check *Result, opts CheckStreamMessageOptions) error {
+func CheckStreamMessage(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckStreamMessageOptions) error {
 	nc, err := nats.Connect(server, nopts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
 
-	mgr, err := jsm.New(nc)
+	mgr, err := jsm.New(nc, jsmOpts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}

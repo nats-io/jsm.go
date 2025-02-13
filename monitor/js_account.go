@@ -37,7 +37,7 @@ type CheckJetStreamAccountOptions struct {
 	Resolver func() *api.JetStreamAccountStats `json:"-" yaml:"-"`
 }
 
-func CheckJetStreamAccount(server string, nopts []nats.Option, check *Result, opts CheckJetStreamAccountOptions) error {
+func CheckJetStreamAccount(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckJetStreamAccountOptions) error {
 	var mgr *jsm.Manager
 	var err error
 
@@ -47,7 +47,7 @@ func CheckJetStreamAccount(server string, nopts []nats.Option, check *Result, op
 			return nil
 		}
 
-		mgr, err = jsm.New(nc)
+		mgr, err = jsm.New(nc, jsmOpts...)
 		if check.CriticalIfErr(err, "setup failed: %v", err) {
 			return nil
 		}

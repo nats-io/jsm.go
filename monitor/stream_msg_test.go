@@ -42,7 +42,7 @@ func TestCheckMessage(t *testing.T) {
 				AgeWarning:      1,
 				BodyAsTimestamp: true,
 			}
-			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.OKs)
 			assertListEquals(t, check.Criticals, "no message found")
@@ -52,7 +52,7 @@ func TestCheckMessage(t *testing.T) {
 			checkErr(t, err, "publish failed: %v", err)
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)
 			assertListEquals(t, check.OKs, "Valid message on TEST > TEST")
@@ -62,7 +62,7 @@ func TestCheckMessage(t *testing.T) {
 			checkErr(t, err, "publish failed: %v", err)
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, nil, check, opts))
 			assertListIsEmpty(t, check.Criticals)
 			if len(check.Warnings) != 1 {
 				t.Fatalf("expected 1 warning got: %v", check.Warnings)
@@ -73,7 +73,7 @@ func TestCheckMessage(t *testing.T) {
 			checkErr(t, err, "publish failed: %v", err)
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			if len(check.Criticals) != 1 {
 				t.Fatalf("expected 1 critical got: %v", check.Criticals)
@@ -81,7 +81,7 @@ func TestCheckMessage(t *testing.T) {
 
 			opts.BodyAsTimestamp = false
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, check, opts))
+			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, nil, check, opts))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)
 			assertListEquals(t, check.OKs, "Valid message on TEST > TEST")

@@ -39,6 +39,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/nats-server/v2/server/certstore"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -322,6 +323,17 @@ func (c *Context) Connect(opts ...nats.Option) (*nats.Conn, error) {
 	}
 
 	return nats.Connect(c.ServerURL(), nopts...)
+}
+
+// JSMOptions creates options for the jsm manager
+func (c *Context) JSMOptions(opts ...jsm.Option) ([]jsm.Option, error) {
+	jsmopts := []jsm.Option{
+		jsm.WithAPIPrefix(c.JSAPIPrefix()),
+		jsm.WithEventPrefix(c.JSEventPrefix()),
+		jsm.WithDomain(c.JSDomain()),
+	}
+
+	return append(jsmopts, opts...), nil
 }
 
 // NATSOptions creates NATS client configuration based on the contents of the context

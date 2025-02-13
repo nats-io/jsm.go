@@ -162,7 +162,7 @@ func CheckStreamInfoHealth(nfo *api.StreamInfo, check *Result, opts CheckStreamH
 	streamCheckMirror(nfo, check, opts, log)
 }
 
-func CheckStreamHealth(server string, nopts []nats.Option, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
+func CheckStreamHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
 	if opts.StreamName == "" {
 		check.Critical("stream name is required")
 		return nil
@@ -173,7 +173,7 @@ func CheckStreamHealth(server string, nopts []nats.Option, check *Result, opts C
 		return nil
 	}
 
-	mgr, err := jsm.New(nc)
+	mgr, err := jsm.New(nc, jsmOpts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}

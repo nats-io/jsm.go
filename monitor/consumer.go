@@ -134,7 +134,7 @@ func ConsumerInfoHealthCheck(nfo *api.ConsumerInfo, check *Result, opts Consumer
 	consumerCheckPinned(nfo, check, opts, log)
 }
 
-func ConsumerHealthCheck(server string, nopts []nats.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
+func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
 	if opts.StreamName == "" {
 		check.Critical("stream name is required")
 		return nil
@@ -149,7 +149,7 @@ func ConsumerHealthCheck(server string, nopts []nats.Option, check *Result, opts
 		return nil
 	}
 
-	mgr, err := jsm.New(nc)
+	mgr, err := jsm.New(nc, jsmOpts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}

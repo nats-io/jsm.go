@@ -18,10 +18,6 @@
     "no_erase": {
       "type": "boolean",
       "description": "Default will securely remove a message and rewrite the data with random data, set this to true to only remove the message"
-    },
-    "no_marker": {
-      "type": "boolean",
-      "description": "Prevents placing a delete marker in streams with markers enabled"
     }
   }
 }

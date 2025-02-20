@@ -16,10 +16,6 @@
     "keep": {
       "description": "Ensures this many messages are present after the purge. Can be combined with the subject filter but not the sequence",
       "$ref": "definitions.json#/definitions/golang_uint64"
-    },
-    "no_marker": {
-      "type": "boolean",
-      "description": "Prevents placing a purge marker in streams with markers enabled"
     }
   }
 }

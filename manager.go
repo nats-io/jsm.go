@@ -226,9 +226,9 @@ func (m *Manager) StreamNames(filter *StreamNamesFilter) (names []string, err er
 }
 
 // DeleteStreamMessage deletes a specific message from the Stream without erasing the data, see DeleteMessage() for a safe delete
-func (m *Manager) DeleteStreamMessage(stream string, seq uint64, noErase bool, noMarker bool) error {
+func (m *Manager) DeleteStreamMessage(stream string, seq uint64, noErase bool) error {
 	var resp api.JSApiMsgDeleteResponse
-	err := m.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, stream), api.JSApiMsgDeleteRequest{Seq: seq, NoErase: noErase, NoMarker: noMarker}, &resp)
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, stream), api.JSApiMsgDeleteRequest{Seq: seq, NoErase: noErase}, &resp)
 	if err != nil {
 		return err
 	}

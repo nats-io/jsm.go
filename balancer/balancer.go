@@ -16,12 +16,12 @@ package balancer
 import (
 	"fmt"
 	"math"
+	"math/rand/v2"
 	"slices"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats.go"
-	"golang.org/x/exp/rand"
 )
 
 // Balancer is used to redistribute stream and consumer leaders in a cluster.
@@ -147,7 +147,7 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, clust
 				retries := 0
 				for s.offset > 0 {
 					// find a random stream (or consumer) to move to another server
-					randomIndex := rand.Intn(len(s.entities))
+					randomIndex := rand.IntN(len(s.entities))
 					entity := s.entities[randomIndex]
 
 					b.log.Infof("Moving %s to available server in cluster %s", entity.Name(), cluster)

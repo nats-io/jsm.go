@@ -101,12 +101,18 @@ func (p *StreamPager) start(stream *Stream, mgr *Manager, opts ...PagerOption) e
 
 	var err error
 
-	if p.stream.Retention() == api.WorkQueuePolicy && !p.stream.DirectAllowed() {
-		return fmt.Errorf("work queue retention streams can only be paged if direct access is allowed")
+	if !p.stream.DirectAllowed() {
+		if p.stream.Retention() == api.WorkQueuePolicy {
+			return fmt.Errorf("work queue retention streams can only be paged if direct access is allowed")
+		}
+
+		if p.stream.Retention() == api.InterestPolicy {
+			return fmt.Errorf("interest retention streams can only be paged if direct access is allowed")
+		}
 	}
 
 	// for now only on WQ because its slow, until there is a batch mode direct request
-	p.useDirect = p.stream.Retention() == api.WorkQueuePolicy && p.stream.DirectAllowed()
+	p.useDirect = p.stream.Retention() == api.WorkQueuePolicy || p.stream.Retention() == api.InterestPolicy
 
 	p.q = make(chan *nats.Msg, p.pageSize)
 	p.sub, err = mgr.nc.ChanSubscribe(mgr.nc.NewRespInbox(), p.q)

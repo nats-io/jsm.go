@@ -19,13 +19,13 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go/monitor"
-	"github.com/nats-io/nats-server/v2/server"
+	testapi "github.com/nats-io/jsm.go/test/testing_client/api"
 	"github.com/nats-io/nats.go"
 )
 
 func TestCheckRequest(t *testing.T) {
 	t.Run("Body match", func(t *testing.T) {
-		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(t *testing.T, nc *nats.Conn, srv *testapi.ManagedServer) {
 			check := &monitor.Result{}
 
 			_, err := nc.Subscribe("test", func(msg *nats.Msg) {
@@ -33,7 +33,7 @@ func TestCheckRequest(t *testing.T) {
 			})
 			assertNoError(t, err)
 
-			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
+			assertNoError(t, monitor.CheckRequest(nc.ConnectedUrl(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:       "test",
 				ResponseMatch: "no match",
 			}))
@@ -42,7 +42,7 @@ func TestCheckRequest(t *testing.T) {
 			assertListEquals(t, check.Criticals, "response does not match regexp")
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
+			assertNoError(t, monitor.CheckRequest(nc.ConnectedUrl(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:       "test",
 				ResponseMatch: ".+payload",
 			}))
@@ -53,7 +53,7 @@ func TestCheckRequest(t *testing.T) {
 	})
 
 	t.Run("Headers", func(t *testing.T) {
-		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(t *testing.T, nc *nats.Conn, srv *testapi.ManagedServer) {
 			check := &monitor.Result{}
 
 			_, err := nc.Subscribe("test", func(msg *nats.Msg) {
@@ -63,7 +63,7 @@ func TestCheckRequest(t *testing.T) {
 			})
 			assertNoError(t, err)
 
-			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
+			assertNoError(t, monitor.CheckRequest(nc.ConnectedUrl(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:     "test",
 				HeaderMatch: map[string]string{"test": "no match", "other": "header"},
 			}))
@@ -72,7 +72,7 @@ func TestCheckRequest(t *testing.T) {
 			assertListEquals(t, check.Criticals, `invalid header "other" = ""`, `invalid header "test" = "test header"`)
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
+			assertNoError(t, monitor.CheckRequest(nc.ConnectedUrl(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:     "test",
 				HeaderMatch: map[string]string{"test": "test header"},
 			}))
@@ -83,7 +83,7 @@ func TestCheckRequest(t *testing.T) {
 	})
 
 	t.Run("Response Time", func(t *testing.T) {
-		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(t *testing.T, nc *nats.Conn, srv *testapi.ManagedServer) {
 			check := &monitor.Result{}
 			_, err := nc.Subscribe("test", func(msg *nats.Msg) {
 				time.Sleep(500 * time.Millisecond)
@@ -91,7 +91,7 @@ func TestCheckRequest(t *testing.T) {
 			})
 			assertNoError(t, err)
 
-			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
+			assertNoError(t, monitor.CheckRequest(nc.ConnectedUrl(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:              "test",
 				ResponseTimeWarn:     20 * time.Millisecond,
 				ResponseTimeCritical: time.Second,
@@ -108,7 +108,7 @@ func TestCheckRequest(t *testing.T) {
 			}
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
+			assertNoError(t, monitor.CheckRequest(nc.ConnectedUrl(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:              "test",
 				ResponseTimeWarn:     20 * time.Millisecond,
 				ResponseTimeCritical: 400 * time.Millisecond,
@@ -125,7 +125,7 @@ func TestCheckRequest(t *testing.T) {
 			}
 
 			check = &monitor.Result{}
-			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
+			assertNoError(t, monitor.CheckRequest(nc.ConnectedUrl(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:              "test",
 				ResponseTimeWarn:     800 * time.Millisecond,
 				ResponseTimeCritical: 1000 * time.Millisecond,

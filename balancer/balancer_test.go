@@ -1,23 +1,25 @@
 package balancer
 
 import (
-	"context"
 	"fmt"
-	"net/url"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
-	"github.com/nats-io/nats-server/v2/server"
+	testapi "github.com/nats-io/jsm.go/test/testing_client/api"
+	"github.com/nats-io/jsm.go/test/testing_client/srvtest"
 	"github.com/nats-io/nats.go"
 )
 
 func TestBalancer(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
+	withTesterJetStreamCluster(t, func(t *testing.T, mgr *jsm.Manager, _ *srvtest.Client, servers []*testapi.ManagedServer) {
 		var err error
+
+		nc := mgr.NatsConn()
+		firstServer := servers[0].Name
+
 		waitTime := 100 * time.Millisecond
 		streams := []*jsm.Stream{}
 		for i := 1; i <= 3; i++ {
@@ -28,8 +30,8 @@ func TestBalancer(t *testing.T) {
 				t.Fatalf("could not create stream %s", err)
 			}
 			info, _ := s.ClusterInfo()
-			if info.Leader != "s1" {
-				placement := api.Placement{Preferred: "s1"}
+			if info.Leader != firstServer {
+				placement := api.Placement{Preferred: firstServer}
 				err = s.LeaderStepDown(&placement)
 				if err != nil {
 					t.Fatalf("could not move stream %s", err)
@@ -59,16 +61,16 @@ func TestBalancer(t *testing.T) {
 
 		b, err := New(nc, api.NewDefaultLogger(api.DebugLevel))
 		if err != nil {
-			return err
+			t.Fatalf("create failed: %v", err.Error())
 		}
 
 		count, err := b.BalanceStreams(streams)
 		if err != nil {
-			return err
+			t.Fatalf("Balance failed: %v", err.Error())
 		}
 
 		if count == 0 {
-			return err
+			t.Fatal("Balanceed 0 streams")
 		}
 
 		consumers := []*jsm.Consumer{}
@@ -76,12 +78,12 @@ func TestBalancer(t *testing.T) {
 			consumerName := fmt.Sprintf("testc%d", i)
 			c, err := mgr.NewConsumer("tests1", jsm.DurableName(consumerName), jsm.ConsumerOverrideReplicas(3))
 			if err != nil {
-				return err
+				t.Fatalf("could not create consumer %s", err)
 			}
 
 			info, _ := c.ClusterInfo()
-			if info.Leader != "s1" {
-				placement := api.Placement{Preferred: "s1"}
+			if info.Leader != firstServer {
+				placement := api.Placement{Preferred: firstServer}
 				err = c.LeaderStepDown(&placement)
 				if err != nil {
 					t.Fatalf("could not move consumer %s", err)
@@ -111,102 +113,34 @@ func TestBalancer(t *testing.T) {
 
 		count, err = b.BalanceConsumers(consumers)
 		if err != nil {
-			return err
+			t.Fatalf("Balance failed: %v", err)
 		}
 
 		if count == 0 {
-			return err
+			t.Fatal("Balanced 0 consumers")
 		}
-
-		return nil
 	})
 }
 
-func withJSCluster(t *testing.T, cb func(*testing.T, []*server.Server, *nats.Conn, *jsm.Manager) error) {
+func withTesterJetStreamCluster(t *testing.T, fn func(*testing.T, *jsm.Manager, *srvtest.Client, []*testapi.ManagedServer)) {
 	t.Helper()
 
-	d, err := os.MkdirTemp("", "jstest")
-	if err != nil {
-		t.Fatalf("temp dir could not be made: %s", err)
+	url := os.Getenv("TESTER_URL")
+	if url == "" {
+		url = "nats://localhost:4222"
 	}
-	defer os.RemoveAll(d)
 
-	var (
-		servers []*server.Server
-	)
+	client := srvtest.New(t, url)
+	t.Cleanup(func() {
+		client.Reset(t)
+	})
 
-	for i := 1; i <= 3; i++ {
-		opts := &server.Options{
-			JetStream:  true,
-			StoreDir:   filepath.Join(d, fmt.Sprintf("s%d", i)),
-			Port:       -1,
-			Host:       "localhost",
-			ServerName: fmt.Sprintf("s%d", i),
-			LogFile:    "/dev/null",
-			Cluster: server.ClusterOpts{
-				Name: "TEST",
-				Port: 12000 + i,
-			},
-			Routes: []*url.URL{
-				{Host: "localhost:12001"},
-				{Host: "localhost:12002"},
-				{Host: "localhost:12003"},
-			},
-		}
-
-		s, err := server.NewServer(opts)
+	client.WithJetStreamCluster(t, 3, func(t *testing.T, nc *nats.Conn, servers []*testapi.ManagedServer) {
+		mgr, err := jsm.New(nc)
 		if err != nil {
-			t.Fatalf("server %d start failed: %v", i, err)
+			t.Fatal(err)
 		}
-		s.ConfigureLogger()
-		go s.Start()
-		if !s.ReadyForConnections(10 * time.Second) {
-			t.Errorf("nats server %d did not start", i)
-		}
-		defer func() {
-			s.Shutdown()
-		}()
 
-		servers = append(servers, s)
-	}
-
-	if len(servers) != 3 {
-		t.Fatalf("servers did not start")
-	}
-
-	nc, err := nats.Connect(servers[0].ClientURL(), nats.UseOldRequestStyle())
-	if err != nil {
-		t.Fatalf("client start failed: %s", err)
-	}
-	defer nc.Close()
-
-	mgr, err := jsm.New(nc, jsm.WithTimeout(5*time.Second))
-	if err != nil {
-		t.Fatalf("manager creation failed: %s", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	ticker := time.NewTicker(250 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			_, err := mgr.JetStreamAccountInfo()
-			if err != nil {
-				continue
-			}
-
-			err = cb(t, servers, nc, mgr)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			return
-		case <-ctx.Done():
-			t.Fatalf("jetstream did not become available")
-		}
-	}
+		fn(t, mgr, client, servers)
+	})
 }

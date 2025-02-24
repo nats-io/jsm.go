@@ -31,6 +31,10 @@ import (
 	"github.com/nats-io/jsm.go/api"
 )
 
+// ErrNoExprLangBuild warns that expression matching is disabled when compiling
+// a go binary with the `noexprlang` build tag.
+var ErrNoExprLangBuild = fmt.Errorf("binary has been built with `noexprlang` build tag and thus does not support expression matching")
+
 // standard api responses with error embedded
 type jetStreamResponseError interface {
 	ToError() error

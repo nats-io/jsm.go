@@ -414,6 +414,12 @@ func TestStream_LatestInformation(t *testing.T) {
 
 func TestStream_State(t *testing.T) {
 	withJsServer(t, func(t *testing.T, mgr *jsm.Manager, _ *srvtest.Client, _ *testapi.ManagedServer) {
+		_, names, err := mgr.Streams(nil)
+		checkErr(t, err, "names failed")
+		if len(names) != 0 {
+			t.Fatalf("expected 0 names, got %d: %v", len(names), names)
+		}
+
 		stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 		checkErr(t, err, "create failed")
 

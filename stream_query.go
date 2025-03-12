@@ -14,15 +14,12 @@
 package jsm
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/expr-lang/expr"
 	"github.com/nats-io/jsm.go/api"
-	"gopkg.in/yaml.v3"
 )
 
 type streamMatcher func([]*Stream) ([]*Stream, error)
@@ -53,14 +50,6 @@ type StreamQueryOpt func(query *streamQuery) error
 func StreamQueryApiLevelMin(level int) StreamQueryOpt {
 	return func(q *streamQuery) error {
 		q.apiLevel = level
-		return nil
-	}
-}
-
-// StreamQueryExpression filters the stream using the expr expression language
-func StreamQueryExpression(e string) StreamQueryOpt {
-	return func(q *streamQuery) error {
-		q.expression = e
 		return nil
 	}
 }
@@ -225,56 +214,6 @@ func (q *streamQuery) Filter(streams []*Stream) ([]*Stream, error) {
 		matched, err = matcher(matched)
 		if err != nil {
 			return nil, err
-		}
-	}
-
-	return matched, nil
-}
-
-func (q *streamQuery) matchExpression(streams []*Stream) ([]*Stream, error) {
-	if q.expression == "" {
-		return streams, nil
-	}
-
-	var matched []*Stream
-
-	for _, stream := range streams {
-		cfg := map[string]any{}
-		state := map[string]any{}
-		info := map[string]any{}
-
-		cfgBytes, _ := yaml.Marshal(stream.Configuration())
-		yaml.Unmarshal(cfgBytes, &cfg)
-		nfo, _ := stream.LatestInformation()
-		nfoBytes, _ := yaml.Marshal(nfo)
-		yaml.Unmarshal(nfoBytes, &info)
-		stateBytes, _ := yaml.Marshal(nfo.State)
-		yaml.Unmarshal(stateBytes, &state)
-
-		env := map[string]any{
-			"config": cfg,
-			"state":  state,
-			"info":   info,
-			"Info":   nfo,
-		}
-
-		program, err := expr.Compile(q.expression, expr.Env(env), expr.AsBool())
-		if err != nil {
-			return nil, err
-		}
-
-		out, err := expr.Run(program, env)
-		if err != nil {
-			return nil, err
-		}
-
-		should, ok := out.(bool)
-		if !ok {
-			return nil, fmt.Errorf("expression did not return a boolean")
-		}
-
-		if should {
-			matched = append(matched, stream)
 		}
 	}
 

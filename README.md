@@ -175,3 +175,10 @@ This can be used by the `Manager` to validate all API access.
 ```go
 mgr, _ := jsm.New(nc, jsm.WithAPIValidation(new(SchemaValidator)))
 ```
+
+## Build tag
+
+This library provides a `noexprlang` build tag that disables expression matching
+for Streams and Consumers queries. The purpose of this build tag is to disable
+the use of the `github.com/expr-lang/expr` module that disables go compiler's dead
+code elimination because it uses some types and functions of the `reflect` package.

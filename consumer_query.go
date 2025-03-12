@@ -19,9 +19,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/expr-lang/expr"
 	"github.com/nats-io/jsm.go/api"
-	"gopkg.in/yaml.v3"
 )
 
 type consumerMatcher func([]*Consumer) ([]*Consumer, error)
@@ -55,14 +53,6 @@ type ConsumerQueryOpt func(query *consumerQuery) error
 func ConsumerQueryApiLevelMin(level int) ConsumerQueryOpt {
 	return func(q *consumerQuery) error {
 		q.apiLevel = level
-		return nil
-	}
-}
-
-// ConsumerQueryExpression filters the consumers using the expr expression language
-func ConsumerQueryExpression(e string) ConsumerQueryOpt {
-	return func(q *consumerQuery) error {
-		q.expression = e
 		return nil
 	}
 }
@@ -354,51 +344,4 @@ func (q *consumerQuery) matchApiLevel(consumers []*Consumer) ([]*Consumer, error
 
 		return (!q.invert && requiredLevel >= q.apiLevel) || (q.invert && requiredLevel < q.apiLevel)
 	})
-}
-
-func (q *consumerQuery) matchExpression(consumers []*Consumer) ([]*Consumer, error) {
-	if q.expression == "" {
-		return consumers, nil
-	}
-
-	var matched []*Consumer
-
-	for _, consumer := range consumers {
-		cfg := map[string]any{}
-		state := map[string]any{}
-
-		cfgBytes, _ := yaml.Marshal(consumer.Configuration())
-		yaml.Unmarshal(cfgBytes, &cfg)
-		nfo, _ := consumer.LatestState()
-		stateBytes, _ := yaml.Marshal(nfo)
-		yaml.Unmarshal(stateBytes, &state)
-
-		env := map[string]any{
-			"config": cfg,
-			"state":  state,
-			"info":   state,
-			"Info":   nfo,
-		}
-
-		program, err := expr.Compile(q.expression, expr.Env(env), expr.AsBool())
-		if err != nil {
-			return nil, err
-		}
-
-		out, err := expr.Run(program, env)
-		if err != nil {
-			return nil, err
-		}
-
-		should, ok := out.(bool)
-		if !ok {
-			return nil, fmt.Errorf("expression did not return a boolean")
-		}
-
-		if should {
-			matched = append(matched, consumer)
-		}
-	}
-
-	return matched, nil
 }

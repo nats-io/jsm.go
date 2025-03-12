@@ -43,6 +43,10 @@ func CheckRequest(server string, nopts []nats.Option, check *Result, timeout tim
 		return nil
 	}
 
+	return CheckRequestWithConnection(nc, check, timeout, opts)
+}
+
+func CheckRequestWithConnection(nc *nats.Conn, check *Result, timeout time.Duration, opts CheckRequestOptions) error {
 	if opts.Subject == "" {
 		check.Critical("no subject specified")
 		return nil

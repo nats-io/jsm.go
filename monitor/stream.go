@@ -163,13 +163,17 @@ func CheckStreamInfoHealth(nfo *api.StreamInfo, check *Result, opts CheckStreamH
 }
 
 func CheckStreamHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
-	if opts.StreamName == "" {
-		check.Critical("stream name is required")
+	nc, err := nats.Connect(server, nopts...)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
 
-	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	return CheckStreamHealthWithConnection(nc, jsmOpts, check, opts, log)
+}
+
+func CheckStreamHealthWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
+	if opts.StreamName == "" {
+		check.Critical("stream name is required")
 		return nil
 	}
 

@@ -134,18 +134,13 @@ func ConsumerInfoHealthCheck(nfo *api.ConsumerInfo, check *Result, opts Consumer
 	consumerCheckPinned(nfo, check, opts, log)
 }
 
-func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
+func ConsumerHealthCheckWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
 	if opts.StreamName == "" {
 		check.Critical("stream name is required")
 		return nil
 	}
 	if opts.ConsumerName == "" {
 		check.Critical("consumer name is required")
-		return nil
-	}
-
-	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
 
@@ -183,6 +178,15 @@ func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Optio
 	}
 
 	return nil
+}
+
+func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
+	nc, err := nats.Connect(server, nopts...)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
+	}
+
+	return ConsumerHealthCheckWithConnection(nc, jsmOpts, check, opts, log)
 }
 
 func consumerCheckPinned(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {

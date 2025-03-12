@@ -88,12 +88,11 @@ commands:
             . "{{ BashHelperPath }}"
                         
             {{ if .Flags.update }}
-              ab_say Updating linting tools
+              ab_announce Updating linting tools
               go install github.com/client9/misspell/cmd/misspell@latest
               go install honnef.co/go/tools/cmd/staticcheck@latest
             {{ else }}
-              echo ">>> Run with --update to install required commands"
-              echo
+              ab_say Run with --update to install required commands
             {{ end }}
             
             ab_say Formatting source files

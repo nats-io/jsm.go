@@ -37,16 +37,11 @@ type CheckJetStreamAccountOptions struct {
 	Resolver func() *api.JetStreamAccountStats `json:"-" yaml:"-"`
 }
 
-func CheckJetStreamAccount(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckJetStreamAccountOptions) error {
+func CheckJetStreamAccountWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, check *Result, opts CheckJetStreamAccountOptions) error {
 	var mgr *jsm.Manager
 	var err error
 
 	if opts.Resolver == nil {
-		nc, err := nats.Connect(server, nopts...)
-		if check.CriticalIfErr(err, "connection failed: %v", err) {
-			return nil
-		}
-
 		mgr, err = jsm.New(nc, jsmOpts...)
 		if check.CriticalIfErr(err, "setup failed: %v", err) {
 			return nil
@@ -80,6 +75,20 @@ func CheckJetStreamAccount(server string, nopts []nats.Option, jsmOpts []jsm.Opt
 	}
 
 	return nil
+}
+
+func CheckJetStreamAccount(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckJetStreamAccountOptions) error {
+	var nc *nats.Conn
+	var err error
+
+	if opts.Resolver == nil {
+		nc, err = nats.Connect(server, nopts...)
+		if check.CriticalIfErr(err, "connection failed: %v", err) {
+			return nil
+		}
+	}
+
+	return CheckJetStreamAccountWithConnection(nc, jsmOpts, check, opts)
 }
 
 func checkStreamClusterHealth(check *Result, opts *CheckJetStreamAccountOptions, info []*jsm.Stream) error {

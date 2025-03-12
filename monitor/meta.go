@@ -42,7 +42,13 @@ func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts
 		if check.CriticalIfErr(err, "connection failed: %v", err) {
 			return nil
 		}
+	}
 
+	return CheckJetstreamMetaWithConnection(nc, check, opts)
+}
+
+func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJetstreamMetaOptions) error {
+	if opts.Resolver == nil {
 		opts.Resolver = func(conn *nats.Conn) (*server.ServerAPIJszResponse, error) {
 			jszresp := &server.ServerAPIJszResponse{}
 			jreq, err := json.Marshal(&server.JSzOptions{LeaderOnly: true})

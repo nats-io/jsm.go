@@ -46,6 +46,10 @@ func CheckStreamMessage(server string, nopts []nats.Option, jsmOpts []jsm.Option
 		return nil
 	}
 
+	return CheckStreamMessageWithConnection(nc, jsmOpts, check, opts)
+}
+
+func CheckStreamMessageWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, check *Result, opts CheckStreamMessageOptions) error {
 	mgr, err := jsm.New(nc, jsmOpts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil

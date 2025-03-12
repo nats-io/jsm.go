@@ -61,11 +61,20 @@ func CheckServer(server string, nopts []nats.Option, check *Result, timeout time
 	var err error
 
 	if opts.Resolver == nil {
-		opts.Resolver = fetchVarz
 		nc, err = nats.Connect(server, nopts...)
 		if check.CriticalIfErr(err, "connection failed: %v", err) {
 			return nil
 		}
+	}
+
+	return CheckServerWithConnection(nc, check, timeout, opts)
+}
+
+func CheckServerWithConnection(nc *nats.Conn, check *Result, timeout time.Duration, opts CheckServerOptions) error {
+	var err error
+
+	if opts.Resolver == nil {
+		opts.Resolver = fetchVarz
 	}
 
 	vz, err := opts.Resolver(nc, opts.Name, timeout)

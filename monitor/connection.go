@@ -42,6 +42,8 @@ func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, 
 	if check.CriticalIfErr(err, "connection failed: %v", err) {
 		return nil
 	}
+	defer nc.Close()
+
 	ct := time.Since(connStart)
 	check.Pd(&PerfDataItem{Name: "connect_time", Value: ct.Seconds(), Warn: opts.ConnectTimeWarning, Crit: opts.ConnectTimeCritical, Unit: "s", Help: "Time taken to connect to NATS"})
 

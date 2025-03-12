@@ -86,6 +86,7 @@ func CheckJetStreamAccount(server string, nopts []nats.Option, jsmOpts []jsm.Opt
 		if check.CriticalIfErr(err, "connection failed: %v", err) {
 			return nil
 		}
+		defer nc.Close()
 	}
 
 	return CheckJetStreamAccountWithConnection(nc, jsmOpts, check, opts)

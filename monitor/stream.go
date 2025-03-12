@@ -167,6 +167,7 @@ func CheckStreamHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option,
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
+	defer nc.Close()
 
 	return CheckStreamHealthWithConnection(nc, jsmOpts, check, opts, log)
 }

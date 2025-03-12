@@ -32,9 +32,9 @@ type CheckRequestOptions struct {
 	// ResponseMatch applies regular expression match against the payload
 	ResponseMatch string `json:"response_match" yaml:"response_match"`
 	// ResponseTimeWarn warns when the response takes longer than a certain time
-	ResponseTimeWarn time.Duration `json:"response_time_warn" yaml:"response_time_warn"`
+	ResponseTimeWarn float64 `json:"response_time_warn" yaml:"response_time_warn"`
 	// ResponseTimeCritical logs critical when the response takes longer than a certain time
-	ResponseTimeCritical time.Duration `json:"response_time_crit" yaml:"response_time_crit"`
+	ResponseTimeCritical float64 `json:"response_time_crit" yaml:"response_time_crit"`
 }
 
 func CheckRequest(server string, nopts []nats.Option, check *Result, timeout time.Duration, opts CheckRequestOptions) error {
@@ -66,8 +66,8 @@ func CheckRequestWithConnection(nc *nats.Conn, check *Result, timeout time.Durat
 		Help:  "How long the request took",
 		Name:  "time",
 		Value: float64(since.Round(time.Millisecond).Seconds()),
-		Warn:  opts.ResponseTimeWarn.Seconds(),
-		Crit:  opts.ResponseTimeCritical.Seconds(),
+		Warn:  opts.ResponseTimeWarn,
+		Crit:  opts.ResponseTimeCritical,
 		Unit:  "s",
 	})
 	if check.CriticalIfErr(err, "could not send request: %v", err) {
@@ -92,9 +92,9 @@ func CheckRequestWithConnection(nc *nats.Conn, check *Result, timeout time.Durat
 		}
 	}
 
-	if opts.ResponseTimeCritical > 0 && since > opts.ResponseTimeCritical {
+	if opts.ResponseTimeCritical > 0 && since.Seconds() > opts.ResponseTimeCritical {
 		check.Critical("response took %v", since.Round(time.Millisecond))
-	} else if opts.ResponseTimeWarn > 0 && since > opts.ResponseTimeWarn {
+	} else if opts.ResponseTimeWarn > 0 && since.Seconds() > opts.ResponseTimeWarn {
 		check.Warn("response took %v", since.Round(time.Millisecond))
 	}
 

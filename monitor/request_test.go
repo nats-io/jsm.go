@@ -93,8 +93,8 @@ func TestCheckRequest(t *testing.T) {
 
 			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:              "test",
-				ResponseTimeWarn:     20 * time.Millisecond,
-				ResponseTimeCritical: time.Second,
+				ResponseTimeWarn:     0.2,
+				ResponseTimeCritical: 1,
 			}))
 			assertListIsEmpty(t, check.Criticals)
 			assertListIsEmpty(t, check.OKs)
@@ -110,8 +110,8 @@ func TestCheckRequest(t *testing.T) {
 			check = &monitor.Result{}
 			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:              "test",
-				ResponseTimeWarn:     20 * time.Millisecond,
-				ResponseTimeCritical: 400 * time.Millisecond,
+				ResponseTimeWarn:     0.2,
+				ResponseTimeCritical: 0.4,
 			}))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.OKs)
@@ -127,8 +127,8 @@ func TestCheckRequest(t *testing.T) {
 			check = &monitor.Result{}
 			assertNoError(t, monitor.CheckRequest(srv.ClientURL(), nil, check, time.Second, monitor.CheckRequestOptions{
 				Subject:              "test",
-				ResponseTimeWarn:     800 * time.Millisecond,
-				ResponseTimeCritical: 1000 * time.Millisecond,
+				ResponseTimeWarn:     0.8,
+				ResponseTimeCritical: 1,
 			}))
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)

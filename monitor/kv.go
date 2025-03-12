@@ -31,7 +31,7 @@ type CheckKVBucketAndKeyOptions struct {
 	ValuesCritical int64 `json:"values_critical" yaml:"values_critical"`
 }
 
-func CheckKVBucketAndKeyConnection(nc *nats.Conn, check *Result, opts CheckKVBucketAndKeyOptions) error {
+func CheckKVBucketAndKeyWithConnection(nc *nats.Conn, check *Result, opts CheckKVBucketAndKeyOptions) error {
 	js, err := nc.JetStream()
 	if check.CriticalIfErr(err, "connection failed: %v", err) {
 		return nil
@@ -114,5 +114,5 @@ func CheckKVBucketAndKey(server string, nopts []nats.Option, check *Result, opts
 		return nil
 	}
 
-	return CheckKVBucketAndKeyConnection(nc, check, opts)
+	return CheckKVBucketAndKeyWithConnection(nc, check, opts)
 }

@@ -185,6 +185,7 @@ func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Optio
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
+	defer nc.Close()
 
 	return ConsumerHealthCheckWithConnection(nc, jsmOpts, check, opts, log)
 }

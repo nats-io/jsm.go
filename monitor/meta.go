@@ -42,6 +42,7 @@ func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts
 		if check.CriticalIfErr(err, "connection failed: %v", err) {
 			return nil
 		}
+		defer nc.Close()
 	}
 
 	return CheckJetstreamMetaWithConnection(nc, check, opts)

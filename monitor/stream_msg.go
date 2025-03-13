@@ -45,6 +45,7 @@ func CheckStreamMessage(server string, nopts []nats.Option, jsmOpts []jsm.Option
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
+	defer nc.Close()
 
 	return CheckStreamMessageWithConnection(nc, jsmOpts, check, opts)
 }

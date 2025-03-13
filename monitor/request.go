@@ -42,6 +42,7 @@ func CheckRequest(server string, nopts []nats.Option, check *Result, timeout tim
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
+	defer nc.Close()
 
 	return CheckRequestWithConnection(nc, check, timeout, opts)
 }

@@ -55,6 +55,7 @@ type Configuration struct {
 	ServerEndpointConfigs  []EndpointCaptureConfig
 	AccountEndpointConfigs []EndpointCaptureConfig
 	ServerProfileNames     []string
+	Detailed               bool
 }
 
 func NewCaptureConfiguration() *Configuration {
@@ -126,6 +127,7 @@ func NewCaptureConfiguration() *Configuration {
 			"heap",
 			"allocs",
 		},
+		Detailed: true,
 	}
 }
 
@@ -181,7 +183,7 @@ func (g *gather) start() error {
 
 	// Capture server endpoints
 	if g.cfg.Include.ServerEndpoints {
-		err := g.captureServerEndpoints(serverInfoMap)
+		err := g.captureServerEndpoints(serverInfoMap, g.cfg.Detailed)
 		if err != nil {
 			return fmt.Errorf("failed to capture server endpoints")
 		}
@@ -525,19 +527,63 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 }
 
 // Capture configured endpoints for each known server
-func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerInfo) error {
+func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerInfo, detail bool) error {
 	if g.aw == nil {
 		return fmt.Errorf("no archive writer supplied")
 	}
 
 	g.log.Infof("Querying %d endpoints on %d known servers...", len(g.cfg.ServerEndpointConfigs), len(serverInfoMap))
 	capturedCount := 0
+
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
 		for _, endpoint := range g.cfg.ServerEndpointConfigs {
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", serverId, endpoint.ApiSuffix)
 
-			responses, err := g.doReq(context.TODO(), nil, subject, 1)
+			var opts any
+
+			if detail {
+				switch endpoint.ApiSuffix {
+				case "CONNZ":
+					opts = &server.ConnzOptions{
+						Subscriptions:       true,
+						SubscriptionsDetail: true,
+					}
+				case "GATEWAYZ":
+					opts = server.GatewayzOptions{
+						Accounts:                   true,
+						AccountSubscriptions:       true,
+						AccountSubscriptionsDetail: true,
+					}
+				case "HEALTHZ":
+					opts = server.HealthzOptions{
+						Details: true,
+					}
+				case "JSZ":
+					opts = server.JSzOptions{
+						Accounts:   true,
+						Streams:    true,
+						Consumer:   true,
+						Config:     true,
+						RaftGroups: true,
+					}
+				case "LEAFZ":
+					opts = server.LeafzOptions{
+						Subscriptions: true,
+					}
+				case "ROUTEZ":
+					opts = server.RoutezOptions{
+						Subscriptions:       true,
+						SubscriptionsDetail: true,
+					}
+				case "SUBSZ":
+					opts = server.SubszOptions{
+						Subscriptions: true,
+					}
+				}
+			}
+
+			responses, err := g.doReq(context.TODO(), opts, subject, 1)
 			if err != nil {
 				g.log.Errorf("Failed to request %s from server %s: %s", endpoint.ApiSuffix, serverName, err)
 				continue

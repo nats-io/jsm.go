@@ -32,7 +32,6 @@ const (
 	JSMetaCurrentServerLevel   = "_nats.level"
 	JSMetaCurrentServerVersion = "_nats.ver"
 	JsMetaRequiredServerLevel  = "_nats.req.level"
-	JSMessageTTL               = "Nats-TTL"
 )
 
 // Responses to requests sent to a server from a client.
@@ -61,7 +60,7 @@ const (
 	JSExpectedLastMsgId = "Nats-Expected-Last-Msg-Id"
 
 	// JSRollup is a header indicating the message being sent should be stored and all past messags should be discarded
-	// the value can be either `all` or `subject`
+	// the value can be either `all` or `sub`
 	JSRollup = "Nats-Rollup"
 
 	// JSRollupAll is the value for JSRollup header to replace the entire stream
@@ -69,6 +68,9 @@ const (
 
 	// JSRollupSubject is the value for JSRollup header to replace the a single subject
 	JSRollupSubject = "sub"
+
+	// JSMessageTTL sets a TTL per message
+	JSMessageTTL = "Nats-TTL"
 )
 
 type JSApiIterableRequest struct {

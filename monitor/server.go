@@ -65,6 +65,7 @@ func CheckServer(server string, nopts []nats.Option, check *Result, timeout time
 		if check.CriticalIfErr(err, "connection failed: %v", err) {
 			return nil
 		}
+		defer nc.Close()
 	}
 
 	return CheckServerWithConnection(nc, check, timeout, opts)

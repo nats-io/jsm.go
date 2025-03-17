@@ -113,6 +113,7 @@ func CheckKVBucketAndKey(server string, nopts []nats.Option, check *Result, opts
 	if check.CriticalIfErr(err, "connection failed: %v", err) {
 		return nil
 	}
+	defer nc.Close()
 
 	return CheckKVBucketAndKeyWithConnection(nc, check, opts)
 }

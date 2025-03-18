@@ -126,6 +126,10 @@ func NewCaptureConfiguration() *Configuration {
 			"goroutine",
 			"heap",
 			"allocs",
+			"mutex",
+			"threadcreate",
+			"block",
+			"cpu",
 		},
 		Detailed: true,
 	}
@@ -457,6 +461,8 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 	g.log.Infof("Capturing %d profiles on %d known servers...", len(g.cfg.ServerProfileNames), len(serverInfoMap))
 
 	capturedCount := 0
+	timeout := g.cfg.Timeout
+
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
 		clusterTag := archive.TagNoCluster()
@@ -469,6 +475,13 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 			payload := server.ProfilezOptions{
 				Name:  profileName,
 				Debug: 0,
+			}
+
+			if profileName == "cpu" {
+				payload.Duration = timeout
+				g.cfg.Timeout = timeout + 2*time.Second
+			} else {
+				g.cfg.Timeout = timeout
 			}
 
 			responses, err := g.doReq(context.TODO(), payload, subject, 1)

@@ -673,9 +673,9 @@
           "description": "Indicates if the consumer is currently in a paused state",
           "type": "boolean"
         },
-        "pause_until": {
-          "description": "A deadline time for when the consumer will be paused. Only usable if 'paused' is true",
-          "$ref": "#/definitions/golang_time"
+        "pause_remaining": {
+          "description": "When paused the time remaining until unpause",
+          "$ref": "#/definitions/golang_duration_nanos"
         },
         "priority_groups": {
           "description": "The state of Priority Groups",

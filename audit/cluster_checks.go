@@ -149,7 +149,7 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 			var gateways *server.Gatewayz
 			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerGateways())
 			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'GATEWAYZ' is missing for server %s cluster %s", serverName, clusterName)
+				return Skipped, fmt.Errorf("artifact 'GATEWAYZ' is missing for server %s cluster %s", serverName, clusterName)
 			} else if err != nil {
 				return Skipped, fmt.Errorf("failed to load GATEWAYZ for server %s: %w", serverName, err)
 			}

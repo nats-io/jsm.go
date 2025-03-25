@@ -525,7 +525,7 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 				clusterTag,
 			}
 
-			err = g.aw.AddRaw(bytes.NewReader(responseBytes), "prof", tags...)
+			err = g.aw.AddRaw(bytes.NewReader(profileStatus.Profile), "prof", tags...)
 			if err != nil {
 				return fmt.Errorf("failed to add %s profile from to archive: %w", profileName, err)
 			}

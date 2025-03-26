@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/nats-io/jsm.go/api"
+	testapi "github.com/nats-io/jsm.go/test/testing_client/api"
+	"github.com/nats-io/jsm.go/test/testing_client/srvtest"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go"
@@ -148,36 +150,34 @@ func TestIsNatsError(t *testing.T) {
 }
 
 func TestFilterServerMetadata(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withJsServer(t, func(t *testing.T, mgr *jsm.Manager, _ *srvtest.Client, _ *testapi.ManagedServer) {
+		s, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.StreamMetadata(map[string]string{
+			"io.nats.monitor.enabled":       "1",
+			"io.nats.monitor.lag-critical":  "100",
+			"io.nats.monitor.msgs-critical": "500",
+			"io.nats.monitor.msgs-warn":     "999",
+			"io.nats.monitor.peer-expect":   "3",
+			"io.nats.monitor.seen-critical": "5m",
+		}))
+		checkErr(t, err, "create failed")
 
-	s, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.StreamMetadata(map[string]string{
-		"io.nats.monitor.enabled":       "1",
-		"io.nats.monitor.lag-critical":  "100",
-		"io.nats.monitor.msgs-critical": "500",
-		"io.nats.monitor.msgs-warn":     "999",
-		"io.nats.monitor.peer-expect":   "3",
-		"io.nats.monitor.seen-critical": "5m",
-	}))
-	checkErr(t, err, "create failed")
+		if _, ok := s.Metadata()[api.JsMetaRequiredServerLevel]; !ok {
+			t.Fatalf("No server metadata added")
+		}
 
-	if _, ok := s.Metadata()[api.JsMetaRequiredServerLevel]; !ok {
-		t.Fatalf("No server metadata added")
-	}
+		newMeta := jsm.FilterServerMetadata(s.Metadata())
 
-	newMeta := jsm.FilterServerMetadata(s.Metadata())
+		expected := map[string]string{
+			"io.nats.monitor.enabled":       "1",
+			"io.nats.monitor.lag-critical":  "100",
+			"io.nats.monitor.msgs-critical": "500",
+			"io.nats.monitor.msgs-warn":     "999",
+			"io.nats.monitor.peer-expect":   "3",
+			"io.nats.monitor.seen-critical": "5m",
+		}
 
-	expected := map[string]string{
-		"io.nats.monitor.enabled":       "1",
-		"io.nats.monitor.lag-critical":  "100",
-		"io.nats.monitor.msgs-critical": "500",
-		"io.nats.monitor.msgs-warn":     "999",
-		"io.nats.monitor.peer-expect":   "3",
-		"io.nats.monitor.seen-critical": "5m",
-	}
-
-	if !reflect.DeepEqual(newMeta, expected) {
-		t.Fatalf("all server data was not removed: %v", newMeta)
-	}
+		if !reflect.DeepEqual(newMeta, expected) {
+			t.Fatalf("all server data was not removed: %v", newMeta)
+		}
+	})
 }

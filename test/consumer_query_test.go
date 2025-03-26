@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go"
-	natsd "github.com/nats-io/nats-server/v2/server"
-	"github.com/nats-io/nats.go"
+	testapi "github.com/nats-io/jsm.go/test/testing_client/api"
+	"github.com/nats-io/jsm.go/test/testing_client/srvtest"
 )
 
 func checkConsumerQueryMatched(t *testing.T, s *jsm.Stream, expect int, opts ...jsm.ConsumerQueryOpt) {
@@ -33,7 +33,7 @@ func checkConsumerQueryMatched(t *testing.T, s *jsm.Stream, expect int, opts ...
 }
 
 func TestConsumerApiLevel(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withTesterJetStreamCluster(t, func(t *testing.T, mgr *jsm.Manager, _ *srvtest.Client, _ []*testapi.ManagedServer) {
 		s, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 

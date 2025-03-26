@@ -20,26 +20,27 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/nats-io/nats-server/v2/server"
-
-	"github.com/nats-io/jsm.go/api"
-
-	"github.com/nats-io/nats.go"
-
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/api"
+	testapi "github.com/nats-io/jsm.go/test/testing_client/api"
+	"github.com/nats-io/jsm.go/test/testing_client/srvtest"
+	"github.com/nats-io/nats.go"
 )
 
-func setupConsumerTest(t *testing.T) (*server.Server, *nats.Conn, *jsm.Stream, *jsm.Manager) {
+func withConsumerTest(t *testing.T, fn func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager)) {
 	t.Helper()
-	srv, nc, mgr := startJSServer(t)
-	stream, err := mgr.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.FileStorage(), jsm.MaxAge(time.Hour), jsm.Subjects("ORDERS.>"))
-	checkErr(t, err, "create failed")
 
-	_, err = nc.Request("ORDERS.new", []byte("order 1"), time.Second)
-	checkErr(t, err, "publish failed")
+	withJsServer(t, func(t *testing.T, mgr *jsm.Manager, _ *srvtest.Client, _ *testapi.ManagedServer) {
+		stream, err := mgr.NewStreamFromDefault("ORDERS", jsm.DefaultStream, jsm.FileStorage(), jsm.MaxAge(time.Hour), jsm.Subjects("ORDERS.>"))
+		checkErr(t, err, "create failed")
 
-	return srv, nc, stream, mgr
+		nc := mgr.NatsConn()
 
+		_, err = nc.Request("ORDERS.new", []byte("order 1"), time.Second)
+		checkErr(t, err, "publish failed")
+
+		fn(t, nc, stream, mgr)
+	})
 }
 
 func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
@@ -89,264 +90,244 @@ func TestConsumer_DeliveryPolicyConsistency(t *testing.T) {
 }
 
 func TestNextMsg(t *testing.T) {
-	srv, nc, stream, _ := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		stream.Purge()
 
-	stream.Purge()
+		consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
+		checkErr(t, err, "create failed")
 
-	consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
-	checkErr(t, err, "create failed")
-
-	for i := 0; i <= 100; i++ {
-		nc.Publish("ORDERS.new", []byte(fmt.Sprintf("%d", i)))
-	}
-
-	for i := 0; i <= 100; i++ {
-		msg, err := consumer.NextMsg()
-		checkErr(t, err, "NextMsg failed")
-
-		b, err := strconv.Atoi(string(msg.Data))
-		checkErr(t, err, fmt.Sprintf("invalid body: %q", string(msg.Data)))
-
-		if b != i {
-			t.Fatalf("got message %d expected %d", b, i)
+		for i := 0; i <= 100; i++ {
+			nc.Publish("ORDERS.new", []byte(fmt.Sprintf("%d", i)))
 		}
 
-		msg.Ack()
-	}
+		for i := 0; i <= 100; i++ {
+			msg, err := consumer.NextMsg()
+			checkErr(t, err, "NextMsg failed")
+
+			b, err := strconv.Atoi(string(msg.Data))
+			checkErr(t, err, fmt.Sprintf("invalid body: %q", string(msg.Data)))
+
+			if b != i {
+				t.Fatalf("got message %d expected %d", b, i)
+			}
+
+			msg.Ack()
+		}
+	})
 }
 
 func TestNextMsgRequest(t *testing.T) {
-	srv, nc, stream, _ := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		stream.Purge()
 
-	stream.Purge()
+		consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
+		checkErr(t, err, "create failed")
 
-	consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
-	checkErr(t, err, "create failed")
-
-	for i := 0; i <= 100; i++ {
-		_, err = nc.Request("ORDERS.new", []byte(fmt.Sprintf("%d", i)), time.Second)
-		checkErr(t, err, "publish failed")
-	}
-
-	sub, err := nc.SubscribeSync(nats.NewInbox())
-	checkErr(t, err, "subscribe failed")
-	defer sub.Unsubscribe()
-
-	consumer.NextMsgRequest(sub.Subject, &api.JSApiConsumerGetNextRequest{Batch: 100})
-	for i := 0; i < 100; i++ {
-		msg, err := sub.NextMsg(time.Second)
-		checkErr(t, err, fmt.Sprintf("NextMsg %d failed", i))
-		b, err := strconv.Atoi(string(msg.Data))
-		checkErr(t, err, fmt.Sprintf("invalid body: %q", string(msg.Data)))
-
-		if b != i {
-			t.Fatalf("got message %d expected %d", b, i)
+		for i := 0; i <= 100; i++ {
+			_, err = nc.Request("ORDERS.new", []byte(fmt.Sprintf("%d", i)), time.Second)
+			checkErr(t, err, "publish failed")
 		}
 
-		msg.Ack()
-	}
+		sub, err := nc.SubscribeSync(nats.NewInbox())
+		checkErr(t, err, "subscribe failed")
+		defer sub.Unsubscribe()
+
+		consumer.NextMsgRequest(sub.Subject, &api.JSApiConsumerGetNextRequest{Batch: 100})
+		for i := 0; i < 100; i++ {
+			msg, err := sub.NextMsg(time.Second)
+			checkErr(t, err, fmt.Sprintf("NextMsg %d failed", i))
+			b, err := strconv.Atoi(string(msg.Data))
+			checkErr(t, err, fmt.Sprintf("invalid body: %q", string(msg.Data)))
+
+			if b != i {
+				t.Fatalf("got message %d expected %d", b, i)
+			}
+
+			msg.Ack()
+		}
+	})
 }
 
 func TestNewConsumer(t *testing.T) {
-	srv, nc, stream, _ := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		if consumer.Configuration().Name != "NEW" {
+			t.Fatalf("consumer name was not set")
+		}
 
-	if consumer.Configuration().Name != "NEW" {
-		t.Fatalf("consumer name was not set")
-	}
+		consumer.Reset()
+		if consumer.AckPolicy() != api.AckExplicit {
+			t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
+		}
 
-	consumer.Reset()
-	if consumer.AckPolicy() != api.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
-	}
-
-	if consumer.Name() != "NEW" {
-		t.Fatalf("expected NEW got %s", consumer.Name())
-	}
+		if consumer.Name() != "NEW" {
+			t.Fatalf("expected NEW got %s", consumer.Name())
+		}
+	})
 }
 
 func TestNewConsumerFromDefaultDurable(t *testing.T) {
-	srv, nc, stream, _ := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		consumer.Reset()
+		if consumer.AckPolicy() != api.AckExplicit {
+			t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
+		}
 
-	consumer.Reset()
-	if consumer.AckPolicy() != api.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
-	}
+		if consumer.Name() != "NEW" {
+			t.Fatalf("expected NEW got %s", consumer.Name())
+		}
 
-	if consumer.Name() != "NEW" {
-		t.Fatalf("expected NEW got %s", consumer.Name())
-	}
-
-	if !consumer.IsSampled() {
-		t.Fatal("expected a sampled consumer")
-	}
+		if !consumer.IsSampled() {
+			t.Fatal("expected a sampled consumer")
+		}
+	})
 }
 
 func TestNewConsumerFromDefaultEphemeral(t *testing.T) {
-	srv, nc, stream, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		// interest is needed
+		nc.Subscribe("out", func(_ *nats.Msg) {})
 
-	// interest is needed
-	nc.Subscribe("out", func(_ *nats.Msg) {})
+		consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DeliverySubject("out"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DeliverySubject("out"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		if consumer.Configuration().Name != consumer.Name() {
+			t.Fatalf("consumer name wqs not set")
+		}
 
-	if consumer.Configuration().Name != consumer.Name() {
-		t.Fatalf("consumer name wqs not set")
-	}
+		consumers, err := mgr.ConsumerNames("ORDERS")
+		checkErr(t, err, "consumer list failed")
+		if len(consumers) != 1 {
+			t.Fatalf("expected 1 consumer got %v", consumers)
+		}
 
-	consumers, err := mgr.ConsumerNames("ORDERS")
-	checkErr(t, err, "consumer list failed")
-	if len(consumers) != 1 {
-		t.Fatalf("expected 1 consumer got %v", consumers)
-	}
+		if consumer.Name() != consumers[0] {
+			t.Fatalf("incorrect consumer name '%s' expected '%s'", consumer.Name(), consumers[0])
+		}
 
-	if consumer.Name() != consumers[0] {
-		t.Fatalf("incorrect consumer name '%s' expected '%s'", consumer.Name(), consumers[0])
-	}
-
-	if consumer.IsDurable() {
-		t.Fatalf("expected ephemeral consumer got durable")
-	}
+		if consumer.IsDurable() {
+			t.Fatalf("expected ephemeral consumer got durable")
+		}
+	})
 }
 
 func TestNewConsumerFromDefaultNamedEphemeral(t *testing.T) {
-	srv, nc, stream, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		// interest is needed
+		nc.Subscribe("out", func(_ *nats.Msg) {})
 
-	// interest is needed
-	nc.Subscribe("out", func(_ *nats.Msg) {})
+		consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.ConsumerName("EPHEMERAL"), jsm.DeliverySubject("out"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	consumer, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.ConsumerName("EPHEMERAL"), jsm.DeliverySubject("out"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		if consumer.Configuration().Name != consumer.Name() {
+			t.Fatalf("consumer name was not set")
+		}
 
-	if consumer.Configuration().Name != consumer.Name() {
-		t.Fatalf("consumer name was not set")
-	}
+		if consumer.Name() != "EPHEMERAL" {
+			t.Fatalf("consumer ephemeral name was not set")
+		}
 
-	if consumer.Name() != "EPHEMERAL" {
-		t.Fatalf("consumer ephemeral name was not set")
-	}
+		consumers, err := mgr.ConsumerNames("ORDERS")
+		checkErr(t, err, "consumer list failed")
+		if len(consumers) != 1 {
+			t.Fatalf("expected 1 consumer got %v", consumers)
+		}
 
-	consumers, err := mgr.ConsumerNames("ORDERS")
-	checkErr(t, err, "consumer list failed")
-	if len(consumers) != 1 {
-		t.Fatalf("expected 1 consumer got %v", consumers)
-	}
+		if consumer.Name() != consumers[0] {
+			t.Fatalf("incorrect consumer name '%s' expected '%s'", consumer.Name(), consumers[0])
+		}
 
-	if consumer.Name() != consumers[0] {
-		t.Fatalf("incorrect consumer name '%s' expected '%s'", consumer.Name(), consumers[0])
-	}
-
-	if consumer.IsDurable() {
-		t.Fatalf("expected ephemeral consumer got durable")
-	}
+		if consumer.IsDurable() {
+			t.Fatalf("expected ephemeral consumer got durable")
+		}
+	})
 }
 
 func TestLoadConsumer(t *testing.T) {
-	srv, nc, stream, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		_, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	_, err := stream.NewConsumerFromDefault(jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		consumer, err := mgr.LoadConsumer("ORDERS", "NEW")
+		checkErr(t, err, "load failed")
 
-	consumer, err := mgr.LoadConsumer("ORDERS", "NEW")
-	checkErr(t, err, "load failed")
+		if consumer.AckPolicy() != api.AckExplicit {
+			t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
+		}
 
-	if consumer.AckPolicy() != api.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
-	}
+		if consumer.Name() != "NEW" {
+			t.Fatalf("expected NEW got %s", consumer.Name())
+		}
 
-	if consumer.Name() != "NEW" {
-		t.Fatalf("expected NEW got %s", consumer.Name())
-	}
-
-	if !consumer.IsSampled() {
-		t.Fatal("expected a sampled consumer")
-	}
+		if !consumer.IsSampled() {
+			t.Fatal("expected a sampled consumer")
+		}
+	})
 }
 
 func TestLoadOrNewConsumer(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		_, err := mgr.LoadOrNewConsumer("ORDERS", "NEW", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	_, err := mgr.LoadOrNewConsumer("ORDERS", "NEW", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		consumer, err := mgr.LoadOrNewConsumer("ORDERS", "NEW", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "load failed")
 
-	consumer, err := mgr.LoadOrNewConsumer("ORDERS", "NEW", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "load failed")
+		if consumer.AckPolicy() != api.AckExplicit {
+			t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
+		}
 
-	if consumer.AckPolicy() != api.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
-	}
-
-	if consumer.Name() != "NEW" {
-		t.Fatalf("expected NEW got %s", consumer.Name())
-	}
+		if consumer.Name() != "NEW" {
+			t.Fatalf("expected NEW got %s", consumer.Name())
+		}
+	})
 }
 
 func TestLoadOrNewConsumerFromDefault(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		_, err := mgr.LoadOrNewConsumerFromDefault("ORDERS", "NEW", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	_, err := mgr.LoadOrNewConsumerFromDefault("ORDERS", "NEW", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		consumer, err := mgr.LoadOrNewConsumerFromDefault("ORDERS", "NEW", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "load failed")
 
-	consumer, err := mgr.LoadOrNewConsumerFromDefault("ORDERS", "NEW", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "load failed")
+		if consumer.AckPolicy() != api.AckExplicit {
+			t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
+		}
 
-	if consumer.AckPolicy() != api.AckExplicit {
-		t.Fatalf("expected explicit ack got %s", consumer.AckPolicy())
-	}
+		if consumer.Name() != "NEW" {
+			t.Fatalf("expected NEW got %s", consumer.Name())
+		}
 
-	if consumer.Name() != "NEW" {
-		t.Fatalf("expected NEW got %s", consumer.Name())
-	}
-
-	if !consumer.IsSampled() {
-		t.Fatal("expected a sampled consumer")
-	}
+		if !consumer.IsSampled() {
+			t.Fatal("expected a sampled consumer")
+		}
+	})
 }
 
 func TestConsumer_Reset(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		consumer, err := mgr.NewConsumer("ORDERS", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	consumer, err := mgr.NewConsumer("ORDERS", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
+		err = consumer.Delete()
+		checkErr(t, err, "delete failed")
 
-	err = consumer.Delete()
-	checkErr(t, err, "delete failed")
+		consumer, err = mgr.NewConsumer("ORDERS", jsm.DurableName("NEW"))
+		checkErr(t, err, "create failed")
 
-	consumer, err = mgr.NewConsumer("ORDERS", jsm.DurableName("NEW"))
-	checkErr(t, err, "create failed")
+		err = consumer.Reset()
+		checkErr(t, err, "reset failed")
 
-	err = consumer.Reset()
-	checkErr(t, err, "reset failed")
-
-	if consumer.FilterSubject() != "" {
-		t.Fatalf("expected no filter got %v", consumer.FilterSubject())
-	}
+		if consumer.FilterSubject() != "" {
+			t.Fatalf("expected no filter got %v", consumer.FilterSubject())
+		}
+	})
 }
 
 func TestNextSubject(t *testing.T) {
@@ -369,311 +350,283 @@ func TestNextSubject(t *testing.T) {
 }
 
 func TestConsumer_NextSubject(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		consumer, err := mgr.NewConsumer("ORDERS", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
+		checkErr(t, err, "create failed")
 
-	consumer, err := mgr.NewConsumer("ORDERS", jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"))
-	checkErr(t, err, "create failed")
-
-	if consumer.NextSubject() != "$JS.API.CONSUMER.MSG.NEXT.ORDERS.NEW" {
-		t.Fatalf("expected next subject got %s", consumer.NextSubject())
-	}
+		if consumer.NextSubject() != "$JS.API.CONSUMER.MSG.NEXT.ORDERS.NEW" {
+			t.Fatalf("expected next subject got %s", consumer.NextSubject())
+		}
+	})
 }
 
 func TestConsumer_SampleSubject(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		consumer, err := mgr.NewConsumerFromDefault("ORDERS", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"))
+		checkErr(t, err, "create failed")
 
-	consumer, err := mgr.NewConsumerFromDefault("ORDERS", jsm.SampledDefaultConsumer, jsm.DurableName("NEW"))
-	checkErr(t, err, "create failed")
+		if consumer.AckSampleSubject() != "$JS.EVENT.METRIC.CONSUMER.ACK.ORDERS.NEW" {
+			t.Fatalf("expected next subject got %s", consumer.AckSampleSubject())
+		}
 
-	if consumer.AckSampleSubject() != "$JS.EVENT.METRIC.CONSUMER.ACK.ORDERS.NEW" {
-		t.Fatalf("expected next subject got %s", consumer.AckSampleSubject())
-	}
+		unsampled, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("UNSAMPLED"))
+		checkErr(t, err, "create failed")
 
-	unsampled, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("UNSAMPLED"))
-	checkErr(t, err, "create failed")
-
-	if unsampled.AckSampleSubject() != "" {
-		t.Fatalf("expected empty next subject got %s", consumer.AckSampleSubject())
-	}
+		if unsampled.AckSampleSubject() != "" {
+			t.Fatalf("expected empty next subject got %s", consumer.AckSampleSubject())
+		}
+	})
 }
 
 func TestConsumer_DeliveredState(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+		checkErr(t, err, "create failed")
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
-	checkErr(t, err, "create failed")
+		state, err := durable.DeliveredState()
+		checkErr(t, err, "state failed")
 
-	state, err := durable.DeliveredState()
-	checkErr(t, err, "state failed")
+		if state.Stream != 0 {
+			t.Fatalf("expected stream seq 0 got %d", state.Stream)
+		}
 
-	if state.Stream != 0 {
-		t.Fatalf("expected stream seq 0 got %d", state.Stream)
-	}
+		m, err := durable.NextMsg()
+		checkErr(t, err, "next failed")
+		err = m.Respond(nil)
+		checkErr(t, err, "ack failed")
 
-	m, err := durable.NextMsg()
-	checkErr(t, err, "next failed")
-	err = m.Respond(nil)
-	checkErr(t, err, "ack failed")
+		state, err = durable.DeliveredState()
+		checkErr(t, err, "state failed")
 
-	state, err = durable.DeliveredState()
-	checkErr(t, err, "state failed")
-
-	if state.Stream != 1 {
-		t.Fatalf("expected stream seq 1 got %d", state.Stream)
-	}
+		if state.Stream != 1 {
+			t.Fatalf("expected stream seq 1 got %d", state.Stream)
+		}
+	})
 }
 
 func TestConsumer_PendingMessageCount(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+		checkErr(t, err, "create failed")
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
-	checkErr(t, err, "create failed")
-
-	m, err := durable.NextMsg()
-	checkErr(t, err, "next failed")
-	pending, err := durable.PendingAcknowledgement()
-	checkErr(t, err, "state failed")
-	if pending != 1 {
-		t.Fatalf("expected pending 1 got %d", pending)
-	}
-	m.Respond(api.AckAck)
-	time.Sleep(250 * time.Millisecond)
-	pending, err = durable.PendingAcknowledgement()
-	checkErr(t, err, "state failed")
-	if pending != 0 {
-		t.Fatalf("expected pending 0 got %d", pending)
-	}
+		m, err := durable.NextMsg()
+		checkErr(t, err, "next failed")
+		pending, err := durable.PendingAcknowledgement()
+		checkErr(t, err, "state failed")
+		if pending != 1 {
+			t.Fatalf("expected pending 1 got %d", pending)
+		}
+		m.Respond(api.AckAck)
+		time.Sleep(250 * time.Millisecond)
+		pending, err = durable.PendingAcknowledgement()
+		checkErr(t, err, "state failed")
+		if pending != 0 {
+			t.Fatalf("expected pending 0 got %d", pending)
+		}
+	})
 }
 
 func TestConsumer_RedeliveryCount(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"), jsm.AckWait(500*time.Millisecond))
+		checkErr(t, err, "create failed")
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"), jsm.AckWait(500*time.Millisecond))
-	checkErr(t, err, "create failed")
+		_, err = durable.NextMsg()
+		checkErr(t, err, "next failed")
 
-	_, err = durable.NextMsg()
-	checkErr(t, err, "next failed")
+		redel, err := durable.RedeliveryCount()
+		checkErr(t, err, "state failed")
+		if redel != 0 {
+			t.Fatal("expected 0 redeliveries got %i", redel)
+		}
 
-	redel, err := durable.RedeliveryCount()
-	checkErr(t, err, "state failed")
-	if redel != 0 {
-		t.Fatal("expected 0 redeliveries got %i", redel)
-	}
+		time.Sleep(500 * time.Millisecond)
 
-	time.Sleep(500 * time.Millisecond)
+		_, err = durable.NextMsg()
+		checkErr(t, err, "next failed")
 
-	_, err = durable.NextMsg()
-	checkErr(t, err, "next failed")
-
-	redel, err = durable.RedeliveryCount()
-	checkErr(t, err, "state failed")
-	if redel != 1 {
-		t.Fatal("expected 1 redliveries got %i", redel)
-	}
+		redel, err = durable.RedeliveryCount()
+		checkErr(t, err, "state failed")
+		if redel != 1 {
+			t.Fatal("expected 1 redliveries got %i", redel)
+		}
+	})
 }
 
 func TestConsumer_PendingMessages(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"), jsm.AckWait(500*time.Millisecond))
+		checkErr(t, err, "create failed")
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"), jsm.AckWait(500*time.Millisecond))
-	checkErr(t, err, "create failed")
+		pending, err := durable.PendingMessages()
+		checkErr(t, err, "pending failed")
+		if pending != 1 {
+			t.Fatal("expected 1 pending got %i", pending)
+		}
 
-	pending, err := durable.PendingMessages()
-	checkErr(t, err, "pending failed")
-	if pending != 1 {
-		t.Fatal("expected 1 pending got %i", pending)
-	}
+		m, err := durable.NextMsg()
+		checkErr(t, err, "next failed")
+		m.Ack()
 
-	m, err := durable.NextMsg()
-	checkErr(t, err, "next failed")
-	m.Ack()
-
-	pending, err = durable.PendingMessages()
-	checkErr(t, err, "pending failed")
-	if pending != 0 {
-		t.Fatal("expected 0 pending got %i", pending)
-	}
+		pending, err = durable.PendingMessages()
+		checkErr(t, err, "pending failed")
+		if pending != 0 {
+			t.Fatal("expected 0 pending got %i", pending)
+		}
+	})
 }
 
 func TestConsumer_AcknowledgedState(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+		checkErr(t, err, "create failed")
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
-	checkErr(t, err, "create failed")
+		state, err := durable.AcknowledgedFloor()
+		checkErr(t, err, "state failed")
 
-	state, err := durable.AcknowledgedFloor()
-	checkErr(t, err, "state failed")
+		if state.Stream != 0 {
+			t.Fatalf("expected stream seq 0 got %d", state.Stream)
+		}
 
-	if state.Stream != 0 {
-		t.Fatalf("expected stream seq 0 got %d", state.Stream)
-	}
+		m, err := durable.NextMsg()
+		checkErr(t, err, "next failed")
+		err = m.Respond(nil)
+		checkErr(t, err, "ack failed")
 
-	m, err := durable.NextMsg()
-	checkErr(t, err, "next failed")
-	err = m.Respond(nil)
-	checkErr(t, err, "ack failed")
+		time.Sleep(150 * time.Millisecond)
 
-	time.Sleep(150 * time.Millisecond)
+		state, err = durable.AcknowledgedFloor()
+		checkErr(t, err, "state failed")
 
-	state, err = durable.AcknowledgedFloor()
-	checkErr(t, err, "state failed")
-
-	if state.Consumer != 1 {
-		t.Fatalf("expected set seq 1 got %d", state.Consumer)
-	}
+		if state.Consumer != 1 {
+			t.Fatalf("expected set seq 1 got %d", state.Consumer)
+		}
+	})
 }
 
 func TestConsumer_Configuration(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+		checkErr(t, err, "create failed")
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
-	checkErr(t, err, "create failed")
-
-	if durable.Configuration().Durable != "D" {
-		t.Fatalf("got wrong config: %+v", durable.Configuration())
-	}
+		if durable.Configuration().Durable != "D" {
+			t.Fatalf("got wrong config: %+v", durable.Configuration())
+		}
+	})
 }
 
 func TestConsumer_Delete(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+		checkErr(t, err, "create failed")
+		if !durable.IsDurable() {
+			t.Fatalf("expected durable, got %s", durable.DurableName())
+		}
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
-	checkErr(t, err, "create failed")
-	if !durable.IsDurable() {
-		t.Fatalf("expected durable, got %s", durable.DurableName())
-	}
+		err = durable.Delete()
+		checkErr(t, err, "delete failed")
 
-	err = durable.Delete()
-	checkErr(t, err, "delete failed")
+		names, err := mgr.ConsumerNames("ORDERS")
+		checkErr(t, err, "names failed")
 
-	names, err := mgr.ConsumerNames("ORDERS")
-	checkErr(t, err, "names failed")
-
-	if len(names) != 0 {
-		t.Fatalf("expected [] got %v", names)
-	}
+		if len(names) != 0 {
+			t.Fatalf("expected [] got %v", names)
+		}
+	})
 }
 
 func TestConsumer_IsDurable(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+		checkErr(t, err, "create failed")
+		if !durable.IsDurable() {
+			t.Fatalf("expected durable, got %s", durable.DurableName())
+		}
+		durable.Delete()
 
-	durable, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
-	checkErr(t, err, "create failed")
-	if !durable.IsDurable() {
-		t.Fatalf("expected durable, got %s", durable.DurableName())
-	}
-	durable.Delete()
+		// interest is needed before creating a ephemeral push
+		nc.Subscribe("out", func(_ *nats.Msg) {})
 
-	// interest is needed before creating a ephemeral push
-	nc.Subscribe("out", func(_ *nats.Msg) {})
+		_, err = mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DeliverySubject("out"))
+		checkErr(t, err, "create failed")
 
-	_, err = mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DeliverySubject("out"))
-	checkErr(t, err, "create failed")
+		names, err := mgr.ConsumerNames("ORDERS")
+		checkErr(t, err, "names failed")
 
-	names, err := mgr.ConsumerNames("ORDERS")
-	checkErr(t, err, "names failed")
+		if len(names) == 0 {
+			t.Fatal("got no consumers")
+		}
 
-	if len(names) == 0 {
-		t.Fatal("got no consumers")
-	}
-
-	eph, err := mgr.LoadConsumer("ORDERS", names[0])
-	checkErr(t, err, "load failed")
-	if eph.IsDurable() {
-		t.Fatalf("expected ephemeral got %q %q", eph.Name(), eph.DurableName())
-	}
+		eph, err := mgr.LoadConsumer("ORDERS", names[0])
+		checkErr(t, err, "load failed")
+		if eph.IsDurable() {
+			t.Fatalf("expected ephemeral got %q %q", eph.Name(), eph.DurableName())
+		}
+	})
 }
 
 func TestConsumer_IsPullMode(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		push, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PUSH"), jsm.DeliverySubject("out"))
+		checkErr(t, err, "create failed")
+		if push.IsPullMode() {
+			t.Fatalf("expected push, got %s", push.DeliverySubject())
+		}
 
-	push, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PUSH"), jsm.DeliverySubject("out"))
-	checkErr(t, err, "create failed")
-	if push.IsPullMode() {
-		t.Fatalf("expected push, got %s", push.DeliverySubject())
-	}
-
-	pull, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PULL"))
-	checkErr(t, err, "create failed")
-	if !pull.IsPullMode() {
-		t.Fatalf("expected pull, got %s", pull.DeliverySubject())
-	}
+		pull, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PULL"))
+		checkErr(t, err, "create failed")
+		if !pull.IsPullMode() {
+			t.Fatalf("expected pull, got %s", pull.DeliverySubject())
+		}
+	})
 }
 
 func TestConsumer_IsPushMode(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		push, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PUSH"), jsm.DeliverySubject("out"))
+		checkErr(t, err, "create failed")
+		if !push.IsPushMode() {
+			t.Fatalf("expected push, got %s", push.DeliverySubject())
+		}
 
-	push, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PUSH"), jsm.DeliverySubject("out"))
-	checkErr(t, err, "create failed")
-	if !push.IsPushMode() {
-		t.Fatalf("expected push, got %s", push.DeliverySubject())
-	}
-
-	pull, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PULL"))
-	checkErr(t, err, "create failed")
-	if pull.IsPushMode() {
-		t.Fatalf("expected pull, got %s", pull.DeliverySubject())
-	}
+		pull, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("PULL"))
+		checkErr(t, err, "create failed")
+		if pull.IsPushMode() {
+			t.Fatalf("expected pull, got %s", pull.DeliverySubject())
+		}
+	})
 }
 
 func TestConsumer_IsSampled(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		sampled, err := mgr.NewConsumerFromDefault("ORDERS", jsm.SampledDefaultConsumer, jsm.DurableName("SAMPLED"))
+		checkErr(t, err, "create failed")
+		if !sampled.IsSampled() {
+			t.Fatalf("expected sampled, got %s", sampled.SampleFrequency())
+		}
 
-	sampled, err := mgr.NewConsumerFromDefault("ORDERS", jsm.SampledDefaultConsumer, jsm.DurableName("SAMPLED"))
-	checkErr(t, err, "create failed")
-	if !sampled.IsSampled() {
-		t.Fatalf("expected sampled, got %s", sampled.SampleFrequency())
-	}
-
-	unsampled, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("UNSAMPLED"))
-	checkErr(t, err, "create failed")
-	if unsampled.IsSampled() {
-		t.Fatalf("expected un-sampled, got %s", unsampled.SampleFrequency())
-	}
+		unsampled, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("UNSAMPLED"))
+		checkErr(t, err, "create failed")
+		if unsampled.IsSampled() {
+			t.Fatalf("expected un-sampled, got %s", unsampled.SampleFrequency())
+		}
+	})
 }
 
 func TestConsumer_UpdateConfiguration(t *testing.T) {
-	srv, nc, _, mgr := setupConsumerTest(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		update, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("UPDATE"))
+		checkErr(t, err, "create failed")
+		if update.Description() != "" {
+			t.Fatalf("expected empty description got %q", update.Description())
+		}
 
-	update, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("UPDATE"))
-	checkErr(t, err, "create failed")
-	if update.Description() != "" {
-		t.Fatalf("expected empty description got %q", update.Description())
-	}
-
-	err = update.UpdateConfiguration(jsm.ConsumerDescription("updated"))
-	checkErr(t, err, "update failed")
-	if update.Description() != "updated" {
-		t.Fatalf("expected updated description got %q", update.Description())
-	}
+		err = update.UpdateConfiguration(jsm.ConsumerDescription("updated"))
+		checkErr(t, err, "update failed")
+		if update.Description() != "updated" {
+			t.Fatalf("expected updated description got %q", update.Description())
+		}
+	})
 }
 
 func testConsumerConfig() *api.ConsumerConfig {
@@ -970,128 +923,117 @@ func TestInactiveThreshold(t *testing.T) {
 }
 
 func TestBackoffIntervals(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		s, err := mgr.NewStream("m1", jsm.MemoryStorage())
+		checkErr(t, err, "create failed")
 
-	s, err := mgr.NewStream("m1", jsm.MemoryStorage())
-	checkErr(t, err, "create failed")
-
-	policy := []time.Duration{time.Second, 2 * time.Second, 3 * time.Second}
-	c, err := s.NewConsumer(jsm.BackoffIntervals(policy...), jsm.DurableName("X"), jsm.MaxDeliveryAttempts(len(policy)+1))
-	checkErr(t, err, "create failed")
-	if !cmp.Equal(c.Backoff(), policy) {
-		t.Fatalf("invalid backoff %q", c.Backoff())
-	}
+		policy := []time.Duration{time.Second, 2 * time.Second, 3 * time.Second}
+		c, err := s.NewConsumer(jsm.BackoffIntervals(policy...), jsm.DurableName("X"), jsm.MaxDeliveryAttempts(len(policy)+1))
+		checkErr(t, err, "create failed")
+		if !cmp.Equal(c.Backoff(), policy) {
+			t.Fatalf("invalid backoff %q", c.Backoff())
+		}
+	})
 }
 
 func TestLinearBackoffPolicy(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		s, err := mgr.NewStream("m1", jsm.MemoryStorage())
+		checkErr(t, err, "create failed")
 
-	s, err := mgr.NewStream("m1", jsm.MemoryStorage())
-	checkErr(t, err, "create failed")
+		c, err := s.NewConsumer(jsm.LinearBackoffPolicy(10, time.Second, time.Minute), jsm.DurableName("X"), jsm.MaxDeliveryAttempts(11))
+		checkErr(t, err, "create failed")
 
-	c, err := s.NewConsumer(jsm.LinearBackoffPolicy(10, time.Second, time.Minute), jsm.DurableName("X"), jsm.MaxDeliveryAttempts(11))
-	checkErr(t, err, "create failed")
+		expected := []time.Duration{
+			time.Second, 6900 * time.Millisecond, 12800 * time.Millisecond, 18700 * time.Millisecond, 24600 * time.Millisecond,
+			30500 * time.Millisecond, 36400 * time.Millisecond, 42300 * time.Millisecond, 48200 * time.Millisecond, 54100 * time.Millisecond,
+		}
 
-	expected := []time.Duration{
-		time.Second, 6900 * time.Millisecond, 12800 * time.Millisecond, 18700 * time.Millisecond, 24600 * time.Millisecond,
-		30500 * time.Millisecond, 36400 * time.Millisecond, 42300 * time.Millisecond, 48200 * time.Millisecond, 54100 * time.Millisecond,
-	}
-
-	if !cmp.Equal(c.Backoff(), expected) {
-		t.Fatalf("invalid backoff %v expected %v", c.Backoff(), expected)
-	}
+		if !cmp.Equal(c.Backoff(), expected) {
+			t.Fatalf("invalid backoff %v expected %v", c.Backoff(), expected)
+		}
+	})
 }
+
 func TestConsumerDescription(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		s, err := mgr.NewStream("m1", jsm.StreamDescription("test description"), jsm.MemoryStorage())
+		checkErr(t, err, "create failed")
+		c, err := s.NewConsumer(jsm.ConsumerDescription("test consumer description"), jsm.DurableName("X"))
+		checkErr(t, err, "create failed")
+		if c.Description() != "test consumer description" {
+			t.Fatalf("invalid description %q", c.Description())
+		}
 
-	s, err := mgr.NewStream("m1", jsm.StreamDescription("test description"), jsm.MemoryStorage())
-	checkErr(t, err, "create failed")
-	c, err := s.NewConsumer(jsm.ConsumerDescription("test consumer description"), jsm.DurableName("X"))
-	checkErr(t, err, "create failed")
-	if c.Description() != "test consumer description" {
-		t.Fatalf("invalid description %q", c.Description())
-	}
-
-	nfo, err := c.State()
-	checkErr(t, err, "state failed")
-	if nfo.Config.Description != "test consumer description" {
-		t.Fatalf("invalid description %q", c.Description())
-	}
+		nfo, err := c.State()
+		checkErr(t, err, "state failed")
+		if nfo.Config.Description != "test consumer description" {
+			t.Fatalf("invalid description %q", c.Description())
+		}
+	})
 }
 
 func TestConsumerPedantic(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.ConsumerLimits(api.StreamConsumerLimits{
+			MaxAckPending: 10,
+		}))
+		checkErr(t, err, "create failed")
 
-	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.ConsumerLimits(api.StreamConsumerLimits{
-		MaxAckPending: 10,
-	}))
-	checkErr(t, err, "create failed")
+		c, err := s.NewConsumer(jsm.MaxAckPending(0))
+		checkErr(t, err, "create failed")
 
-	c, err := s.NewConsumer(jsm.MaxAckPending(0))
-	checkErr(t, err, "create failed")
+		if c.MaxAckPending() != 10 {
+			t.Fatalf("expected max ack to be overrode, got %v", c.MaxAckPending())
+		}
 
-	if c.MaxAckPending() != 10 {
-		t.Fatalf("expected max ack to be overrode, got %v", c.MaxAckPending())
-	}
+		mgr, err = jsm.New(nc, jsm.WithPedanticRequests())
+		checkErr(t, err, "mgr failed")
 
-	mgr, err = jsm.New(nc, jsm.WithPedanticRequests())
-	checkErr(t, err, "mgr failed")
+		if !mgr.IsPedantic() {
+			t.Fatalf("expected mgr to be pedantic")
+		}
 
-	if !mgr.IsPedantic() {
-		t.Fatalf("expected mgr to be pedantic")
-	}
+		s, err = mgr.LoadStream("TEST")
+		checkErr(t, err, "load stream failed")
 
-	s, err = mgr.LoadStream("TEST")
-	checkErr(t, err, "load stream failed")
-
-	_, err = s.NewConsumerFromDefault(api.ConsumerConfig{}, jsm.MaxAckPending(0))
-	if !api.IsNatsErr(err, 10157) {
-		t.Fatalf("expected pednatic error, got: %v", err)
-	}
+		_, err = s.NewConsumerFromDefault(api.ConsumerConfig{}, jsm.MaxAckPending(0))
+		if !api.IsNatsErr(err, 10157) {
+			t.Fatalf("expected pednatic error, got: %v", err)
+		}
+	})
 }
 
 func TestConsumerPinnedClientPriorityGroups(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
+		checkErr(t, err, "create failed")
 
-	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
-	checkErr(t, err, "create failed")
+		c, err := s.NewConsumer(jsm.PinnedClientPriorityGroups(time.Minute, "foo"))
+		checkErr(t, err, "create failed")
 
-	c, err := s.NewConsumer(jsm.PinnedClientPriorityGroups(time.Minute, "foo"))
-	checkErr(t, err, "create failed")
-
-	if !c.IsPinnedClientPriority() {
-		t.Fatalf("expected pinned client priority to be set")
-	}
-	if !cmp.Equal(c.PriorityGroups(), []string{"foo"}) {
-		t.Fatalf("invalid priority group to be [foo], got %v", c.PriorityGroups())
-	}
+		if !c.IsPinnedClientPriority() {
+			t.Fatalf("expected pinned client priority to be set")
+		}
+		if !cmp.Equal(c.PriorityGroups(), []string{"foo"}) {
+			t.Fatalf("invalid priority group to be [foo], got %v", c.PriorityGroups())
+		}
+	})
 }
 
 func TestConsumerOverflowPriorityGroups(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withConsumerTest(t, func(t *testing.T, nc *nats.Conn, stream *jsm.Stream, mgr *jsm.Manager) {
+		s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
+		checkErr(t, err, "create failed")
 
-	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
-	checkErr(t, err, "create failed")
+		c, err := s.NewConsumer(jsm.OverflowPriorityGroups("foo"))
+		checkErr(t, err, "create failed")
 
-	c, err := s.NewConsumer(jsm.OverflowPriorityGroups("foo"))
-	checkErr(t, err, "create failed")
-
-	if !c.IsOverflowPriority() {
-		t.Fatalf("expected overflow priority to be set got %v", c.PriorityPolicy())
-	}
-	if !cmp.Equal(c.PriorityGroups(), []string{"foo"}) {
-		t.Fatalf("invalid priority group to be [foo], got %v", c.PriorityGroups())
-	}
+		if !c.IsOverflowPriority() {
+			t.Fatalf("expected overflow priority to be set got %v", c.PriorityPolicy())
+		}
+		if !cmp.Equal(c.PriorityGroups(), []string{"foo"}) {
+			t.Fatalf("invalid priority group to be [foo], got %v", c.PriorityGroups())
+		}
+	})
 }

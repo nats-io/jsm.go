@@ -15,16 +15,17 @@ package archive
 
 import (
 	"archive/zip"
-	"encoding/json"
 	"fmt"
-	"reflect"
 
-	"github.com/nats-io/nats-server/v2/server"
+	"encoding/json"
+
 	"io"
 	"os"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/nats-io/nats-server/v2/server"
 )
 
 // Reader encapsulates a reader for the actual underlying archive, and also provides indices for faster and
@@ -33,7 +34,6 @@ type Reader struct {
 	archiveReader       *zip.ReadCloser
 	path                string
 	filesMap            map[string]*zip.File
-	manifestMap         map[string][]Tag
 	accountTags         []Tag
 	clusterTags         []Tag
 	serverTags          []Tag
@@ -44,6 +44,7 @@ type Reader struct {
 	accountStreamNames  map[string][]string
 	streamServerNames   map[string][]string
 	ts                  *time.Time
+	invertedIndex       map[Tag][]string
 }
 
 type AuditMetadata struct {
@@ -91,7 +92,7 @@ func (r *Reader) loadFile(name string, v any) error {
 	decoder := json.NewDecoder(f)
 	err = decoder.Decode(v)
 	if err != nil {
-		return fmt.Errorf("failed to decode: %w", err)
+		return fmt.Errorf("failed to decode file %s: %w", name, err)
 	}
 	return nil
 }
@@ -107,49 +108,51 @@ var ErrMultipleMatches = fmt.Errorf("multiple files matched the given query")
 // If multiple artifact or no artifacts match the input tag, then ErrMultipleMatches and ErrNoMatches are returned
 // respectively
 func (r *Reader) Load(v any, queryTags ...*Tag) error {
-	// TODO build and use inverted index
-	// This method scans the entire manifest every time. Ok for now, but may get noticeably slow for very
-	// large archives, or large number of checks.
-	// A simple inverted index would be the right approach. Eventually. For now this will do.
-
-	matchedFileNames := make([]string, 0, 1)
-
-	// Find manifest entry that matches all given query tags
-manifestSearchLoop:
-	for fileName, fileTags := range r.manifestMap {
-		// Turn file tags into a set
-		fileTagSet := make(map[Tag]struct{}, len(fileTags))
-		for _, fileTag := range fileTags {
-			fileTagSet[fileTag] = struct{}{}
-		}
-
-		// Check that each query tag is in this file tag set
-		for _, queryTag := range queryTags {
-			_, present := fileTagSet[*queryTag]
-			if !present {
-				continue manifestSearchLoop
-			}
-		}
-
-		// This file matches
-		matchedFileNames = append(matchedFileNames, fileName)
-
-		// Continue iterating and find all matching files
-		continue manifestSearchLoop
-	}
-
-	if len(matchedFileNames) < 1 {
+	if len(queryTags) == 0 {
 		return ErrNoMatches
 	}
-	if len(matchedFileNames) > 1 {
-		return ErrMultipleMatches
+
+	// Collect the list of file names for each tag
+	var fileSets [][]string
+	for _, tag := range queryTags {
+		files, found := r.invertedIndex[*tag]
+		if !found {
+			return ErrNoMatches
+		}
+		fileSets = append(fileSets, files)
 	}
 
-	// A single file matched
-	matchedFileName := matchedFileNames[0]
+	// Start with the first set
+	baseSet := make(map[string]struct{}, len(fileSets[0]))
+	for _, file := range fileSets[0] {
+		baseSet[file] = struct{}{}
+	}
 
-	// Unmarshall it into v
-	return r.loadFile(matchedFileName, v)
+	// Intersect with the remaining sets
+	for _, files := range fileSets[1:] {
+		seen := make(map[string]struct{}, len(files))
+		for _, f := range files {
+			if _, ok := baseSet[f]; ok {
+				seen[f] = struct{}{}
+			}
+		}
+		baseSet = seen
+		if len(baseSet) == 0 {
+			return ErrNoMatches
+		}
+	}
+
+	// Determine match
+	if len(baseSet) == 1 {
+		for file := range baseSet {
+			return r.loadFile(file, v)
+		}
+	}
+
+	if len(baseSet) == 0 {
+		return ErrNoMatches
+	}
+	return ErrMultipleMatches
 }
 
 // NewReader creates a new reader for the file at the given archivePath.
@@ -191,6 +194,14 @@ func NewReader(archivePath string) (*Reader, error) {
 	err = json.NewDecoder(manifestFileReader).Decode(&manifestMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load manifest: %w", err)
+	}
+
+	// Create inverted index for tag lookups
+	invertedIndex := make(map[Tag][]string)
+	for fileName, tags := range manifestMap {
+		for _, tag := range tags {
+			invertedIndex[tag] = append(invertedIndex[tag], fileName)
+		}
 	}
 
 	// Check that each file in the manifest exists in the archive
@@ -275,48 +286,62 @@ func NewReader(archivePath string) (*Reader, error) {
 
 	// Returns a deduplicated list of tags for the specific label present in the archive
 	// e.g. getUniqueTags(serverTagLabel) -> [Tag(server, s1), Tag(server, s2, Tag(server, s3)]
-	// TODO each call scans the manifest.
-	// Ok for now, but a single scan could build a list of unique tag values for each tag name
-	getUniqueTags := func(label TagLabel) []Tag {
-		var tagsSet = make(map[Tag]struct{}, len(manifestMap))
-		for _, tags := range manifestMap {
-			for _, tag := range tags {
-				if tag.Name == label {
-					// Found a tag for the given label, add it to the set
-					tagsSet[tag] = struct{}{}
-				}
+	getUniqueTags := func(label TagLabel) ([]Tag, error) {
+		var tags []Tag
+		for tag := range invertedIndex {
+			if tag.Name == label {
+				tags = append(tags, tag)
 			}
 		}
-		// Create list of unique tags from the set
-		tagsList := make([]Tag, 0, len(tagsSet))
-		for tag := range tagsSet {
-			tagsList = append(tagsList, tag)
-		}
-		slices.SortFunc(tagsList, func(a, b Tag) int {
+		slices.SortFunc(tags, func(a, b Tag) int {
 			if a.Name != b.Name {
-				panic("Unexpected comparison between different tags")
+				// Fallback to consistent ordering just in case
+				err = fmt.Errorf("unexpected comparison between different tags")
+				return strings.Compare(string(a.Name), string(b.Name))
 			}
 			return strings.Compare(a.Value, b.Value)
 		})
-		return tagsList
+		return tags, err
 	}
 
-	return &Reader{
+	accountTags, err := getUniqueTags(accountTagLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterTags, err := getUniqueTags(clusterTagLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	serverTags, err := getUniqueTags(serverTagLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	streamTags, err := getUniqueTags(streamTagLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := &Reader{
 		path:                archivePath,
 		archiveReader:       archiveReader,
 		filesMap:            filesMap,
-		manifestMap:         manifestMap,
-		accountTags:         getUniqueTags(accountTagLabel),
-		clusterTags:         getUniqueTags(clusterTagLabel),
-		serverTags:          getUniqueTags(serverTagLabel),
-		streamTags:          getUniqueTags(streamTagLabel),
+		accountTags:         accountTags,
+		clusterTags:         clusterTags,
+		serverTags:          serverTags,
+		streamTags:          streamTags,
 		accountNames:        accounts,
 		clusterNames:        clusters,
 		clustersServerNames: clusterServers,
 		accountStreamNames:  accountsStreams,
 		streamServerNames:   streamsServers,
 		ts:                  &manifestFile.Modified,
-	}, nil
+		invertedIndex:       invertedIndex,
+	}
+
+	return reader, nil
 }
 
 // AccountNames list the unique names of accounts found in the archive
@@ -379,6 +404,30 @@ func shrinkMapOfSets[T any](m map[string]map[string]T) ([]string, map[string][]s
 	return keysList, newMap
 }
 
+func eachClusterServer[T any](r *Reader, tag *Tag, cb func(clusterTag *Tag, serverTag *Tag, err error, resp *T) error) (int, error) {
+	found := 0
+
+	for _, clusterName := range r.ClusterNames() {
+		clusterTag := TagCluster(clusterName)
+		servers := r.ClusterServerNames(clusterName)
+		found += len(servers)
+
+		for _, serverName := range servers {
+			serverTag := TagServer(serverName)
+
+			var resp T
+			err := r.Load(&resp, clusterTag, serverTag, tag)
+			err = cb(clusterTag, serverTag, err, &resp)
+
+			if err != nil {
+				return found, err
+			}
+		}
+	}
+
+	return found, nil
+}
+
 // EachClusterServerVarz iterates over all servers ordered by cluster and calls the callback function with the loaded Varz response
 //
 // The callback function will receive any error encountered during loading the server varz file and should check that and handle it
@@ -386,14 +435,7 @@ func shrinkMapOfSets[T any](m map[string]map[string]T) ([]string, map[string][]s
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIVarzResponse) error) (int, error) {
-	return r.eachClusterServer(TagServerVars(), server.ServerAPIVarzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
-		vz := resp.(*server.ServerAPIVarzResponse)
-		if vz == nil || vz.Data == nil {
-			err = ErrNoMatches
-		}
-
-		return cb(clusterTag, serverTag, err, vz)
-	})
+	return eachClusterServer(r, TagServerVars(), cb)
 }
 
 // EachClusterServerHealthz iterates over all servers ordered by cluster and calls the callback function with the loaded Healthz response
@@ -402,15 +444,8 @@ func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, 
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIHealthzResponse) error) (int, error) {
-	return r.eachClusterServer(TagServerJetStream(), server.ServerAPIHealthzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
-		hz := resp.(*server.ServerAPIHealthzResponse)
-		if hz == nil || hz.Data == nil {
-			err = ErrNoMatches
-		}
-
-		return cb(clusterTag, serverTag, err, hz)
-	})
+func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Tag, err error, hz *server.ServerAPIHealthzResponse) error) (int, error) {
+	return eachClusterServer(r, TagServerJetStream(), cb)
 }
 
 // EachClusterServerJsz iterates over all servers ordered by cluster and calls the callback function with the loaded Jsz response
@@ -420,14 +455,7 @@ func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Ta
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIJszResponse) error) (int, error) {
-	return r.eachClusterServer(TagServerJetStream(), server.ServerAPIJszResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
-		jsz := resp.(*server.ServerAPIJszResponse)
-		if jsz == nil || jsz.Data == nil {
-			err = ErrNoMatches
-		}
-
-		return cb(clusterTag, serverTag, err, jsz)
-	})
+	return eachClusterServer(r, TagServerJetStream(), cb)
 }
 
 // EachClusterServerAccountz iterates over all servers ordered by cluster and calls the callback function with the loaded Accountz response
@@ -436,15 +464,8 @@ func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, e
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIAccountzResponse) error) (int, error) {
-	return r.eachClusterServer(TagServerAccounts(), server.ServerAPIAccountzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
-		az := resp.(*server.ServerAPIAccountzResponse)
-		if az == nil || az.Data == nil {
-			err = ErrNoMatches
-		}
-
-		return cb(clusterTag, serverTag, err, az)
-	})
+func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *Tag, err error, az *server.ServerAPIAccountzResponse) error) (int, error) {
+	return eachClusterServer(r, TagServerAccounts(), cb)
 }
 
 // EachClusterServerLeafz iterates over all servers ordered by cluster and calls the callback function with the loaded Leafz response
@@ -453,38 +474,6 @@ func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *T
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerLeafz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPILeafzResponse) error) (int, error) {
-	return r.eachClusterServer(TagServerLeafs(), server.ServerAPIAccountzResponse{}, func(clusterTag *Tag, serverTag *Tag, err error, resp any) error {
-		az := resp.(*server.ServerAPILeafzResponse)
-		if az == nil || az.Data == nil {
-			err = ErrNoMatches
-		}
-
-		return cb(clusterTag, serverTag, err, az)
-	})
-}
-
-// helper to iterate all servers, creates instances of targetType based on tag.  targetType must be a non pointer like server.ServerAPIJszResponse{}
-func (r *Reader) eachClusterServer(tag *Tag, targetType any, cb func(clusterTag *Tag, serverTag *Tag, err error, resp any) error) (int, error) {
-	found := 0
-
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := TagCluster(clusterName)
-		servers := r.ClusterServerNames(clusterName)
-		found = len(servers)
-
-		for _, serverName := range servers {
-			serverTag := TagServer(serverName)
-
-			resp := reflect.New(reflect.TypeOf(targetType)).Interface()
-			err := r.Load(&resp, clusterTag, serverTag, tag)
-
-			err = cb(clusterTag, serverTag, err, resp)
-			if err != nil {
-				return found, err
-			}
-		}
-	}
-
-	return found, nil
+func (r *Reader) EachClusterServerLeafz(cb func(clusterTag *Tag, serverTag *Tag, err error, lz *server.ServerAPILeafzResponse) error) (int, error) {
+	return eachClusterServer(r, TagServerLeafs(), cb)
 }

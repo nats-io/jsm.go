@@ -16,11 +16,12 @@ package audit
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/dustin/go-humanize"
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
-	"strings"
 )
 
 func RegisterServerChecks(collection *CheckCollection) error {
@@ -138,7 +139,7 @@ func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection
 			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
 
-		if hz.Data.Status != "ok" {
+		if hz.Data.Status != "ok" && hz.Data.Status != "" {
 			examples.Add("%s: %d - %s", serverTag, hz.Data.StatusCode, hz.Data.Status)
 		}
 
@@ -215,7 +216,7 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 		// Example: 350% usage with 4 cores => 87.5% averaged
 		averageCpuUtilization := vz.Data.CPU / float64(vz.Data.Cores)
 
-		if averageCpuUtilization > cpuThreshold {
+		if averageCpuUtilization > cpuThreshold*100 {
 			examples.Add("%s - %s: %.1f%%", clusterTag, serverTag, averageCpuUtilization)
 		}
 

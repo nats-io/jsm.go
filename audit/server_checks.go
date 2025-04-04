@@ -49,7 +49,7 @@ func RegisterServerChecks(collection *CheckCollection) error {
 				"cpu": {
 					Key:         "cpu",
 					Description: "CPU Limit Threshold",
-					Default:     0.9,
+					Default:     90,
 					Unit:        PercentageUnit,
 				},
 			},
@@ -71,13 +71,13 @@ func RegisterServerChecks(collection *CheckCollection) error {
 				"memory": {
 					Key:         "memory",
 					Description: "Threshold for memory usage",
-					Default:     0.9,
+					Default:     90,
 					Unit:        PercentageUnit,
 				},
 				"store": {
 					Key:         "store",
 					Description: "Threshold for store usage",
-					Default:     0.9,
+					Default:     90,
 					Unit:        PercentageUnit,
 				},
 			},
@@ -133,7 +133,7 @@ func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesColl
 func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	total, err := r.EachClusterServerHealthz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, hz *server.ServerAPIHealthzResponse) error {
 		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
+			log.Warnf("Artifact 'Healthz' is missing for server %s", serverTag)
 			return nil
 		} else if err != nil {
 			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
@@ -216,7 +216,7 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 		// Example: 350% usage with 4 cores => 87.5% averaged
 		averageCpuUtilization := vz.Data.CPU / float64(vz.Data.Cores)
 
-		if averageCpuUtilization > cpuThreshold*100 {
+		if averageCpuUtilization > cpuThreshold {
 			examples.Add("%s - %s: %.1f%%", clusterTag, serverTag, averageCpuUtilization)
 		}
 
@@ -278,14 +278,14 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 		}
 
 		if jsz.Data.ReservedMemory > 0 {
-			threshold := uint64(float64(jsz.Data.ReservedMemory) * memoryUsageThreshold)
+			threshold := uint64(float64(jsz.Data.ReservedMemory) * (memoryUsageThreshold / 100))
 			if jsz.Data.Memory > threshold {
 				examples.Add("%s memory usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Memory), humanize.IBytes(jsz.Data.ReservedMemory))
 			}
 		}
 
 		if jsz.Data.ReservedStore > 0 {
-			threshold := uint64(float64(jsz.Data.ReservedStore) * storeUsageThreshold)
+			threshold := uint64(float64(jsz.Data.ReservedStore) * (storeUsageThreshold / 100))
 			if jsz.Data.Store > threshold {
 				examples.Add("%s store usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Store), humanize.IBytes(jsz.Data.ReservedStore))
 			}

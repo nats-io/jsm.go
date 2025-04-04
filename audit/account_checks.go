@@ -16,6 +16,7 @@ package audit
 import (
 	"errors"
 	"fmt"
+
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
@@ -32,13 +33,13 @@ func RegisterAccountChecks(collection *CheckCollection) error {
 				Key:         "connections",
 				Description: "Alerting threshold as a fraction of configured connections limit",
 				Unit:        PercentageUnit,
-				Default:     0.9,
+				Default:     90,
 			},
 			"subscriptions": {
 				Key:         "subscriptions",
 				Description: "Alerting threshold as a fraction of configured subscriptions limit",
 				Unit:        PercentageUnit,
-				Default:     0.9,
+				Default:     90,
 			},
 		},
 		Handler: checkAccountLimits,
@@ -58,7 +59,7 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 			return
 		}
 
-		threshold := int64(float64(limit) * percentThreshold)
+		threshold := int64(float64(limit) * (percentThreshold / 100))
 		if value > threshold {
 			examples.Add("account %s (on %s) using %.1f%% of %s limit (%d/%d)", accountName, serverName, float64(value)*100/float64(limit), limitName, value, limit)
 		}

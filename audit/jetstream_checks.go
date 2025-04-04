@@ -33,7 +33,7 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 				"last_seq": {
 					Key:         "last_seq",
 					Description: "How far a replica may be behind the highest known last sequence",
-					Default:     0.1,
+					Default:     10,
 					Unit:        PercentageUnit,
 				},
 			},
@@ -63,19 +63,19 @@ func RegisterJetStreamChecks(collection *CheckCollection) error {
 				"messages": {
 					Key:         "messages",
 					Description: "Alert if messages near configured limit",
-					Default:     0.9,
+					Default:     90,
 					Unit:        PercentageUnit,
 				},
 				"bytes": {
 					Key:         "bytes",
 					Description: "Alert if size near configured limit",
-					Default:     0.9,
+					Default:     90,
 					Unit:        PercentageUnit,
 				},
 				"consumers": {
 					Key:         "consumers",
 					Description: "Alert if consumer count near configured limit",
-					Default:     0.9,
+					Default:     90,
 					Unit:        PercentageUnit,
 				},
 			},
@@ -167,7 +167,7 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 				log.Debugf("Stream %s / %s highest last sequence: %d @ %s", accountName, streamName, highestLastSeq, highestLastSeqServer)
 
 				// Check if some server's sequence is below warning threshold
-				maxDelta := uint64(float64(highestLastSeq) * lastSequenceLagThreshold)
+				maxDelta := uint64(float64(highestLastSeq) * (lastSequenceLagThreshold / 100))
 				threshold := uint64(0)
 				if maxDelta <= highestLastSeq {
 					threshold = highestLastSeq - maxDelta
@@ -244,7 +244,7 @@ func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollec
 			// Limit not set
 			return
 		}
-		threshold := int64(float64(limit) * percentThreshold)
+		threshold := int64(float64(limit) * (percentThreshold / 100))
 		if value > threshold {
 			examples.Add("stream %s (in %s on %s) using %.1f%% of %s limit (%d/%d)", streamName, accountName, serverName, float64(value)*100/float64(limit), limitName, value, limit)
 		}
@@ -314,7 +314,6 @@ func checkStreamLimits(check *Check, r *archive.Reader, examples *ExamplesCollec
 
 func checkStreamMetadataMonitoring(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	streamDetailsTag := archive.TagStreamInfo()
-
 	var foundCrit bool
 
 	for _, accountName := range r.AccountNames() {
@@ -324,6 +323,7 @@ func checkStreamMetadataMonitoring(_ *Check, r *archive.Reader, examples *Exampl
 			streamTag := archive.TagStream(streamName)
 
 			serverNames := r.StreamServerNames(accountName, streamName)
+
 			for _, serverName := range serverNames {
 				serverTag := archive.TagServer(serverName)
 
@@ -409,6 +409,7 @@ func checkConsumerMetadataMonitoring(_ *Check, r *archive.Reader, examples *Exam
 						check := &monitor.Result{Name: fmt.Sprintf("%s.%s.%s", accountName, streamName, nfo.Name), Check: "consumer"}
 
 						opts, err := monitor.ExtractConsumerHealthCheckOptions(nfo.Config.Metadata)
+
 						if err != nil {
 							return Skipped, fmt.Errorf("failed to run health check for consumer %s > %s in account %s: %w", streamName, nfo.Name, accountName, err)
 						}

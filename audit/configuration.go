@@ -69,10 +69,6 @@ func (c *CheckConfiguration) Set(v string) error {
 		if f > 100 {
 			return fmt.Errorf("percentage values may not exceed 100")
 		}
-
-		if f > 1 {
-			f = f / 100
-		}
 	} else {
 		f, err = strconv.ParseFloat(v, 64)
 		if err != nil {

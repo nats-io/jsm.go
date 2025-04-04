@@ -445,7 +445,7 @@ func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, 
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Tag, err error, hz *server.ServerAPIHealthzResponse) error) (int, error) {
-	return eachClusterServer(r, TagServerJetStream(), cb)
+	return eachClusterServer(r, TagServerHealth(), cb)
 }
 
 // EachClusterServerJsz iterates over all servers ordered by cluster and calls the callback function with the loaded Jsz response

@@ -1,4 +1,4 @@
-// auto generated 2025-04-07 12:14:56.810237 +0200 CEST m=+0.008476417
+// auto generated 2025-04-07 12:38:21.293975 +0200 CEST m=+0.009140626
 
 package api
 
@@ -53,6 +53,8 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.consumer_leader_stepdown_response": func() any { return &JSApiConsumerLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.consumer_pause_request":            func() any { return &JSApiConsumerPauseRequest{} },
 	"io.nats.jetstream.api.v1.consumer_pause_response":           func() any { return &JSApiConsumerPauseResponse{} },
+	"io.nats.jetstream.api.v1.consumer_unpin_request":            func() any { return &JSApiConsumerUnpinRequest{} },
+	"io.nats.jetstream.api.v1.consumer_unpin_response":           func() any { return &JSApiConsumerUnpinResponse{} },
 	"io.nats.jetstream.api.v1.stream_create_request":             func() any { return &JSApiStreamCreateRequest{} },
 	"io.nats.jetstream.api.v1.stream_create_response":            func() any { return &JSApiStreamCreateResponse{} },
 	"io.nats.jetstream.api.v1.stream_delete_response":            func() any { return &JSApiStreamDeleteResponse{} },
@@ -534,6 +536,62 @@ func (t JSApiConsumerPauseResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiConsumerPauseResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerUnpinRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_unpin_request
+func (t JSApiConsumerUnpinRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_unpin_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerUnpinRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_unpin_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerUnpinRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerUnpinResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_unpin_response
+func (t JSApiConsumerUnpinResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_unpin_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerUnpinResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_unpin_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerUnpinResponse) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

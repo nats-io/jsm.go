@@ -98,7 +98,7 @@ func (a *ConsumerAction) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// io.nats.jetstream.api.v1.consumer_unpin_response
+// io.nats.jetstream.api.v1.consumer_unpin_request
 type JSApiConsumerUnpinRequest struct {
 	Group string `json:"group"`
 }

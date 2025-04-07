@@ -536,11 +536,12 @@
           "description": "Indicates if the consumer is currently in a paused state",
           "type": "boolean"
         },
-        "pause_until": {
-          "description": "A deadline time for when the consumer will be paused. Only usable if 'paused' is true",
-          "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
-          "type": "string",
-          "format": "date-time"
+        "pause_remaining": {
+          "description": "When paused the time remaining until unpause",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
         },
         "priority_groups": {
           "description": "The state of Priority Groups",

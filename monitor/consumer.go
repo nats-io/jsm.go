@@ -175,7 +175,7 @@ func CheckConsumerHealthWithConnection(mgr *jsm.Manager, check *Result, opts Che
 	return nil
 }
 
-func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckConsumerHealthOptions, log api.Logger) error {
+func CheckConsumerHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckConsumerHealthOptions, log api.Logger) error {
 	nc, err := nats.Connect(server, nopts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil

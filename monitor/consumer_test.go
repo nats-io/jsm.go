@@ -67,7 +67,7 @@ func TestConsumer_checkLastAck(t *testing.T) {
 
 	t.Run("Should skip without a threshold", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckLastAck(ci, check, ConsumerHealthCheckOptions{}, api.NewDiscardLogger())
+		consumerCheckLastAck(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -75,7 +75,7 @@ func TestConsumer_checkLastAck(t *testing.T) {
 
 	t.Run("Should handle no ack floor", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckLastAck(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckLastAck(ci, check, CheckConsumerHealthOptions{
 			LastAckCritical: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "No acks")
@@ -85,7 +85,7 @@ func TestConsumer_checkLastAck(t *testing.T) {
 		check, ci := setup()
 		last := time.Now().Add(-time.Hour)
 		ci.AckFloor.Last = &last
-		consumerCheckLastAck(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckLastAck(ci, check, CheckConsumerHealthOptions{
 			LastAckCritical: 1,
 		}, api.NewDiscardLogger())
 		requireLen(t, check.Criticals, 1)
@@ -96,7 +96,7 @@ func TestConsumer_checkLastAck(t *testing.T) {
 		check, ci := setup()
 		last := time.Now()
 		ci.AckFloor.Last = &last
-		consumerCheckLastAck(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckLastAck(ci, check, CheckConsumerHealthOptions{
 			LastAckCritical: 1,
 		}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
@@ -111,7 +111,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 
 	t.Run("Should skip without a threshold", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{}, api.NewDiscardLogger())
+		consumerCheckLastDelivery(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -119,7 +119,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 
 	t.Run("Should handle no delivery", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckLastDelivery(ci, check, CheckConsumerHealthOptions{
 			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "No deliveries")
@@ -130,7 +130,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 		last := time.Now().Add(-time.Hour)
 		ci.Delivered.Last = &last
 
-		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckLastDelivery(ci, check, CheckConsumerHealthOptions{
 			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 
@@ -143,7 +143,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 		last := time.Now().Add(-time.Hour)
 		ci.Delivered.Last = &last
 
-		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckLastDelivery(ci, check, CheckConsumerHealthOptions{
 			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 
@@ -156,7 +156,7 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 		last := time.Now()
 		ci.Delivered.Last = &last
 
-		consumerCheckLastDelivery(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckLastDelivery(ci, check, CheckConsumerHealthOptions{
 			LastDeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 
@@ -172,7 +172,7 @@ func TestConsumer_checkUnprocessed(t *testing.T) {
 
 	t.Run("Should skip without a threshold", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckRedelivery(ci, check, ConsumerHealthCheckOptions{}, api.NewDiscardLogger())
+		consumerCheckRedelivery(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -181,13 +181,13 @@ func TestConsumer_checkUnprocessed(t *testing.T) {
 	t.Run("Should handle redelivery above threshold", func(t *testing.T) {
 		check, ci := setup()
 		ci.NumRedelivered = 10
-		consumerCheckRedelivery(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckRedelivery(ci, check, CheckConsumerHealthOptions{
 			RedeliveryCritical: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Redelivered: 10")
 
 		check = &Result{}
-		consumerCheckRedelivery(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckRedelivery(ci, check, CheckConsumerHealthOptions{
 			RedeliveryCritical: 10,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Redelivered: 10")
@@ -196,7 +196,7 @@ func TestConsumer_checkUnprocessed(t *testing.T) {
 	t.Run("Should handle below threshold", func(t *testing.T) {
 		check, ci := setup()
 		ci.NumRedelivered = 10
-		consumerCheckRedelivery(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckRedelivery(ci, check, CheckConsumerHealthOptions{
 			RedeliveryCritical: 11,
 		}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
@@ -211,7 +211,7 @@ func TestConsumer_checkWaiting(t *testing.T) {
 
 	t.Run("Should skip without a threshold", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckWaiting(ci, check, ConsumerHealthCheckOptions{}, api.NewDiscardLogger())
+		consumerCheckWaiting(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -220,14 +220,14 @@ func TestConsumer_checkWaiting(t *testing.T) {
 	t.Run("Should handle redelivery above threshold", func(t *testing.T) {
 		check, ci := setup()
 		ci.NumWaiting = 10
-		consumerCheckWaiting(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckWaiting(ci, check, CheckConsumerHealthOptions{
 			WaitingCritical: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Waiting Pulls: 10")
 
 		check, ci = setup()
 		ci.NumWaiting = 10
-		consumerCheckWaiting(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckWaiting(ci, check, CheckConsumerHealthOptions{
 			WaitingCritical: 10,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Waiting Pulls: 10")
@@ -236,7 +236,7 @@ func TestConsumer_checkWaiting(t *testing.T) {
 	t.Run("Should handle below threshold", func(t *testing.T) {
 		check, ci := setup()
 		ci.NumWaiting = 10
-		consumerCheckWaiting(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckWaiting(ci, check, CheckConsumerHealthOptions{
 			WaitingCritical: 11,
 		}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
@@ -251,7 +251,7 @@ func TestConsumer_checkOutstandingAck(t *testing.T) {
 
 	t.Run("Should skip without a threshold", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckOutstandingAck(ci, check, ConsumerHealthCheckOptions{}, api.NewDiscardLogger())
+		consumerCheckOutstandingAck(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -260,14 +260,14 @@ func TestConsumer_checkOutstandingAck(t *testing.T) {
 	t.Run("Should handle outstanding above threshold", func(t *testing.T) {
 		check, ci := setup()
 		ci.NumAckPending = 10
-		consumerCheckOutstandingAck(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckOutstandingAck(ci, check, CheckConsumerHealthOptions{
 			AckOutstandingCritical: 1,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Ack Pending: 10")
 
 		check, ci = setup()
 		ci.NumAckPending = 10
-		consumerCheckOutstandingAck(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckOutstandingAck(ci, check, CheckConsumerHealthOptions{
 			AckOutstandingCritical: 10,
 		}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Ack Pending: 10")
@@ -276,7 +276,7 @@ func TestConsumer_checkOutstandingAck(t *testing.T) {
 	t.Run("Should handle below threshold", func(t *testing.T) {
 		check, ci := setup()
 		ci.NumAckPending = 10
-		consumerCheckOutstandingAck(ci, check, ConsumerHealthCheckOptions{
+		consumerCheckOutstandingAck(ci, check, CheckConsumerHealthOptions{
 			AckOutstandingCritical: 11,
 		}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
@@ -291,7 +291,7 @@ func TestConsumer_consumerCheckPinned(t *testing.T) {
 
 	t.Run("Should skip with pinning check disabled", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{}, api.NewDiscardLogger())
+		consumerCheckPinned(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -299,7 +299,7 @@ func TestConsumer_consumerCheckPinned(t *testing.T) {
 
 	t.Run("Should handle non pinned client consumers", func(t *testing.T) {
 		check, ci := setup()
-		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{Pinned: true}, api.NewDiscardLogger())
+		consumerCheckPinned(ci, check, CheckConsumerHealthOptions{Pinned: true}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "Not pinned client priority mode")
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -312,7 +312,7 @@ func TestConsumer_consumerCheckPinned(t *testing.T) {
 		ci.PriorityGroups = []api.PriorityGroupState{
 			{Group: "ONE", PinnedClientID: "1"},
 		}
-		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{Pinned: true}, api.NewDiscardLogger())
+		consumerCheckPinned(ci, check, CheckConsumerHealthOptions{Pinned: true}, api.NewDiscardLogger())
 		requireElement(t, check.Criticals, "1 / 2 pinned clients")
 		requireEmpty(t, check.Warnings)
 		requireEmpty(t, check.OKs)
@@ -326,7 +326,7 @@ func TestConsumer_consumerCheckPinned(t *testing.T) {
 			{Group: "ONE", PinnedClientID: "1"},
 			{Group: "TWO", PinnedClientID: "2"},
 		}
-		consumerCheckPinned(ci, check, ConsumerHealthCheckOptions{Pinned: true}, api.NewDiscardLogger())
+		consumerCheckPinned(ci, check, CheckConsumerHealthOptions{Pinned: true}, api.NewDiscardLogger())
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireElement(t, check.OKs, "2 pinned clients")

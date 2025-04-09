@@ -421,7 +421,7 @@ func checkConsumerMetadataMonitoring(_ *Check, r *archive.Reader, examples *Exam
 						opts.StreamName = streamName
 						opts.ConsumerName = nfo.Name
 
-						monitor.ConsumerInfoHealthCheck(&nfo, check, *opts, log)
+						monitor.CheckConsumerInfoHealth(&nfo, check, *opts, log)
 
 						for _, warning := range check.Warnings {
 							examples.Add("WARNING: consumer %s in stream %s in %s: %s", nfo.Name, streamName, accountName, warning)

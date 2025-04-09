@@ -169,17 +169,17 @@ func CheckStreamHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option,
 	}
 	defer nc.Close()
 
-	return CheckStreamHealthWithConnection(nc, jsmOpts, check, opts, log)
-}
-
-func CheckStreamHealthWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
-	if opts.StreamName == "" {
-		check.Critical("stream name is required")
+	mgr, err := jsm.New(nc, jsmOpts...)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
 
-	mgr, err := jsm.New(nc, jsmOpts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	return CheckStreamHealthWithConnection(mgr, check, opts, log)
+}
+
+func CheckStreamHealthWithConnection(mgr *jsm.Manager, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
+	if opts.StreamName == "" {
+		check.Critical("stream name is required")
 		return nil
 	}
 

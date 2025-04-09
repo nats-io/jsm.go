@@ -32,10 +32,10 @@ const (
 	ConsumerMonitorMetaPinned                 = "io.nats.monitor.pinned"
 )
 
-type ConsumerHealthCheckF func(*jsm.Consumer, *Result, ConsumerHealthCheckOptions, api.Logger)
+type ConsumerHealthCheckF func(*jsm.Consumer, *Result, CheckConsumerHealthOptions, api.Logger)
 
-// ConsumerHealthCheckOptions configures the consumer check
-type ConsumerHealthCheckOptions struct {
+// CheckConsumerHealthOptions configures the consumer check
+type CheckConsumerHealthOptions struct {
 	// StreamName is the stream holding the consumer
 	StreamName string `json:"stream_name" yaml:"stream_name"`
 	// ConsumerName is the consumer to check
@@ -59,15 +59,15 @@ type ConsumerHealthCheckOptions struct {
 	HealthChecks []ConsumerHealthCheckF `json:"-" yaml:"-"`
 }
 
-func ExtractConsumerHealthCheckOptions(metadata map[string]string, extraChecks ...ConsumerHealthCheckF) (*ConsumerHealthCheckOptions, error) {
-	opts := &ConsumerHealthCheckOptions{
+func ExtractConsumerHealthCheckOptions(metadata map[string]string, extraChecks ...ConsumerHealthCheckF) (*CheckConsumerHealthOptions, error) {
+	opts := &CheckConsumerHealthOptions{
 		HealthChecks: extraChecks,
 	}
 
 	return populateConsumerHealthCheckOptions(metadata, opts)
 }
 
-func populateConsumerHealthCheckOptions(metadata map[string]string, opts *ConsumerHealthCheckOptions) (*ConsumerHealthCheckOptions, error) {
+func populateConsumerHealthCheckOptions(metadata map[string]string, opts *CheckConsumerHealthOptions) (*CheckConsumerHealthOptions, error) {
 	var err error
 	parser := []monitorMetaParser{
 		{MonitorMetaEnabled, func(v string) error {
@@ -124,7 +124,7 @@ func populateConsumerHealthCheckOptions(metadata map[string]string, opts *Consum
 	return opts, nil
 }
 
-func ConsumerInfoHealthCheck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func CheckConsumerInfoHealth(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	consumerCheckOutstandingAck(nfo, check, opts, log)
 	consumerCheckWaiting(nfo, check, opts, log)
 	consumerCheckUnprocessed(nfo, check, opts, log)
@@ -134,18 +134,13 @@ func ConsumerInfoHealthCheck(nfo *api.ConsumerInfo, check *Result, opts Consumer
 	consumerCheckPinned(nfo, check, opts, log)
 }
 
-func ConsumerHealthCheckWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
+func CheckConsumerHealthWithConnection(mgr *jsm.Manager, check *Result, opts CheckConsumerHealthOptions, log api.Logger) error {
 	if opts.StreamName == "" {
 		check.Critical("stream name is required")
 		return nil
 	}
 	if opts.ConsumerName == "" {
 		check.Critical("consumer name is required")
-		return nil
-	}
-
-	mgr, err := jsm.New(nc, jsmOpts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
 
@@ -171,7 +166,7 @@ func ConsumerHealthCheckWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, chec
 		check.Pd(&PerfDataItem{Name: "last_ack", Value: time.Since(*nfo.AckFloor.Last).Seconds(), Unit: "s", Help: "Seconds since the last message was acknowledged", Crit: opts.LastAckCritical})
 	}
 
-	ConsumerInfoHealthCheck(&nfo, check, opts, log)
+	CheckConsumerInfoHealth(&nfo, check, opts, log)
 
 	for _, hc := range opts.HealthChecks {
 		hc(consumer, check, opts, log)
@@ -180,17 +175,22 @@ func ConsumerHealthCheckWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, chec
 	return nil
 }
 
-func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) error {
+func ConsumerHealthCheck(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckConsumerHealthOptions, log api.Logger) error {
 	nc, err := nats.Connect(server, nopts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
 	defer nc.Close()
 
-	return ConsumerHealthCheckWithConnection(nc, jsmOpts, check, opts, log)
+	mgr, err := jsm.New(nc, jsmOpts...)
+	if check.CriticalIfErr(err, "could not load info: %v", err) {
+		return nil
+	}
+
+	return CheckConsumerHealthWithConnection(mgr, check, opts, log)
 }
 
-func consumerCheckPinned(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckPinned(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	var pinned int
 
 	for _, group := range nfo.PriorityGroups {
@@ -219,7 +219,7 @@ func consumerCheckPinned(nfo *api.ConsumerInfo, check *Result, opts ConsumerHeal
 	}
 }
 
-func consumerCheckLastAck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckLastAck(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	switch {
 	case opts.LastAckCritical <= 0:
 	case nfo.AckFloor.Last == nil:
@@ -233,7 +233,7 @@ func consumerCheckLastAck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHea
 	}
 }
 
-func consumerCheckLastDelivery(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckLastDelivery(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	switch {
 	case opts.LastDeliveryCritical <= 0:
 	case nfo.Delivered.Last == nil:
@@ -247,7 +247,7 @@ func consumerCheckLastDelivery(nfo *api.ConsumerInfo, check *Result, opts Consum
 	}
 }
 
-func consumerCheckRedelivery(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckRedelivery(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	switch {
 	case opts.RedeliveryCritical <= 0:
 		return
@@ -259,7 +259,7 @@ func consumerCheckRedelivery(nfo *api.ConsumerInfo, check *Result, opts Consumer
 	}
 }
 
-func consumerCheckUnprocessed(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckUnprocessed(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	switch {
 	case opts.UnprocessedCritical <= 0:
 		return
@@ -271,7 +271,7 @@ func consumerCheckUnprocessed(nfo *api.ConsumerInfo, check *Result, opts Consume
 	}
 }
 
-func consumerCheckWaiting(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckWaiting(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	switch {
 	case opts.WaitingCritical <= 0:
 		return
@@ -283,7 +283,7 @@ func consumerCheckWaiting(nfo *api.ConsumerInfo, check *Result, opts ConsumerHea
 	}
 }
 
-func consumerCheckOutstandingAck(nfo *api.ConsumerInfo, check *Result, opts ConsumerHealthCheckOptions, log api.Logger) {
+func consumerCheckOutstandingAck(nfo *api.ConsumerInfo, check *Result, opts CheckConsumerHealthOptions, log api.Logger) {
 	switch {
 	case opts.AckOutstandingCritical <= 0:
 		return

@@ -47,15 +47,15 @@ func CheckStreamMessage(server string, nopts []nats.Option, jsmOpts []jsm.Option
 	}
 	defer nc.Close()
 
-	return CheckStreamMessageWithConnection(nc, jsmOpts, check, opts)
-}
-
-func CheckStreamMessageWithConnection(nc *nats.Conn, jsmOpts []jsm.Option, check *Result, opts CheckStreamMessageOptions) error {
 	mgr, err := jsm.New(nc, jsmOpts...)
 	if check.CriticalIfErr(err, "could not load info: %v", err) {
 		return nil
 	}
 
+	return CheckStreamMessageWithConnection(mgr, check, opts)
+}
+
+func CheckStreamMessageWithConnection(mgr *jsm.Manager, check *Result, opts CheckStreamMessageOptions) error {
 	msg, err := mgr.ReadLastMessageForSubject(opts.StreamName, opts.Subject)
 	if api.IsNatsError(err, 10037) {
 		check.Critical("no message found")

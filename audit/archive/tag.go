@@ -16,6 +16,8 @@ package archive
 import (
 	"fmt"
 	"path"
+	"path/filepath"
+	"strings"
 )
 
 type TagLabel string
@@ -210,6 +212,18 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 
 	// May add more cases later, for now bomb if none of the above applies
 	return "", fmt.Errorf("unhandled tags combination: %+v", dimensionTagsMap)
+}
+
+func dirNameFromTags(tags []*Tag) (string, error) {
+	fullPath, err := createFilenameFromTags("json", tags)
+	if err != nil {
+		return "", err
+	}
+
+	base := filepath.Base(fullPath)
+	artifactDir := strings.TrimSuffix(base, filepath.Ext(base))
+	parent := filepath.Dir(fullPath)
+	return filepath.Join(parent, artifactDir), nil
 }
 
 func TagArtifactType(artifactType string) *Tag {

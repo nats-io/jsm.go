@@ -14,7 +14,6 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -76,45 +75,52 @@ func RegisterClusterChecks(collection *CheckCollection) error {
 
 // checkClusterMemoryUsageOutliers verifies the memory usage of any given node in a cluster is not significantly higher than its peers
 func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	typeTag := archive.TagServerVars()
-	clusterNames := r.ClusterNames()
 	outlierThreshold := check.Configuration["memory"].Value()
+	clustering := r.ClusterNames()
+	clustersWithIssuesMap := make(map[string]any, len(clustering))
 
-	clustersWithIssuesMap := make(map[string]any, len(clusterNames))
-
-	for _, clusterName := range clusterNames {
+	for _, clusterName := range clustering {
 		clusterTag := archive.TagCluster(clusterName)
+		typeTag := archive.TagServerVars()
 
 		serverNames := r.ClusterServerNames(clusterName)
-		clusterMemoryUsageMap := make(map[string]float64, len(serverNames))
-		clusterMemoryUsageTotal := float64(0)
-		numServers := 0 // cannot use len(serverNames) as some artifacts may be missing
+		var (
+			clusterMemoryUsageTotal float64
+			clusterMemoryUsageMap   = make(map[string]float64)
+			numServers              int
+		)
 
 		for _, serverName := range serverNames {
 			serverTag := archive.TagServer(serverName)
 
-			var resp server.ServerAPIVarzResponse
-			var serverVarz *server.Varz
-			err := r.Load(&resp, clusterTag, serverTag, typeTag)
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'VARZ' is missing for server %s in cluster %s", serverName, clusterName)
-				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load VARZ for server %s in cluster %s: %w", serverName, clusterName, err)
-			}
-			serverVarz = resp.Data
+			tags := []*archive.Tag{clusterTag, serverTag, typeTag}
+			err := archive.ForEachTaggedArtifact(r, tags, func(resp *server.ServerAPIVarzResponse) error {
+				if resp == nil || resp.Data == nil {
+					return nil
+				}
+				mem := float64(resp.Data.Mem)
+				clusterMemoryUsageMap[serverName] = mem
+				clusterMemoryUsageTotal += mem
+				numServers++
+				return nil
+			})
 
-			numServers += 1
-			clusterMemoryUsageMap[serverTag.Value] = float64(serverVarz.Mem)
-			clusterMemoryUsageTotal += float64(serverVarz.Mem)
+			if err != nil {
+				return Skipped, fmt.Errorf("failed to read VARZ for server %s in cluster %s: %w", serverName, clusterName, err)
+			}
 		}
 
-		clusterMemoryUsageMean := clusterMemoryUsageTotal / float64(numServers)
-		threshold := clusterMemoryUsageMean * outlierThreshold
+		if numServers == 0 {
+			log.Warnf("No VARZ data found for cluster %s", clusterName)
+			continue
+		}
 
-		for serverName, serverMemoryUsage := range clusterMemoryUsageMap {
-			if serverMemoryUsage > threshold {
-				examples.Add("Cluster %s avg: %s, server %s: %s", clusterName, humanize.IBytes(uint64(clusterMemoryUsageMean)), serverName, humanize.IBytes(uint64(serverMemoryUsage)))
+		mean := clusterMemoryUsageTotal / float64(numServers)
+		threshold := mean * outlierThreshold
+
+		for serverName, mem := range clusterMemoryUsageMap {
+			if mem > threshold {
+				examples.Add("Cluster %s avg: %s, server %s: %s", clusterName, humanize.IBytes(uint64(mean)), serverName, humanize.IBytes(uint64(mem)))
 				clustersWithIssuesMap[clusterName] = nil
 			}
 		}
@@ -137,49 +143,52 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
+		typeTag := archive.TagServerGateways()
 
-		// For each cluster, build a map where they key is a server name in the cluster
-		// And the value is a list of configured remote target clusters
+		// For each cluster, build a map where the key is a server name in the cluster
+		// and the value is a list of configured remote target clusters
 		configuredOutboundGateways := make(map[string][]string)
 		configuredInboundGateways := make(map[string][]string)
+
 		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
-			var resp server.ServerAPIGatewayzResponse
-			var gateways *server.Gatewayz
-			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerGateways())
-			if errors.Is(err, archive.ErrNoMatches) {
-				return Skipped, fmt.Errorf("artifact 'GATEWAYZ' is missing for server %s cluster %s", serverName, clusterName)
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load GATEWAYZ for server %s: %w", serverName, err)
-			}
-			gateways = resp.Data
-
-			// Create list of configured outbound gateways for this server
-			serverConfiguredOutboundGateways := make([]string, 0, len(gateways.OutboundGateways))
-			for targetClusterName, outboundGateway := range gateways.OutboundGateways {
-				if outboundGateway.IsConfigured {
-					serverConfiguredOutboundGateways = append(serverConfiguredOutboundGateways, targetClusterName)
+			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, typeTag}, func(resp *server.ServerAPIGatewayzResponse) error {
+				if resp == nil || resp.Data == nil {
+					return nil
 				}
-			}
 
-			// Create list of configured inbound gateways for this server
-			serverConfiguredInboundGateways := make([]string, 0, len(gateways.OutboundGateways))
-			for sourceClusterName, inboundGateways := range gateways.InboundGateways {
-				for _, inboundGateway := range inboundGateways {
-					if inboundGateway.IsConfigured {
-						serverConfiguredInboundGateways = append(serverConfiguredInboundGateways, sourceClusterName)
-						break
+				gateways := resp.Data
+
+				// Create list of configured outbound gateways for this server
+				serverConfiguredOutboundGateways := make([]string, 0, len(gateways.OutboundGateways))
+				for targetClusterName, outboundGateway := range gateways.OutboundGateways {
+					if outboundGateway.IsConfigured {
+						serverConfiguredOutboundGateways = append(serverConfiguredOutboundGateways, targetClusterName)
 					}
 				}
-			}
 
-			// Sort the lists for easier comparison later
-			sort.Strings(serverConfiguredOutboundGateways)
-			sort.Strings(serverConfiguredInboundGateways)
-			// Store for later comparison against other servers in the cluster
-			configuredOutboundGateways[serverName] = serverConfiguredOutboundGateways
-			configuredInboundGateways[serverName] = serverConfiguredInboundGateways
+				// Create list of configured inbound gateways for this server
+				serverConfiguredInboundGateways := make([]string, 0, len(gateways.OutboundGateways))
+				for sourceClusterName, inboundGateways := range gateways.InboundGateways {
+					for _, inboundGateway := range inboundGateways {
+						if inboundGateway.IsConfigured {
+							serverConfiguredInboundGateways = append(serverConfiguredInboundGateways, sourceClusterName)
+							break
+						}
+					}
+				}
+
+				sort.Strings(serverConfiguredOutboundGateways)
+				sort.Strings(serverConfiguredInboundGateways)
+				configuredOutboundGateways[serverName] = serverConfiguredOutboundGateways
+				configuredInboundGateways[serverName] = serverConfiguredInboundGateways
+				return nil
+			})
+
+			if err != nil {
+				return Skipped, fmt.Errorf("failed to read GATEWAYZ for server %s in cluster %s: %w", serverName, clusterName, err)
+			}
 		}
 
 		gatewayTypes := []struct {
@@ -191,9 +200,9 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 		}
 
 		for _, t := range gatewayTypes {
-			// Check each server configured gateways against another server in the same cluster
 			var previousServerName string
 			var previousTargetClusterNames []string
+
 			for serverName, targetClusterNames := range t.configuredGateways {
 				if previousTargetClusterNames != nil {
 					log.Debugf("Cluster %s - Comparing configured %s gateways of %s (%d) to %s (%d)", clusterName, t.gatewayType, serverName, len(targetClusterNames), previousServerName, len(previousTargetClusterNames))
@@ -214,6 +223,7 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 			}
 		}
 	}
+
 	if examples.Count() > 0 {
 		log.Errorf("Found %d instance of gateways configurations mismatch", examples.Count())
 		return Fail, nil
@@ -226,26 +236,33 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	haAssetsThreshold := check.Configuration["assets"].Value()
 
-	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
-		}
+	for _, clusterName := range r.ClusterNames() {
+		clusterTag := archive.TagCluster(clusterName)
+		typeTag := archive.TagServerJetStream()
 
-		if float64(jsz.Data.HAAssets) > haAssetsThreshold {
-			examples.Add("%s: %d HA assets", serverTag, jsz.Data.HAAssets)
-		}
+		for _, serverName := range r.ClusterServerNames(clusterName) {
+			serverTag := archive.TagServer(serverName)
 
-		return nil
-	})
-	if err != nil {
-		return Skipped, err
+			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, typeTag}, func(jsz *server.ServerAPIJszResponse) error {
+				if jsz == nil || jsz.Data == nil {
+					log.Warnf("Artifact 'JSZ' is missing or empty for server %s", serverTag)
+					return nil
+				}
+
+				if float64(jsz.Data.HAAssets) > haAssetsThreshold {
+					examples.Add("%s: %d HA assets", serverTag, jsz.Data.HAAssets)
+				}
+
+				return nil
+			})
+			if err != nil {
+				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverTag, err)
+			}
+		}
 	}
 
 	if examples.Count() > 0 {
-		log.Errorf("Found %d servers with JetStream domains containing whitespace", examples.Count())
+		log.Errorf("Found %d servers with too many HA assets", examples.Count())
 		return PassWithIssues, nil
 	}
 

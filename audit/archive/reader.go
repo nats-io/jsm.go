@@ -15,7 +15,9 @@ package archive
 
 import (
 	"archive/zip"
+	"errors"
 	"fmt"
+	"path/filepath"
 
 	"encoding/json"
 
@@ -108,48 +110,18 @@ var ErrMultipleMatches = fmt.Errorf("multiple files matched the given query")
 // If multiple artifact or no artifacts match the input tag, then ErrMultipleMatches and ErrNoMatches are returned
 // respectively
 func (r *Reader) Load(v any, queryTags ...*Tag) error {
-	if len(queryTags) == 0 {
-		return ErrNoMatches
+	matching, err := intersectFileSets(r.invertedIndex, queryTags)
+	if err != nil {
+		return err
 	}
 
-	// Collect the list of file names for each tag
-	var fileSets [][]string
-	for _, tag := range queryTags {
-		files, found := r.invertedIndex[*tag]
-		if !found {
-			return ErrNoMatches
-		}
-		fileSets = append(fileSets, files)
-	}
-
-	// Start with the first set
-	baseSet := make(map[string]struct{}, len(fileSets[0]))
-	for _, file := range fileSets[0] {
-		baseSet[file] = struct{}{}
-	}
-
-	// Intersect with the remaining sets
-	for _, files := range fileSets[1:] {
-		seen := make(map[string]struct{}, len(files))
-		for _, f := range files {
-			if _, ok := baseSet[f]; ok {
-				seen[f] = struct{}{}
-			}
-		}
-		baseSet = seen
-		if len(baseSet) == 0 {
-			return ErrNoMatches
-		}
-	}
-
-	// Determine match
-	if len(baseSet) == 1 {
-		for file := range baseSet {
+	if len(matching) == 1 {
+		for file := range matching {
 			return r.loadFile(file, v)
 		}
 	}
 
-	if len(baseSet) == 0 {
+	if len(matching) == 0 {
 		return ErrNoMatches
 	}
 	return ErrMultipleMatches
@@ -404,30 +376,6 @@ func shrinkMapOfSets[T any](m map[string]map[string]T) ([]string, map[string][]s
 	return keysList, newMap
 }
 
-func eachClusterServer[T any](r *Reader, tag *Tag, cb func(clusterTag *Tag, serverTag *Tag, err error, resp *T) error) (int, error) {
-	found := 0
-
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := TagCluster(clusterName)
-		servers := r.ClusterServerNames(clusterName)
-		found += len(servers)
-
-		for _, serverName := range servers {
-			serverTag := TagServer(serverName)
-
-			var resp T
-			err := r.Load(&resp, clusterTag, serverTag, tag)
-			err = cb(clusterTag, serverTag, err, &resp)
-
-			if err != nil {
-				return found, err
-			}
-		}
-	}
-
-	return found, nil
-}
-
 // EachClusterServerVarz iterates over all servers ordered by cluster and calls the callback function with the loaded Varz response
 //
 // The callback function will receive any error encountered during loading the server varz file and should check that and handle it
@@ -435,7 +383,9 @@ func eachClusterServer[T any](r *Reader, tag *Tag, cb func(clusterTag *Tag, serv
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIVarzResponse) error) (int, error) {
-	return eachClusterServer(r, TagServerVars(), cb)
+	return EachClusterServerArtifact(r, TagServerVars(), func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIVarzResponse) error {
+		return cb(clusterTag, serverTag, err, vz)
+	})
 }
 
 // EachClusterServerHealthz iterates over all servers ordered by cluster and calls the callback function with the loaded Healthz response
@@ -445,7 +395,9 @@ func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, 
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Tag, err error, hz *server.ServerAPIHealthzResponse) error) (int, error) {
-	return eachClusterServer(r, TagServerHealth(), cb)
+	return EachClusterServerArtifact(r, TagServerHealth(), func(clusterTag *Tag, serverTag *Tag, err error, hz *server.ServerAPIHealthzResponse) error {
+		return cb(clusterTag, serverTag, err, hz)
+	})
 }
 
 // EachClusterServerJsz iterates over all servers ordered by cluster and calls the callback function with the loaded Jsz response
@@ -455,7 +407,9 @@ func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Ta
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIJszResponse) error) (int, error) {
-	return eachClusterServer(r, TagServerJetStream(), cb)
+	return EachClusterServerArtifact(r, TagServerJetStream(), func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIJszResponse) error {
+		return cb(clusterTag, serverTag, err, jsz)
+	})
 }
 
 // EachClusterServerAccountz iterates over all servers ordered by cluster and calls the callback function with the loaded Accountz response
@@ -465,7 +419,9 @@ func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, e
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *Tag, err error, az *server.ServerAPIAccountzResponse) error) (int, error) {
-	return eachClusterServer(r, TagServerAccounts(), cb)
+	return EachClusterServerArtifact(r, TagServerAccounts(), func(clusterTag *Tag, serverTag *Tag, err error, az *server.ServerAPIAccountzResponse) error {
+		return cb(clusterTag, serverTag, err, az)
+	})
 }
 
 // EachClusterServerLeafz iterates over all servers ordered by cluster and calls the callback function with the loaded Leafz response
@@ -475,5 +431,131 @@ func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *T
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
 func (r *Reader) EachClusterServerLeafz(cb func(clusterTag *Tag, serverTag *Tag, err error, lz *server.ServerAPILeafzResponse) error) (int, error) {
-	return eachClusterServer(r, TagServerLeafs(), cb)
+	return EachClusterServerArtifact(r, TagServerLeafs(), func(clusterTag *Tag, serverTag *Tag, err error, lz *server.ServerAPILeafzResponse) error {
+		return cb(clusterTag, serverTag, err, lz)
+	})
+}
+
+// EachClusterServerArtifact iterates over all paged JSON artifact files in the archive by looping
+// through every cluster and its servers. For each cluster, server pair, it constructs a tag slice
+// consisting of the cluster tag, server tag, and the provided artifact tag, and then calls ForEachTaggedArtifact
+// to load all artifacts of type T associated with that combination.
+//
+// The matching artifact files are obtained by intersecting the tag-specific file lists from the Reader’s inverted index,
+// and then filtered and sorted according to the paged artifact naming convention.
+// For each decoded artifact, the provided callback function is called with the cluster tag, the server tag,
+// and the loaded artifact (or an error if no matching artifact was found).
+//
+// The function returns the total count of processed artifacts and any error encountered during iteration.
+func EachClusterServerArtifact[T any](r *Reader, artifactTag *Tag, cb func(clusterTag *Tag, serverTag *Tag, err error, artifact *T) error) (int, error) {
+	count := 0
+	for _, cluster := range r.ClusterNames() {
+		clusterTag := TagCluster(cluster)
+		for _, serverName := range r.ClusterServerNames(cluster) {
+			serverTag := TagServer(serverName)
+			err := ForEachTaggedArtifact(r, []*Tag{clusterTag, serverTag, artifactTag}, func(artifact *T) error {
+				count++
+				return cb(clusterTag, serverTag, nil, artifact)
+			})
+			if errors.Is(err, ErrNoMatches) {
+				// if we found nothing then we call the cb once so that it can deal with the error
+				if cbErr := cb(clusterTag, serverTag, err, nil); cbErr != nil {
+					return count, cbErr
+				}
+			} else if err != nil {
+				return count, err
+			}
+		}
+	}
+	return count, nil
+}
+
+// ForEachTaggedArtifact iterates over all paged JSON artifact files in the archive that match
+// the given set of tags and calls the provided callback function for each decoded artifact.
+//
+// The function uses the Reader’s inverted index to collect the file names associated with each tag,
+// performs an intersection of these sets to determine the files that match all the given tags,
+// and then filters these to include only those files that match the paged artifact naming
+// convention.
+//
+// The matching files are sorted by name, opened, and decoded from JSON into an object of type T.
+// For each decoded artifact, the callback function cb is called. If the callback returns an error
+// we iterating and the error is returned.
+//
+// If no files match the provided tags it returns ErrNoMatches.
+// It also returns any errors encountered during file opening or JSON decoding.
+func ForEachTaggedArtifact[T any](r *Reader, tags []*Tag, cb func(*T) error) error {
+	matching, err := intersectFileSets(r.invertedIndex, tags)
+	if err != nil {
+		return err
+	}
+
+	var files []*zip.File
+	for name := range matching {
+		base := filepath.Base(name)
+		if strings.HasSuffix(base, ".json") && len(base) == len("0001.json") {
+			if f, ok := r.filesMap[name]; ok {
+				files = append(files, f)
+			}
+		}
+	}
+	if len(files) == 0 {
+		return ErrNoMatches
+	}
+
+	slices.SortFunc(files, func(a, b *zip.File) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	for _, f := range files {
+		rc, err := f.Open()
+		if err != nil {
+			return fmt.Errorf("open %s: %w", f.Name, err)
+		}
+
+		var obj T
+		if err := json.NewDecoder(rc).Decode(&obj); err != nil {
+			rc.Close()
+			return fmt.Errorf("decode %s: %w", f.Name, err)
+		}
+		rc.Close()
+
+		if err := cb(&obj); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Intersect the inverted index and find the files for the given tags
+func intersectFileSets(index map[Tag][]string, tags []*Tag) (map[string]struct{}, error) {
+	if len(tags) == 0 {
+		return nil, ErrNoMatches
+	}
+	fileSets := make([][]string, 0, len(tags))
+	for _, tag := range tags {
+		files, ok := index[*tag]
+		if !ok {
+			return nil, ErrNoMatches
+		}
+		fileSets = append(fileSets, files)
+	}
+	result := make(map[string]struct{}, len(fileSets[0]))
+	for _, f := range fileSets[0] {
+		result[f] = struct{}{}
+	}
+	for _, set := range fileSets[1:] {
+		next := make(map[string]struct{})
+		for _, f := range set {
+			if _, ok := result[f]; ok {
+				next[f] = struct{}{}
+			}
+		}
+		result = next
+		if len(result) == 0 {
+			return nil, ErrNoMatches
+		}
+	}
+	return result, nil
 }

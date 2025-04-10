@@ -14,7 +14,6 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/nats-io/jsm.go/api"
@@ -50,7 +49,6 @@ func RegisterAccountChecks(collection *CheckCollection) error {
 func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	connectionsThreshold := check.Configuration["connections"].Value()
 	subscriptionsThreshold := check.Configuration["subscriptions"].Value()
-	accountDetailsTag := archive.TagAccountInfo()
 
 	// Check value against limit threshold, create example if exceeded
 	checkLimit := func(limitName, serverName, accountName string, value, limit int64, percentThreshold float64) {
@@ -65,82 +63,74 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 		}
 	}
 
-	_, err := r.EachClusterServerAccountz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, az *server.ServerAPIAccountzResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'ACCOUNTZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
-		}
+	// Iterate over all clusters and their servers
+	for _, clusterName := range r.ClusterNames() {
+		clusterTag := archive.TagCluster(clusterName)
 
-		accountz := az.Data
-		for _, accountName := range accountz.Accounts {
-			accountTag := archive.TagAccount(accountName)
+		for _, serverName := range r.ClusterServerNames(clusterName) {
+			serverTag := archive.TagServer(serverName)
 
-			var accountInfo server.AccountInfo
-			err := r.Load(&accountInfo, serverTag, accountTag, accountDetailsTag)
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Account details is missing for account %s, server %s", accountName, serverTag)
-				continue
-			} else if err != nil {
-				return fmt.Errorf("failed to load Account details from server %s for account %s, error: %w", serverTag, accountName, err)
+			for _, accountName := range r.AccountNames() {
+				accountTag := archive.TagAccount(accountName)
+
+				err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, accountTag, archive.TagAccountInfo()}, func(ai *server.AccountInfo) error {
+					if ai.Claim == nil {
+						// Can't check limits without a claim
+						return nil
+					}
+
+					checkLimit(
+						"client connections",
+						serverTag.Value,
+						ai.AccountName,
+						int64(ai.ClientCnt),
+						ai.Claim.Limits.Conn,
+						connectionsThreshold,
+					)
+
+					checkLimit(
+						"client connections (account)",
+						serverTag.Value,
+						ai.AccountName,
+						int64(ai.ClientCnt),
+						ai.Claim.Limits.AccountLimits.Conn,
+						connectionsThreshold,
+					)
+
+					checkLimit(
+						"leaf connections",
+						serverTag.Value,
+						ai.AccountName,
+						int64(ai.LeafCnt),
+						ai.Claim.Limits.LeafNodeConn,
+						connectionsThreshold,
+					)
+
+					checkLimit(
+						"leaf connections (account)",
+						serverTag.Value,
+						ai.AccountName,
+						int64(ai.LeafCnt),
+						ai.Claim.Limits.AccountLimits.LeafNodeConn,
+						connectionsThreshold,
+					)
+
+					checkLimit(
+						"subscriptions",
+						serverTag.Value,
+						ai.AccountName,
+						int64(ai.SubCnt),
+						ai.Claim.Limits.Subs,
+						subscriptionsThreshold,
+					)
+
+					return nil
+				})
+				if err != nil {
+					return Skipped, fmt.Errorf("error processing account_info for account %s, server %s: %w", accountName, serverName, err)
+				}
 			}
-
-			if accountInfo.Claim == nil {
-				// Can't check limits without a claim
-				continue
-			}
-
-			checkLimit(
-				"client connections",
-				serverTag.Value,
-				accountName,
-				int64(accountInfo.ClientCnt),
-				accountInfo.Claim.Limits.Conn,
-				connectionsThreshold,
-			)
-
-			checkLimit(
-				"client connections (account)",
-				serverTag.Value,
-				accountName,
-				int64(accountInfo.ClientCnt),
-				accountInfo.Claim.Limits.AccountLimits.Conn,
-				connectionsThreshold,
-			)
-
-			checkLimit(
-				"leaf connections",
-				serverTag.Value,
-				accountName,
-				int64(accountInfo.LeafCnt),
-				accountInfo.Claim.Limits.LeafNodeConn,
-				connectionsThreshold,
-			)
-
-			checkLimit(
-				"leaf connections (account)",
-				serverTag.Value,
-				accountName,
-				int64(accountInfo.LeafCnt),
-				accountInfo.Claim.Limits.AccountLimits.LeafNodeConn,
-				connectionsThreshold,
-			)
-
-			checkLimit(
-				"subscriptions",
-				serverTag.Value,
-				accountName,
-				int64(accountInfo.SubCnt),
-				accountInfo.Claim.Limits.Subs,
-				subscriptionsThreshold,
-			)
 		}
-
-		return nil
-	})
-	if err != nil {
-		return Skipped, err
 	}
 
 	if examples.Count() > 0 {

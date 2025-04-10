@@ -23,9 +23,9 @@ For example, the capture of a server `VARZ` endpoint may be tagged with:
  - `server:bar_1`
  - `type:server_varz`
 
-A filename for is derived from it's tags, and may look something like:
+Artifact filenames are derived from their tags. For paged artifacts, the files are stored in a dedicated directory with numbered JSON pages:
 ```
-capture/clusters/awseast_bar/bar_1/variables.json
+capture/clusters/awseast_bar/bar_1/variables/0001.json
 ```
 
 In addition to capture artifacts, the archive contains a few special files.
@@ -42,10 +42,17 @@ n.b. Do not rely on path parsing and path conventions, query using the manifest 
 
 n.b.: If a server does not belong to a cluster, then `cluster_name` is `unclustered` for all the paths below.
 
+### Note on paging
+
+Some artifacts (e.g., stream info, health, varz) are stored in **paged format**, split across multiple JSON files (e.g., `0001.json`, `0002.json`, ...), each containing one or more JSON objects.
+
+Other artifacts (e.g., profiles and special files) are stored as **non-paged single files**.
+
+
 ## Server-specific artifacts
 
 
-`${prefix}/clusters/${cluster_name}/${server_name}/${artifact_type}.json`
+`${prefix}/clusters/${cluster_name}/${server_name}/${artifact_type}/0001.json`
 
 Example: snapshot of health endpoint
 
@@ -53,7 +60,7 @@ Example: snapshot of health endpoint
 
 Each account artifact can appear multiple times as it is captured through different servers.
 
-`${prefix}/accounts/${account_name}/servers/${cluster_name}__${server_name}/${artifact_type}.json"`
+`${prefix}/accounts/${account_name}/servers/${cluster_name}__${server_name}/${artifact_type}/0001.json"`
 
 Example: account connections
 
@@ -61,17 +68,21 @@ Example: account connections
 
 Each stream artifact can appear multiple times as it is captured through different replicas.
 
-`${prefix}/accounts/${account_name}/streams/${stream_name}/replicas/${server_name}/${artifact_type}.json`
+`${prefix}/accounts/${account_name}/streams/${stream_name}/replicas/${server_name}/${artifact_type}/0001.json`
 
 Example: stream details
 
 ## Server profiles
+
+Profiles are stored as non-paged files:
 
 `${prefix}/profiles/${cluster_name}/${server_name}__${profile_name}.prof`
 
 Example: memory profile
 
 ## Special files
+
+Special artifacts are stored as flat files and not paged:
 
 In addition to artifacts, each archive contains a few special files.
 

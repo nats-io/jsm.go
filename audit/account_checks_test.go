@@ -71,7 +71,8 @@ func TestACCOUNTS_001(t *testing.T) {
 			},
 			map[string]*server.AccountInfo{
 				"SYS": {
-					ClientCnt: 901,
+					AccountName: "SYS",
+					ClientCnt:   901,
 					Claim: &jwt.AccountClaims{
 						Account: jwt.Account{
 							Limits: jwt.OperatorLimits{
@@ -94,7 +95,8 @@ func TestACCOUNTS_001(t *testing.T) {
 			},
 			map[string]*server.AccountInfo{
 				"SYS": {
-					SubCnt: 901,
+					AccountName: "SYS",
+					SubCnt:      901,
 					Claim: &jwt.AccountClaims{
 						Account: jwt.Account{
 							Limits: jwt.OperatorLimits{
@@ -117,8 +119,9 @@ func TestACCOUNTS_001(t *testing.T) {
 			},
 			map[string]*server.AccountInfo{
 				"SYS": {
-					ClientCnt: 100,
-					SubCnt:    100,
+					AccountName: "SYS",
+					ClientCnt:   100,
+					SubCnt:      100,
 					Claim: &jwt.AccountClaims{
 						Account: jwt.Account{
 							Limits: jwt.OperatorLimits{

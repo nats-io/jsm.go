@@ -14,8 +14,8 @@
 package audit
 
 import (
-	"errors"
 	"fmt"
+
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
@@ -51,36 +51,30 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
-			var resp server.ServerAPIJszResponse
-			var jetStreamInfo *server.JSInfo
-			err := r.Load(&resp, clusterTag, serverTag, jsTag)
-			if errors.Is(err, archive.ErrNoMatches) {
-				log.Warnf("Artifact 'JSZ' is missing for server %s cluster %s", serverName, clusterName)
+			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, jsTag}, func(resp *server.ServerAPIJszResponse) error {
+				js := resp.Data
+				if js.Disabled {
+					return nil
+				}
+
+				if js.Meta == nil {
+					log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
+					return nil
+				}
+
+				leader := js.Meta.Leader
+				if leader == "" {
+					leader = "NO_LEADER"
+				}
+
+				leaderFollowers[leader] = append(leaderFollowers[leader], serverName)
+				return nil
+			})
+
+			if err != nil {
+				log.Warnf("Failed to read JSZ for server %s: %v", serverName, err)
 				continue
-			} else if err != nil {
-				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
 			}
-			jetStreamInfo = resp.Data
-
-			if jetStreamInfo.Disabled {
-				continue
-			}
-
-			if jetStreamInfo.Meta == nil {
-				log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
-				continue
-			}
-
-			leader := jetStreamInfo.Meta.Leader
-			if leader == "" {
-				leader = "NO_LEADER"
-			}
-
-			_, present := leaderFollowers[leader]
-			if !present {
-				leaderFollowers[leader] = make([]string, 0)
-			}
-			leaderFollowers[leader] = append(leaderFollowers[leader], serverName)
 		}
 
 		if len(leaderFollowers) > 1 {
@@ -98,33 +92,37 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 
 // checkMetaClusterOfflineReplicas verify that all meta-cluster replicas are online for each known cluster
 func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
-		}
+	jszTag := archive.TagServerJetStream()
 
-		if jsz.Data.Disabled {
-			return nil
-		}
+	for _, clusterName := range r.ClusterNames() {
+		clusterTag := archive.TagCluster(clusterName)
 
-		if jsz.Data.Meta == nil {
-			log.Warnf("%s / %s does not have meta group info", clusterTag, serverTag)
-			return nil
-		}
+		for _, serverName := range r.ClusterServerNames(clusterName) {
+			serverTag := archive.TagServer(serverName)
 
-		for _, peerInfo := range jsz.Data.Meta.Replicas {
-			if peerInfo.Offline {
-				examples.Add("%s - %s reports peer %s as offline", clusterTag, serverTag, peerInfo.Name)
+			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, jszTag}, func(resp *server.ServerAPIJszResponse) error {
+				if resp.Data.Disabled {
+					return nil
+				}
+
+				if resp.Data.Meta == nil {
+					log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
+					return nil
+				}
+
+				for _, peerInfo := range resp.Data.Meta.Replicas {
+					if peerInfo.Offline {
+						examples.Add("%s - %s reports peer %s as offline", clusterName, serverName, peerInfo.Name)
+					}
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				return Skipped, fmt.Errorf("error reading JSZ for %s/%s: %w", clusterName, serverName, err)
 			}
 		}
-
-		return nil
-	})
-	if err != nil {
-		return Skipped, err
 	}
 
 	if examples.Count() > 0 {

@@ -25,6 +25,19 @@ import (
 	"testing"
 )
 
+func expectedPagedFile(t *testing.T, extension string, tags ...*Tag) string {
+	t.Helper()
+	dir, err := dirNameFromTags(tags)
+	if err != nil {
+		t.Fatalf("failed to generate path from tags %+v: %v", tags, err)
+	}
+	return filepath.Join(dir, "0001."+extension)
+}
+
+func expectedSpecialFile(name, extension string) string {
+	return filepath.Join("capture", "misc", name+"."+extension)
+}
+
 func Test_CreateThenReadArchive(t *testing.T) {
 	rng := rand.New(rand.NewSource(123456))
 
@@ -263,41 +276,41 @@ func Test_CreateThenReadArchiveUsingTags(t *testing.T) {
 
 	expectedFilesList := []string{
 		// Server health
-		"capture/clusters/C1/X/health.json",
-		"capture/clusters/C1/Y/health.json",
-		"capture/clusters/C1/Z/health.json",
-		"capture/clusters/C2/A/health.json",
-		"capture/clusters/C2/B/health.json",
-		"capture/clusters/C2/C/health.json",
-		"capture/clusters/C2/D/health.json",
-		"capture/clusters/C2/E/health.json",
+		expectedPagedFile(t, "json", TagCluster("C1"), TagServer("X"), TagServerHealth()),
+		expectedPagedFile(t, "json", TagCluster("C1"), TagServer("Y"), TagServerHealth()),
+		expectedPagedFile(t, "json", TagCluster("C1"), TagServer("Z"), TagServerHealth()),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("A"), TagServerHealth()),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("B"), TagServerHealth()),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("C"), TagServerHealth()),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("D"), TagServerHealth()),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("E"), TagServerHealth()),
 
 		// Server info
-		"capture/clusters/C1/X/server_info.json",
-		"capture/clusters/C1/Y/server_info.json",
-		"capture/clusters/C1/Z/server_info.json",
-		"capture/clusters/C2/A/server_info.json",
-		"capture/clusters/C2/B/server_info.json",
-		"capture/clusters/C2/C/server_info.json",
-		"capture/clusters/C2/D/server_info.json",
-		"capture/clusters/C2/E/server_info.json",
+		expectedPagedFile(t, "json", TagCluster("C1"), TagServer("X"), TagArtifactType("server_info")),
+		expectedPagedFile(t, "json", TagCluster("C1"), TagServer("Y"), TagArtifactType("server_info")),
+		expectedPagedFile(t, "json", TagCluster("C1"), TagServer("Z"), TagArtifactType("server_info")),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("A"), TagArtifactType("server_info")),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("B"), TagArtifactType("server_info")),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("C"), TagArtifactType("server_info")),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("D"), TagArtifactType("server_info")),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("E"), TagArtifactType("server_info")),
 
 		// Cluster info
-		"capture/clusters/C1/X/cluster_info.json",
-		"capture/clusters/C2/A/cluster_info.json",
+		expectedPagedFile(t, "json", TagCluster("C1"), TagServer("X"), TagArtifactType("cluster_info")),
+		expectedPagedFile(t, "json", TagCluster("C2"), TagServer("A"), TagArtifactType("cluster_info")),
 
 		// Stream info
-		"capture/accounts/$G/streams/ORDERS/replicas/C2__A/stream_info.json",
-		"capture/accounts/$G/streams/ORDERS/replicas/C2__B/stream_info.json",
-		"capture/accounts/$G/streams/ORDERS/replicas/C2__E/stream_info.json",
+		expectedPagedFile(t, "json", TagAccount("$G"), TagCluster("C2"), TagServer("A"), TagStream("ORDERS"), TagArtifactType("stream_info")),
+		expectedPagedFile(t, "json", TagAccount("$G"), TagCluster("C2"), TagServer("B"), TagStream("ORDERS"), TagArtifactType("stream_info")),
+		expectedPagedFile(t, "json", TagAccount("$G"), TagCluster("C2"), TagServer("E"), TagStream("ORDERS"), TagArtifactType("stream_info")),
 
 		// Account info
-		"capture/accounts/$G/servers/C1__X/account_info.json",
-		"capture/accounts/$G/servers/C1__Y/account_info.json",
-		"capture/accounts/$G/servers/C1__Z/account_info.json",
+		expectedPagedFile(t, "json", TagAccount("$G"), TagCluster("C1"), TagServer("X"), TagArtifactType("account_info")),
+		expectedPagedFile(t, "json", TagAccount("$G"), TagCluster("C1"), TagServer("Y"), TagArtifactType("account_info")),
+		expectedPagedFile(t, "json", TagAccount("$G"), TagCluster("C1"), TagServer("Z"), TagArtifactType("account_info")),
 
 		// Misc
-		"capture/misc/message.txt",
+		expectedSpecialFile("message", "txt"),
 	}
 	expectedArtifactsCount := len(expectedFilesList) + 1 // +1 for manifest
 	if expectedArtifactsCount != ar.rawFilesCount() {

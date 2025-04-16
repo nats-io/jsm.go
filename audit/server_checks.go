@@ -100,35 +100,6 @@ func RegisterServerChecks(collection *CheckCollection) error {
 	)
 }
 
-func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	total, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
-		}
-
-		if !vz.Data.AuthRequired {
-			examples.Add("%s: authentication not required", serverTag)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return Skipped, err
-	}
-
-	if examples.Count() > 0 {
-		log.Errorf("%d/%d servers do not require authentication", examples.Count(), total)
-		return PassWithIssues, nil
-	}
-
-	log.Infof("%d/%d servers require authentication", total, total)
-
-	return Pass, nil
-}
-
 // checkServerHealth verify all known servers are reporting healthy
 func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	total, err := r.EachClusterServerHealthz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, hz *server.ServerAPIHealthzResponse) error {
@@ -305,6 +276,7 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 	return Pass, nil
 }
 
+// checkJetStreamDomainsForWhitespace verifies that no JetStream server is configured with whitespace in its domain
 func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
 		if errors.Is(err, archive.ErrNoMatches) {
@@ -330,5 +302,33 @@ func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *E
 		return PassWithIssues, nil
 	}
 
+	return Pass, nil
+}
+
+// checkServerAuthRequired verifies that all servers require authentication.
+func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
+	total, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
+		if errors.Is(err, archive.ErrNoMatches) {
+			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to load VARZ for server %s: %w", serverTag, err)
+		}
+
+		if !vz.Data.AuthRequired {
+			examples.Add("%s: authentication not required", serverTag)
+		}
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
+	}
+
+	if examples.Count() > 0 {
+		log.Errorf("%d/%d servers do not require authentication", examples.Count(), total)
+		return PassWithIssues, nil
+	}
+
+	log.Infof("%d/%d servers require authentication", total, total)
 	return Pass, nil
 }

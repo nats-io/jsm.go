@@ -58,6 +58,16 @@ type Configuration struct {
 	Detailed               bool
 }
 
+// endpointPagingInfo maps a given endpoint's API suffix to the JSON field path that contains
+// the array of data elements for that endpoint. This mapping is used to determine if the
+// response has reached the paging limit. Additional endpoints that support pagination can be
+// added to this map as needed.
+var endpointPagingInfo = map[string]string{
+	"CONNZ": "data.connections",
+	"SUBSZ": "data.subscriptions_list",
+	"JSZ":   "data.account_details",
+}
+
 func NewCaptureConfiguration() *Configuration {
 	return &Configuration{
 		LogLevel: api.InfoLevel,
@@ -539,7 +549,95 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 	return nil
 }
 
-// Capture configured endpoints for each known server
+func (g *gather) hasNextPage(endpoint string, rawResponse []byte, pageLimit int) (bool, error) {
+	jsonPath, pathKnown := endpointPagingInfo[endpoint]
+	if !pathKnown {
+		g.log.Debugf("no paging info configured for endpoint: %s", endpoint)
+		return false, nil
+	}
+
+	var decoded map[string]any
+	if err := json.Unmarshal(rawResponse, &decoded); err != nil {
+		return false, fmt.Errorf("unable to decode JSON response for %s: %v", endpoint, err)
+	}
+
+	currentNode := any(decoded)
+	for _, segment := range strings.Split(jsonPath, ".") {
+		objectNode, isObject := currentNode.(map[string]any)
+		if !isObject {
+			return false, fmt.Errorf("expected object at path segment %q in %s, but got %T", segment, endpoint, currentNode)
+		}
+
+		nextNode, exists := objectNode[segment]
+		if !exists {
+			return false, fmt.Errorf("missing key %q in path for endpoint %s", segment, endpoint)
+		}
+		currentNode = nextNode
+	}
+
+	arrayNode, isArray := currentNode.([]any)
+	if !isArray {
+		return false, fmt.Errorf("expected array at end of path in %s, but got %T", endpoint, currentNode)
+	}
+
+	hasReachedPageLimit := len(arrayNode) >= pageLimit
+	g.log.Debugf("paging check for %s: array length = %d, page limit = %d", endpoint, len(arrayNode), pageLimit)
+	return hasReachedPageLimit, nil
+}
+
+func buildServerOptions(apiSuffix string, offset, limit int, detail bool) any {
+	if !detail {
+		return nil
+	}
+
+	switch apiSuffix {
+	case "CONNZ":
+		return &server.ConnzOptions{
+			Subscriptions:       true,
+			SubscriptionsDetail: true,
+			Offset:              offset,
+			Limit:               limit,
+		}
+	case "GATEWAYZ":
+		return server.GatewayzOptions{
+			Accounts:                   true,
+			AccountSubscriptions:       true,
+			AccountSubscriptionsDetail: true,
+		}
+	case "HEALTHZ":
+		return server.HealthzOptions{
+			Details: true,
+		}
+	case "JSZ":
+		return server.JSzOptions{
+			Accounts:   true,
+			Streams:    true,
+			Consumer:   true,
+			Config:     true,
+			RaftGroups: true,
+			Offset:     offset,
+			Limit:      limit,
+		}
+	case "LEAFZ":
+		return server.LeafzOptions{
+			Subscriptions: true,
+		}
+	case "ROUTEZ":
+		return server.RoutezOptions{
+			Subscriptions:       true,
+			SubscriptionsDetail: true,
+		}
+	case "SUBSZ":
+		return server.SubszOptions{
+			Subscriptions: true,
+			Offset:        offset,
+			Limit:         limit,
+		}
+	default:
+		return nil
+	}
+}
+
 func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerInfo, detail bool) error {
 	if g.aw == nil {
 		return fmt.Errorf("no archive writer supplied")
@@ -547,108 +645,77 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 	g.log.Infof("Querying %d endpoints on %d known servers...", len(g.cfg.ServerEndpointConfigs), len(serverInfoMap))
 	capturedCount := 0
+	const pageLimit = 100
 
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
+
 		for _, endpoint := range g.cfg.ServerEndpointConfigs {
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", serverId, endpoint.ApiSuffix)
+			offset := 0
 
-			var opts any
+			for {
+				opts := buildServerOptions(endpoint.ApiSuffix, offset, pageLimit, detail)
 
-			if detail {
-				switch endpoint.ApiSuffix {
-				case "CONNZ":
-					opts = &server.ConnzOptions{
-						Subscriptions:       true,
-						SubscriptionsDetail: true,
-					}
-				case "GATEWAYZ":
-					opts = server.GatewayzOptions{
-						Accounts:                   true,
-						AccountSubscriptions:       true,
-						AccountSubscriptionsDetail: true,
-					}
-				case "HEALTHZ":
-					opts = server.HealthzOptions{
-						Details: true,
-					}
-				case "JSZ":
-					opts = server.JSzOptions{
-						Accounts:   true,
-						Streams:    true,
-						Consumer:   true,
-						Config:     true,
-						RaftGroups: true,
-					}
-				case "LEAFZ":
-					opts = server.LeafzOptions{
-						Subscriptions: true,
-					}
-				case "ROUTEZ":
-					opts = server.RoutezOptions{
-						Subscriptions:       true,
-						SubscriptionsDetail: true,
-					}
-				case "SUBSZ":
-					opts = server.SubszOptions{
-						Subscriptions: true,
-					}
+				responses, err := g.doReq(context.TODO(), opts, subject, 1)
+				if err != nil {
+					g.log.Errorf("Failed to request %s from server %s: %s", endpoint.ApiSuffix, serverName, err)
+					break
 				}
+				if len(responses) != 1 {
+					g.log.Errorf("Unexpected number of responses to %s from server %s: %d", endpoint.ApiSuffix, serverName, len(responses))
+					break
+				}
+
+				responseBytes := responses[0]
+				var apiResponse server.ServerAPIResponse
+				if err := json.Unmarshal(responseBytes, &apiResponse); err != nil {
+					g.log.Errorf("Failed to deserialize %s response from server %s: %s", endpoint.ApiSuffix, serverName, err)
+					break
+				}
+				if apiResponse.Error != nil {
+					g.log.Errorf("Received error from server %s: (%d) %s", serverName, apiResponse.Error.ErrCode, apiResponse.Error.Description)
+					break
+				}
+
+				// Pretty-print JSON
+				buff := new(bytes.Buffer)
+				if err := json.Indent(buff, responseBytes, "", "  "); err != nil {
+					g.log.Errorf("Failed to indent %s response from server %s: %s", endpoint.ApiSuffix, serverName, err)
+					break
+				}
+
+				// Tags for this artifact
+				tags := []*archive.Tag{
+					archive.TagServer(serverName),
+					endpoint.TypeTag,
+				}
+				if serverInfo.Cluster != "" {
+					tags = append(tags, archive.TagCluster(serverInfo.Cluster))
+				} else {
+					tags = append(tags, archive.TagNoCluster())
+				}
+
+				if err := g.aw.AddRaw(buff, "json", tags...); err != nil {
+					return fmt.Errorf("failed to add endpoint %s response to archive: %w", subject, err)
+				}
+				capturedCount++
+
+				g.log.Debugf("Checking paging for endpoint %s", endpoint.ApiSuffix)
+				hasMore, err := g.hasNextPage(endpoint.ApiSuffix, responseBytes, pageLimit)
+
+				if err != nil {
+					return fmt.Errorf("failed to add endpoint %s response to archive: %w", subject, err)
+				}
+				if !hasMore {
+					break
+				}
+				offset += pageLimit
 			}
-
-			responses, err := g.doReq(context.TODO(), opts, subject, 1)
-			if err != nil {
-				g.log.Errorf("Failed to request %s from server %s: %s", endpoint.ApiSuffix, serverName, err)
-				continue
-			}
-
-			if len(responses) != 1 {
-				g.log.Errorf("Unexpected number of responses to %s from server %s: %d", endpoint.ApiSuffix, serverName, len(responses))
-				continue
-			}
-
-			responseBytes := responses[0]
-
-			var apiResponse server.ServerAPIResponse
-			if err = json.Unmarshal(responseBytes, &apiResponse); err != nil {
-				g.log.Errorf("Failed to deserialize %s response from server %s: %s", endpoint.ApiSuffix, serverName, err)
-				continue
-			}
-
-			if apiResponse.Error != nil {
-				g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
-				continue
-			}
-
-			buff := bytes.NewBuffer([]byte{})
-			err = json.Indent(buff, responseBytes, "", "  ")
-			if err != nil {
-				g.log.Errorf("Failed to indent %s response data from server %s: %s", endpoint.ApiSuffix, serverName, err)
-				continue
-			}
-
-			tags := []*archive.Tag{
-				archive.TagServer(serverName), // Source server
-				endpoint.TypeTag,              // Type of artifact
-			}
-
-			if serverInfo.Cluster != "" {
-				tags = append(tags, archive.TagCluster(serverInfo.Cluster))
-			} else {
-				tags = append(tags, archive.TagNoCluster())
-			}
-
-			err = g.aw.AddRaw(buff, "json", tags...)
-			if err != nil {
-				return fmt.Errorf("failed to add endpoint %s response to archive: %w", subject, err)
-			}
-
-			capturedCount += 1
 		}
 	}
 
 	g.log.Infof("Captured %d endpoint responses from %d servers", capturedCount, len(serverInfoMap))
-
 	return nil
 }
 

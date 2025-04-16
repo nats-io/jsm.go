@@ -43,20 +43,25 @@ func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples
 		for _, serverName := range r.ClusterServerNames(clusterName) {
 			serverTag := archive.TagServer(serverName)
 
-			var resp server.ServerAPILeafzResponse
-			var serverLeafz *server.Leafz
-			err := r.Load(&resp, clusterTag, serverTag, archive.TagServerLeafs())
-			if err != nil {
-				log.Warnf("Artifact 'LEAFZ' is missing for server %s", serverName)
-				continue
-			}
-			serverLeafz = resp.Data
-
-			for _, leaf := range serverLeafz.Leafs {
-				// check if leafnode name contains whitespace
-				if strings.ContainsAny(leaf.Name, " \n") {
-					leafnodesWithWhitespace[leaf.Name] = struct{}{}
+			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, archive.TagServerLeafs()}, func(resp *server.ServerAPILeafzResponse) error {
+				if resp == nil || resp.Data == nil {
+					log.Warnf("Leafz data missing for server %s", serverName)
+					return nil
 				}
+
+				for _, leaf := range resp.Data.Leafs {
+					// check if leafnode name contains whitespace
+					if strings.ContainsAny(leaf.Name, " \n") {
+						leafnodesWithWhitespace[leaf.Name] = struct{}{}
+					}
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				log.Warnf("Failed to read leafz for server %s: %v", serverName, err)
+				continue
 			}
 		}
 

@@ -20,17 +20,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 )
 
 // Writer encapsulates a zip writer for the underlying archive file, but also tracks metadata used by the Reader to
 // construct indices
 type Writer struct {
-	path        string
-	fileWriter  *os.File
-	zipWriter   *zip.Writer
-	manifestMap map[string][]*Tag
-	ts          *time.Time
+	path         string
+	fileWriter   *os.File
+	zipWriter    *zip.Writer
+	manifestMap  map[string][]*Tag
+	ts           *time.Time
+	pagedWriters map[string]*pagedWriter
 }
 
 // Close closes the writer
@@ -91,8 +93,7 @@ func (w *Writer) Add(artifact any, tags ...*Tag) error {
 	if err != nil {
 		return fmt.Errorf("failed to encode: %w", err)
 	}
-
-	return w.AddRaw(bytes.NewReader(buf.Bytes()), "json", tags...)
+	return w.AddRaw(&buf, "json", tags...)
 }
 
 // SetTime sets the timestamp files in the archive should have, otherwise current time is used
@@ -102,46 +103,66 @@ func (w *Writer) SetTime(t time.Time) {
 
 // AddRaw adds the given artifact to the archive similarly to Add.
 // The artifact is assumed to be already serialized and is copied as-is byte for byte.
+// If the artifact is tagged as "special", it will be written as a single non-paged file.
 func (w *Writer) AddRaw(reader io.Reader, extension string, tags ...*Tag) error {
 	if w.zipWriter == nil {
 		return fmt.Errorf("attempting to write into a closed writer")
 	}
 
-	// Create filename based on tags
-	name, err := createFilenameFromTags(extension, tags)
+	dir, err := dirNameFromTags(tags)
 	if err != nil {
-		return fmt.Errorf("failed to create artifact name: %w", err)
+		return fmt.Errorf("failed to determine directory from tags: %w", err)
 	}
 
-	// Ensure file is unique
-	_, exists := w.manifestMap[name]
-	if exists {
-		return fmt.Errorf("artifact %s with identical tags is already present", name)
+	// Special artifacts should not use paging
+	if isNonPagedArtifact(tags) {
+		filename, err := createFilenameFromTags(extension, tags)
+		if err != nil {
+			return fmt.Errorf("unable to create filename for file with tags %+v", tags)
+		}
+
+		header := &zip.FileHeader{
+			Name:     filename,
+			Method:   zip.Deflate,
+			Modified: tsToUTC(w.ts),
+		}
+		wr, err := w.zipWriter.CreateHeader(header)
+		if err != nil {
+			return fmt.Errorf("failed to create zip entry for special artifact: %w", err)
+		}
+
+		if _, err := io.Copy(wr, reader); err != nil {
+			return fmt.Errorf("failed to write special artifact: %w", err)
+		}
+
+		if err := w.addPathToManifest(0, extension, tags); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
-	// Open a zip
-	ts := time.Now().UTC()
-	if w.ts != nil {
-		ts = w.ts.UTC()
+	// Everything else gets paged
+	pw := w.PagedWriter(dir)
+
+	if err := pw.WriteEntry(reader); err != nil {
+		return fmt.Errorf("failed to write page: %w", err)
 	}
 
-	f, err := w.zipWriter.CreateHeader(&zip.FileHeader{
-		Name:     name,
-		Modified: ts,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create file in archive: %w", err)
+	// subtract 1 to get correct page just written since WriteEntry increments this value
+	return w.addPathToManifest(pw.pageIndex-1, extension, tags)
+}
+
+func isNonPagedArtifact(tags []*Tag) bool {
+	for _, t := range tags {
+		if t.Name == specialTagLabel {
+			return true
+		}
+		if t.Name == typeTagLabel && t.Value == profileArtifactType {
+			return true
+		}
 	}
-
-	_, err = io.Copy(f, reader)
-	if err != nil {
-		return fmt.Errorf("failed to copy content: %w", err)
-	}
-
-	// Add file and its tags to the manifest
-	w.manifestMap[name] = tags
-
-	return nil
+	return false
 }
 
 // NewWriter creates a new writer for the file at the given archivePath.
@@ -156,9 +177,48 @@ func NewWriter(archivePath string) (*Writer, error) {
 	zipWriter := zip.NewWriter(fileWriter)
 
 	return &Writer{
-		path:        archivePath,
-		fileWriter:  fileWriter,
-		zipWriter:   zipWriter,
-		manifestMap: make(map[string][]*Tag),
+		path:         archivePath,
+		fileWriter:   fileWriter,
+		zipWriter:    zipWriter,
+		manifestMap:  make(map[string][]*Tag),
+		pagedWriters: make(map[string]*pagedWriter),
 	}, nil
+}
+
+func (w *Writer) PagedWriter(dir string) *pagedWriter {
+	if pw, ok := w.pagedWriters[dir]; ok {
+		return pw
+	}
+	pw := newPagedWriter(w.zipWriter, dir, w.ts)
+	w.pagedWriters[dir] = pw
+	return pw
+}
+
+func (w *Writer) addPathToManifest(pageIndex int, extension string, tags []*Tag) error {
+	var path string
+	var err error
+
+	if isNonPagedArtifact(tags) {
+		if pageIndex != 0 {
+			// This is an extreme edge case, and if it happens we broke the code
+			return fmt.Errorf("non-paged artifact with non-zero page index: %d", pageIndex)
+		}
+
+		// Use full filename for non-paged artifacts
+		path, err = createFilenameFromTags(extension, tags)
+		if err != nil {
+			return fmt.Errorf("failed to create filename from tags: %w", err)
+		}
+	} else {
+		// Use numbered page for everything else
+		dir, err := dirNameFromTags(tags)
+		if err != nil {
+			return fmt.Errorf("failed to create manifest path from tags: %w", err)
+		}
+		pageName := fmt.Sprintf("%04d.%s", pageIndex, extension)
+		path = filepath.Join(dir, pageName)
+	}
+
+	w.manifestMap[path] = tags
+	return nil
 }

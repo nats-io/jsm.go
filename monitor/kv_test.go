@@ -14,14 +14,15 @@
 package monitor_test
 
 import (
+	"os"
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/jsm.go/monitor"
-	"github.com/nats-io/nats-server/v2/server"
+	testapi "github.com/nats-io/jsm.go/test/testing_client/api"
+	"github.com/nats-io/jsm.go/test/testing_client/srvtest"
 	"github.com/nats-io/nats.go"
 )
 
@@ -76,37 +77,30 @@ func assertNoError(t *testing.T, err error) {
 	}
 }
 
-func withJetStream(t *testing.T, cb func(srv *server.Server, nc *nats.Conn)) {
+func withJetStream(t *testing.T, fn func(*testing.T, *nats.Conn, *testapi.ManagedServer)) {
 	t.Helper()
 
-	srv, err := server.NewServer(&server.Options{
-		Port:      -1,
-		StoreDir:  t.TempDir(),
-		JetStream: true,
-	})
-	checkErr(t, err, "could not start js server: %v", err)
-
-	go srv.Start()
-	if !srv.ReadyForConnections(10 * time.Second) {
-		t.Errorf("nats server did not start")
+	url := os.Getenv("TESTER_URL")
+	if url == "" {
+		url = "nats://localhost:4222"
 	}
-	defer func() {
-		srv.Shutdown()
-		srv.WaitForShutdown()
-	}()
 
-	nc, err := nats.Connect(srv.ClientURL())
-	checkErr(t, err, "could not connect client to server @ %s: %v", srv.ClientURL(), err)
-	defer nc.Close()
+	client := srvtest.New(t, url)
+	t.Cleanup(func() {
+		client.Reset(t)
+	})
 
-	cb(srv, nc)
+	client.WithJetStreamServer(t, func(t *testing.T, nc *nats.Conn, servers *testapi.ManagedServer) {
+		fn(t, nc, servers)
+		nc.Close()
+	})
 }
 
 func TestCheckKVBucketAndKey(t *testing.T) {
 	t.Run("Bucket", func(t *testing.T) {
-		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(t *testing.T, nc *nats.Conn, srv *testapi.ManagedServer) {
 			check := &monitor.Result{}
-			err := monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.CheckKVBucketAndKeyOptions{
+			err := monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, monitor.CheckKVBucketAndKeyOptions{
 				Bucket: "TEST",
 			})
 			checkErr(t, err, "check failed: %v", err)
@@ -121,7 +115,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "kv create failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, monitor.CheckKVBucketAndKeyOptions{
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, monitor.CheckKVBucketAndKeyOptions{
 				Bucket:         "TEST",
 				ValuesCritical: -1,
 				ValuesWarning:  -1,
@@ -135,7 +129,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 	})
 
 	t.Run("Values", func(t *testing.T) {
-		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(t *testing.T, nc *nats.Conn, srv *testapi.ManagedServer) {
 			js, err := nc.JetStream()
 			checkErr(t, err, "js context failed")
 
@@ -149,7 +143,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			}
 
 			check := &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListIsEmpty(t, check.Criticals)
@@ -159,7 +153,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=1;1;2 bytes=41B replicas=1")
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -170,7 +164,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=2;1;2 bytes=83B replicas=1")
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -186,7 +180,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=3;5;3 bytes=125B replicas=1")
 			assertListIsEmpty(t, check.Warnings)
@@ -197,7 +191,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=4;5;3 bytes=167B replicas=1")
 			assertListIsEmpty(t, check.Criticals)
@@ -210,7 +204,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "pub failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertHasPDItem(t, check, "values=6;5;3 bytes=251B replicas=1")
 			assertListIsEmpty(t, check.Warnings)
@@ -220,7 +214,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 	})
 
 	t.Run("Key", func(t *testing.T) {
-		withJetStream(t, func(srv *server.Server, nc *nats.Conn) {
+		withJetStream(t, func(t *testing.T, nc *nats.Conn, srv *testapi.ManagedServer) {
 			js, err := nc.JetStream()
 			checkErr(t, err, "js context failed")
 
@@ -235,7 +229,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			}
 
 			check := &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST")
@@ -245,7 +239,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 			checkErr(t, err, "put failed")
 
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST", "key KEY found")
@@ -253,7 +247,7 @@ func TestCheckKVBucketAndKey(t *testing.T) {
 
 			bucket.Delete("KEY")
 			check = &monitor.Result{}
-			err = monitor.CheckKVBucketAndKey(srv.ClientURL(), nil, check, opts)
+			err = monitor.CheckKVBucketAndKey(nc.ConnectedUrl(), nil, check, opts)
 			checkErr(t, err, "check failed: %v", err)
 			assertListIsEmpty(t, check.Warnings)
 			assertListEquals(t, check.OKs, "bucket TEST")

@@ -645,7 +645,7 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 	g.log.Infof("Querying %d endpoints on %d known servers...", len(g.cfg.ServerEndpointConfigs), len(serverInfoMap))
 	capturedCount := 0
-	const pageLimit = 100
+	const pageLimit = 1024
 
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name

@@ -9,10 +9,10 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/klauspost/compress v1.18.0
-	github.com/nats-io/jwt/v2 v2.7.3
+	github.com/nats-io/jwt/v2 v2.7.4
 	github.com/nats-io/nats-server/v2 v2.11.1
-	github.com/nats-io/nats.go v1.41.1
-	github.com/nats-io/nkeys v0.4.10
+	github.com/nats-io/nats.go v1.41.2
+	github.com/nats-io/nkeys v0.4.11
 	github.com/nats-io/nuid v1.0.1
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.63.0
@@ -30,7 +30,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/minio/highwayhash v1.0.3 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/procfs v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

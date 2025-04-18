@@ -203,6 +203,11 @@
             "errors"
           ],
           "properties": {
+            "level": {
+              "description": "The JetStream API Level",
+              "minimum": 0,
+              "type": "integer"
+            },
             "total": {
               "description": "Total number of API requests received for this account",
               "minimum": 0,
@@ -210,6 +215,11 @@
             },
             "errors": {
               "description": "API requests that resulted in an error response",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "inflight": {
+              "description": "The number of inflight API requests waiting to be processed",
               "minimum": 0,
               "type": "integer"
             }

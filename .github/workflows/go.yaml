@@ -4,40 +4,62 @@ on: [push, pull_request]
 jobs:
   lint_and_test:
     runs-on: ubuntu-latest
+    container: golang:1.24-alpine # required to run in the docker network and avoid badly performing
+                                  # port range expose from docker
 
     strategy:
       matrix:
         go: [ "1.23", "1.24" ]
+
+    services:
+      nats:
+        image: ripienaar/testing.go
+        options: --name jetstream   # only needed to facilitate debugging with docker logs etc
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
 
       - name: Install deps
-        shell: bash --noprofile --norc -x -eo pipefail {0}
         run: |
+          set -e
+
           export GOPATH="$RUNNER_WORKSPACE"
           go version
           go install honnef.co/go/tools/cmd/staticcheck@latest
           go install github.com/client9/misspell/cmd/misspell@latest
 
       - name: Lint
-        shell: bash --noprofile --norc -x -eo pipefail {0}
         run: |
+          set -e
+
           export GOPATH="$RUNNER_WORKSPACE"
           PATH=$PATH:$GOPATH/bin
           $(exit $(go fmt $(go list ./...) | wc -l))
           find . -type f -name "*.go" | xargs misspell -error -locale US
-          staticcheck -f stylish $(go list ./... | grep -v governor)
+          staticcheck -f stylish $(go list ./...)
           go vet ./...
 
       - name: Run tests
-        shell: bash --noprofile --norc -x -eo pipefail {0}
         run: |
+          set -e
+
           export GOPATH="$RUNNER_WORKSPACE"
-          go test -v -race -p 1 ./...
+          export TESTER_URL="nats://nats:4222" # name here matches the service name
+          
+          go test -v  -p 1 -failfast ./...
+
+      # debugging only
+      - name: docker logs
+        if: always()
+        run: |
+          set -e
+
+          apk add docker    
+          docker ps -a
+          docker logs jetstream

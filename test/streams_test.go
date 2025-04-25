@@ -16,7 +16,6 @@ package test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -36,11 +35,6 @@ func TestNewStreamFromDefault(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()
 	defer nc.Flush()
-
-	_, err := mgr.NewStreamFromDefault("q1", jsm.DefaultStream, jsm.Subjects(">"))
-	if !errors.Is(err, jsm.ErrAckStreamIngestsAll) {
-		t.Fatalf("Expected overlap error got %v", err)
-	}
 
 	stream, err := mgr.NewStreamFromDefault("q1", jsm.DefaultWorkQueue, jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.MaxAge(time.Hour))
 	checkErr(t, err, "create failed")

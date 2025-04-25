@@ -639,13 +639,3 @@ func (m *Manager) NatsConn() *nats.Conn {
 
 	return m.nc
 }
-
-func stringsContains(stack []string, needle string) bool {
-	for _, s := range stack {
-		if s == needle {
-			return true
-		}
-	}
-
-	return false
-}

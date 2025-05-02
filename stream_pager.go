@@ -86,6 +86,7 @@ func (p *StreamPager) start(stream *Stream, mgr *Manager, opts ...PagerOption) e
 	p.startDelta = 0
 	p.startSeq = -1
 	p.seen = -1
+	p.filterSubject = ">"
 
 	for _, o := range opts {
 		o(p)

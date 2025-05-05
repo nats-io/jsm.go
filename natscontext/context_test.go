@@ -2,6 +2,7 @@ package natscontext_test
 
 import (
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/nats-io/nats.go"
@@ -10,10 +11,10 @@ import (
 )
 
 func TestContext(t *testing.T) {
-	os.Setenv("XDG_CONFIG_HOME", "testdata")
+	defer envSet(t, "XDG_CONFIG_HOME", "testdata")()
 
 	known := natscontext.KnownContexts()
-	if len(known) != 2 && known[0] != "gotest" && known[1] != "other" {
+	if len(known) < 2 || !slices.Contains(known, "gotest") || !slices.Contains(known, "other") {
 		t.Fatalf("expected [gotest,other] got %#v", known)
 	}
 
@@ -114,7 +115,8 @@ func TestContext(t *testing.T) {
 	}
 
 	// support missing config/context
-	os.Setenv("XDG_CONFIG_HOME", "/nonexisting")
+	defer envSet(t, "XDG_CONFIG_HOME", "/nonexisting")()
+
 	config, err = natscontext.New("", true)
 	if err != nil {
 		t.Fatalf("error loading context: %s", err)
@@ -127,4 +129,28 @@ func TestContext(t *testing.T) {
 	if err != nil || (config.Name != "gotest" && config.ServerURL() != "demo.nats.io" && config.Token() != "use-nkeys!") {
 		t.Fatalf("could not load context file: %s", err)
 	}
+}
+
+func envSet(t *testing.T, name, val string) func() {
+	t.Helper()
+
+	def := func() {
+		if err := os.Unsetenv(name); err != nil {
+			t.Error(err)
+		}
+	}
+
+	if existing, ok := os.LookupEnv(name); ok {
+		def = func() {
+			if err := os.Setenv(name, existing); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+
+	if err := os.Setenv(name, val); err != nil {
+		t.Error(err)
+	}
+
+	return def
 }

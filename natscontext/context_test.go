@@ -10,6 +10,51 @@ import (
 	"github.com/nats-io/jsm.go/natscontext"
 )
 
+func TestCustomNatsContextHome(t *testing.T) {
+	defer envSet(t, "XDG_CONFIG_HOME", "testdata")()
+	defer envSet(t, "NATS_CONFIG_HOME", "testdata/custom")()
+
+	if known := natscontext.KnownContexts(); len(known) < 3 ||
+		!slices.Contains(known, "one") ||
+		!slices.Contains(known, "two") ||
+		!slices.Contains(known, "three") ||
+		false {
+		t.Fatalf("expected [one,two,three] got %#v", known)
+	}
+
+	if selected, expected := natscontext.SelectedContext(), "three"; selected != expected {
+		t.Fatalf("expected selected context to be %q, got %q", expected, selected)
+	}
+
+	if prev, expected := natscontext.PreviousContext(), "one"; prev != expected {
+		t.Fatalf("expected previous context to be %q, got %q", expected, prev)
+	}
+
+	c, err := natscontext.New("", true,
+		natscontext.WithServerURL("localhost"),
+		natscontext.WithToken("tok4"),
+	)
+	if err != nil {
+		t.Fatalf("creating context: %v", err)
+	}
+
+	if err := c.Save("four"); err != nil {
+		t.Fatalf("saving context: %v", err)
+	}
+
+	if known := natscontext.KnownContexts(); len(known) < 4 ||
+		!slices.Contains(known, "one") ||
+		!slices.Contains(known, "two") ||
+		!slices.Contains(known, "three") ||
+		!slices.Contains(known, "four") ||
+		false {
+		t.Fatalf("expected [one,two,three,four] got %#v", known)
+	}
+	if err := natscontext.DeleteContext("four"); err != nil {
+		t.Fatalf("deleting context: %v", err)
+	}
+}
+
 func TestContext(t *testing.T) {
 	defer envSet(t, "XDG_CONFIG_HOME", "testdata")()
 

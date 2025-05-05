@@ -15,13 +15,19 @@
 // in named files and later retrieved either by name or if no name is supplied by access
 // a chosen default context.
 //
-// Files are stored in ~/.config/nats or in the directory set by XDG_CONFIG_HOME environment
+// Files are stored in a configured directory; the first of these options:
 //
-//	.config/nats
-//	.config/nats/context
-//	.config/nats/context/ngs.js.json
-//	.config/nats/context/ngs.stats.json
-//	.config/nats/context.txt
+//   - NATS_CONFIG_HOME environment if set
+//
+//   - XDG_CONFIG_HOME environment if set
+//
+//   - ~/.config/nats
+//
+//     .config/nats
+//     .config/nats/context
+//     .config/nats/context/ngs.js.json
+//     .config/nats/context/ngs.stats.json
+//     .config/nats/context.txt
 //
 // Here the context.txt holds simply the string matching a context name like 'ngs.js'
 package natscontext
@@ -603,12 +609,18 @@ func createTree() error {
 }
 
 func natsConfigDir() (string, error) {
-	parent, err := parentDir()
-	if err != nil {
-		return "", fmt.Errorf("nats configuration directory: %w", err)
+	var (
+		err    error
+		parent string
+	)
+
+	if parent = os.Getenv("NATS_CONFIG_HOME"); parent == "" {
+		if parent, err = parentDir(); err != nil {
+			return "", fmt.Errorf("nats configuration directory: %w", err)
+		}
 	}
 
-	return filepath.Join(parent, "nats"), nil
+	return filepath.Join(parent, "nats"), err
 }
 
 func natsConfigFile(filename string) (string, error) {

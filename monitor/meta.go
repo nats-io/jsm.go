@@ -67,7 +67,7 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 				return nil, err
 			}
 
-			if jszresp.Error == nil {
+			if jszresp.Error != nil {
 				check.Critical("invalid result received: %s", jszresp.Error.Error())
 				return nil, fmt.Errorf("invalid result received: %s", jszresp.Error.Error())
 			}

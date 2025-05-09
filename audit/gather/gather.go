@@ -54,7 +54,7 @@ type Configuration struct {
 	Include                EndpointSelection
 	ServerEndpointConfigs  []EndpointCaptureConfig
 	AccountEndpointConfigs []EndpointCaptureConfig
-	ServerProfileNames     []string
+	ServerProfileNames     []profileConfiguration
 	Detailed               bool
 }
 
@@ -66,6 +66,11 @@ var endpointPagingInfo = map[string]string{
 	"CONNZ": "data.connections",
 	"SUBSZ": "data.subscriptions_list",
 	"JSZ":   "data.account_details",
+}
+
+type profileConfiguration struct {
+	name  string
+	debug int
 }
 
 func NewCaptureConfiguration() *Configuration {
@@ -132,14 +137,15 @@ func NewCaptureConfiguration() *Configuration {
 				archive.TagAccountJetStream(),
 			},
 		},
-		ServerProfileNames: []string{
-			"goroutine",
-			"heap",
-			"allocs",
-			"mutex",
-			"threadcreate",
-			"block",
-			"cpu",
+		ServerProfileNames: []profileConfiguration{
+			{"goroutine", 1}, // includes aggregated goroutines with tags
+			{"goroutine", 2}, // includes full per-goroutine stacks
+			{"heap", 0},
+			{"allocs", 0},
+			{"mutex", 0},
+			{"threadcreate", 0},
+			{"block", 0},
+			{"cpu", 0},
 		},
 		Detailed: true,
 	}
@@ -480,14 +486,14 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 			clusterTag = archive.TagCluster(serverInfo.Cluster)
 		}
 
-		for _, profileName := range g.cfg.ServerProfileNames {
+		for _, profile := range g.cfg.ServerProfileNames {
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.PROFILEZ", serverId)
 			payload := server.ProfilezOptions{
-				Name:  profileName,
-				Debug: 0,
+				Name:  profile.name,
+				Debug: profile.debug,
 			}
 
-			if profileName == "cpu" {
+			if profile.name == "cpu" {
 				payload.Duration = timeout
 				g.cfg.Timeout = timeout + 2*time.Second
 			} else {
@@ -496,12 +502,12 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 
 			responses, err := g.doReq(context.TODO(), payload, subject, 1)
 			if err != nil {
-				g.log.Errorf("Failed to request %s profile from server %s: %s", profileName, serverName, err)
+				g.log.Errorf("Failed to request %s (%d) profile from server %s: %s", profile.name, profile.debug, serverName, err)
 				continue
 			}
 
 			if len(responses) != 1 {
-				g.log.Errorf("Unexpected number of responses to %s profile from server %s: %d", profileName, serverName, len(responses))
+				g.log.Errorf("Unexpected number of responses to %s profile from server %s: %d", profile, serverName, len(responses))
 				continue
 			}
 
@@ -514,18 +520,23 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 			}
 
 			if err = json.Unmarshal(responseBytes, &apiResponse); err != nil {
-				g.log.Errorf("Failed to deserialize %s profile response from server %s: %s", profileName, serverName, err)
+				g.log.Errorf("Failed to deserialize %s profile response from server %s: %s", profile, serverName, err)
 				continue
 			}
 			if apiResponse.Error != nil {
-				g.log.Errorf("Failed to retrieve %s profile from server %s: %s", profileName, serverName, apiResponse.Error.Description)
+				g.log.Errorf("Failed to retrieve %s profile from server %s: %s", profile, serverName, apiResponse.Error.Description)
 				continue
 			}
 
 			profileStatus := apiResponse.Data
 			if profileStatus.Error != "" {
-				g.log.Errorf("Failed to retrieve %s profile from server %s: %s", profileName, serverName, profileStatus.Error)
+				g.log.Errorf("Failed to retrieve %s profile from server %s: %s", profile, serverName, profileStatus.Error)
 				continue
+			}
+
+			profileName := profile.name
+			if profile.debug > 0 {
+				profileName += fmt.Sprintf("_%d", profile.debug)
 			}
 
 			tags := []*archive.Tag{
@@ -537,7 +548,7 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 
 			err = g.aw.AddRaw(bytes.NewReader(profileStatus.Profile), "prof", tags...)
 			if err != nil {
-				return fmt.Errorf("failed to add %s profile from to archive: %w", profileName, err)
+				return fmt.Errorf("failed to add %s profile from to archive: %w", profile.name, err)
 			}
 
 			capturedCount += 1

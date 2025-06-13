@@ -591,6 +591,8 @@ type StreamConfig struct {
 	// this stream, unless overridden manually. They also represent the maximum values that
 	// these properties may have
 	ConsumerLimits StreamConsumerLimits `json:"consumer_limits" yaml:"consumer_limits"`
+	// AllowAtomicPublish allows atomic batch publishing into the stream.
+	AllowAtomicPublish bool `json:"allow_atomic,omitempty"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream

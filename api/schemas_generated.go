@@ -1,4 +1,4 @@
-// auto generated 2025-04-07 12:38:21.293975 +0200 CEST m=+0.009140626
+// auto generated 2025-06-13 10:12:52.971783 +0300 EEST m=+0.014228917
 
 package api
 
@@ -12,54 +12,55 @@ import (
 )
 
 var schemaTypes = map[string]func() any{
-	"io.nats.server.advisory.v1.client_connect":                  func() any { return &srvadvisory.ConnectEventMsgV1{} },
-	"io.nats.server.advisory.v1.client_disconnect":               func() any { return &srvadvisory.DisconnectEventMsgV1{} },
-	"io.nats.server.advisory.v1.account_connections":             func() any { return &srvadvisory.AccountConnectionsV1{} },
-	"io.nats.server.metric.v1.service_latency":                   func() any { return &srvmetric.ServiceLatencyV1{} },
 	"io.nats.jetstream.advisory.v1.api_audit":                    func() any { return &jsadvisory.JetStreamAPIAuditV1{} },
-	"io.nats.jetstream.advisory.v1.max_deliver":                  func() any { return &jsadvisory.ConsumerDeliveryExceededAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.nak":                          func() any { return &jsadvisory.JSConsumerDeliveryNakAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.terminated":                   func() any { return &jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.stream_action":                func() any { return &jsadvisory.JSStreamActionAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.consumer_action":              func() any { return &jsadvisory.JSConsumerActionAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.consumer_pause":               func() any { return &jsadvisory.JSConsumerPauseAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.snapshot_create":              func() any { return &jsadvisory.JSSnapshotCreateAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.snapshot_complete":            func() any { return &jsadvisory.JSSnapshotCompleteAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.restore_create":               func() any { return &jsadvisory.JSRestoreCreateAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.restore_complete":             func() any { return &jsadvisory.JSRestoreCompleteAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.stream_leader_elected":        func() any { return &jsadvisory.JSStreamLeaderElectedV1{} },
-	"io.nats.jetstream.advisory.v1.consumer_leader_elected":      func() any { return &jsadvisory.JSConsumerLeaderElectedV1{} },
-	"io.nats.jetstream.advisory.v1.domain_leader_elected":        func() any { return &jsadvisory.JSDomainLeaderElectedV1{} },
-	"io.nats.jetstream.advisory.v1.stream_quorum_lost":           func() any { return &jsadvisory.JSStreamQuorumLostV1{} },
-	"io.nats.jetstream.advisory.v1.consumer_quorum_lost":         func() any { return &jsadvisory.JSConsumerQuorumLostV1{} },
-	"io.nats.jetstream.advisory.v1.server_out_of_space":          func() any { return &jsadvisory.JSServerOutOfSpaceAdvisoryV1{} },
-	"io.nats.jetstream.advisory.v1.server_removed":               func() any { return &jsadvisory.JSServerRemovedAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.consumer_group_pinned":        func() any { return &jsadvisory.JSConsumerGroupPinnedAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.consumer_group_unpinned":      func() any { return &jsadvisory.JSConsumerGroupUnPinnedAdvisoryV1{} },
-	"io.nats.jetstream.metric.v1.consumer_ack":                   func() any { return &jsmetric.ConsumerAckMetricV1{} },
-	"io.nats.jetstream.api.v1.consumer_configuration":            func() any { return &ConsumerConfig{} },
-	"io.nats.jetstream.api.v1.stream_configuration":              func() any { return &StreamConfig{} },
-	"io.nats.jetstream.api.v1.stream_template_configuration":     func() any { return &StreamTemplateConfig{} },
+	"io.nats.jetstream.advisory.v1.consumer_leader_elected":      func() any { return &jsadvisory.JSConsumerLeaderElectedV1{} },
+	"io.nats.jetstream.advisory.v1.consumer_pause":               func() any { return &jsadvisory.JSConsumerPauseAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.consumer_quorum_lost":         func() any { return &jsadvisory.JSConsumerQuorumLostV1{} },
+	"io.nats.jetstream.advisory.v1.domain_leader_elected":        func() any { return &jsadvisory.JSDomainLeaderElectedV1{} },
+	"io.nats.jetstream.advisory.v1.max_deliver":                  func() any { return &jsadvisory.ConsumerDeliveryExceededAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.nak":                          func() any { return &jsadvisory.JSConsumerDeliveryNakAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.restore_complete":             func() any { return &jsadvisory.JSRestoreCompleteAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.restore_create":               func() any { return &jsadvisory.JSRestoreCreateAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.server_out_of_space":          func() any { return &jsadvisory.JSServerOutOfSpaceAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.server_removed":               func() any { return &jsadvisory.JSServerRemovedAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.snapshot_complete":            func() any { return &jsadvisory.JSSnapshotCompleteAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.snapshot_create":              func() any { return &jsadvisory.JSSnapshotCreateAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.stream_action":                func() any { return &jsadvisory.JSStreamActionAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.stream_leader_elected":        func() any { return &jsadvisory.JSStreamLeaderElectedV1{} },
+	"io.nats.jetstream.advisory.v1.stream_quorum_lost":           func() any { return &jsadvisory.JSStreamQuorumLostV1{} },
+	"io.nats.jetstream.advisory.v1.terminated":                   func() any { return &jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1{} },
 	"io.nats.jetstream.api.v1.account_info_response":             func() any { return &JSApiAccountInfoResponse{} },
+	"io.nats.jetstream.api.v1.account_purge_response":            func() any { return &JSApiAccountPurgeResponse{} },
+	"io.nats.jetstream.api.v1.consumer_configuration":            func() any { return &ConsumerConfig{} },
 	"io.nats.jetstream.api.v1.consumer_create_request":           func() any { return &JSApiConsumerCreateRequest{} },
 	"io.nats.jetstream.api.v1.consumer_create_response":          func() any { return &JSApiConsumerCreateResponse{} },
 	"io.nats.jetstream.api.v1.consumer_delete_response":          func() any { return &JSApiConsumerDeleteResponse{} },
+	"io.nats.jetstream.api.v1.consumer_getnext_request":          func() any { return &JSApiConsumerGetNextRequest{} },
 	"io.nats.jetstream.api.v1.consumer_info_response":            func() any { return &JSApiConsumerInfoResponse{} },
+	"io.nats.jetstream.api.v1.consumer_leader_stepdown_response": func() any { return &JSApiConsumerLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.consumer_list_request":             func() any { return &JSApiConsumerListRequest{} },
 	"io.nats.jetstream.api.v1.consumer_list_response":            func() any { return &JSApiConsumerListResponse{} },
 	"io.nats.jetstream.api.v1.consumer_names_request":            func() any { return &JSApiConsumerNamesRequest{} },
 	"io.nats.jetstream.api.v1.consumer_names_response":           func() any { return &JSApiConsumerNamesResponse{} },
-	"io.nats.jetstream.api.v1.consumer_getnext_request":          func() any { return &JSApiConsumerGetNextRequest{} },
-	"io.nats.jetstream.api.v1.consumer_leader_stepdown_response": func() any { return &JSApiConsumerLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.consumer_pause_request":            func() any { return &JSApiConsumerPauseRequest{} },
 	"io.nats.jetstream.api.v1.consumer_pause_response":           func() any { return &JSApiConsumerPauseResponse{} },
 	"io.nats.jetstream.api.v1.consumer_unpin_request":            func() any { return &JSApiConsumerUnpinRequest{} },
 	"io.nats.jetstream.api.v1.consumer_unpin_response":           func() any { return &JSApiConsumerUnpinResponse{} },
+	"io.nats.jetstream.api.v1.meta_leader_stepdown_request":      func() any { return &JSApiLeaderStepDownRequest{} },
+	"io.nats.jetstream.api.v1.meta_leader_stepdown_response":     func() any { return &JSApiLeaderStepDownResponse{} },
+	"io.nats.jetstream.api.v1.meta_server_remove_request":        func() any { return &JSApiMetaServerRemoveRequest{} },
+	"io.nats.jetstream.api.v1.meta_server_remove_response":       func() any { return &JSApiMetaServerRemoveResponse{} },
+	"io.nats.jetstream.api.v1.pub_ack_response":                  func() any { return &JSPubAckResponse{} },
+	"io.nats.jetstream.api.v1.stream_configuration":              func() any { return &StreamConfig{} },
 	"io.nats.jetstream.api.v1.stream_create_request":             func() any { return &JSApiStreamCreateRequest{} },
 	"io.nats.jetstream.api.v1.stream_create_response":            func() any { return &JSApiStreamCreateResponse{} },
 	"io.nats.jetstream.api.v1.stream_delete_response":            func() any { return &JSApiStreamDeleteResponse{} },
 	"io.nats.jetstream.api.v1.stream_info_request":               func() any { return &JSApiStreamInfoRequest{} },
 	"io.nats.jetstream.api.v1.stream_info_response":              func() any { return &JSApiStreamInfoResponse{} },
+	"io.nats.jetstream.api.v1.stream_leader_stepdown_response":   func() any { return &JSApiStreamLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.stream_list_request":               func() any { return &JSApiStreamListRequest{} },
 	"io.nats.jetstream.api.v1.stream_list_response":              func() any { return &JSApiStreamListResponse{} },
 	"io.nats.jetstream.api.v1.stream_msg_delete_response":        func() any { return &JSApiMsgDeleteResponse{} },
@@ -69,114 +70,29 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.stream_names_response":             func() any { return &JSApiStreamNamesResponse{} },
 	"io.nats.jetstream.api.v1.stream_purge_request":              func() any { return &JSApiStreamPurgeRequest{} },
 	"io.nats.jetstream.api.v1.stream_purge_response":             func() any { return &JSApiStreamPurgeResponse{} },
-	"io.nats.jetstream.api.v1.stream_snapshot_response":          func() any { return &JSApiStreamSnapshotResponse{} },
-	"io.nats.jetstream.api.v1.stream_snapshot_request":           func() any { return &JSApiStreamSnapshotRequest{} },
+	"io.nats.jetstream.api.v1.stream_remove_peer_request":        func() any { return &JSApiStreamRemovePeerRequest{} },
+	"io.nats.jetstream.api.v1.stream_remove_peer_response":       func() any { return &JSApiStreamRemovePeerResponse{} },
 	"io.nats.jetstream.api.v1.stream_restore_request":            func() any { return &JSApiStreamRestoreRequest{} },
 	"io.nats.jetstream.api.v1.stream_restore_response":           func() any { return &JSApiStreamRestoreResponse{} },
+	"io.nats.jetstream.api.v1.stream_snapshot_request":           func() any { return &JSApiStreamSnapshotRequest{} },
+	"io.nats.jetstream.api.v1.stream_snapshot_response":          func() any { return &JSApiStreamSnapshotResponse{} },
+	"io.nats.jetstream.api.v1.stream_template_configuration":     func() any { return &StreamTemplateConfig{} },
 	"io.nats.jetstream.api.v1.stream_template_create_request":    func() any { return &JSApiStreamTemplateCreateRequest{} },
 	"io.nats.jetstream.api.v1.stream_template_create_response":   func() any { return &JSApiStreamTemplateCreateResponse{} },
 	"io.nats.jetstream.api.v1.stream_template_delete_response":   func() any { return &JSApiStreamTemplateDeleteResponse{} },
 	"io.nats.jetstream.api.v1.stream_template_info_response":     func() any { return &JSApiStreamTemplateInfoResponse{} },
-	"io.nats.jetstream.api.v1.stream_template_names_response":    func() any { return &JSApiStreamTemplateNamesResponse{} },
 	"io.nats.jetstream.api.v1.stream_template_names_request":     func() any { return &JSApiStreamTemplateNamesRequest{} },
+	"io.nats.jetstream.api.v1.stream_template_names_response":    func() any { return &JSApiStreamTemplateNamesResponse{} },
 	"io.nats.jetstream.api.v1.stream_update_response":            func() any { return &JSApiStreamUpdateResponse{} },
-	"io.nats.jetstream.api.v1.stream_remove_peer_request":        func() any { return &JSApiStreamRemovePeerRequest{} },
-	"io.nats.jetstream.api.v1.stream_remove_peer_response":       func() any { return &JSApiStreamRemovePeerResponse{} },
-	"io.nats.jetstream.api.v1.stream_leader_stepdown_response":   func() any { return &JSApiStreamLeaderStepDownResponse{} },
-	"io.nats.jetstream.api.v1.pub_ack_response":                  func() any { return &JSPubAckResponse{} },
-	"io.nats.jetstream.api.v1.meta_leader_stepdown_request":      func() any { return &JSApiLeaderStepDownRequest{} },
-	"io.nats.jetstream.api.v1.meta_leader_stepdown_response":     func() any { return &JSApiLeaderStepDownResponse{} },
-	"io.nats.jetstream.api.v1.meta_server_remove_request":        func() any { return &JSApiMetaServerRemoveRequest{} },
-	"io.nats.jetstream.api.v1.meta_server_remove_response":       func() any { return &JSApiMetaServerRemoveResponse{} },
-	"io.nats.jetstream.api.v1.account_purge_response":            func() any { return &JSApiAccountPurgeResponse{} },
+	"io.nats.jetstream.metric.v1.consumer_ack":                   func() any { return &jsmetric.ConsumerAckMetricV1{} },
 	"io.nats.micro.v1.info_response":                             func() any { return &micro.Info{} },
 	"io.nats.micro.v1.ping_response":                             func() any { return &micro.Ping{} },
 	"io.nats.micro.v1.stats_response":                            func() any { return &micro.Stats{} },
+	"io.nats.server.advisory.v1.account_connections":             func() any { return &srvadvisory.AccountConnectionsV1{} },
+	"io.nats.server.advisory.v1.client_connect":                  func() any { return &srvadvisory.ConnectEventMsgV1{} },
+	"io.nats.server.advisory.v1.client_disconnect":               func() any { return &srvadvisory.DisconnectEventMsgV1{} },
+	"io.nats.server.metric.v1.service_latency":                   func() any { return &srvmetric.ServiceLatencyV1{} },
 	"io.nats.unknown_message":                                    func() any { return &UnknownMessage{} },
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t ConsumerConfig) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_configuration
-func (t ConsumerConfig) SchemaType() string {
-	return "io.nats.jetstream.api.v1.consumer_configuration"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t ConsumerConfig) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_configuration.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t ConsumerConfig) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t StreamConfig) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_configuration
-func (t StreamConfig) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_configuration"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t StreamConfig) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_configuration.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t StreamConfig) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t StreamTemplateConfig) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_template_configuration
-func (t StreamTemplateConfig) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_template_configuration"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t StreamTemplateConfig) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_template_configuration.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t StreamTemplateConfig) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -200,6 +116,62 @@ func (t JSApiAccountInfoResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiAccountInfoResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiAccountPurgeResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.account_purge_response
+func (t JSApiAccountPurgeResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.account_purge_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiAccountPurgeResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/account_purge_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiAccountPurgeResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t ConsumerConfig) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_configuration
+func (t ConsumerConfig) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_configuration"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t ConsumerConfig) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_configuration.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t ConsumerConfig) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -292,6 +264,34 @@ func (t JSApiConsumerDeleteResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerGetNextRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_getnext_request
+func (t JSApiConsumerGetNextRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_getnext_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerGetNextRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_getnext_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerGetNextRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
 func (t JSApiConsumerInfoResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
@@ -312,6 +312,34 @@ func (t JSApiConsumerInfoResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiConsumerInfoResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_leader_stepdown_response
+func (t JSApiConsumerLeaderStepDownResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_leader_stepdown_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerLeaderStepDownResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_leader_stepdown_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerLeaderStepDownResponse) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -432,62 +460,6 @@ func (t JSApiConsumerNamesResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
-func (t JSApiConsumerGetNextRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_getnext_request
-func (t JSApiConsumerGetNextRequest) SchemaType() string {
-	return "io.nats.jetstream.api.v1.consumer_getnext_request"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiConsumerGetNextRequest) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_getnext_request.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiConsumerGetNextRequest) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiConsumerLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_leader_stepdown_response
-func (t JSApiConsumerLeaderStepDownResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.consumer_leader_stepdown_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiConsumerLeaderStepDownResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_leader_stepdown_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiConsumerLeaderStepDownResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
 func (t JSApiConsumerPauseRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
@@ -592,6 +564,174 @@ func (t JSApiConsumerUnpinResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiConsumerUnpinResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiLeaderStepDownRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_leader_stepdown_request
+func (t JSApiLeaderStepDownRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_leader_stepdown_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiLeaderStepDownRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_leader_stepdown_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiLeaderStepDownRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_leader_stepdown_response
+func (t JSApiLeaderStepDownResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_leader_stepdown_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiLeaderStepDownResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_leader_stepdown_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiLeaderStepDownResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMetaServerRemoveRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_server_remove_request
+func (t JSApiMetaServerRemoveRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_server_remove_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMetaServerRemoveRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_server_remove_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMetaServerRemoveRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMetaServerRemoveResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_server_remove_response
+func (t JSApiMetaServerRemoveResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_server_remove_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMetaServerRemoveResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_server_remove_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMetaServerRemoveResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSPubAckResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.pub_ack_response
+func (t JSPubAckResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.pub_ack_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSPubAckResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/pub_ack_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSPubAckResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t StreamConfig) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_configuration
+func (t StreamConfig) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_configuration"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t StreamConfig) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_configuration.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t StreamConfig) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -732,6 +872,34 @@ func (t JSApiStreamInfoResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiStreamInfoResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_leader_stepdown_response
+func (t JSApiStreamLeaderStepDownResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_leader_stepdown_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamLeaderStepDownResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_leader_stepdown_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamLeaderStepDownResponse) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -992,7 +1160,7 @@ func (t JSApiStreamPurgeResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
-func (t JSApiStreamSnapshotResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+func (t JSApiStreamRemovePeerRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
 	}
@@ -1000,18 +1168,18 @@ func (t JSApiStreamSnapshotResponse) Validate(v ...StructValidator) (valid bool,
 	return v[0].ValidateStruct(t, t.SchemaType())
 }
 
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_snapshot_response
-func (t JSApiStreamSnapshotResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_snapshot_response"
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_remove_peer_request
+func (t JSApiStreamRemovePeerRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_remove_peer_request"
 }
 
 // SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiStreamSnapshotResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_snapshot_response.json"
+func (t JSApiStreamRemovePeerRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_remove_peer_request.json"
 }
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiStreamSnapshotResponse) Schema() ([]byte, error) {
+func (t JSApiStreamRemovePeerRequest) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -1020,7 +1188,7 @@ func (t JSApiStreamSnapshotResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
-func (t JSApiStreamSnapshotRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+func (t JSApiStreamRemovePeerResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
 	}
@@ -1028,18 +1196,18 @@ func (t JSApiStreamSnapshotRequest) Validate(v ...StructValidator) (valid bool, 
 	return v[0].ValidateStruct(t, t.SchemaType())
 }
 
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_snapshot_request
-func (t JSApiStreamSnapshotRequest) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_snapshot_request"
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_remove_peer_response
+func (t JSApiStreamRemovePeerResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_remove_peer_response"
 }
 
 // SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiStreamSnapshotRequest) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_snapshot_request.json"
+func (t JSApiStreamRemovePeerResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_remove_peer_response.json"
 }
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiStreamSnapshotRequest) Schema() ([]byte, error) {
+func (t JSApiStreamRemovePeerResponse) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -1096,6 +1264,90 @@ func (t JSApiStreamRestoreResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiStreamRestoreResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamSnapshotRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_snapshot_request
+func (t JSApiStreamSnapshotRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_snapshot_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamSnapshotRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_snapshot_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamSnapshotRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamSnapshotResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_snapshot_response
+func (t JSApiStreamSnapshotResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_snapshot_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamSnapshotResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_snapshot_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamSnapshotResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t StreamTemplateConfig) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_template_configuration
+func (t StreamTemplateConfig) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_configuration"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t StreamTemplateConfig) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_template_configuration.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t StreamTemplateConfig) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -1216,34 +1468,6 @@ func (t JSApiStreamTemplateInfoResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
-func (t JSApiStreamTemplateNamesResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_template_names_response
-func (t JSApiStreamTemplateNamesResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_template_names_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiStreamTemplateNamesResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_template_names_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiStreamTemplateNamesResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamTemplateNamesRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
@@ -1272,6 +1496,34 @@ func (t JSApiStreamTemplateNamesRequest) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamTemplateNamesResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_template_names_response
+func (t JSApiStreamTemplateNamesResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_template_names_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamTemplateNamesResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_template_names_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamTemplateNamesResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamUpdateResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
@@ -1292,258 +1544,6 @@ func (t JSApiStreamUpdateResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiStreamUpdateResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiStreamRemovePeerRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_remove_peer_request
-func (t JSApiStreamRemovePeerRequest) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_remove_peer_request"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiStreamRemovePeerRequest) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_remove_peer_request.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiStreamRemovePeerRequest) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiStreamRemovePeerResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_remove_peer_response
-func (t JSApiStreamRemovePeerResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_remove_peer_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiStreamRemovePeerResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_remove_peer_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiStreamRemovePeerResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiStreamLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_leader_stepdown_response
-func (t JSApiStreamLeaderStepDownResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.stream_leader_stepdown_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiStreamLeaderStepDownResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_leader_stepdown_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiStreamLeaderStepDownResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSPubAckResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.pub_ack_response
-func (t JSPubAckResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.pub_ack_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSPubAckResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/pub_ack_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSPubAckResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiLeaderStepDownRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_leader_stepdown_request
-func (t JSApiLeaderStepDownRequest) SchemaType() string {
-	return "io.nats.jetstream.api.v1.meta_leader_stepdown_request"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiLeaderStepDownRequest) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_leader_stepdown_request.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiLeaderStepDownRequest) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_leader_stepdown_response
-func (t JSApiLeaderStepDownResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.meta_leader_stepdown_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiLeaderStepDownResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_leader_stepdown_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiLeaderStepDownResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiMetaServerRemoveRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_server_remove_request
-func (t JSApiMetaServerRemoveRequest) SchemaType() string {
-	return "io.nats.jetstream.api.v1.meta_server_remove_request"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiMetaServerRemoveRequest) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_server_remove_request.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiMetaServerRemoveRequest) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiMetaServerRemoveResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_server_remove_response
-func (t JSApiMetaServerRemoveResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.meta_server_remove_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiMetaServerRemoveResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_server_remove_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiMetaServerRemoveResponse) Schema() ([]byte, error) {
-	f, err := SchemaFileForType(t.SchemaType())
-	if err != nil {
-		return nil, err
-	}
-	return scfs.Load(f)
-}
-
-// Validate performs a JSON Schema validation of the configuration
-func (t JSApiAccountPurgeResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
-	if len(v) == 0 || v[0] == nil {
-		return true, nil
-	}
-
-	return v[0].ValidateStruct(t, t.SchemaType())
-}
-
-// SchemaType is the NATS schema type io.nats.jetstream.api.v1.account_purge_response
-func (t JSApiAccountPurgeResponse) SchemaType() string {
-	return "io.nats.jetstream.api.v1.account_purge_response"
-}
-
-// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
-func (t JSApiAccountPurgeResponse) SchemaID() string {
-	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/account_purge_response.json"
-}
-
-// Schema is a JSON Schema document for the JetStream Consumer Configuration
-func (t JSApiAccountPurgeResponse) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

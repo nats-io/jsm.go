@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -278,6 +279,8 @@ func main() {
 			i.T = title
 		}
 	}
+
+	sort.Slice(s, func(i, j int) bool { return s[i].P < s[j].P })
 
 	t, err := template.New("schemas").Parse(schemasFileTemplate)
 	panicIfErr(err)

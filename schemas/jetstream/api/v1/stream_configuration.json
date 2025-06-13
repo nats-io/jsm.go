@@ -369,6 +369,11 @@
       "default": false,
       "description": "Allow higher performance, direct access to get individual messages"
     },
+    "allow_atomic": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow atomic batched publishes"
+    },
     "mirror_direct": {
       "type": "boolean",
       "default": false,

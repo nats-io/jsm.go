@@ -392,6 +392,11 @@
                   "default": false,
                   "description": "Allow atomic batched publishes"
                 },
+                "allow_msg_counter": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Configures a stream to be a counter and to reject all other messages"
+                },
                 "mirror_direct": {
                   "type": "boolean",
                   "default": false,

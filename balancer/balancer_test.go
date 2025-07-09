@@ -137,12 +137,13 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*server.Server, *nats.Con
 
 	for i := 1; i <= 3; i++ {
 		opts := &server.Options{
-			JetStream:  true,
-			StoreDir:   filepath.Join(d, fmt.Sprintf("s%d", i)),
-			Port:       -1,
-			Host:       "localhost",
-			ServerName: fmt.Sprintf("s%d", i),
-			LogFile:    "/dev/null",
+			JetStream:       true,
+			StoreDir:        filepath.Join(d, fmt.Sprintf("s%d", i)),
+			Port:            -1,
+			Host:            "localhost",
+			ServerName:      fmt.Sprintf("s%d", i),
+			LogFile:         "/dev/null",
+			JetStreamStrict: true,
 			Cluster: server.ClusterOpts{
 				Name: "TEST",
 				Port: 12000 + i,

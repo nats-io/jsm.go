@@ -161,10 +161,11 @@ func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, n
 		ua := server.NewAccount("USERS")
 
 		opts := &server.Options{
-			Port:       -1,
-			Host:       "localhost",
-			ServerName: fmt.Sprintf("s%d", i),
-			LogFile:    "/dev/null",
+			Port:            -1,
+			Host:            "localhost",
+			ServerName:      fmt.Sprintf("s%d", i),
+			LogFile:         "/dev/null",
+			JetStreamStrict: true,
 			Cluster: server.ClusterOpts{
 				Name: "TEST",
 				Port: 12000 + i,

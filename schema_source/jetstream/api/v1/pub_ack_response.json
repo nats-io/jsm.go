@@ -36,6 +36,10 @@
     "count": {
       "type": "integer",
       "description": "When doing Atomic Batch Publishes how many messages was in the batch"
+    },
+    "val": {
+      "type": "string",
+      "description": "The current value of the counter on counter enabled streams"
     }
   }
 }

@@ -70,6 +70,7 @@ type PubAck struct {
 	Sequence  uint64 `json:"seq"`
 	Domain    string `json:"domain,omitempty"`
 	Duplicate bool   `json:"duplicate,omitempty"`
+	Value     string `json:"val,omitempty"`
 	BatchId   string `json:"batch,omitempty"`
 	BatchSize int    `json:"count,omitempty"`
 }

@@ -205,7 +205,7 @@ func (g *gather) start() error {
 	if g.cfg.Include.ServerEndpoints {
 		err := g.captureServerEndpoints(serverInfoMap, g.cfg.Detailed)
 		if err != nil {
-			return fmt.Errorf("failed to capture server endpoints")
+			return fmt.Errorf("failed to capture server endpoints: %w", err)
 		}
 	} else {
 		g.log.Infof("Skipping servers endpoints data gathering")
@@ -242,7 +242,7 @@ func (g *gather) start() error {
 			}
 			err := g.captureAccountStreams(serverInfoMap, accountId, numServers)
 			if err != nil {
-				g.log.Errorf("Failed to capture streams for account %s", accountId)
+				g.log.Errorf("Failed to capture streams for account %s: %v", accountId, err)
 			}
 		}
 	} else {
@@ -741,7 +741,7 @@ func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (
 		var apiResponse server.ServerAPIAccountzResponse
 		err := json.Unmarshal(b, &apiResponse)
 		if err != nil {
-			g.log.Errorf("Failed to deserialize accounts response, ignoring")
+			g.log.Errorf("Failed to deserialize accounts response, ignoring: %v", err)
 			return
 		}
 

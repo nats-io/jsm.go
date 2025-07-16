@@ -415,8 +415,7 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 	return nopts, nil
 }
 
-func (c *Context) parseWinCertStoreType(t string) (certstore.StoreType, error) {
-	storeTypeString := c.config.WinCertStoreType
+func parseWinCertStoreType(storeTypeString string) (certstore.StoreType, error) {
 	switch storeTypeString {
 	case "machine":
 		storeTypeString = "windowslocalmachine"
@@ -432,7 +431,7 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 		return nil, nil
 	}
 
-	storeType, err := c.parseWinCertStoreType(c.config.WinCertStoreType)
+	storeType, err := parseWinCertStoreType(c.config.WinCertStoreType)
 	if err != nil {
 		return nil, err
 	}
@@ -678,7 +677,7 @@ func (c *Context) Validate() error {
 	}
 
 	if c.config.WinCertStoreType != "" {
-		_, err := c.parseWinCertStoreType(c.config.WinCertStoreType)
+		_, err := parseWinCertStoreType(c.config.WinCertStoreType)
 		if err != nil {
 			return err
 		}

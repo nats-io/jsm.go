@@ -43,6 +43,10 @@
     "up_to_time": {
       "description": "Only return messages up to a point in time",
       "$ref": "definitions.json#/definitions/golang_time"
+    },
+    "no_hdr": {
+      "description": "Returns only the message body",
+      "type": "boolean"
     }
   }
 }

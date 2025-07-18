@@ -43,13 +43,12 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*natsd.Server, *nats.Conn
 
 	for i := 1; i <= 3; i++ {
 		opts := &natsd.Options{
-			JetStream:       true,
-			StoreDir:        filepath.Join(d, fmt.Sprintf("s%d", i)),
-			Port:            -1,
-			Host:            "localhost",
-			ServerName:      fmt.Sprintf("s%d", i),
-			LogFile:         "/dev/null",
-			JetStreamStrict: true,
+			JetStream:  true,
+			StoreDir:   filepath.Join(d, fmt.Sprintf("s%d", i)),
+			Port:       -1,
+			Host:       "localhost",
+			ServerName: fmt.Sprintf("s%d", i),
+			LogFile:    "/dev/null",
 			Cluster: natsd.ClusterOpts{
 				Name: "TEST",
 				Port: 12000 + i,
@@ -161,13 +160,12 @@ func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 	t.Helper()
 
 	opts := &natsd.Options{
-		JetStream:       true,
-		StoreDir:        t.TempDir(),
-		Host:            "localhost",
-		LogFile:         "/dev/stdout",
-		HTTPPort:        -1,
-		Trace:           true,
-		JetStreamStrict: true,
+		JetStream: true,
+		StoreDir:  t.TempDir(),
+		Host:      "localhost",
+		LogFile:   "/dev/stdout",
+		HTTPPort:  -1,
+		Trace:     true,
 	}
 
 	s, err := natsd.NewServer(opts)

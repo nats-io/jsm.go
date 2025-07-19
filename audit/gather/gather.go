@@ -663,6 +663,11 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 		for _, endpoint := range g.cfg.ServerEndpointConfigs {
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", serverId, endpoint.ApiSuffix)
+			// Just skip here?
+			if endpoint.ApiSuffix == "JSZ" && serverInfo.JetStream == false {
+				continue
+			}
+
 			offset := 0
 
 			for {
@@ -687,6 +692,20 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				if apiResponse.Error != nil {
 					g.log.Errorf("Received error from server %s: (%d) %s", serverName, apiResponse.Error.ErrCode, apiResponse.Error.Description)
 					break
+				}
+
+				// This could work if JSZ woulld return an error, but it does not
+				if endpoint.ApiSuffix == "JSZ" {
+					var JSApiResponse server.ServerAPIJszResponse
+					err := json.Unmarshal(responses[0], &JSApiResponse)
+					if err != nil {
+						g.log.Errorf("Failed to deserialize JS info response for server %s: %s", serverName, err)
+						break
+					}
+					if JSApiResponse.Error != nil {
+						g.log.Errorf("Received an error from server %s: (%d) %s", JSApiResponse.Server.Name, JSApiResponse.Error.ErrCode, JSApiResponse.Error.Description)
+						break
+					}
 				}
 
 				// Pretty-print JSON

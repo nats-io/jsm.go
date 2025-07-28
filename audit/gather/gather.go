@@ -325,12 +325,10 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 
 		if len(apiResponse.Data.AccountDetails) == 0 {
 			// No account details in response, don't bother saving this
-			//g.log.Errorf("🐛 Skip JSZ response from %s, no accounts details", serverName)
 			return
 		} else if len(apiResponse.Data.AccountDetails) > 1 {
 			// Server will respond with multiple accounts if the one specified in the request is not found
 			// https://github.com/nats-io/nats-server/pull/5229
-			//g.log.Errorf("🐛 Skip JSZ response from %s, account not found", serverName)
 			return
 		}
 

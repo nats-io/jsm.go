@@ -1,0 +1,634 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/definitions.json",
+  "title": "io.nats.server.monitor.v1.definitions",
+  "description": "Shared definitions for the NATS Server Monitoring",
+  "type": "object",
+  "definitions": {
+    "golang_int64": {
+      "$comment": "signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807,
+      "minimum": -9223372036854775808
+    },
+    "golang_duration_nanos": {
+      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+      "$ref": "#/definitions/golang_int64"
+    },
+    "cluster_opts_varz_v1": {
+      "type": "object",
+      "description": "Monitoring cluster information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The configured cluster name"
+        },
+        "addr": {
+          "type": "string",
+          "description": "The host the cluster listens on for connections"
+        },
+        "cluster_port": {
+          "type": "integer",
+          "description": "The port the cluster listens on for connections"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "The time cluster connections have to complete authentication"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of cluster URLs"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_required": {
+          "type": "boolean",
+          "description": "Indicates if TLS is required for connections"
+        },
+        "tls_verify": {
+          "type": "boolean",
+          "description": "Indicates if full verification of TLS connections is performed"
+        },
+        "pool_size": {
+          "type": "integer",
+          "description": "The configured route connection pool size"
+        }
+      }
+    },
+    "gateway_opts_varz_v1": {
+      "type": "object",
+      "description": "Monitoring gateway information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The configured cluster name"
+        },
+        "host": {
+          "type": "string",
+          "description": "The host the gateway listens on for connections"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port gateway connections listens on"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "The time cluster connections have to complete authentication"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_required": {
+          "type": "boolean",
+          "description": "Indicates if TLS is required for connections"
+        },
+        "tls_verify": {
+          "type": "boolean",
+          "description": "Indicates if full verification of TLS connections is performed"
+        },
+        "advertise": {
+          "type": "string",
+          "description": "The URL advertised to remote gateway clients"
+        },
+        "connect_retries": {
+          "type": "integer",
+          "description": "How many connection attempts the route will make"
+        },
+        "gateways": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/remote_gateway_opts_varz_v1"
+          },
+          "description": "State of configured gateway remotes"
+        },
+        "reject_unknown": {
+          "type": "boolean",
+          "description": "Indicates if unknown cluster connections will be rejected"
+        }
+      }
+    },
+    "remote_gateway_opts_varz_v1": {
+      "type": "object",
+      "description": "Monitoring remote gateway information",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the remote gateway"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of Gateway URLs"
+        }
+      }
+    },
+    "leafnode_opts_varz_v1": {
+      "type": "object",
+      "description": "Monitoring leaf node information",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host the server listens on"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port the server listens on"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "The time Leafnode connections have to complete authentication"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_required": {
+          "type": "boolean",
+          "description": "Indicates if TLS is required for connections"
+        },
+        "tls_verify": {
+          "type": "boolean",
+          "description": "Indicates if full verification of TLS connections is performed"
+        },
+        "remotes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/remote_leaf_opts_varz_v1"
+          },
+          "description": "State of configured Leafnode remotes"
+        },
+        "tls_ocsp_peer_verify": {
+          "type": "boolean",
+          "description": "Indicates if OCSP verification will be performed"
+        }
+      }
+    },
+    "remote_leaf_opts_varz_v1": {
+      "type": "object",
+      "description": "Monitoring remote leaf node information",
+      "properties": {
+        "local_account": {
+          "type": "string",
+          "description": "The local account this leaf is logged into"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of URLs for the remote Leafnode connection"
+        },
+        "deny": {
+          "$ref": "#/definitions/deny_rules_v1"
+        },
+        "tls_ocsp_peer_verify": {
+          "type": "boolean",
+          "description": "Indicates if OCSP verification will be done"
+        }
+      }
+    },
+    "deny_rules_v1": {
+      "type": "object",
+      "description": "Lists of subjects not allowed to be imported/exported",
+      "properties": {
+        "exports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Denied exports"
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Denied imports"
+        }
+      }
+    },
+    "mqtt_opts_varz_v1": {
+      "type": "object",
+      "description": "Monitoring MQTT information",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host the server listens on"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port the server listens on"
+        },
+        "no_auth_user": {
+          "type": "string",
+          "description": "The user that will be used for unauthenticated connections"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "How long authentication has to complete"
+        },
+        "tls_map": {
+          "type": "boolean",
+          "description": "Indicates if TLS Mapping is enabled"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_pinned_certs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of certificates pinned to this connection"
+        },
+        "js_domain": {
+          "type": "string",
+          "description": "The JetStream domain used for MQTT state"
+        },
+        "ack_wait": {
+          "$ref": "#/definitions/golang_duration_nanos",
+          "description": "How long the internal JetStream state store will allow acks to complete"
+        },
+        "max_ack_pending": {
+          "type": "integer",
+          "description": "How many outstanding acks the internal JetStream state store will allow"
+        },
+        "tls_ocsp_peer_verify": {
+          "type": "boolean",
+          "description": "Indicates if OCSP verification will be done"
+        }
+      }
+    },
+    "websocket_opts_varz_v1": {
+      "type": "object",
+      "description": "Monitoring websocket information",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host the server listens on"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port the server listens on"
+        },
+        "advertise": {
+          "type": "string",
+          "description": "The connection URL the server advertises"
+        },
+        "no_auth_user": {
+          "type": "string",
+          "description": "The user that will be used for unauthenticated connections"
+        },
+        "jwt_cookie": {
+          "type": "string",
+          "description": "The name of a cookie the server will read for the connection JWT"
+        },
+        "handshake_timeout": {
+          "$ref": "#/definitions/golang_duration_nanos",
+          "type": "number",
+          "description": "How long the connection has to complete the websocket setup"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "How long authentication has to complete"
+        },
+        "no_tls": {
+          "type": "boolean",
+          "description": "Indicates if TLS is disabled"
+        },
+        "tls_map": {
+          "type": "boolean",
+          "description": "Indicates if TLS Mapping is enabled"
+        },
+        "tls_pinned_certs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of certificates pinned to this connection"
+        },
+        "same_origin": {
+          "type": "boolean",
+          "description": "Indicates if same origin connections are allowed"
+        },
+        "allowed_origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of configured trusted origins"
+        },
+        "compression": {
+          "type": "boolean",
+          "description": "Indicates if compression is supported"
+        },
+        "tls_ocsp_peer_verify": {
+          "type": "boolean",
+          "description": "Indicates if OCSP verification will be done"
+        }
+      }
+    },
+    "jetstream_varz_v1": {
+      "type": "object",
+      "description": "Basic runtime information about JetStream",
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/jetstream_config_v1"
+        },
+        "stats": {
+          "$ref": "#/definitions/jetstream_stats_v1"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta_cluster_info_v1"
+        },
+        "limits": {
+          "$ref": "#/definitions/js_limit_opts_v1"
+        }
+      }
+    },
+    "jetstream_config_v1": {
+      "type": "object",
+      "description": "JetStream configuration",
+      "properties": {
+        "max_memory": {
+          "type": "integer",
+          "description": "The maximum size of memory type streams"
+        },
+        "max_storage": {
+          "type": "integer",
+          "description": "The maximum size of file store type streams"
+        },
+        "store_dir": {
+          "type": "string",
+          "description": "Where storage files are stored"
+        },
+        "sync_interval": {
+          "$ref": "#/definitions/golang_duration_nanos",
+          "description": "How frequently we sync to disk in the background by calling fsync"
+        },
+        "sync_always": {
+          "type": "boolean",
+          "description": "Indicates flushes are done after every write"
+        },
+        "domain": {
+          "type": "string",
+          "description": "The JetStream domain"
+        },
+        "compress_ok": {
+          "type": "boolean",
+          "description": "Indicates if compression is supported"
+        },
+        "unique_tag": {
+          "type": "string",
+          "description": "The unique tag assigned to this instance"
+        },
+        "strict": {
+          "type": "boolean",
+          "description": "Indicates if strict JSON parsing is performed"
+        }
+      }
+    },
+    "jetstream_stats_v1": {
+      "type": "object",
+      "description": "Statistics about JetStream for this server",
+      "properties": {
+        "memory": {
+          "type": "integer",
+          "description": "Memory usage"
+        },
+        "storage": {
+          "type": "integer",
+          "description": "Storage usage"
+        },
+        "reserved_memory": {
+          "type": "integer",
+          "description": "Reserved memory"
+        },
+        "reserved_storage": {
+          "type": "integer",
+          "description": "Reserved storage"
+        },
+        "accounts": {
+          "type": "integer",
+          "description": "Number of accounts"
+        },
+        "ha_assets": {
+          "type": "integer",
+          "description": "Number of HA assets"
+        },
+        "api": {
+          "$ref": "#/definitions/jetstream_api_stats_v1"
+        }
+      }
+    },
+    "jetstream_api_stats_v1": {
+      "type": "object",
+      "description": "Stats about the API usage for this server",
+      "properties": {
+        "level": {
+          "type": "integer",
+          "description": "The active API level this server implements"
+        },
+        "total": {
+          "type": "integer",
+          "description": "The total API requests received since start"
+        },
+        "errors": {
+          "type": "integer",
+          "description": "The total API requests that resulted in error responses"
+        },
+        "inflight": {
+          "type": "integer",
+          "description": "The number of API requests currently being served"
+        }
+      }
+    },
+    "meta_cluster_info_v1": {
+      "type": "object",
+      "description": "Information about the meta group",
+      "required": [
+        "cluster_size",
+        "pending"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the cluster"
+        },
+        "leader": {
+          "type": "string",
+          "description": "The server name of the cluster leader"
+        },
+        "peer": {
+          "type": "string",
+          "description": "Unique ID for each peer"
+        },
+        "replicas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/peer_info_v1"
+          },
+          "description": "A list of known peers"
+        },
+        "cluster_size": {
+          "type": "integer",
+          "description": "The known size of the cluster"
+        },
+        "pending": {
+          "type": "integer",
+          "description": "How many RAFT messages are not yet processed"
+        }
+      }
+    },
+    "peer_info_v1": {
+      "type": "object",
+      "description": "Information about all the peers in the cluster that are supporting the stream or consumer",
+      "required": [
+        "name",
+        "current",
+        "active",
+        "peer"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The unique name for the peer"
+        },
+        "current": {
+          "type": "boolean",
+          "description": "Indicates if it was seen recently and fully caught up"
+        },
+        "offline": {
+          "type": "boolean",
+          "description": "Indicates if it has not been seen recently"
+        },
+        "active": {
+          "$ref": "#/definitions/golang_duration_nanos",
+          "description": "The timestamp it was last active"
+        },
+        "lag": {
+          "type": "integer",
+          "description": "How many operations behind it is"
+        },
+        "peer": {
+          "type": "string",
+          "description": "The unique ID for the peer"
+        }
+      }
+    },
+    "js_limit_opts_v1": {
+      "type": "object",
+      "description": "Active limits for the meta cluster",
+      "properties": {
+        "max_request_batch": {
+          "type": "integer",
+          "description": "The maximum amount of updates that can be sent in a batch"
+        },
+        "max_ack_pending": {
+          "type": "integer",
+          "description": "The server limit for maximum amount of outstanding Acks"
+        },
+        "max_ha_assets": {
+          "type": "integer",
+          "description": "The maximum of Streams and Consumers that may have more than 1 replica"
+        },
+        "max_duplicate_window": {
+          "$ref": "#/definitions/golang_duration_nanos",
+          "description": "The maximum value for duplicate tracking on Streams"
+        },
+        "max_batch_inflight_per_stream": {
+          "type": "integer",
+          "description": "The maximum amount of open batches per stream"
+        },
+        "max_batch_inflight_total": {
+          "type": "integer",
+          "description": "The maximum amount of total open batches per server"
+        },
+        "max_batch_size": {
+          "type": "integer",
+          "description": "The maximum amount of messages allowed in a batch publish to a Stream"
+        },
+        "max_batch_timeout": {
+          "$ref": "#/definitions/golang_duration_nanos",
+          "description": "The maximum time to receive the commit message after receiving the first message of a batch"
+        }
+      }
+    },
+    "ocsp_response_cache_varz_v1": {
+      "type": "object",
+      "description": "OCSP response cache information",
+      "properties": {
+        "cache_type": {
+          "type": "string",
+          "description": "The kind of cache being used"
+        },
+        "cache_hits": {
+          "type": "integer",
+          "description": "How many times the cache was able to answer a request"
+        },
+        "cache_misses": {
+          "type": "integer",
+          "description": "How many times the cache failed to answer a request"
+        },
+        "cached_responses": {
+          "type": "integer",
+          "description": "How many responses are currently stored in the cache"
+        },
+        "cached_revoked_responses": {
+          "type": "integer",
+          "description": "How many of the stored cache entries are revokes"
+        },
+        "cached_good_responses": {
+          "type": "integer",
+          "description": "How many of the stored cache entries are good responses"
+        },
+        "cached_unknown_responses": {
+          "type": "integer",
+          "description": "How many of the stored cache entries are unknown responses"
+        }
+      }
+    },
+    "slow_consumers_stats_v1": {
+      "type": "object",
+      "description": "Information about slow consumers from different type of connections",
+      "properties": {
+        "clients": {
+          "type": "integer",
+          "description": "How many Clients were slow consumers"
+        },
+        "routes": {
+          "type": "integer",
+          "description": "How many Routes were slow consumers"
+        },
+        "gateways": {
+          "type": "integer",
+          "description": "How many Gateways were slow consumers"
+        },
+        "leafs": {
+          "type": "integer",
+          "description": "How many Leafnodes were slow consumers"
+        }
+      }
+    }
+  }
+}

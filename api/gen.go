@@ -268,6 +268,7 @@ func main() {
 		&schema{P: "server/advisory/v1/client_connect.json", St: "srvadvisory.ConnectEventMsgV1"},
 		&schema{P: "server/advisory/v1/client_disconnect.json", St: "srvadvisory.DisconnectEventMsgV1"},
 		&schema{P: "server/metric/v1/service_latency.json", St: "srvmetric.ServiceLatencyV1"},
+		&schema{P: "server/monitor/v1/varz.json", St: "zmonitor.VarzV1"},
 	}
 
 	for _, i := range s {

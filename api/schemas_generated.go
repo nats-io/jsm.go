@@ -1,4 +1,4 @@
-// auto generated 2025-07-18 18:21:08.232875 +0300 EEST m=+0.013175168
+// auto generated 2025-07-29 13:43:50.750919 +0300 EEST m=+0.011002793
 
 package api
 
@@ -7,6 +7,7 @@ import (
 	jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
 	srvadvisory "github.com/nats-io/jsm.go/api/server/advisory"
 	srvmetric "github.com/nats-io/jsm.go/api/server/metric"
+	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	scfs "github.com/nats-io/jsm.go/schemas"
 	"github.com/nats-io/nats.go/micro"
 )
@@ -92,6 +93,7 @@ var schemaTypes = map[string]func() any{
 	"io.nats.server.advisory.v1.client_connect":                  func() any { return &srvadvisory.ConnectEventMsgV1{} },
 	"io.nats.server.advisory.v1.client_disconnect":               func() any { return &srvadvisory.DisconnectEventMsgV1{} },
 	"io.nats.server.metric.v1.service_latency":                   func() any { return &srvmetric.ServiceLatencyV1{} },
+	"io.nats.server.monitor.v1.varz":                             func() any { return &zmonitor.VarzV1{} },
 	"io.nats.unknown_message":                                    func() any { return &UnknownMessage{} },
 }
 

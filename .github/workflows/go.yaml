@@ -36,7 +36,7 @@ jobs:
           PATH=$PATH:$GOPATH/bin
           $(exit $(go fmt $(go list ./...) | wc -l))
           find . -type f -name "*.go" | xargs misspell -error -locale US
-          staticcheck -f stylish $(go list ./... | grep -v governor)
+          staticcheck -f stylish $(go list ./... )
           go vet ./...
 
       - name: Run tests

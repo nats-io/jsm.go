@@ -660,6 +660,11 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 		serverName := serverInfo.Name
 
 		for _, endpoint := range g.cfg.ServerEndpointConfigs {
+			if endpoint.ApiSuffix == "JSZ" && !serverInfo.JetStream {
+				g.log.Infof("Server %s does not have jetstream enabled - skipping JSZ endpoint", serverName)
+				continue
+			}
+
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", serverId, endpoint.ApiSuffix)
 			offset := 0
 

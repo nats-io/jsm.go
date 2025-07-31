@@ -1257,41 +1257,5 @@
         }
       }
     },
-    "stream_template_info": {
-      "type": "object",
-      "required": ["config", "streams"],
-      "properties": {
-        "config": {
-          "$ref": "#/definitions/stream_template_configuration"
-        },
-        "streams": {
-          "description": "List of Streams managed by this Template",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "stream_template_configuration": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["name", "config", "max_streams"],
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "A unique name for the Template"
-        },
-        "config": {
-          "description": "The template configuration to create Streams with",
-          "$ref": "#/definitions/stream_configuration"
-        },
-        "max_streams": {
-          "type": "integer",
-          "description": "The maximum number of streams to allow using this Template",
-          "minimum": -1
-        }
-      }
-    }
   }
 }

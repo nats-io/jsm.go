@@ -419,28 +419,6 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, missing []str
 	return consumers, missing, nil
 }
 
-// StreamTemplateNames is a sorted list of all known StreamTemplates
-func (m *Manager) StreamTemplateNames() (templates []string, err error) {
-	resp := func() apiIterableResponse { return &api.JSApiStreamTemplateNamesResponse{} }
-	err = m.iterableRequest(api.JSApiTemplateNames, &api.JSApiStreamTemplateNamesRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}, resp, func(page any) error {
-		apiresp, ok := page.(*api.JSApiStreamTemplateNamesResponse)
-		if !ok {
-			return fmt.Errorf("invalid response type from iterable request")
-		}
-
-		templates = append(templates, apiresp.Templates...)
-
-		return nil
-	})
-	if err != nil {
-		return templates, err
-	}
-
-	sort.Strings(templates)
-
-	return templates, nil
-}
-
 // ConsumerNames is a sorted list of all known consumers within a stream
 func (m *Manager) ConsumerNames(stream string) (names []string, err error) {
 	if !IsValidName(stream) {

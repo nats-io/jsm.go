@@ -176,10 +176,10 @@ func TestSchemaSearch(t *testing.T) {
 }
 
 func TestSchema(t *testing.T) {
-	schema, err := Schema("io.nats.jetstream.api.v1.stream_template_names_request")
+	schema, err := Schema("io.nats.jetstream.api.v1.stream_names_request")
 	checkErr(t, err, "failed")
 
-	dat, err := scfs.Load("jetstream/api/v1/stream_template_names_request.json")
+	dat, err := scfs.Load("jetstream/api/v1/stream_names_request.json")
 	checkErr(t, err, "failed")
 
 	if !bytes.Equal(schema, dat) {

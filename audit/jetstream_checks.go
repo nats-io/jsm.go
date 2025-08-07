@@ -319,7 +319,7 @@ func checkStreamMetadataMonitoring(_ *Check, r *archive.Reader, examples *Exampl
 				serverTag := archive.TagServer(serverName)
 
 				err := archive.ForEachTaggedArtifact(r, []*archive.Tag{accountTag, streamTag, serverTag, streamDetailsTag}, func(streamDetails *api.StreamInfo) error {
-					if streamDetails.Cluster.Leader != serverName {
+					if streamDetails.Cluster != nil && streamDetails.Cluster.Leader != serverName {
 						return nil
 					}
 
@@ -388,7 +388,7 @@ func checkConsumerMetadataMonitoring(_ *Check, r *archive.Reader, examples *Exam
 
 				err := archive.ForEachTaggedArtifact(r, []*archive.Tag{accountTag, streamTag, serverTag, streamDetailsTag}, func(streamDetails *streamWithConsumers) error {
 					for _, nfo := range streamDetails.ConsumerDetail {
-						if nfo.Cluster.Leader != serverName {
+						if nfo.Cluster != nil && nfo.Cluster.Leader != serverName {
 							continue
 						}
 

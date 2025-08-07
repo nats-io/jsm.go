@@ -501,7 +501,7 @@
     },
     "priority_policy": {
       "type": "string",
-      "enum": ["none","overflow","pinned_client"]
+      "enum": ["none","overflow","pinned_client","prioritized"]
     },
     "deliver_policy": {
       "oneOf": [

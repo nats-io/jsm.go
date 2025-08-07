@@ -36,6 +36,34 @@
       "type": "integer",
       "maximum": 9223372036854775807,
       "minimum": -9223372036854775807
+    },
+    "group": {
+      "type": "string",
+      "description": "The consumer group to pull from"
+    },
+    "min_pending": {
+      "description": "The minimum number of messages the server should have in the consumer's pending queue before serving this pull",
+      "minimum": 0,
+      "$comment": "signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807
+    },
+    "min_ack_pending": {
+      "description": "The minimum number of messages the server should have in the consumer's ack pending queue before serving this pull",
+      "minimum": 0,
+      "$comment": "signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807
+    },
+    "id": {
+      "type": "string",
+      "description": "When pulling from a Pinned Client consumer this is the unique client ID"
+    },
+    "priority": {
+      "type": "integer",
+      "description": "The priority of the pull request",
+      "minimum": 0,
+      "maximum": 9
     }
   }
 }

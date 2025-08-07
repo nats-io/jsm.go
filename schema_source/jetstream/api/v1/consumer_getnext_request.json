@@ -27,6 +27,30 @@
     "idle_heartbeat": {
       "$ref": "definitions.json#/definitions/golang_duration_nanos",
       "description": "When not 0 idle heartbeats will be sent on this interval"
+    },
+    "group": {
+      "type": "string",
+      "description": "The consumer group to pull from",
+    },
+    "min_pending": {
+      "$ref": "definitions.json#/definitions/golang_int64",
+      "description": "The minimum number of messages the server should have in the consumer's pending queue before serving this pull",
+      "minimum": 0
+    },
+    "min_ack_pending": {
+      "$ref": "definitions.json#/definitions/golang_int64",
+      "description": "The minimum number of messages the server should have in the consumer's ack pending queue before serving this pull",
+      "minimum": 0
+    },
+    "id": {
+      "type": "string",
+      "description": "When pulling from a Pinned Client consumer this is the unique client ID"
+    },
+    "priority": {
+      "type": "integer",
+      "description": "The priority of the pull request",
+      "minimum": 0,
+      "maximum": 9
     }
   }
 }

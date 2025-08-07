@@ -317,7 +317,8 @@
       "enum": [
         "none",
         "overflow",
-        "pinned_client"
+        "pinned_client",
+        "prioritized"
       ]
     },
     "priority_timeout": {

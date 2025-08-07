@@ -450,6 +450,7 @@ const (
 	PriorityNone PriorityPolicy = iota
 	PriorityOverflow
 	PriorityPinnedClient
+	PriorityPrioritized
 )
 
 func (p PriorityPolicy) String() string {
@@ -458,6 +459,8 @@ func (p PriorityPolicy) String() string {
 		return "Overflow"
 	case PriorityPinnedClient:
 		return "Pinned Client"
+	case PriorityPrioritized:
+		return "Prioritized"
 	default:
 		return "None"
 	}
@@ -471,6 +474,8 @@ func (p *PriorityPolicy) UnmarshalYAML(data *yaml.Node) error {
 		*p = PriorityOverflow
 	case "pinned_client":
 		*p = PriorityPinnedClient
+	case "prioritized":
+		*p = PriorityPrioritized
 	default:
 		return fmt.Errorf("cannot unmarshal %v", data.Value)
 	}
@@ -485,6 +490,8 @@ func (p PriorityPolicy) MarshalYAML() (any, error) {
 		return "overflow", nil
 	case PriorityPinnedClient:
 		return "pinned_client", nil
+	case PriorityPrioritized:
+		return "prioritized", nil
 	default:
 		return nil, fmt.Errorf("unknown priority policy: %v", p)
 	}
@@ -498,6 +505,8 @@ func (p *PriorityPolicy) UnmarshalJSON(data []byte) error {
 		*p = PriorityOverflow
 	case jsonString("pinned_client"):
 		*p = PriorityPinnedClient
+	case jsonString("prioritized"):
+		*p = PriorityPrioritized
 	default:
 		return fmt.Errorf("cannot unmarshal %v", string(data))
 	}
@@ -512,6 +521,8 @@ func (p PriorityPolicy) MarshalJSON() ([]byte, error) {
 		return json.Marshal("overflow")
 	case PriorityPinnedClient:
 		return json.Marshal("pinned_client")
+	case PriorityPrioritized:
+		return json.Marshal("prioritized")
 	default:
 		return nil, fmt.Errorf("unknown priority policy: %v", p)
 	}

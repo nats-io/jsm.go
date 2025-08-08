@@ -886,6 +886,75 @@ func TestDenyPurge(t *testing.T) {
 	}
 }
 
+func TestAllowCounter(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.AllowCounter()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if !cfg.AllowMsgCounter {
+		t.Fatalf("AllowMsgCounter was not set")
+	}
+}
+
+func TestNoAllowCounter(t *testing.T) {
+	cfg := testStreamConfig()
+	cfg.AllowMsgCounter = true
+	err := jsm.NoAllowCounter()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if cfg.AllowMsgCounter {
+		t.Fatalf("AllowMsgCounter was set")
+	}
+}
+
+func TestAllowAtomicBatchPublish(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.AllowAtomicBatchPublish()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if !cfg.AllowAtomicPublish {
+		t.Fatalf("AllowAtomicPublish was not set")
+	}
+}
+
+func TestNoAllowAtomicBatchPublish(t *testing.T) {
+	cfg := testStreamConfig()
+	cfg.AllowAtomicPublish = true
+	err := jsm.NoAllowAtomicBatchPublish()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if cfg.AllowAtomicPublish {
+		t.Fatalf("AllowAtomicPublish was set")
+	}
+}
+
+func TestAllowAsyncFlush(t *testing.T) {
+	cfg := testStreamConfig()
+	err := jsm.AllowAsyncFlush()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if !cfg.AllowAsyncFlush {
+		t.Fatalf("AllowAsyncFlush was not set")
+	}
+}
+
+func TestNoAllowAsyncFlush(t *testing.T) {
+	cfg := testStreamConfig()
+	cfg.AllowAsyncFlush = true
+	err := jsm.NoAllowAsyncFlush()(cfg)
+	if err != nil {
+		t.Fatalf("option failed: %s", err)
+	}
+	if cfg.AllowAsyncFlush {
+		t.Fatalf("AllowAtomicPublish was set")
+	}
+}
+
 func TestAllowRollup(t *testing.T) {
 	cfg := testStreamConfig()
 	err := jsm.AllowRollup()(cfg)

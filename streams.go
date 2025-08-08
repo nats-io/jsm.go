@@ -505,7 +505,7 @@ func NoAllowCounter() StreamOption {
 	}
 }
 
-func AllowAllowAsyncFlush() StreamOption {
+func AllowAsyncFlush() StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.AllowAsyncFlush = true
 		return nil

@@ -597,9 +597,12 @@ type StreamConfig struct {
 	// these properties may have
 	ConsumerLimits StreamConsumerLimits `json:"consumer_limits" yaml:"consumer_limits"`
 	// AllowAtomicPublish allows atomic batch publishing into the stream.
-	AllowAtomicPublish bool `json:"allow_atomic,omitempty" yaml:"allow_atomic"`
+	AllowAtomicPublish bool `json:"allow_atomic" yaml:"allow_atomic"`
 	// AllowMsgCounter allows a stream to use (only) counter CRDTs.
-	AllowMsgCounter bool `json:"allow_msg_counter,omitempty" yaml:"allow_msg_counter"`
+	AllowMsgCounter bool `json:"allow_msg_counter" yaml:"allow_msg_counter"`
+	// AllowAsyncFlush allows replicated streams to asynchronously flush
+	// to the stream, improving throughput.
+	AllowAsyncFlush bool `json:"allow_async_flush" yaml:"allow_async_flush"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream

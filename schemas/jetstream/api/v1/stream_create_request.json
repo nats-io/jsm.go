@@ -377,11 +377,6 @@
           "default": false,
           "description": "Allow atomic batched publishes"
         },
-        "allow_async_flush": {
-          "type": "boolean",
-          "default": false,
-          "description": "Allows replicated streams to asynchronously flush to the stream, improving throughput"
-        },
         "allow_msg_counter": {
           "type": "boolean",
           "default": false,

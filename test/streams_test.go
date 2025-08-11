@@ -932,29 +932,6 @@ func TestNoAllowAtomicBatchPublish(t *testing.T) {
 	}
 }
 
-func TestAllowAsyncFlush(t *testing.T) {
-	cfg := testStreamConfig()
-	err := jsm.AllowAsyncFlush()(cfg)
-	if err != nil {
-		t.Fatalf("option failed: %s", err)
-	}
-	if !cfg.AllowAsyncFlush {
-		t.Fatalf("AllowAsyncFlush was not set")
-	}
-}
-
-func TestNoAllowAsyncFlush(t *testing.T) {
-	cfg := testStreamConfig()
-	cfg.AllowAsyncFlush = true
-	err := jsm.NoAllowAsyncFlush()(cfg)
-	if err != nil {
-		t.Fatalf("option failed: %s", err)
-	}
-	if cfg.AllowAsyncFlush {
-		t.Fatalf("AllowAtomicPublish was set")
-	}
-}
-
 func TestAllowRollup(t *testing.T) {
 	cfg := testStreamConfig()
 	err := jsm.AllowRollup()(cfg)

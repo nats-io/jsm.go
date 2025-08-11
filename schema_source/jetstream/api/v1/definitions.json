@@ -644,6 +644,16 @@
           "description": "The time the Consumer was created",
           "$ref": "#/definitions/golang_time"
         },
+        "offline": {
+          "type": "boolean",
+          "description": "Indicates if the stream is currently offline",
+          "default": false
+        },
+        "offline_reason": {
+          "type": "string",
+          "description": "Reason the stream is currently offline",
+          "default": ""
+        },
         "delivered": {
           "description": "The last message delivered from this Consumer",
           "$ref": "#/definitions/sequence_info"
@@ -904,6 +914,16 @@
         "ts": {
           "description": "The server time the stream info was created",
           "$ref": "#/definitions/golang_time"
+        },
+        "offline": {
+          "type": "boolean",
+          "description": "Indicates if the stream is currently offline",
+          "default": false
+        },
+        "offline_reason": {
+          "type": "string",
+          "description": "Reason the stream is currently offline",
+          "default": ""
         },
         "cluster": {
           "$ref": "#/definitions/cluster_info"

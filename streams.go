@@ -1149,6 +1149,16 @@ func (s *Stream) ContainedSubjects(filter ...string) (map[string]uint64, error) 
 	return s.mgr.StreamContainedSubjects(s.Name(), filter...)
 }
 
+// IsOffline determines if the stream is currently offline and why
+func (s *Stream) IsOffline() (bool, string, error) {
+	nfo, err := s.Information()
+	if err != nil {
+		return false, "", err
+	}
+
+	return nfo.Offline, nfo.OfflineReason, nil
+}
+
 func (s *Stream) Configuration() api.StreamConfig          { return *s.cfg }
 func (s *Stream) Name() string                             { return s.cfg.Name }
 func (s *Stream) Description() string                      { return s.cfg.Description }

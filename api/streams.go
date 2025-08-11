@@ -600,9 +600,6 @@ type StreamConfig struct {
 	AllowAtomicPublish bool `json:"allow_atomic" yaml:"allow_atomic"`
 	// AllowMsgCounter allows a stream to use (only) counter CRDTs.
 	AllowMsgCounter bool `json:"allow_msg_counter" yaml:"allow_msg_counter"`
-	// AllowAsyncFlush allows replicated streams to asynchronously flush
-	// to the stream, improving throughput.
-	AllowAsyncFlush bool `json:"allow_async_flush" yaml:"allow_async_flush"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream

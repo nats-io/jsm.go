@@ -505,20 +505,6 @@ func NoAllowCounter() StreamOption {
 	}
 }
 
-func AllowAsyncFlush() StreamOption {
-	return func(o *api.StreamConfig) error {
-		o.AllowAsyncFlush = true
-		return nil
-	}
-}
-
-func NoAllowAsyncFlush() StreamOption {
-	return func(o *api.StreamConfig) error {
-		o.AllowAsyncFlush = false
-		return nil
-	}
-}
-
 func NoAllowDirect() StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.AllowDirect = false
@@ -1185,7 +1171,6 @@ func (s *Stream) PurgeAllowed() bool                       { return !s.cfg.DenyP
 func (s *Stream) RollupAllowed() bool                      { return s.cfg.RollupAllowed }
 func (s *Stream) DirectAllowed() bool                      { return s.cfg.AllowDirect }
 func (s *Stream) AtomicBatchPublishAllowed() bool          { return s.cfg.AllowAtomicPublish }
-func (s *Stream) AsyncFlushAllowed() bool                  { return s.cfg.AllowAsyncFlush }
 func (s *Stream) CounterAllowed() bool                     { return s.cfg.AllowMsgCounter }
 func (s *Stream) MirrorDirectAllowed() bool                { return s.cfg.MirrorDirect }
 func (s *Stream) Republish() *api.RePublish                { return s.cfg.RePublish }

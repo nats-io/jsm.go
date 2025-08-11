@@ -654,14 +654,16 @@ type ExternalStream struct {
 }
 
 type StreamInfo struct {
-	Config     StreamConfig        `json:"config" yaml:"config"`
-	Created    time.Time           `json:"created" yaml:"created"`
-	State      StreamState         `json:"state" yaml:"state"`
-	Cluster    *ClusterInfo        `json:"cluster,omitempty" yaml:"cluster"`
-	Mirror     *StreamSourceInfo   `json:"mirror,omitempty" yaml:"mirror"`
-	Sources    []*StreamSourceInfo `json:"sources,omitempty" yaml:"sources"`
-	Alternates []StreamAlternate   `json:"alternates,omitempty" yaml:"alternates"`
-	TimeStamp  time.Time           `json:"ts" yaml:"ts"`
+	Config        StreamConfig        `json:"config" yaml:"config"`
+	Created       time.Time           `json:"created" yaml:"created"`
+	State         StreamState         `json:"state" yaml:"state"`
+	Cluster       *ClusterInfo        `json:"cluster,omitempty" yaml:"cluster"`
+	Mirror        *StreamSourceInfo   `json:"mirror,omitempty" yaml:"mirror"`
+	Sources       []*StreamSourceInfo `json:"sources,omitempty" yaml:"sources"`
+	Alternates    []StreamAlternate   `json:"alternates,omitempty" yaml:"alternates"`
+	TimeStamp     time.Time           `json:"ts" yaml:"ts"`
+	Offline       bool                `json:"offline,omitempty" yaml:"offline"` // Reporting when a consumer is offline.
+	OfflineReason string              `json:"offline_reason,omitempty" yaml:"offline_reason"`
 }
 
 type StreamAlternate struct {

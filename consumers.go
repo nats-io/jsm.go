@@ -1014,6 +1014,16 @@ func (c *Consumer) Unpin(group string) error {
 	return nil
 }
 
+// IsOffline determines if the stream is currently offline and why
+func (c *Consumer) IsOffline() (bool, string, error) {
+	nfo, err := c.State()
+	if err != nil {
+		return false, "", err
+	}
+
+	return nfo.Offline, nfo.OfflineReason, nil
+}
+
 func (c *Consumer) Name() string             { return c.name }
 func (c *Consumer) IsSampled() bool          { return c.SampleFrequency() != "" }
 func (c *Consumer) IsPullMode() bool         { return c.cfg.DeliverSubject == "" }

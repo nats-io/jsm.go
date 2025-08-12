@@ -8,9 +8,9 @@
     "expires": {
       "description": "A duration from now when the pull should expire, stated in nanoseconds, 0 for no expiry",
       "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+      "minimum": 0,
       "type": "integer",
-      "maximum": 9223372036854775807,
-      "minimum": -9223372036854775807
+      "maximum": 9223372036854775807
     },
     "batch": {
       "description": "How many messages the server should deliver to the requestor",
@@ -33,9 +33,9 @@
     "idle_heartbeat": {
       "description": "When not 0 idle heartbeats will be sent on this interval",
       "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+      "minimum": 0,
       "type": "integer",
-      "maximum": 9223372036854775807,
-      "minimum": -9223372036854775807
+      "maximum": 9223372036854775807
     },
     "group": {
       "type": "string",

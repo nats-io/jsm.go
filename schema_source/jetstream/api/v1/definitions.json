@@ -7,7 +7,8 @@
   "definitions": {
     "golang_duration_nanos": {
       "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
-      "$ref": "#/definitions/golang_int64"
+      "$ref": "#/definitions/golang_int64",
+      "minimum": 0
     },
     "golang_int": {
       "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
@@ -389,7 +390,8 @@
         },
         "max_ack_pending": {
           "type": "integer",
-          "description": "The maximum number of outstanding ACKs any consumer may configure"
+          "description": "The maximum number of outstanding ACKs any consumer may configure",
+          "minimum": -1
         },
         "memory_max_stream_bytes": {
           "type": "integer",
@@ -817,15 +819,16 @@
         "max_batch": {
           "type": "integer",
           "description": "The largest batch property that may be specified when doing a pull on a Pull Consumer",
-          "default": 0
+          "default": 0,
+          "minimum": 0
         },
         "max_expires": {
           "description": "The maximum expires value that may be set when doing a pull on a Pull Consumer",
           "$ref": "#/definitions/golang_duration_nanos",
-          "default": 0
+          "default": 0,
         },
         "max_bytes": {
-          "description": "The maximum bytes value that maybe set when dong a pull on a Pull Consumer",
+          "description": "The maximum bytes value that maybe set when doing a pull on a Pull Consumer",
           "$ref": "definitions.json#/definitions/golang_int",
           "minimum": 0,
           "default": 0
@@ -833,7 +836,7 @@
         "inactive_threshold": {
           "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
           "$ref": "#/definitions/golang_duration_nanos",
-          "default": 0
+          "default": 0,
         },
         "backoff": {
           "description": "List of durations in Go format that represents a retry time scale for NaK'd messages",
@@ -876,7 +879,9 @@
           "$ref": "#/definitions/priority_policy"
         },
         "priority_timeout": {
-          "description": "For pinned_client priority policy how long before the client times out"
+          "description": "For pinned_client priority policy how long before the client times out",
+          "$ref": "#/definitions/golang_duration_nanos",
+          "default": 0
         },
         "opt_start_seq": {
           "description": "Start sequence used with the DeliverByStartSequence deliver policy.",

@@ -39,7 +39,7 @@ type CheckConnectionOptions struct {
 func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, check *Result, opts CheckConnectionOptions) error {
 	connStart := time.Now()
 	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "connection failed: %v", err) {
+	if check.CriticalIfErrf(err, "connection failed: %v", err) {
 		return nil
 	}
 	defer nc.Close()
@@ -48,37 +48,37 @@ func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, 
 	check.Pd(&PerfDataItem{Name: "connect_time", Value: ct.Seconds(), Warn: opts.ConnectTimeWarning, Crit: opts.ConnectTimeCritical, Unit: "s", Help: "Time taken to connect to NATS"})
 
 	if ct >= time.Duration(opts.ConnectTimeCritical*float64(time.Second)) {
-		check.Critical("connected to %s, connect time exceeded %v", nc.ConnectedUrl(), opts.ConnectTimeCritical)
+		check.Criticalf("connected to %s, connect time exceeded %v", nc.ConnectedUrl(), opts.ConnectTimeCritical)
 	} else if ct >= time.Duration(opts.ConnectTimeWarning*float64(time.Second)) {
-		check.Warn("connected to %s, connect time exceeded %v", nc.ConnectedUrl(), opts.ConnectTimeWarning)
+		check.Warnf("connected to %s, connect time exceeded %v", nc.ConnectedUrl(), opts.ConnectTimeWarning)
 	} else {
-		check.Ok("connected to %s in %s", nc.ConnectedUrl(), ct)
+		check.Okf("connected to %s in %s", nc.ConnectedUrl(), ct)
 	}
 
 	rtt, err := nc.RTT()
-	check.CriticalIfErr(err, "rtt failed: %s", err)
+	check.CriticalIfErrf(err, "rtt failed: %s", err)
 
 	check.Pd(&PerfDataItem{Name: "rtt", Value: rtt.Seconds(), Warn: opts.ServerRttWarning, Crit: opts.ServerRttCritical, Unit: "s", Help: "The round-trip-time of the connection"})
 	if rtt >= time.Duration(opts.ServerRttCritical*float64(time.Second)) {
-		check.Critical("rtt time exceeded %v", opts.ServerRttCritical)
+		check.Criticalf("rtt time exceeded %v", opts.ServerRttCritical)
 	} else if rtt >= time.Duration(opts.ServerRttWarning*float64(time.Second)) {
-		check.Critical("rtt time exceeded %v", opts.ServerRttWarning)
+		check.Criticalf("rtt time exceeded %v", opts.ServerRttWarning)
 	} else {
-		check.Ok("rtt time %v", rtt)
+		check.Okf("rtt time %v", rtt)
 	}
 
 	msg := []byte(randomPassword(100))
 	ib := nc.NewRespInbox()
 	sub, err := nc.SubscribeSync(ib)
-	check.CriticalIfErr(err, "could not subscribe to %s: %s", ib, err)
+	check.CriticalIfErrf(err, "could not subscribe to %s: %s", ib, err)
 	sub.AutoUnsubscribe(1)
 
 	start := time.Now()
 	err = nc.Publish(ib, msg)
-	check.CriticalIfErr(err, "could not publish to %s: %s", ib, err)
+	check.CriticalIfErrf(err, "could not publish to %s: %s", ib, err)
 
 	received, err := sub.NextMsg(timeout)
-	check.CriticalIfErr(err, "did not receive from %s: %s", ib, err)
+	check.CriticalIfErrf(err, "did not receive from %s: %s", ib, err)
 
 	reqt := time.Since(start)
 	check.Pd(&PerfDataItem{Name: "request_time", Value: reqt.Seconds(), Warn: opts.RequestRttWarning, Crit: opts.RequestRttCritical, Unit: "s", Help: "Time taken for a full Request-Reply operation"})
@@ -88,11 +88,11 @@ func CheckConnection(server string, nopts []nats.Option, timeout time.Duration, 
 	}
 
 	if reqt >= time.Duration(opts.RequestRttCritical*float64(time.Second)) {
-		check.Critical("round trip request took %f", reqt.Seconds())
+		check.Criticalf("round trip request took %f", reqt.Seconds())
 	} else if reqt >= time.Duration(opts.RequestRttWarning*float64(time.Second)) {
-		check.Warn("round trip request took %f", reqt.Seconds())
+		check.Warnf("round trip request took %f", reqt.Seconds())
 	} else {
-		check.Ok("round trip took %fs", reqt.Seconds())
+		check.Okf("round trip took %fs", reqt.Seconds())
 	}
 
 	return nil

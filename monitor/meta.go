@@ -39,7 +39,7 @@ func CheckJetstreamMeta(servers string, nopts []nats.Option, check *Result, opts
 
 	if opts.Resolver == nil {
 		nc, err = nats.Connect(servers, nopts...)
-		if check.CriticalIfErr(err, "connection failed: %v", err) {
+		if check.CriticalIfErrf(err, "connection failed: %v", err) {
 			return nil
 		}
 		defer nc.Close()
@@ -53,22 +53,22 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 		opts.Resolver = func(conn *nats.Conn) (*server.ServerAPIJszResponse, error) {
 			jszresp := &server.ServerAPIJszResponse{}
 			jreq, err := json.Marshal(&server.JSzOptions{LeaderOnly: true})
-			if check.CriticalIfErr(err, "request failed: %v", err) {
+			if check.CriticalIfErrf(err, "request failed: %v", err) {
 				return nil, err
 			}
 
 			res, err := nc.Request("$SYS.REQ.SERVER.PING.JSZ", jreq, time.Second)
-			if check.CriticalIfErr(err, "JSZ API request failed: %s", err) {
+			if check.CriticalIfErrf(err, "JSZ API request failed: %s", err) {
 				return nil, err
 			}
 
 			err = json.Unmarshal(res.Data, jszresp)
-			if check.CriticalIfErr(err, "invalid result received: %s", err) {
+			if check.CriticalIfErrf(err, "invalid result received: %s", err) {
 				return nil, err
 			}
 
 			if jszresp.Error != nil {
-				check.Critical("invalid result received: %s", jszresp.Error.Error())
+				check.Criticalf("invalid result received: %s", jszresp.Error.Error())
 				return nil, fmt.Errorf("invalid result received: %s", jszresp.Error.Error())
 			}
 
@@ -82,18 +82,18 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 	}
 
 	if jszresp.Data == nil {
-		check.Critical("no JSZ response received")
+		check.Criticalf("no JSZ response received")
 		return nil
 	}
 
 	ci := jszresp.Data.Meta
 	if ci == nil {
-		check.Critical("no cluster information")
+		check.Criticalf("no cluster information")
 		return nil
 	}
 
 	if ci.Leader == "" {
-		check.Critical("No leader")
+		check.Criticalf("No leader")
 		return nil
 	}
 
@@ -106,7 +106,7 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 	})
 
 	if len(ci.Replicas)+1 != opts.ExpectServers {
-		check.Critical("%d peers of expected %d", len(ci.Replicas)+1, opts.ExpectServers)
+		check.Criticalf("%d peers of expected %d", len(ci.Replicas)+1, opts.ExpectServers)
 	}
 
 	notCurrent := 0
@@ -136,20 +136,20 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 	)
 
 	if notCurrent > 0 {
-		check.Critical("%d not current", notCurrent)
+		check.Criticalf("%d not current", notCurrent)
 	}
 	if inactive > 0 {
-		check.Critical("%d inactive more than %s", inactive, secondsToDuration(opts.SeenCritical))
+		check.Criticalf("%d inactive more than %s", inactive, secondsToDuration(opts.SeenCritical))
 	}
 	if offline > 0 {
-		check.Critical("%d offline", offline)
+		check.Criticalf("%d offline", offline)
 	}
 	if lagged > 0 {
-		check.Critical("%d lagged more than %d ops", lagged, opts.LagCritical)
+		check.Criticalf("%d lagged more than %d ops", lagged, opts.LagCritical)
 	}
 
 	if len(check.Criticals) == 0 && len(check.Warnings) == 0 {
-		check.Ok("%d peers led by %s", len(jszresp.Data.Meta.Replicas)+1, jszresp.Data.Meta.Leader)
+		check.Okf("%d peers led by %s", len(jszresp.Data.Meta.Replicas)+1, jszresp.Data.Meta.Leader)
 	}
 
 	return nil

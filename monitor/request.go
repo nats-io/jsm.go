@@ -39,7 +39,7 @@ type CheckRequestOptions struct {
 
 func CheckRequest(server string, nopts []nats.Option, check *Result, timeout time.Duration, opts CheckRequestOptions) error {
 	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 	defer nc.Close()
@@ -49,7 +49,7 @@ func CheckRequest(server string, nopts []nats.Option, check *Result, timeout tim
 
 func CheckRequestWithConnection(nc *nats.Conn, check *Result, timeout time.Duration, opts CheckRequestOptions) error {
 	if opts.Subject == "" {
-		check.Critical("no subject specified")
+		check.Criticalf("no subject specified")
 		return nil
 	}
 
@@ -71,32 +71,32 @@ func CheckRequestWithConnection(nc *nats.Conn, check *Result, timeout time.Durat
 		Crit:  opts.ResponseTimeCritical,
 		Unit:  "s",
 	})
-	if check.CriticalIfErr(err, "could not send request: %v", err) {
+	if check.CriticalIfErrf(err, "could not send request: %v", err) {
 		return nil
 	}
 
 	if opts.ResponseMatch != "" {
 		re, err := regexp.Compile(opts.ResponseMatch)
-		if check.CriticalIfErr(err, "content regex compile failed: %v", err) {
+		if check.CriticalIfErrf(err, "content regex compile failed: %v", err) {
 			return nil
 		}
 
 		if !re.Match(resp.Data) {
-			check.Critical("response does not match regexp")
+			check.Criticalf("response does not match regexp")
 		}
 	}
 
 	for k, v := range opts.HeaderMatch {
 		rv := resp.Header.Get(k)
 		if rv != v {
-			check.Critical("invalid header %q = %q", k, rv)
+			check.Criticalf("invalid header %q = %q", k, rv)
 		}
 	}
 
 	if opts.ResponseTimeCritical > 0 && since.Seconds() > opts.ResponseTimeCritical {
-		check.Critical("response took %v", since.Round(time.Millisecond))
+		check.Criticalf("response took %v", since.Round(time.Millisecond))
 	} else if opts.ResponseTimeWarn > 0 && since.Seconds() > opts.ResponseTimeWarn {
-		check.Warn("response took %v", since.Round(time.Millisecond))
+		check.Warnf("response took %v", since.Round(time.Millisecond))
 	}
 
 	check.OkIfNoWarningsOrCriticals("Valid response")

@@ -62,7 +62,7 @@ func CheckServer(server string, nopts []nats.Option, check *Result, timeout time
 
 	if opts.Resolver == nil {
 		nc, err = nats.Connect(server, nopts...)
-		if check.CriticalIfErr(err, "connection failed: %v", err) {
+		if check.CriticalIfErrf(err, "connection failed: %v", err) {
 			return nil
 		}
 		defer nc.Close()
@@ -79,56 +79,56 @@ func CheckServerWithConnection(nc *nats.Conn, check *Result, timeout time.Durati
 	}
 
 	vz, err := opts.Resolver(nc, opts.Name, timeout)
-	if check.CriticalIfErr(err, "varz failed: %v", err) {
+	if check.CriticalIfErrf(err, "varz failed: %v", err) {
 		return nil
 	}
 
 	if vz == nil {
-		check.Critical("no data received")
+		check.Criticalf("no data received")
 		return nil
 	}
 
 	if vz.Name != opts.Name {
-		check.Critical("result from wrong server %q", vz.Name)
+		check.Criticalf("result from wrong server %q", vz.Name)
 	}
 
 	if opts.JetStreamRequired {
 		if vz.JetStream.Config == nil {
-			check.Critical("JetStream not enabled")
+			check.Criticalf("JetStream not enabled")
 		} else {
-			check.Ok("JetStream enabled")
+			check.Okf("JetStream enabled")
 		}
 	}
 
 	if opts.TLSRequired {
 		if vz.TLSRequired {
-			check.Ok("TLS required")
+			check.Okf("TLS required")
 		} else {
-			check.Critical("TLS not required")
+			check.Criticalf("TLS not required")
 		}
 	}
 
 	if opts.AuthenticationRequired {
 		if vz.AuthRequired {
-			check.Ok("Authentication required")
+			check.Okf("Authentication required")
 		} else {
-			check.Critical("Authentication not required")
+			check.Criticalf("Authentication not required")
 		}
 	}
 
 	up := vz.Now.Sub(vz.Start)
 	if opts.UptimeWarning > 0 || opts.UptimeCritical > 0 {
 		if opts.UptimeCritical > opts.UptimeWarning {
-			check.Critical("Up invalid thresholds")
+			check.Criticalf("Up invalid thresholds")
 			return nil
 		}
 
 		if up <= secondsToDuration(opts.UptimeCritical) {
-			check.Critical("Up %s", f(up))
+			check.Criticalf("Up %s", f(up))
 		} else if up <= secondsToDuration(opts.UptimeWarning) {
-			check.Warn("Up %s", f(up))
+			check.Warnf("Up %s", f(up))
 		} else {
-			check.Ok("Up %s", f(up))
+			check.Okf("Up %s", f(up))
 		}
 	}
 
@@ -146,25 +146,25 @@ func CheckServerWithConnection(nc *nats.Conn, check *Result, timeout time.Durati
 		}
 
 		if !r && crit < warn {
-			check.Critical("%s invalid thresholds", name)
+			check.Criticalf("%s invalid thresholds", name)
 			return
 		}
 
 		if r && crit < warn {
 			if value <= crit {
-				check.Critical("%s %.2f", name, value)
+				check.Criticalf("%s %.2f", name, value)
 			} else if value <= warn {
-				check.Warn("%s %.2f", name, value)
+				check.Warnf("%s %.2f", name, value)
 			} else {
-				check.Ok("%s %.2f", name, value)
+				check.Okf("%s %.2f", name, value)
 			}
 		} else {
 			if value >= crit {
-				check.Critical("%s %.2f", name, value)
+				check.Criticalf("%s %.2f", name, value)
 			} else if value >= warn {
-				check.Warn("%s %.2f", name, value)
+				check.Warnf("%s %.2f", name, value)
 			} else {
-				check.Ok("%s %.2f", name, value)
+				check.Okf("%s %.2f", name, value)
 			}
 		}
 	}

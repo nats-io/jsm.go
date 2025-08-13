@@ -164,13 +164,13 @@ func CheckStreamInfoHealth(nfo *api.StreamInfo, check *Result, opts CheckStreamH
 
 func CheckStreamHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
 	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 	defer nc.Close()
 
 	mgr, err := jsm.New(nc, jsmOpts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 
@@ -179,23 +179,23 @@ func CheckStreamHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option,
 
 func CheckStreamHealthWithConnection(mgr *jsm.Manager, check *Result, opts CheckStreamHealthOptions, log api.Logger) error {
 	if opts.StreamName == "" {
-		check.Critical("stream name is required")
+		check.Criticalf("stream name is required")
 		return nil
 	}
 
 	stream, err := mgr.LoadStream(opts.StreamName)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 
 	_, err = populateStreamHealthCheckOptions(stream.Metadata(), &opts)
-	if check.CriticalIfErr(err, "could not configure based on metadata: %v", err) {
+	if check.CriticalIfErrf(err, "could not configure based on metadata: %v", err) {
 		return nil
 	}
 
 	// make sure latest info cache is set as checks accesses it directly
 	nfo, err := stream.LatestInformation()
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 
@@ -220,13 +220,13 @@ func streamCheckMirror(si *api.StreamInfo, check *Result, opts CheckStreamHealth
 
 	if mirror == nil {
 		log.Debugf("CRITICAL: not mirrored")
-		check.Critical("not mirrored")
+		check.Criticalf("not mirrored")
 		return
 	}
 
 	if state == nil {
 		log.Debugf("CRITICAL: invalid state")
-		check.Critical("invalid state")
+		check.Criticalf("invalid state")
 		return
 	}
 
@@ -239,18 +239,18 @@ func streamCheckMirror(si *api.StreamInfo, check *Result, opts CheckStreamHealth
 
 	if opts.SourcesLagCritical > 0 && state.Lag >= opts.SourcesLagCritical {
 		log.Debugf("CRITICAL: Mirror lag %d", state.Lag)
-		check.Critical("Mirror Lag %d", state.Lag)
+		check.Criticalf("Mirror Lag %d", state.Lag)
 		ok = false
 	}
 
 	if opts.SourcesSeenCritical > 0 && state.Active >= secondsToDuration(opts.SourcesSeenCritical) {
 		log.Debugf("CRITICAL: Mirror Seen > %v", state.Active)
-		check.Critical("Mirror Seen %v", state.Active)
+		check.Criticalf("Mirror Seen %v", state.Active)
 		ok = false
 	}
 
 	if ok {
-		check.Ok("Mirror %s", mirror.Name)
+		check.Okf("Mirror %s", mirror.Name)
 	}
 }
 
@@ -263,12 +263,12 @@ func streamCheckSources(si *api.StreamInfo, check *Result, opts CheckStreamHealt
 	switch {
 	case opts.MinSources > 0 && count < opts.MinSources:
 		//log.Debugf("CRITICAL: %d/%d sources", count, opts.MinSources)
-		check.Critical("%d sources", count)
+		check.Criticalf("%d sources", count)
 	case opts.MaxSources > 0 && count > opts.MaxSources:
 		//log.Debugf("CRITICAL: %d/%d sources", count, opts.MaxSources)
-		check.Critical("%d sources", count)
+		check.Criticalf("%d sources", count)
 	default:
-		check.Ok("%d sources", count)
+		check.Okf("%d sources", count)
 	}
 
 	if opts.SourcesLagCritical <= 0 && opts.SourcesSeenCritical <= 0 {
@@ -295,15 +295,15 @@ func streamCheckSources(si *api.StreamInfo, check *Result, opts CheckStreamHealt
 
 	if lagged > 0 {
 		log.Debugf("CRITICAL: %d/%d sources are lagged", lagged, count)
-		check.Critical("%d sources are lagged", lagged)
+		check.Criticalf("%d sources are lagged", lagged)
 	} else {
-		check.Ok("%d sources current", count)
+		check.Okf("%d sources current", count)
 	}
 	if inactive > 0 {
 		log.Debugf("CRITICAL: %d/%d sources are inactive", inactive, count)
-		check.Critical("%d sources are inactive", inactive)
+		check.Criticalf("%d sources are inactive", inactive)
 	} else {
-		check.Ok("%d sources active", count)
+		check.Okf("%d sources active", count)
 	}
 }
 
@@ -320,18 +320,18 @@ func streamCheckSubjects(si *api.StreamInfo, check *Result, opts CheckStreamHeal
 	switch {
 	case lt && ns >= opts.SubjectsCrit:
 		log.Debugf("CRITICAL subjects %d <= %d", ns, opts.SubjectsCrit)
-		check.Critical("%d subjects", ns)
+		check.Criticalf("%d subjects", ns)
 	case lt && ns >= opts.SubjectsWarn:
 		log.Debugf("WARNING subjects %d >= %d", ns, opts.SubjectsWarn)
-		check.Warn("%d subjects", ns)
+		check.Warnf("%d subjects", ns)
 	case !lt && ns <= opts.SubjectsCrit:
-		check.Critical("%d subjects", ns)
+		check.Criticalf("%d subjects", ns)
 		log.Debugf("CRITICAL subjects %d <= %d", ns, opts.SubjectsCrit)
 	case !lt && ns <= opts.SubjectsWarn:
-		check.Warn("%d subjects", ns)
+		check.Warnf("%d subjects", ns)
 		log.Debugf("WARNING subjects %d >= %d", ns, opts.SubjectsWarn)
 	default:
-		check.Ok("%d subjects", ns)
+		check.Okf("%d subjects", ns)
 	}
 }
 
@@ -345,17 +345,17 @@ func streamCheckMessages(si *api.StreamInfo, check *Result, opts CheckStreamHeal
 
 	if opts.MessagesCrit > 0 && si.State.Msgs <= opts.MessagesCrit {
 		log.Debugf("CRITICAL: %d messages", si.State.Msgs)
-		check.Critical("%d messages", si.State.Msgs)
+		check.Criticalf("%d messages", si.State.Msgs)
 		return
 	}
 
 	if opts.MessagesWarn > 0 && si.State.Msgs <= opts.MessagesWarn {
 		log.Debugf("WARNING: %d messages expected <= %d", si.State.Msgs, opts.MessagesWarn)
-		check.Warn("%d messages", si.State.Msgs)
+		check.Warnf("%d messages", si.State.Msgs)
 		return
 	}
 
-	check.Ok("%d messages", si.State.Msgs)
+	check.Okf("%d messages", si.State.Msgs)
 }
 
 func streamCheckCluster(si *api.StreamInfo, check *Result, opts CheckStreamHealthOptions, log api.Logger) {
@@ -367,7 +367,7 @@ func streamCheckCluster(si *api.StreamInfo, check *Result, opts CheckStreamHealt
 
 	if nfo == nil || si.Config.Replicas <= 1 {
 		log.Debugf("Stream is not clustered")
-		check.Critical("Stream is not clustered")
+		check.Criticalf("Stream is not clustered")
 		return
 	}
 
@@ -376,17 +376,17 @@ func streamCheckCluster(si *api.StreamInfo, check *Result, opts CheckStreamHealt
 	if hasLeader {
 		nPeer++
 	} else {
-		check.Critical("No leader")
+		check.Criticalf("No leader")
 		log.Debugf("No leader found")
 		return
 	}
 
 	if nPeer != opts.ClusterExpectedPeers {
 		log.Debugf("Expected %d replicas got %d", opts.ClusterExpectedPeers, nPeer)
-		check.Critical("Expected %d replicas got %d", opts.ClusterExpectedPeers, nPeer)
+		check.Criticalf("Expected %d replicas got %d", opts.ClusterExpectedPeers, nPeer)
 		return
 	} else {
-		check.Ok("%d peers", nPeer)
+		check.Okf("%d peers", nPeer)
 	}
 
 	inactive := 0
@@ -409,24 +409,24 @@ func streamCheckCluster(si *api.StreamInfo, check *Result, opts CheckStreamHealt
 
 	if offline > 0 {
 		log.Debugf("CRITICAL: %d replicas are offline", offline)
-		check.Critical("%d replicas offline", offline)
+		check.Criticalf("%d replicas offline", offline)
 	}
 
 	switch {
 	case opts.ClusterLagCritical <= 0:
 	case lagged > 0:
 		//log.Debugf("CRITICAL: %d replicas are lagged", lagged)
-		check.Critical("%d replicas lagged", lagged)
+		check.Criticalf("%d replicas lagged", lagged)
 	default:
-		check.Ok("replicas are current")
+		check.Okf("replicas are current")
 	}
 
 	switch {
 	case opts.ClusterSeenCritical <= 0:
 	case inactive > 0:
 		//log.Debugf("CRITICAL: %d replicas are inactive", inactive)
-		check.Critical("%d replicas inactive", inactive)
+		check.Criticalf("%d replicas inactive", inactive)
 	default:
-		check.Ok("replicas are active")
+		check.Okf("replicas are active")
 	}
 }

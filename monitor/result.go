@@ -58,45 +58,88 @@ func (r *Result) Pd(pd ...*PerfDataItem) {
 	r.PerfData = append(r.PerfData, pd...)
 }
 
-func (r *Result) CriticalExit(format string, a ...any) {
-	r.Critical(format, a...)
+func (r *Result) CriticalExit(msg string) {
+	r.Critical(msg)
 	r.GenericExit()
 }
 
-func (r *Result) Critical(format string, a ...any) {
+func (r *Result) CriticalExitf(format string, a ...any) {
+	r.Criticalf(format, a...)
+	r.GenericExit()
+}
+
+func (r *Result) Critical(msg string) {
+	r.Criticals = append(r.Criticals, msg)
+}
+
+func (r *Result) Criticalf(format string, a ...any) {
 	r.Criticals = append(r.Criticals, fmt.Sprintf(format, a...))
 }
 
-func (r *Result) Warn(format string, a ...any) {
+func (r *Result) Warn(msg string) {
+	r.Warnings = append(r.Warnings, msg)
+}
+
+func (r *Result) Warnf(format string, a ...any) {
 	r.Warnings = append(r.Warnings, fmt.Sprintf(format, a...))
 }
 
-func (r *Result) Ok(format string, a ...any) {
+func (r *Result) Ok(msg string) {
+	r.OKs = append(r.OKs, msg)
+}
+
+func (r *Result) Okf(format string, a ...any) {
 	r.OKs = append(r.OKs, fmt.Sprintf(format, a...))
 }
 
-func (r *Result) OkIfNoWarningsOrCriticals(format string, a ...any) {
+func (r *Result) OkIfNoWarningsOrCriticals(msg string) {
 	if len(r.Warnings) == 0 && len(r.Criticals) == 0 {
-		r.Ok(format, a...)
+		r.Ok(msg)
 	}
 }
 
-func (r *Result) CriticalExitIfErr(err error, format string, a ...any) bool {
+func (r *Result) OkIfNoWarningsOrCriticalsf(format string, a ...any) {
+	if len(r.Warnings) == 0 && len(r.Criticals) == 0 {
+		r.Okf(format, a...)
+	}
+}
+
+func (r *Result) CriticalExitIfErrf(err error, format string, a ...any) bool {
 	if err == nil {
 		return false
 	}
 
-	r.CriticalExit(format, a...)
+	r.CriticalExitf(format, a...)
 
 	return true
 }
 
-func (r *Result) CriticalIfErr(err error, format string, a ...any) bool {
+func (r *Result) CriticalExitIfErr(err error, msg string) bool {
 	if err == nil {
 		return false
 	}
 
-	r.Critical(format, a...)
+	r.CriticalExit(msg)
+
+	return true
+}
+
+func (r *Result) CriticalIfErr(err error, msg string) bool {
+	if err == nil {
+		return false
+	}
+
+	r.Critical(msg)
+
+	return true
+}
+
+func (r *Result) CriticalIfErrf(err error, format string, a ...any) bool {
+	if err == nil {
+		return false
+	}
+
+	r.Criticalf(format, a...)
 
 	return true
 }
@@ -314,7 +357,7 @@ func (r *Result) GenericExit() {
 	// so we try to add some flavor here at least
 	err := recover()
 	if err != nil {
-		r.Critical("check caused a panic: %v", err)
+		r.Criticalf("check caused a panic: %v", err)
 		if r.Trace {
 			debug.PrintStack()
 		}

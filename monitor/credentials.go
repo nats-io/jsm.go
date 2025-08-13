@@ -36,7 +36,7 @@ type CheckCredentialOptions struct {
 func CheckCredential(check *Result, opts CheckCredentialOptions) error {
 	ok, err := fileAccessible(opts.File)
 	if err != nil {
-		check.Critical("credential not accessible: %v", err)
+		check.Criticalf("credential not accessible: %v", err)
 		return nil
 	}
 
@@ -47,19 +47,19 @@ func CheckCredential(check *Result, opts CheckCredentialOptions) error {
 
 	cb, err := os.ReadFile(opts.File)
 	if err != nil {
-		check.Critical("credential not accessible: %v", err)
+		check.Criticalf("credential not accessible: %v", err)
 		return nil
 	}
 
 	token, err := nkeys.ParseDecoratedJWT(cb)
 	if err != nil {
-		check.Critical("invalid credential: %v", err)
+		check.Criticalf("invalid credential: %v", err)
 		return nil
 	}
 
 	claims, err := jwt.Decode(token)
 	if err != nil {
-		check.Critical("invalid credential: %v", err)
+		check.Criticalf("invalid credential: %v", err)
 	}
 
 	now := time.Now().UTC().Unix()
@@ -74,11 +74,11 @@ func CheckCredential(check *Result, opts CheckCredentialOptions) error {
 	case cd.Expires == 0 && opts.RequiresExpiry:
 		check.Critical("never expires")
 	case opts.ValidityCritical > 0 && (until <= crit):
-		check.Critical("expires sooner than %s", f(secondsToDuration(opts.ValidityCritical)))
+		check.Criticalf("expires sooner than %s", f(secondsToDuration(opts.ValidityCritical)))
 	case opts.ValidityWarning > 0 && (until <= warn):
-		check.Warn("expires sooner than %s", f(secondsToDuration(opts.ValidityWarning)))
+		check.Warnf("expires sooner than %s", f(secondsToDuration(opts.ValidityWarning)))
 	default:
-		check.Ok("expires in %s", time.Unix(cd.Expires, 0).UTC())
+		check.Okf("expires in %s", time.Unix(cd.Expires, 0).UTC())
 	}
 
 	return nil

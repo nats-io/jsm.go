@@ -433,9 +433,9 @@
             "inactive_threshold": {
               "description": "Maximum value for inactive_threshold for consumers of this stream. Acts as a default when consumers do not set this value.",
               "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "minimum": 0,
               "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775807
+              "maximum": 9223372036854775807
             },
             "max_ack_pending": {
               "description": "Maximum value for max_ack_pending for consumers of this stream. Acts as a default when consumers do not set this value.",

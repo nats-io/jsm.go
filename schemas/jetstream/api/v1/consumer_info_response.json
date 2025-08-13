@@ -276,18 +276,19 @@
             "max_batch": {
               "type": "integer",
               "description": "The largest batch property that may be specified when doing a pull on a Pull Consumer",
-              "default": 0
+              "default": 0,
+              "minimum": 0
             },
             "max_expires": {
               "description": "The maximum expires value that may be set when doing a pull on a Pull Consumer",
               "default": 0,
               "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "minimum": 0,
               "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775807
+              "maximum": 9223372036854775807
             },
             "max_bytes": {
-              "description": "The maximum bytes value that maybe set when dong a pull on a Pull Consumer",
+              "description": "The maximum bytes value that maybe set when doing a pull on a Pull Consumer",
               "minimum": 0,
               "default": 0,
               "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
@@ -298,18 +299,18 @@
               "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
               "default": 0,
               "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "minimum": 0,
               "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775807
+              "maximum": 9223372036854775807
             },
             "backoff": {
               "description": "List of durations in Go format that represents a retry time scale for NaK'd messages",
               "type": "array",
               "items": {
                 "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                "minimum": 0,
                 "type": "integer",
-                "maximum": 9223372036854775807,
-                "minimum": -9223372036854775807
+                "maximum": 9223372036854775807
               }
             },
             "num_replicas": {
@@ -356,7 +357,12 @@
               ]
             },
             "priority_timeout": {
-              "description": "For pinned_client priority policy how long before the client times out"
+              "description": "For pinned_client priority policy how long before the client times out",
+              "default": 0,
+              "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "minimum": 0,
+              "type": "integer",
+              "maximum": 9223372036854775807
             },
             "opt_start_seq": {
               "description": "Start sequence used with the DeliverByStartSequence deliver policy.",
@@ -550,9 +556,9 @@
         "pause_remaining": {
           "description": "When paused the time remaining until unpause",
           "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "minimum": 0,
           "type": "integer",
-          "maximum": 9223372036854775807,
-          "minimum": -9223372036854775807
+          "maximum": 9223372036854775807
         },
         "priority_groups": {
           "description": "The state of Priority Groups",

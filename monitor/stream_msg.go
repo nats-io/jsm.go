@@ -42,13 +42,13 @@ type CheckStreamMessageOptions struct {
 
 func CheckStreamMessage(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckStreamMessageOptions) error {
 	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 	defer nc.Close()
 
 	mgr, err := jsm.New(nc, jsmOpts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 
@@ -61,14 +61,14 @@ func CheckStreamMessageWithConnection(mgr *jsm.Manager, check *Result, opts Chec
 		check.Critical("no message found")
 		return nil
 	}
-	if check.CriticalIfErr(err, "msg load failed: %v", err) {
+	if check.CriticalIfErrf(err, "msg load failed: %v", err) {
 		return nil
 	}
 
 	ts := msg.Time
 	if opts.BodyAsTimestamp {
 		i, err := strconv.ParseInt(string(bytes.TrimSpace(msg.Data)), 10, 64)
-		check.CriticalIfErr(err, "invalid timestamp body: %v", err)
+		check.CriticalIfErrf(err, "invalid timestamp body: %v", err)
 		ts = time.Unix(i, 0)
 	}
 
@@ -91,23 +91,23 @@ func CheckStreamMessageWithConnection(mgr *jsm.Manager, check *Result, opts Chec
 	since := time.Since(ts)
 
 	if opts.AgeCritical > 0 && since > secondsToDuration(opts.AgeCritical) {
-		check.Critical("%v old", since.Round(time.Millisecond))
+		check.Criticalf("%v old", since.Round(time.Millisecond))
 	} else if opts.AgeWarning > 0 && since > secondsToDuration(opts.AgeWarning) {
-		check.Warn("%v old", time.Since(ts).Round(time.Millisecond))
+		check.Warnf("%v old", time.Since(ts).Round(time.Millisecond))
 	}
 
 	if opts.Content != "" {
 		re, err := regexp.Compile(opts.Content)
-		if check.CriticalIfErr(err, "content regex compile failed: %v", err) {
+		if check.CriticalIfErrf(err, "content regex compile failed: %v", err) {
 			return nil
 		}
 
 		if !re.Match(msg.Data) {
-			check.Critical("does not match regex: %s", re.String())
+			check.Criticalf("does not match regex: %s", re.String())
 		}
 	}
 
-	check.OkIfNoWarningsOrCriticals("Valid message on %s > %s", opts.StreamName, opts.Subject)
+	check.OkIfNoWarningsOrCriticalsf("Valid message on %s > %s", opts.StreamName, opts.Subject)
 
 	return nil
 }

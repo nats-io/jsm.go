@@ -43,7 +43,7 @@ func CheckJetStreamAccountWithConnection(mgr *jsm.Manager, check *Result, opts C
 	if opts.Resolver == nil {
 		opts.Resolver = func() *api.JetStreamAccountStats {
 			info, err := mgr.JetStreamAccountInfo()
-			if check.CriticalIfErr(err, "JetStream not available: %s", err) {
+			if check.CriticalIfErrf(err, "JetStream not available: %s", err) {
 				return nil
 			}
 			return info
@@ -53,18 +53,18 @@ func CheckJetStreamAccountWithConnection(mgr *jsm.Manager, check *Result, opts C
 	info := opts.Resolver()
 
 	err = checkJSAccountInfo(check, &opts, info)
-	if check.CriticalIfErr(err, "JetStream not available: %s", err) {
+	if check.CriticalIfErrf(err, "JetStream not available: %s", err) {
 		return nil
 	}
 
 	if opts.CheckReplicas {
 		streams, _, err := mgr.Streams(nil)
-		if check.CriticalIfErr(err, "JetStream not available: %s", err) {
+		if check.CriticalIfErrf(err, "JetStream not available: %s", err) {
 			return nil
 		}
 
 		err = checkStreamClusterHealth(check, &opts, streams)
-		if check.CriticalIfErr(err, "JetStream not available: %s", err) {
+		if check.CriticalIfErrf(err, "JetStream not available: %s", err) {
 			return nil
 		}
 	}
@@ -79,13 +79,13 @@ func CheckJetStreamAccount(server string, nopts []nats.Option, jsmOpts []jsm.Opt
 
 	if opts.Resolver == nil {
 		nc, err = nats.Connect(server, nopts...)
-		if check.CriticalIfErr(err, "connection failed: %v", err) {
+		if check.CriticalIfErrf(err, "connection failed: %v", err) {
 			return nil
 		}
 		defer nc.Close()
 
 		mgr, err = jsm.New(nc, jsmOpts...)
-		if check.CriticalIfErr(err, "setup failed: %v", err) {
+		if check.CriticalIfErrf(err, "setup failed: %v", err) {
 			return nil
 		}
 	}
@@ -182,7 +182,7 @@ func checkStreamClusterHealth(check *Result, opts *CheckJetStreamAccountOptions,
 	})
 
 	if critCnt > 0 || notEnoughReplicasCnt > 0 || noLeaderCnt > 0 || seenCritCnt > 0 || lagCritCnt > 0 {
-		check.Critical("%d unhealthy streams", critCnt+notEnoughReplicasCnt+noLeaderCnt)
+		check.Criticalf("%d unhealthy streams", critCnt+notEnoughReplicasCnt+noLeaderCnt)
 	}
 
 	return nil
@@ -210,21 +210,21 @@ func checkJSAccountInfo(check *Result, opts *CheckJetStreamAccountOptions, info 
 		})
 
 		if warn != -1 && crit != -1 && warn >= crit {
-			check.Critical("%s: invalid thresholds", item)
+			check.Criticalf("%s: invalid thresholds", item)
 			return
 		}
 
 		if pct > 100 {
-			check.Critical("%s: exceed server limits", item)
+			check.Criticalf("%s: exceed server limits", item)
 			return
 		}
 
 		if warn >= 0 && crit >= 0 {
 			switch {
 			case pct > crit:
-				check.Critical("%d%% %s", pct, item)
+				check.Criticalf("%d%% %s", pct, item)
 			case pct > warn:
-				check.Warn("%d%% %s", pct, item)
+				check.Warnf("%d%% %s", pct, item)
 			}
 		}
 	}

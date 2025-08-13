@@ -136,22 +136,22 @@ func CheckConsumerInfoHealth(nfo *api.ConsumerInfo, check *Result, opts CheckCon
 
 func CheckConsumerHealthWithConnection(mgr *jsm.Manager, check *Result, opts CheckConsumerHealthOptions, log api.Logger) error {
 	if opts.StreamName == "" {
-		check.Critical("stream name is required")
+		check.Criticalf("stream name is required")
 		return nil
 	}
 	if opts.ConsumerName == "" {
-		check.Critical("consumer name is required")
+		check.Criticalf("consumer name is required")
 		return nil
 	}
 
 	consumer, err := mgr.LoadConsumer(opts.StreamName, opts.ConsumerName)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 
 	// make sure latest info cache is set as checks accesses it directly
 	nfo, err := consumer.LatestState()
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 
@@ -177,13 +177,13 @@ func CheckConsumerHealthWithConnection(mgr *jsm.Manager, check *Result, opts Che
 
 func CheckConsumerHealth(server string, nopts []nats.Option, jsmOpts []jsm.Option, check *Result, opts CheckConsumerHealthOptions, log api.Logger) error {
 	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 	defer nc.Close()
 
 	mgr, err := jsm.New(nc, jsmOpts...)
-	if check.CriticalIfErr(err, "could not load info: %v", err) {
+	if check.CriticalIfErrf(err, "could not load info: %v", err) {
 		return nil
 	}
 
@@ -210,12 +210,12 @@ func consumerCheckPinned(nfo *api.ConsumerInfo, check *Result, opts CheckConsume
 
 	switch {
 	case len(nfo.PriorityGroups) == 0 || len(nfo.Config.PriorityGroups) == 0 || nfo.Config.PriorityPolicy != api.PriorityPinnedClient:
-		check.Critical("Not pinned client priority mode")
+		check.Criticalf("Not pinned client priority mode")
 	case pinned != len(nfo.Config.PriorityGroups):
 		log.Debugf("CRITICAL: %d / %d pinned clients", pinned, len(nfo.Config.PriorityGroups))
-		check.Critical("%d / %d pinned clients", pinned, len(nfo.Config.PriorityGroups))
+		check.Criticalf("%d / %d pinned clients", pinned, len(nfo.Config.PriorityGroups))
 	default:
-		check.Ok("%d pinned clients", pinned)
+		check.Okf("%d pinned clients", pinned)
 	}
 }
 
@@ -224,12 +224,12 @@ func consumerCheckLastAck(nfo *api.ConsumerInfo, check *Result, opts CheckConsum
 	case opts.LastAckCritical <= 0:
 	case nfo.AckFloor.Last == nil:
 		log.Debugf("CRITICAL: No acks")
-		check.Critical("No acks")
+		check.Criticalf("No acks")
 	case time.Since(*nfo.AckFloor.Last) >= secondsToDuration(opts.LastAckCritical):
 		log.Debugf("CRITICAL: Last ack %v ago", time.Since(*nfo.AckFloor.Last))
-		check.Critical("Last ack %v ago", time.Since(*nfo.AckFloor.Last))
+		check.Criticalf("Last ack %v ago", time.Since(*nfo.AckFloor.Last))
 	default:
-		check.Ok("Last ack %v", nfo.AckFloor.Last)
+		check.Okf("Last ack %v", nfo.AckFloor.Last)
 	}
 }
 
@@ -238,12 +238,12 @@ func consumerCheckLastDelivery(nfo *api.ConsumerInfo, check *Result, opts CheckC
 	case opts.LastDeliveryCritical <= 0:
 	case nfo.Delivered.Last == nil:
 		log.Debugf("CRITICAL: No deliveries")
-		check.Critical("No deliveries")
+		check.Criticalf("No deliveries")
 	case time.Since(*nfo.Delivered.Last) >= secondsToDuration(opts.LastDeliveryCritical):
 		log.Debugf("CRITICAL: Last delivery %v", nfo.Delivered.Last.Format(time.DateTime))
-		check.Critical("Last delivery %s ago", time.Since(*nfo.Delivered.Last))
+		check.Criticalf("Last delivery %s ago", time.Since(*nfo.Delivered.Last))
 	default:
-		check.Ok("Last delivery %v", nfo.Delivered.Last)
+		check.Okf("Last delivery %v", nfo.Delivered.Last)
 	}
 }
 
@@ -253,9 +253,9 @@ func consumerCheckRedelivery(nfo *api.ConsumerInfo, check *Result, opts CheckCon
 		return
 	case nfo.NumRedelivered >= opts.RedeliveryCritical:
 		log.Debugf("CRITICAL Redelivered: %v", nfo.NumRedelivered)
-		check.Critical("Redelivered: %v", nfo.NumRedelivered)
+		check.Criticalf("Redelivered: %v", nfo.NumRedelivered)
 	default:
-		check.Ok("Redelivered: %v", nfo.NumRedelivered)
+		check.Okf("Redelivered: %v", nfo.NumRedelivered)
 	}
 }
 
@@ -265,9 +265,9 @@ func consumerCheckUnprocessed(nfo *api.ConsumerInfo, check *Result, opts CheckCo
 		return
 	case nfo.NumPending >= uint64(opts.UnprocessedCritical):
 		log.Debugf("CRITICAL Unprocessed Messages: %v", nfo.NumAckPending)
-		check.Critical("Unprocessed Messages: %v", nfo.NumAckPending)
+		check.Criticalf("Unprocessed Messages: %v", nfo.NumAckPending)
 	default:
-		check.Ok("Unprocessed Messages: %v", nfo.NumAckPending)
+		check.Okf("Unprocessed Messages: %v", nfo.NumAckPending)
 	}
 }
 
@@ -277,9 +277,9 @@ func consumerCheckWaiting(nfo *api.ConsumerInfo, check *Result, opts CheckConsum
 		return
 	case nfo.NumWaiting >= opts.WaitingCritical:
 		log.Debugf("CRITICAL Waiting Pulls: %v", nfo.NumWaiting)
-		check.Critical("Waiting Pulls: %v", nfo.NumWaiting)
+		check.Criticalf("Waiting Pulls: %v", nfo.NumWaiting)
 	default:
-		check.Ok("Waiting Pulls: %v", nfo.NumWaiting)
+		check.Okf("Waiting Pulls: %v", nfo.NumWaiting)
 	}
 }
 
@@ -289,8 +289,8 @@ func consumerCheckOutstandingAck(nfo *api.ConsumerInfo, check *Result, opts Chec
 		return
 	case nfo.NumAckPending >= opts.AckOutstandingCritical:
 		log.Debugf("CRITICAL Ack Pending: %v", nfo.NumAckPending)
-		check.Critical("Ack Pending: %v", nfo.NumAckPending)
+		check.Criticalf("Ack Pending: %v", nfo.NumAckPending)
 	default:
-		check.Ok("Ack Pending: %v", nfo.NumAckPending)
+		check.Okf("Ack Pending: %v", nfo.NumAckPending)
 	}
 }

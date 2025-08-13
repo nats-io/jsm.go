@@ -33,23 +33,23 @@ type CheckKVBucketAndKeyOptions struct {
 
 func CheckKVBucketAndKeyWithConnection(nc *nats.Conn, check *Result, opts CheckKVBucketAndKeyOptions) error {
 	js, err := nc.JetStream()
-	if check.CriticalIfErr(err, "connection failed: %v", err) {
+	if check.CriticalIfErrf(err, "connection failed: %v", err) {
 		return nil
 	}
 
 	kv, err := js.KeyValue(opts.Bucket)
 	if errors.Is(err, nats.ErrBucketNotFound) {
-		check.Critical("bucket %v not found", opts.Bucket)
+		check.Criticalf("bucket %v not found", opts.Bucket)
 		return nil
 	} else if err != nil {
-		check.Critical("could not load bucket: %v", err)
+		check.Criticalf("could not load bucket: %v", err)
 		return nil
 	}
 
-	check.Ok("bucket %s", opts.Bucket)
+	check.Okf("bucket %s", opts.Bucket)
 
 	status, err := kv.Status()
-	if check.CriticalIfErr(err, "could not obtain bucket status: %v", err) {
+	if check.CriticalIfErrf(err, "could not obtain bucket status: %v", err) {
 		return nil
 	}
 
@@ -60,19 +60,19 @@ func CheckKVBucketAndKeyWithConnection(nc *nats.Conn, check *Result, opts CheckK
 	if opts.Key != "" {
 		v, err := kv.Get(opts.Key)
 		if errors.Is(err, nats.ErrKeyNotFound) {
-			check.Critical("key %s not found", opts.Key)
+			check.Criticalf("key %s not found", opts.Key)
 		} else if err != nil {
-			check.Critical("key %s not loaded: %v", opts.Key, err)
+			check.Criticalf("key %s not loaded: %v", opts.Key, err)
 		} else {
 			switch v.Operation() {
 			case nats.KeyValueDelete:
-				check.Critical("key %v is deleted", opts.Key)
+				check.Criticalf("key %v is deleted", opts.Key)
 			case nats.KeyValuePurge:
-				check.Critical("key %v is purged", opts.Key)
+				check.Criticalf("key %v is purged", opts.Key)
 			case nats.KeyValuePut:
-				check.Ok("key %s found", opts.Key)
+				check.Okf("key %s found", opts.Key)
 			default:
-				check.Critical("unknown key operation for %s: %v", opts.Key, v.Operation())
+				check.Criticalf("unknown key operation for %s: %v", opts.Key, v.Operation())
 			}
 		}
 	}
@@ -80,19 +80,19 @@ func CheckKVBucketAndKeyWithConnection(nc *nats.Conn, check *Result, opts CheckK
 	if opts.ValuesWarning > -1 || opts.ValuesCritical > -1 {
 		if opts.ValuesCritical < opts.ValuesWarning {
 			if opts.ValuesCritical > -1 && status.Values() <= uint64(opts.ValuesCritical) {
-				check.Critical("%d values", status.Values())
+				check.Criticalf("%d values", status.Values())
 			} else if opts.ValuesWarning > -1 && status.Values() <= uint64(opts.ValuesWarning) {
-				check.Warn("%d values", status.Values())
+				check.Warnf("%d values", status.Values())
 			} else {
-				check.Ok("%d values", status.Values())
+				check.Okf("%d values", status.Values())
 			}
 		} else {
 			if opts.ValuesCritical > -1 && status.Values() >= uint64(opts.ValuesCritical) {
-				check.Critical("%d values", status.Values())
+				check.Criticalf("%d values", status.Values())
 			} else if opts.ValuesWarning > -1 && status.Values() >= uint64(opts.ValuesWarning) {
-				check.Warn("%d values", status.Values())
+				check.Warnf("%d values", status.Values())
 			} else {
-				check.Ok("%d values", status.Values())
+				check.Okf("%d values", status.Values())
 			}
 		}
 	}
@@ -110,7 +110,7 @@ func CheckKVBucketAndKeyWithConnection(nc *nats.Conn, check *Result, opts CheckK
 
 func CheckKVBucketAndKey(server string, nopts []nats.Option, check *Result, opts CheckKVBucketAndKeyOptions) error {
 	nc, err := nats.Connect(server, nopts...)
-	if check.CriticalIfErr(err, "connection failed: %v", err) {
+	if check.CriticalIfErrf(err, "connection failed: %v", err) {
 		return nil
 	}
 	defer nc.Close()

@@ -156,8 +156,9 @@ type JSApiConsumerListRequest struct {
 type JSApiConsumerListResponse struct {
 	JSApiResponse
 	JSApiIterableResponse
-	Consumers []*ConsumerInfo `json:"consumers"`
-	Missing   []string        `json:"missing,omitempty"`
+	Consumers []*ConsumerInfo   `json:"consumers"`
+	Missing   []string          `json:"missing,omitempty"`
+	Offline   map[string]string `json:"offline,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.consumer_leader_stepdown_request

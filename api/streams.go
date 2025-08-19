@@ -107,8 +107,9 @@ type JSApiStreamNamesResponse struct {
 type JSApiStreamListResponse struct {
 	JSApiResponse
 	JSApiIterableResponse
-	Streams []*StreamInfo `json:"streams"`
-	Missing []string      `json:"missing,omitempty"`
+	Streams []*StreamInfo     `json:"streams"`
+	Missing []string          `json:"missing,omitempty"`
+	Offline map[string]string `json:"offline,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_list_request

@@ -450,16 +450,6 @@
                 "type": "string",
                 "format": "date-time"
               },
-              "offline": {
-                "type": "boolean",
-                "description": "Indicates if the stream is currently offline",
-                "default": false
-              },
-              "offline_reason": {
-                "type": "string",
-                "description": "Reason the stream is currently offline",
-                "default": ""
-              },
               "delivered": {
                 "description": "The last message delivered from this Consumer",
                 "type": "object",

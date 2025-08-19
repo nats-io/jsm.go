@@ -600,8 +600,6 @@ type ConsumerInfo struct {
 	PauseRemaining time.Duration        `json:"pause_remaining,omitempty"`
 	TimeStamp      time.Time            `json:"ts"`
 	PriorityGroups []PriorityGroupState `json:"priority_groups,omitempty"`
-	Offline        bool                 `json:"offline,omitempty"` // Reporting when a consumer is offline.
-	OfflineReason  string               `json:"offline_reason,omitempty"`
 }
 
 // PriorityGroupState is the state of a consumer group

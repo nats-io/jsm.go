@@ -366,24 +366,24 @@ func (m *Manager) IsKnownConsumer(stream string, consumer string) (bool, error) 
 	return true, nil
 }
 
-// EachStream iterates over all known Streams, does not handle any streams the cluster could not get data from but returns a list of those
-func (m *Manager) EachStream(filter *StreamNamesFilter, cb func(*Stream)) (missing []string, err error) {
-	streams, missing, err := m.Streams(filter)
+// EachStream iterates over all known Streams, Streams that the state is not known off are in the missing list and offline streams with reasons are in offline
+func (m *Manager) EachStream(filter *StreamNamesFilter, cb func(*Stream)) (missing []string, offline map[string]string, err error) {
+	streams, missing, offline, err := m.Streams(filter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, s := range streams {
 		cb(s)
 	}
 
-	return missing, nil
+	return missing, offline, nil
 }
 
 // Consumers is a sorted list of all known Consumers within a Stream and a list of any consumer names that were known but no details were found
-func (m *Manager) Consumers(stream string) (consumers []*Consumer, missing []string, err error) {
+func (m *Manager) Consumers(stream string) (consumers []*Consumer, missing []string, offline map[string]string, err error) {
 	if !IsValidName(stream) {
-		return nil, nil, fmt.Errorf("%q is not a valid stream name", stream)
+		return nil, nil, nil, fmt.Errorf("%q is not a valid stream name", stream)
 	}
 
 	var (
@@ -399,10 +399,18 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, missing []str
 
 		missing = append(missing, apiresp.Missing...)
 		cinfo = append(cinfo, apiresp.Consumers...)
+		for k, v := range apiresp.Offline {
+			if offline == nil {
+				offline = make(map[string]string)
+			}
+
+			offline[k] = v
+		}
+
 		return nil
 	})
 	if err != nil {
-		return consumers, missing, err
+		return nil, nil, nil, err
 	}
 
 	sort.Slice(cinfo, func(i int, j int) bool {
@@ -416,7 +424,15 @@ func (m *Manager) Consumers(stream string) (consumers []*Consumer, missing []str
 		consumers = append(consumers, consumer)
 	}
 
-	return consumers, missing, nil
+	var filteredMissing []string
+	for _, c := range missing {
+		_, found := offline[c]
+		if !found {
+			filteredMissing = append(filteredMissing, c)
+		}
+	}
+
+	return consumers, filteredMissing, offline, nil
 }
 
 // ConsumerNames is a sorted list of all known consumers within a stream
@@ -444,14 +460,9 @@ func (m *Manager) ConsumerNames(stream string) (names []string, err error) {
 	return names, nil
 }
 
-// Streams is a sorted list of all known Streams and a list of any stream names that were known but no details were found
-func (m *Manager) Streams(filter *StreamNamesFilter) ([]*Stream, []string, error) {
-	var (
-		streams []*Stream
-		missing []string
-		err     error
-		resp    = func() apiIterableResponse { return &api.JSApiStreamListResponse{} }
-	)
+// Streams is a sorted list of all known Streams and a list of any stream names that were known but no details were found, since 2.12 offline streams and reasons will be included also
+func (m *Manager) Streams(filter *StreamNamesFilter) (streams []*Stream, missing []string, offline map[string]string, err error) {
+	resp := func() apiIterableResponse { return &api.JSApiStreamListResponse{} }
 
 	req := &api.JSApiStreamListRequest{JSApiIterableRequest: api.JSApiIterableRequest{Offset: 0}}
 	if filter != nil {
@@ -473,11 +484,26 @@ func (m *Manager) Streams(filter *StreamNamesFilter) ([]*Stream, []string, error
 		}
 
 		missing = append(missing, apiresp.Missing...)
+		for k, v := range apiresp.Offline {
+			if offline == nil {
+				offline = make(map[string]string)
+			}
+
+			offline[k] = v
+		}
 
 		return nil
 	})
 
-	return streams, missing, err
+	var filteredMissing []string
+	for _, m := range missing {
+		_, found := offline[m]
+		if !found {
+			filteredMissing = append(filteredMissing, m)
+		}
+	}
+
+	return streams, filteredMissing, offline, err
 }
 
 func (m *Manager) apiSubject(subject string) string {

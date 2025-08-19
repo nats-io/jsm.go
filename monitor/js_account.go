@@ -58,7 +58,7 @@ func CheckJetStreamAccountWithConnection(mgr *jsm.Manager, check *Result, opts C
 	}
 
 	if opts.CheckReplicas {
-		streams, _, err := mgr.Streams(nil)
+		streams, _, _, err := mgr.Streams(nil)
 		if check.CriticalIfErrf(err, "JetStream not available: %s", err) {
 			return nil
 		}

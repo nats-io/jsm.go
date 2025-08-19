@@ -655,17 +655,17 @@ func (s *Stream) ConsumerNames() (names []string, err error) {
 }
 
 // EachConsumer calls cb with each known consumer for this stream, error on any error to load consumers
-func (s *Stream) EachConsumer(cb func(consumer *Consumer)) (missing []string, err error) {
-	consumers, missing, err := s.mgr.Consumers(s.Name())
+func (s *Stream) EachConsumer(cb func(consumer *Consumer)) (missing []string, offline map[string]string, err error) {
+	consumers, missing, offline, err := s.mgr.Consumers(s.Name())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, c := range consumers {
 		cb(c)
 	}
 
-	return missing, nil
+	return missing, offline, nil
 }
 
 // LatestInformation returns the most recently fetched stream information

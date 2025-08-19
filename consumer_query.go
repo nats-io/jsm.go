@@ -192,7 +192,7 @@ func (s *Stream) QueryConsumers(opts ...ConsumerQueryOpt) ([]*Consumer, error) {
 	}
 
 	var consumers []*Consumer
-	_, err := s.EachConsumer(func(c *Consumer) {
+	_, _, err := s.EachConsumer(func(c *Consumer) {
 		consumers = append(consumers, c)
 	})
 	if err != nil {

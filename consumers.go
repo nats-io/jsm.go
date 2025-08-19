@@ -629,6 +629,21 @@ func PauseUntil(deadline time.Time) ConsumerOption {
 	}
 }
 
+// PrioritizedPriorityGroups sets the consumer to be a prioritized priority consumer with a certain list of groups. When groups is empty the 'none' policy is set
+func PrioritizedPriorityGroups(groups ...string) ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		if len(groups) == 0 {
+			o.PriorityGroups = []string{}
+			o.PriorityPolicy = api.PriorityNone
+			return nil
+		}
+
+		o.PriorityPolicy = api.PriorityPrioritized
+		o.PriorityGroups = groups
+		return nil
+	}
+}
+
 // PinnedClientPriorityGroups sets the consumer to be a pinned client priority consumer with a certain list of groups. When groups is empty the 'none' policy is set
 func PinnedClientPriorityGroups(ttl time.Duration, groups ...string) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
@@ -767,7 +782,7 @@ func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
 		return nil, err
 	}
 
-	return m.request(s, rj)
+	return m.request(s, rj, nil)
 }
 
 // NextMsgRequest creates a request for a batch of messages on a consumer, data or control flow messages will be sent to inbox
@@ -801,7 +816,7 @@ func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer st
 		return nil, err
 	}
 
-	return m.requestWithContext(ctx, s, []byte(strconv.Itoa(1)))
+	return m.requestWithContext(ctx, s, []byte(strconv.Itoa(1)), nil)
 }
 
 // NextMsgRequest creates a request for a batch of messages, data or control flow messages will be sent to inbox

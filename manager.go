@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -141,6 +142,13 @@ func (m *Manager) IsStreamMaxBytesRequired() (bool, error) {
 
 func (m *Manager) jsonRequest(subj string, req any, response any) (err error) {
 	var body []byte
+	var hdr nats.Header
+
+	lvl, _ := api.RequiredApiLevel(req)
+	if lvl > 0 {
+		hdr = make(nats.Header)
+		hdr.Add(api.JSRequiredApiLevel, strconv.Itoa(lvl))
+	}
 
 	switch {
 	case req == nil:
@@ -156,7 +164,7 @@ func (m *Manager) jsonRequest(subj string, req any, response any) (err error) {
 		}
 	}
 
-	msg, err := m.request(m.apiSubject(subj), body)
+	msg, err := m.request(m.apiSubject(subj), body, hdr)
 	if err != nil {
 		return err
 	}
@@ -276,11 +284,11 @@ func (m *Manager) iterableRequest(subj string, req apiIterableRequest, response 
 	return nil
 }
 
-func (m *Manager) request(subj string, data []byte) (res *nats.Msg, err error) {
-	return m.requestWithTimeout(subj, data, m.timeout)
+func (m *Manager) request(subj string, data []byte, hdr nats.Header) (res *nats.Msg, err error) {
+	return m.requestWithTimeout(subj, data, hdr, m.timeout)
 }
 
-func (m *Manager) requestWithTimeout(subj string, data []byte, timeout time.Duration) (res *nats.Msg, err error) {
+func (m *Manager) requestWithTimeout(subj string, data []byte, hdr nats.Header, timeout time.Duration) (res *nats.Msg, err error) {
 	if m == nil || m.nc == nil {
 		return nil, fmt.Errorf("nats connection is not set")
 	}
@@ -295,7 +303,7 @@ func (m *Manager) requestWithTimeout(subj string, data []byte, timeout time.Dura
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	res, err = m.requestWithContext(ctx, subj, data)
+	res, err = m.requestWithContext(ctx, subj, data, hdr)
 	if err != nil {
 		return nil, err
 	}
@@ -303,12 +311,22 @@ func (m *Manager) requestWithTimeout(subj string, data []byte, timeout time.Dura
 	return res, err
 }
 
-func (m *Manager) requestWithContext(ctx context.Context, subj string, data []byte) (res *nats.Msg, err error) {
+func (m *Manager) requestWithContext(ctx context.Context, subj string, data []byte, hdr nats.Header) (res *nats.Msg, err error) {
 	if m.trace {
-		log.Printf(">>> %s\n%s\n\n", subj, string(data))
+		log.Printf(">>> %s", subj)
+		if len(hdr) > 0 {
+			for k, v := range hdr {
+				log.Printf(">>> Header: %v: %v", k, v)
+			}
+		}
+		log.Print(string(data))
 	}
 
-	res, err = m.nc.RequestWithContext(ctx, subj, data)
+	msg := nats.NewMsg(subj)
+	msg.Data = data
+	msg.Header = hdr
+
+	res, err = m.nc.RequestMsgWithContext(ctx, msg)
 	if err != nil {
 		if m.trace {
 			log.Printf("<<< %s: %s\n\n", subj, err.Error())

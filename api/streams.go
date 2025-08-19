@@ -590,19 +590,19 @@ type StreamConfig struct {
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata"`
 	// AllowMsgTTL allows header initiated per-message TTLs. If disabled,
 	// then the `NATS-TTL` header will be ignored.
-	AllowMsgTTL bool `json:"allow_msg_ttl,omitempty" yaml:"allow_msg_ttl"`
+	AllowMsgTTL bool `json:"allow_msg_ttl,omitempty" yaml:"allow_msg_ttl" api_level:"1"`
 	// SubjectDeleteMarkerTTL enables and sets a duration for adding server markers for delete, purge and max age limits
-	SubjectDeleteMarkerTTL time.Duration `json:"subject_delete_marker_ttl,omitempty" yaml:"subject_delete_marker_ttl"`
+	SubjectDeleteMarkerTTL time.Duration `json:"subject_delete_marker_ttl,omitempty" yaml:"subject_delete_marker_ttl" api_level:"1"`
 	// The following defaults will apply to consumers when created against
 	// this stream, unless overridden manually. They also represent the maximum values that
 	// these properties may have
 	ConsumerLimits StreamConsumerLimits `json:"consumer_limits" yaml:"consumer_limits"`
 	// AllowAtomicPublish allows atomic batch publishing into the stream.
-	AllowAtomicPublish bool `json:"allow_atomic,omitempty" yaml:"allow_atomic"`
+	AllowAtomicPublish bool `json:"allow_atomic,omitempty" yaml:"allow_atomic" api_level:"2"`
 	// AllowMsgCounter allows a stream to use (only) counter CRDTs.
-	AllowMsgCounter bool `json:"allow_msg_counter,omitempty" yaml:"allow_msg_counter"`
+	AllowMsgCounter bool `json:"allow_msg_counter,omitempty" yaml:"allow_msg_counter" api_level:"2"`
 	// AllowMsgSchedules allows the scheduling of messages.
-	AllowMsgSchedules bool `json:"allow_msg_schedules,omitempty" yaml:"allow_msg_schedules"`
+	AllowMsgSchedules bool `json:"allow_msg_schedules,omitempty" yaml:"allow_msg_schedules" api_level:"2"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream

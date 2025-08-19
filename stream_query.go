@@ -198,7 +198,7 @@ func (m *Manager) QueryStreams(opts ...StreamQueryOpt) ([]*Stream, error) {
 		q.matchApiLevel,
 	}
 
-	streams, _, err := m.Streams(nil)
+	streams, _, _, err := m.Streams(nil)
 	if err != nil {
 		return nil, err
 	}

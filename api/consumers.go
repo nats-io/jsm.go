@@ -174,7 +174,7 @@ type JSApiConsumerLeaderStepDownResponse struct {
 
 // io.nats.jetstream.api.v1.consumer_pause_request
 type JSApiConsumerPauseRequest struct {
-	PauseUntil time.Time `json:"pause_until,omitempty"`
+	PauseUntil time.Time `json:"pause_until,omitempty" api_level:"1"`
 }
 
 // io.nats.jetstream.api.v1.consumer_pause_response
@@ -565,15 +565,38 @@ type ConsumerConfig struct {
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata"`
 
 	// PauseUntil is for suspending the consumer until the deadline.
-	PauseUntil time.Time `json:"pause_until,omitempty" yaml:"pause_until"`
+	PauseUntil time.Time `json:"pause_until,omitempty" yaml:"pause_until" api_level:"1"`
 
 	// Priority groups
-	PriorityGroups []string       `json:"priority_groups,omitempty" yaml:"priority_groups"`
+	PriorityGroups []string       `json:"priority_groups,omitempty" yaml:"priority_groups" api_level:"1"`
 	PriorityPolicy PriorityPolicy `json:"priority_policy,omitempty" yaml:"priority_policy"`
 	PinnedTTL      time.Duration  `json:"priority_timeout,omitempty" yaml:"priority_timeout"`
 
 	// Don't add to general clients.
 	Direct bool `json:"direct,omitempty" yaml:"direct"`
+}
+
+func (c ConsumerConfig) RequiredApiLevel() (int, error) {
+	maxRequired := 0
+
+	// 2.12 introduced a new PriorityPolicy value so we cant rely on just the api tags
+	// here we set the minimum to 2 when needed
+	if c.PriorityPolicy == PriorityPrioritized {
+		maxRequired = 2
+	}
+
+	// we check the rest of the struct as normal
+	required, err := requiredApiLevel(c, true)
+	if err != nil {
+		return 0, err
+	}
+
+	// and take the higher of the two
+	if required > maxRequired {
+		maxRequired = required
+	}
+
+	return maxRequired, nil
 }
 
 // SequenceInfo is the consumer and stream sequence that uniquely identify a message

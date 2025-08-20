@@ -1,22 +1,22 @@
 module github.com/nats-io/jsm.go
 
-go 1.23.6
+go 1.24.0
 
 require (
-	github.com/choria-io/fisk v0.7.1
+	github.com/choria-io/fisk v0.7.2
 	github.com/dustin/go-humanize v1.0.1
-	github.com/expr-lang/expr v1.17.5
+	github.com/expr-lang/expr v1.17.6
 	github.com/google/go-cmp v0.7.0
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/klauspost/compress v1.18.0
 	github.com/nats-io/jwt/v2 v2.8.0
-	github.com/nats-io/nats-server/v2 v2.12.0-preview.1
-	github.com/nats-io/nats.go v1.44.0
+	github.com/nats-io/nats-server/v2 v2.12.0-preview.1.0.20250820090345-e1094a697d1d
+	github.com/nats-io/nats.go v1.45.0
 	github.com/nats-io/nkeys v0.4.11
 	github.com/nats-io/nuid v1.0.1
 	github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/common v0.65.0
-	golang.org/x/exp v0.0.0-20250808145144-a408d31f581a
+	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
 	golang.org/x/net v0.43.0
 	golang.org/x/text v0.28.0
 	gopkg.in/yaml.v3 v3.0.1

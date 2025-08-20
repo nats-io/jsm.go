@@ -71,6 +71,15 @@ const (
 
 	// JSMessageTTL sets a TTL per message
 	JSMessageTTL = "Nats-TTL"
+
+	// JSSchedulePattern holds a message schedule pattern
+	JSSchedulePattern = "Nats-Schedule"
+
+	// JSScheduleTTL sets a TTL on the produced message
+	JSScheduleTTL = "Nats-Schedule-TTL"
+
+	// JSScheduleTarget sets the target subject for the produced message
+	JSScheduleTarget = "Nats-Schedule-Target"
 )
 
 type JSApiIterableRequest struct {

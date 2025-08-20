@@ -601,6 +601,8 @@ type StreamConfig struct {
 	AllowAtomicPublish bool `json:"allow_atomic,omitempty" yaml:"allow_atomic"`
 	// AllowMsgCounter allows a stream to use (only) counter CRDTs.
 	AllowMsgCounter bool `json:"allow_msg_counter,omitempty" yaml:"allow_msg_counter"`
+	// AllowMsgSchedules allows the scheduling of messages.
+	AllowMsgSchedules bool `json:"allow_msg_schedules,omitempty" yaml:"allow_msg_schedules"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream

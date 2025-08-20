@@ -505,6 +505,20 @@ func NoAllowCounter() StreamOption {
 	}
 }
 
+func AllowSchedules() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.AllowMsgSchedules = true
+		return nil
+	}
+}
+
+func NoAllowSchedules() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.AllowMsgSchedules = false
+		return nil
+	}
+}
+
 func NoAllowDirect() StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.AllowDirect = false
@@ -1162,6 +1176,7 @@ func (s *Stream) RollupAllowed() bool                      { return s.cfg.Rollup
 func (s *Stream) DirectAllowed() bool                      { return s.cfg.AllowDirect }
 func (s *Stream) AtomicBatchPublishAllowed() bool          { return s.cfg.AllowAtomicPublish }
 func (s *Stream) CounterAllowed() bool                     { return s.cfg.AllowMsgCounter }
+func (s *Stream) SchedulesAllowed() bool                   { return s.cfg.AllowMsgSchedules }
 func (s *Stream) MirrorDirectAllowed() bool                { return s.cfg.MirrorDirect }
 func (s *Stream) Republish() *api.RePublish                { return s.cfg.RePublish }
 func (s *Stream) IsRepublishing() bool                     { return s.Republish() != nil }

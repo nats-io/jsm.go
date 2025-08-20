@@ -943,6 +943,26 @@ func TestAllowRollup(t *testing.T) {
 	}
 }
 
+func TestAllowSchedules(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	s, err := mgr.NewStream("m1", jsm.Subjects("test"), jsm.AllowSchedules())
+	checkErr(t, err, "create failed")
+
+	if !s.SchedulesAllowed() {
+		t.Fatalf("expected schedules allowed")
+	}
+
+	err = s.UpdateConfiguration(s.Configuration(), jsm.NoAllowSchedules())
+	checkErr(t, err, "update failed")
+
+	if s.SchedulesAllowed() {
+		t.Fatalf("expected schedules disabled")
+	}
+}
+
 func TestStream_DiscardNewPerSubject(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()
@@ -1376,7 +1396,7 @@ func TestStreamPedanticMirrorDirect(t *testing.T) {
 		t.Fatalf("expected mgr to be pedantic")
 	}
 
-	s, err = mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.NoAllowDirect())
+	s, err = mgr.NewStreamFromDefault("TEST", jsm.DefaultStream, jsm.Subjects("test.*"), jsm.NoAllowDirect())
 	checkErr(t, err, "create failed")
 	if s.DirectAllowed() {
 		t.Fatalf("expected direct to be false")

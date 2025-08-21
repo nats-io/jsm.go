@@ -717,6 +717,11 @@
                       }
                     }
                   },
+                  "leader_since": {
+                    "type": "string",
+                    "description": "The time that it was elected as leader in RFC3339 format, absent when not the leader",
+                    "format": "date-time"
+                  },
                   "raft_group": {
                     "type": "string",
                     "description": "In clustered environments the name of the Raft group managing the asset"

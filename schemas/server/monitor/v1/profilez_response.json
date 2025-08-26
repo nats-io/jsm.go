@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/profilez_response.json",
+  "title": "io.nats.server.monitor.v1.profilez_response",
+  "description": "Response schema for NATS server profiling monitoring endpoint",
+  "type": "object",
+  "required": [
+    "profile",
+    "error"
+  ],
+  "properties": {
+    "profile": {
+      "type": "string",
+      "format": "byte",
+      "description": "Base64-encoded profiling data"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if profiling failed, empty string if successful"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/subsz_request.json",
+  "description": "A request to the NATS $SYS monitoring endpoint for subscription information",
+  "title": "io.nats.server.monitor.v1.subsz_request",
+  "type": "object",
+  "properties": {
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Pagination offset. Only return subscriptions starting at this offset from the global results"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum number of subscriptions to return"
+    },
+    "subscriptions": {
+      "type": "boolean",
+      "description": "Include subscription details in the results"
+    },
+    "account": {
+      "type": "string",
+      "description": "Filter based on this account name"
+    },
+    "test": {
+      "type": "string",
+      "description": "Test the list against this subject. Returns only subscriptions that would match if a message was sent to this subject"
+    }
+  }
+}

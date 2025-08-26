@@ -1,0 +1,860 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/gatewayz_response.json",
+  "title": "io.nats.server.monitor.v1.gatewayz_response",
+  "description": "Response schema for NATS server gateways monitoring endpoint",
+  "type": "object",
+  "required": [
+    "server_id",
+    "now",
+    "outbound_gateways",
+    "inbound_gateways"
+  ],
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Server identifier"
+    },
+    "now": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Current timestamp"
+    },
+    "name": {
+      "type": "string",
+      "description": "Gateway name"
+    },
+    "host": {
+      "type": "string",
+      "description": "Gateway host"
+    },
+    "port": {
+      "type": "integer",
+      "description": "Gateway port"
+    },
+    "outbound_gateways": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "configured"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "Whether this gateway is configured"
+          },
+          "connection": {
+            "description": "Connection information",
+            "type": "object",
+            "required": [
+              "cid",
+              "ip",
+              "port",
+              "start",
+              "last_activity",
+              "uptime",
+              "idle",
+              "pending_bytes",
+              "in_msgs",
+              "out_msgs",
+              "in_bytes",
+              "out_bytes"
+            ],
+            "properties": {
+              "cid": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Connection ID"
+              },
+              "kind": {
+                "type": "string",
+                "description": "Connection kind"
+              },
+              "type": {
+                "type": "string",
+                "description": "Connection type"
+              },
+              "ip": {
+                "type": "string",
+                "description": "IP address"
+              },
+              "port": {
+                "type": "integer",
+                "description": "Port number"
+              },
+              "start": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Connection start time"
+              },
+              "last_activity": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Last activity timestamp"
+              },
+              "stop": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Connection stop time"
+              },
+              "reason": {
+                "type": "string",
+                "description": "Stop reason"
+              },
+              "rtt": {
+                "type": "string",
+                "description": "Round-trip time"
+              },
+              "uptime": {
+                "type": "string",
+                "description": "Connection uptime"
+              },
+              "idle": {
+                "type": "string",
+                "description": "Idle time"
+              },
+              "pending_bytes": {
+                "type": "integer",
+                "description": "Pending bytes"
+              },
+              "in_msgs": {
+                "type": "integer",
+                "description": "Incoming messages"
+              },
+              "out_msgs": {
+                "type": "integer",
+                "description": "Outgoing messages"
+              },
+              "in_bytes": {
+                "type": "integer",
+                "description": "Incoming bytes"
+              },
+              "out_bytes": {
+                "type": "integer",
+                "description": "Outgoing bytes"
+              }
+            }
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "interest_mode"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Account name"
+                },
+                "interest_mode": {
+                  "type": "string",
+                  "description": "Interest mode for this account"
+                },
+                "no_interest_count": {
+                  "type": "integer",
+                  "description": "Number of no-interest messages"
+                },
+                "interest_only_threshold": {
+                  "type": "integer",
+                  "description": "Interest-only threshold"
+                },
+                "num_subs": {
+                  "type": "integer",
+                  "description": "Total number of subscriptions"
+                },
+                "num_queue_subs": {
+                  "type": "integer",
+                  "description": "Number of queue subscriptions"
+                },
+                "subscriptions_list": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of subscription subjects"
+                },
+                "subscriptions_list_detail": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "subject",
+                      "sid",
+                      "msgs",
+                      "cid"
+                    ],
+                    "properties": {
+                      "account": {
+                        "type": "string",
+                        "description": "Account name"
+                      },
+                      "account_tag": {
+                        "type": "string",
+                        "description": "Account tag"
+                      },
+                      "subject": {
+                        "type": "string",
+                        "description": "Subject pattern"
+                      },
+                      "qgroup": {
+                        "type": "string",
+                        "description": "Queue group name"
+                      },
+                      "sid": {
+                        "type": "string",
+                        "description": "Subscription ID"
+                      },
+                      "msgs": {
+                        "type": "integer",
+                        "description": "Number of messages"
+                      },
+                      "max": {
+                        "type": "integer",
+                        "description": "Maximum messages (if set)"
+                      },
+                      "cid": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Connection ID"
+                      }
+                    }
+                  },
+                  "description": "Detailed subscription information"
+                }
+              }
+            },
+            "description": "Account gateway information"
+          }
+        }
+      },
+      "description": "Map of outbound gateway connections"
+    },
+    "inbound_gateways": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "configured"
+          ],
+          "properties": {
+            "configured": {
+              "type": "boolean",
+              "description": "Whether this gateway is configured"
+            },
+            "connection": {
+              "description": "Connection information",
+              "type": "object",
+              "required": [
+                "cid",
+                "ip",
+                "port",
+                "start",
+                "last_activity",
+                "uptime",
+                "idle",
+                "pending_bytes",
+                "in_msgs",
+                "out_msgs",
+                "in_bytes",
+                "out_bytes"
+              ],
+              "properties": {
+                "cid": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Connection ID"
+                },
+                "kind": {
+                  "type": "string",
+                  "description": "Connection kind"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Connection type"
+                },
+                "ip": {
+                  "type": "string",
+                  "description": "IP address"
+                },
+                "port": {
+                  "type": "integer",
+                  "description": "Port number"
+                },
+                "start": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Connection start time"
+                },
+                "last_activity": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Last activity timestamp"
+                },
+                "stop": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Connection stop time"
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Stop reason"
+                },
+                "rtt": {
+                  "type": "string",
+                  "description": "Round-trip time"
+                },
+                "uptime": {
+                  "type": "string",
+                  "description": "Connection uptime"
+                },
+                "idle": {
+                  "type": "string",
+                  "description": "Idle time"
+                },
+                "pending_bytes": {
+                  "type": "integer",
+                  "description": "Pending bytes"
+                },
+                "in_msgs": {
+                  "type": "integer",
+                  "description": "Incoming messages"
+                },
+                "out_msgs": {
+                  "type": "integer",
+                  "description": "Outgoing messages"
+                },
+                "in_bytes": {
+                  "type": "integer",
+                  "description": "Incoming bytes"
+                },
+                "out_bytes": {
+                  "type": "integer",
+                  "description": "Outgoing bytes"
+                }
+              }
+            },
+            "accounts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "interest_mode"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Account name"
+                  },
+                  "interest_mode": {
+                    "type": "string",
+                    "description": "Interest mode for this account"
+                  },
+                  "no_interest_count": {
+                    "type": "integer",
+                    "description": "Number of no-interest messages"
+                  },
+                  "interest_only_threshold": {
+                    "type": "integer",
+                    "description": "Interest-only threshold"
+                  },
+                  "num_subs": {
+                    "type": "integer",
+                    "description": "Total number of subscriptions"
+                  },
+                  "num_queue_subs": {
+                    "type": "integer",
+                    "description": "Number of queue subscriptions"
+                  },
+                  "subscriptions_list": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "List of subscription subjects"
+                  },
+                  "subscriptions_list_detail": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "subject",
+                        "sid",
+                        "msgs",
+                        "cid"
+                      ],
+                      "properties": {
+                        "account": {
+                          "type": "string",
+                          "description": "Account name"
+                        },
+                        "account_tag": {
+                          "type": "string",
+                          "description": "Account tag"
+                        },
+                        "subject": {
+                          "type": "string",
+                          "description": "Subject pattern"
+                        },
+                        "qgroup": {
+                          "type": "string",
+                          "description": "Queue group name"
+                        },
+                        "sid": {
+                          "type": "string",
+                          "description": "Subscription ID"
+                        },
+                        "msgs": {
+                          "type": "integer",
+                          "description": "Number of messages"
+                        },
+                        "max": {
+                          "type": "integer",
+                          "description": "Maximum messages (if set)"
+                        },
+                        "cid": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Connection ID"
+                        }
+                      }
+                    },
+                    "description": "Detailed subscription information"
+                  }
+                }
+              },
+              "description": "Account gateway information"
+            }
+          }
+        }
+      },
+      "description": "Map of inbound gateway connections"
+    }
+  },
+  "$defs": {
+    "RemoteGatewayz": {
+      "type": "object",
+      "required": [
+        "configured"
+      ],
+      "properties": {
+        "configured": {
+          "type": "boolean",
+          "description": "Whether this gateway is configured"
+        },
+        "connection": {
+          "description": "Connection information",
+          "type": "object",
+          "required": [
+            "cid",
+            "ip",
+            "port",
+            "start",
+            "last_activity",
+            "uptime",
+            "idle",
+            "pending_bytes",
+            "in_msgs",
+            "out_msgs",
+            "in_bytes",
+            "out_bytes"
+          ],
+          "properties": {
+            "cid": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Connection ID"
+            },
+            "kind": {
+              "type": "string",
+              "description": "Connection kind"
+            },
+            "type": {
+              "type": "string",
+              "description": "Connection type"
+            },
+            "ip": {
+              "type": "string",
+              "description": "IP address"
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port number"
+            },
+            "start": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Connection start time"
+            },
+            "last_activity": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last activity timestamp"
+            },
+            "stop": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Connection stop time"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Stop reason"
+            },
+            "rtt": {
+              "type": "string",
+              "description": "Round-trip time"
+            },
+            "uptime": {
+              "type": "string",
+              "description": "Connection uptime"
+            },
+            "idle": {
+              "type": "string",
+              "description": "Idle time"
+            },
+            "pending_bytes": {
+              "type": "integer",
+              "description": "Pending bytes"
+            },
+            "in_msgs": {
+              "type": "integer",
+              "description": "Incoming messages"
+            },
+            "out_msgs": {
+              "type": "integer",
+              "description": "Outgoing messages"
+            },
+            "in_bytes": {
+              "type": "integer",
+              "description": "Incoming bytes"
+            },
+            "out_bytes": {
+              "type": "integer",
+              "description": "Outgoing bytes"
+            }
+          }
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "interest_mode"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Account name"
+              },
+              "interest_mode": {
+                "type": "string",
+                "description": "Interest mode for this account"
+              },
+              "no_interest_count": {
+                "type": "integer",
+                "description": "Number of no-interest messages"
+              },
+              "interest_only_threshold": {
+                "type": "integer",
+                "description": "Interest-only threshold"
+              },
+              "num_subs": {
+                "type": "integer",
+                "description": "Total number of subscriptions"
+              },
+              "num_queue_subs": {
+                "type": "integer",
+                "description": "Number of queue subscriptions"
+              },
+              "subscriptions_list": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of subscription subjects"
+              },
+              "subscriptions_list_detail": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "subject",
+                    "sid",
+                    "msgs",
+                    "cid"
+                  ],
+                  "properties": {
+                    "account": {
+                      "type": "string",
+                      "description": "Account name"
+                    },
+                    "account_tag": {
+                      "type": "string",
+                      "description": "Account tag"
+                    },
+                    "subject": {
+                      "type": "string",
+                      "description": "Subject pattern"
+                    },
+                    "qgroup": {
+                      "type": "string",
+                      "description": "Queue group name"
+                    },
+                    "sid": {
+                      "type": "string",
+                      "description": "Subscription ID"
+                    },
+                    "msgs": {
+                      "type": "integer",
+                      "description": "Number of messages"
+                    },
+                    "max": {
+                      "type": "integer",
+                      "description": "Maximum messages (if set)"
+                    },
+                    "cid": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Connection ID"
+                    }
+                  }
+                },
+                "description": "Detailed subscription information"
+              }
+            }
+          },
+          "description": "Account gateway information"
+        }
+      }
+    },
+    "AccountGatewayz": {
+      "type": "object",
+      "required": [
+        "name",
+        "interest_mode"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "interest_mode": {
+          "type": "string",
+          "description": "Interest mode for this account"
+        },
+        "no_interest_count": {
+          "type": "integer",
+          "description": "Number of no-interest messages"
+        },
+        "interest_only_threshold": {
+          "type": "integer",
+          "description": "Interest-only threshold"
+        },
+        "num_subs": {
+          "type": "integer",
+          "description": "Total number of subscriptions"
+        },
+        "num_queue_subs": {
+          "type": "integer",
+          "description": "Number of queue subscriptions"
+        },
+        "subscriptions_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of subscription subjects"
+        },
+        "subscriptions_list_detail": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "subject",
+              "sid",
+              "msgs",
+              "cid"
+            ],
+            "properties": {
+              "account": {
+                "type": "string",
+                "description": "Account name"
+              },
+              "account_tag": {
+                "type": "string",
+                "description": "Account tag"
+              },
+              "subject": {
+                "type": "string",
+                "description": "Subject pattern"
+              },
+              "qgroup": {
+                "type": "string",
+                "description": "Queue group name"
+              },
+              "sid": {
+                "type": "string",
+                "description": "Subscription ID"
+              },
+              "msgs": {
+                "type": "integer",
+                "description": "Number of messages"
+              },
+              "max": {
+                "type": "integer",
+                "description": "Maximum messages (if set)"
+              },
+              "cid": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Connection ID"
+              }
+            }
+          },
+          "description": "Detailed subscription information"
+        }
+      }
+    },
+    "ConnInfo": {
+      "type": "object",
+      "required": [
+        "cid",
+        "ip",
+        "port",
+        "start",
+        "last_activity",
+        "uptime",
+        "idle",
+        "pending_bytes",
+        "in_msgs",
+        "out_msgs",
+        "in_bytes",
+        "out_bytes"
+      ],
+      "properties": {
+        "cid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Connection ID"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Connection kind"
+        },
+        "type": {
+          "type": "string",
+          "description": "Connection type"
+        },
+        "ip": {
+          "type": "string",
+          "description": "IP address"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port number"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Connection start time"
+        },
+        "last_activity": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last activity timestamp"
+        },
+        "stop": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Connection stop time"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Stop reason"
+        },
+        "rtt": {
+          "type": "string",
+          "description": "Round-trip time"
+        },
+        "uptime": {
+          "type": "string",
+          "description": "Connection uptime"
+        },
+        "idle": {
+          "type": "string",
+          "description": "Idle time"
+        },
+        "pending_bytes": {
+          "type": "integer",
+          "description": "Pending bytes"
+        },
+        "in_msgs": {
+          "type": "integer",
+          "description": "Incoming messages"
+        },
+        "out_msgs": {
+          "type": "integer",
+          "description": "Outgoing messages"
+        },
+        "in_bytes": {
+          "type": "integer",
+          "description": "Incoming bytes"
+        },
+        "out_bytes": {
+          "type": "integer",
+          "description": "Outgoing bytes"
+        }
+      }
+    },
+    "SubDetail": {
+      "type": "object",
+      "required": [
+        "subject",
+        "sid",
+        "msgs",
+        "cid"
+      ],
+      "properties": {
+        "account": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "account_tag": {
+          "type": "string",
+          "description": "Account tag"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject pattern"
+        },
+        "qgroup": {
+          "type": "string",
+          "description": "Queue group name"
+        },
+        "sid": {
+          "type": "string",
+          "description": "Subscription ID"
+        },
+        "msgs": {
+          "type": "integer",
+          "description": "Number of messages"
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum messages (if set)"
+        },
+        "cid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Connection ID"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/jsz_request.json",
+  "description": "A request to the NATS $SYS monitoring endpoint for JetStream information",
+  "title": "io.nats.server.monitor.v1.jsz_request",
+  "type": "object",
+  "properties": {
+    "account": {
+      "type": "string",
+      "description": "Filter by specific account"
+    },
+    "accounts": {
+      "type": "boolean",
+      "description": "Include account details"
+    },
+    "streams": {
+      "type": "boolean",
+      "description": "Include stream details"
+    },
+    "consumer": {
+      "type": "boolean",
+      "description": "Include consumer details"
+    },
+    "config": {
+      "type": "boolean",
+      "description": "Include configuration details"
+    },
+    "leader_only": {
+      "type": "boolean",
+      "description": "Only return information from the JetStream leader"
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Pagination offset"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum number of items to return"
+    },
+    "raft": {
+      "type": "boolean",
+      "description": "Include Raft group information"
+    },
+    "stream_leader_only": {
+      "type": "boolean",
+      "description": "Only return stream information from stream leaders"
+    }
+  }
+}

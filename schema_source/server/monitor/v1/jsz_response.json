@@ -1,0 +1,376 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/jsz_response.json",
+  "title": "io.nats.server.monitor.v1.jsz_response",
+  "description": "Response schema for NATS server JetStream monitoring endpoint",
+  "type": "object",
+  "required": [
+    "server_id",
+    "now",
+    "streams",
+    "consumers",
+    "messages",
+    "bytes",
+    "total"
+  ],
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Server identifier"
+    },
+    "now": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Current timestamp"
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Whether JetStream is disabled"
+    },
+    "config": {
+      "$ref": "#/$defs/JetStreamConfig",
+      "description": "JetStream configuration"
+    },
+    "limits": {
+      "$ref": "#/$defs/JSLimitOpts",
+      "description": "JetStream limits"
+    },
+    "streams": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of streams"
+    },
+    "consumers": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of consumers"
+    },
+    "messages": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of messages"
+    },
+    "bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total bytes stored"
+    },
+    "memory": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Memory usage"
+    },
+    "storage": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "File storage usage"
+    },
+    "reserved_memory": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Reserved memory"
+    },
+    "reserved_storage": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Reserved storage"
+    },
+    "accounts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of accounts using JetStream"
+    },
+    "ha_assets": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of high availability assets"
+    },
+    "api": {
+      "$ref": "#/$defs/JetStreamAPIStats",
+      "description": "API statistics"
+    },
+    "meta_cluster": {
+      "$ref": "#/$defs/MetaClusterInfo",
+      "description": "Meta cluster information"
+    },
+    "account_details": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AccountDetail"
+      },
+      "description": "Account details"
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total count for pagination"
+    }
+  },
+  "$defs": {
+    "JetStreamConfig": {
+      "type": "object",
+      "required": [
+        "max_memory",
+        "max_storage"
+      ],
+      "properties": {
+        "max_memory": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum memory for streams"
+        },
+        "max_storage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum storage for streams"
+        },
+        "store_dir": {
+          "type": "string",
+          "description": "Storage directory"
+        },
+        "sync_interval": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sync interval in nanoseconds"
+        },
+        "sync_always": {
+          "type": "boolean",
+          "description": "Whether to sync after every write"
+        },
+        "domain": {
+          "type": "string",
+          "description": "JetStream domain"
+        },
+        "compress_ok": {
+          "type": "boolean",
+          "description": "Whether compression is supported"
+        },
+        "unique_tag": {
+          "type": "string",
+          "description": "Unique tag for this instance"
+        },
+        "strict": {
+          "type": "boolean",
+          "description": "Whether strict JSON parsing is performed"
+        }
+      }
+    },
+    "JSLimitOpts": {
+      "type": "object",
+      "properties": {
+        "max_request_batch": {
+          "type": "integer",
+          "description": "Maximum batch size for requests"
+        },
+        "max_ack_pending": {
+          "type": "integer",
+          "description": "Maximum outstanding acks"
+        },
+        "max_ha_assets": {
+          "type": "integer",
+          "description": "Maximum high availability assets"
+        },
+        "max_duplicate_window": {
+          "type": "integer",
+          "description": "Maximum duplicate window in nanoseconds"
+        },
+        "max_batch_inflight_per_stream": {
+          "type": "integer",
+          "description": "Maximum batch inflight per stream"
+        },
+        "max_batch_inflight_total": {
+          "type": "integer",
+          "description": "Maximum batch inflight total"
+        },
+        "max_batch_size": {
+          "type": "integer",
+          "description": "Maximum batch size"
+        },
+        "max_batch_timeout": {
+          "type": "integer",
+          "description": "Maximum batch timeout in nanoseconds"
+        }
+      }
+    },
+    "JetStreamAPIStats": {
+      "type": "object",
+      "required": [
+        "level",
+        "total",
+        "errors"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "description": "Active API level"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total API requests"
+        },
+        "errors": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total API errors"
+        },
+        "inflight": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Inflight API requests"
+        }
+      }
+    },
+    "MetaClusterInfo": {
+      "type": "object",
+      "required": [
+        "cluster_size",
+        "pending"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Cluster name"
+        },
+        "leader": {
+          "type": "string",
+          "description": "Leader server name"
+        },
+        "peer": {
+          "type": "string",
+          "description": "Leader peer ID"
+        },
+        "replicas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PeerInfo"
+          },
+          "description": "Replica information"
+        },
+        "cluster_size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Known cluster size"
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pending RAFT messages"
+        }
+      }
+    },
+    "PeerInfo": {
+      "type": "object",
+      "required": [
+        "name",
+        "current",
+        "active",
+        "peer"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Peer name"
+        },
+        "current": {
+          "type": "boolean",
+          "description": "Whether peer is current"
+        },
+        "offline": {
+          "type": "boolean",
+          "description": "Whether peer is offline"
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Active duration in nanoseconds"
+        },
+        "lag": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Operations lag"
+        },
+        "peer": {
+          "type": "string",
+          "description": "Peer unique ID"
+        }
+      }
+    },
+    "AccountDetail": {
+      "type": "object",
+      "required": [
+        "name",
+        "id"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "id": {
+          "type": "string",
+          "description": "Account ID"
+        },
+        "memory": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Memory usage"
+        },
+        "storage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "File storage usage"
+        },
+        "reserved_memory": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Reserved memory"
+        },
+        "reserved_storage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Reserved storage"
+        },
+        "accounts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of accounts"
+        },
+        "ha_assets": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of high availability assets"
+        },
+        "api": {
+          "$ref": "#/$defs/JetStreamAPIStats",
+          "description": "API statistics"
+        },
+        "stream_detail": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StreamDetail"
+          },
+          "description": "Stream details"
+        }
+      }
+    },
+    "StreamDetail": {
+      "type": "object",
+      "required": [
+        "name",
+        "created"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Stream name"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Stream creation time"
+        }
+      }
+    }
+  }
+}

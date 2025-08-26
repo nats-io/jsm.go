@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/routez_request.json",
+  "description": "A request to the NATS $SYS monitoring endpoint for route information",
+  "title": "io.nats.server.monitor.v1.routez_request",
+  "type": "object",
+  "properties": {
+    "subscriptions": {
+      "type": "boolean",
+      "description": "Include route subscriptions in the results"
+    },
+    "subscriptions_detail": {
+      "type": "boolean",
+      "description": "Include subscription details in the results"
+    }
+  }
+}

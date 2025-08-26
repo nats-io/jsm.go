@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/healthz_response.json",
+  "title": "io.nats.server.monitor.v1.healthz_response",
+  "description": "Response schema for NATS server health monitoring endpoint",
+  "type": "object",
+  "required": [
+    "status"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "description": "Health status"
+    },
+    "status_code": {
+      "type": "integer",
+      "description": "HTTP status code"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if any"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/HealthzError"
+      },
+      "description": "List of health errors"
+    }
+  },
+  "$defs": {
+    "HealthzError": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "integer",
+          "description": "Error type code"
+        },
+        "account": {
+          "type": "string",
+          "description": "Account name if applicable"
+        },
+        "stream": {
+          "type": "string",
+          "description": "Stream name if applicable"
+        },
+        "consumer": {
+          "type": "string",
+          "description": "Consumer name if applicable"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message"
+        }
+      }
+    }
+  }
+}

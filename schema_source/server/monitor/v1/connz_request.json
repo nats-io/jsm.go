@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/connz_request.json",
+  "description": "A request to the NATS $SYS monitoring endpoint for connection information",
+  "title": "io.nats.server.monitor.v1.connz_request",
+  "type": "object",
+  "properties": {
+    "sort": {
+      "type": "string",
+      "enum": ["cid", "start", "subs", "pending", "msgs_to", "msgs_from", "bytes_to", "bytes_from", "last", "idle", "uptime", "stop", "reason", "rtt", "name"],
+      "description": "Sort the results. Only the sort by connection ID (cid) is ascending, all others are descending"
+    },
+    "auth": {
+      "type": "boolean",
+      "description": "Include user names in the results"
+    },
+    "subscriptions": {
+      "type": "boolean",
+      "description": "Include subscriptions in the results"
+    },
+    "subscriptions_detail": {
+      "type": "boolean",
+      "description": "Include subscription details in the results"
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Pagination offset. Only return connections starting at this offset from the global results"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum number of connections to return"
+    },
+    "cid": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Filter for this explicit client connection ID"
+    },
+    "mqtt_client": {
+      "type": "string",
+      "description": "Filter for this explicit MQTT client ID"
+    },
+    "state": {
+      "type": "string",
+      "enum": ["open", "closed", "all"],
+      "description": "Filter by connection state"
+    },
+    "user": {
+      "type": "string",
+      "description": "Filter by username (requires auth=true)"
+    },
+    "acc": {
+      "type": "string",
+      "description": "Filter by account"
+    },
+    "filter_subject": {
+      "type": "string",
+      "description": "Filter by subject interest"
+    }
+  }
+}

@@ -1,0 +1,869 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/definitions.json",
+  "title": "io.nats.server.monitor.v1.varz",
+  "description": "NATS Server VARZ Monitoring output",
+  "type": "object",
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "The unique server ID generated at start"
+    },
+    "server_name": {
+      "type": "string",
+      "description": "The configured server name, equals ID when not set"
+    },
+    "version": {
+      "type": "string",
+      "description": "The version of the running server"
+    },
+    "proto": {
+      "type": "integer",
+      "description": "The protocol version this server supports"
+    },
+    "git_commit": {
+      "type": "string",
+      "description": "The git repository commit hash that the build corresponds with"
+    },
+    "go": {
+      "type": "string",
+      "description": "The version of Go used to build this binary"
+    },
+    "host": {
+      "type": "string",
+      "description": "The hostname the server runs on"
+    },
+    "port": {
+      "type": "integer",
+      "description": "The port the server listens on for client connections"
+    },
+    "auth_required": {
+      "type": "boolean",
+      "description": "Indicates if users are required to authenticate to join the server"
+    },
+    "tls_required": {
+      "type": "boolean",
+      "description": "Indicates if connections must use TLS when connecting to this server"
+    },
+    "tls_verify": {
+      "type": "boolean",
+      "description": "Indicates if full TLS verification will be performed"
+    },
+    "tls_ocsp_peer_verify": {
+      "type": "boolean",
+      "description": "Indicates if the OCSP protocol will be used to verify peers"
+    },
+    "ip": {
+      "type": "string",
+      "description": "The IP address the server listens on if set"
+    },
+    "connect_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The list of URLs NATS clients can use to connect to this server"
+    },
+    "ws_connect_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The list of URLs websocket clients can use to connect to this server"
+    },
+    "max_connections": {
+      "description": "The maximum amount of connections the server can accept",
+      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807,
+      "minimum": -9223372036854775807
+    },
+    "max_subscriptions": {
+      "type": "integer",
+      "description": "The maximum amount of subscriptions the server can manage"
+    },
+    "ping_interval": {
+      "type": "number",
+      "description": "The interval the server will send PING messages during periods of inactivity on a connection"
+    },
+    "ping_max": {
+      "type": "integer",
+      "description": "The number of unanswered PINGs after which the connection will be considered stale"
+    },
+    "http_host": {
+      "type": "string",
+      "description": "The HTTP host monitoring connections are accepted on"
+    },
+    "http_port": {
+      "type": "integer",
+      "description": "The port monitoring connections are accepted on"
+    },
+    "http_base_path": {
+      "type": "string",
+      "description": "The path prefix for access to monitor endpoints"
+    },
+    "https_port": {
+      "type": "integer",
+      "description": "The HTTPS port monitoring connections are accepted on"
+    },
+    "auth_timeout": {
+      "type": "number",
+      "description": "The amount of seconds connections have to complete authentication"
+    },
+    "max_control_line": {
+      "type": "integer",
+      "description": "The amount of bytes a signal control message may be"
+    },
+    "max_payload": {
+      "type": "integer",
+      "description": "The maximum amount of bytes a message may have as payload"
+    },
+    "max_pending": {
+      "type": "integer",
+      "description": "The maximum amount of unprocessed bytes a connection may have"
+    },
+    "cluster": {
+      "type": "object",
+      "description": "Monitoring cluster information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The configured cluster name"
+        },
+        "addr": {
+          "type": "string",
+          "description": "The host the cluster listens on for connections"
+        },
+        "cluster_port": {
+          "type": "integer",
+          "description": "The port the cluster listens on for connections"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "The time cluster connections have to complete authentication"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of cluster URLs"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_required": {
+          "type": "boolean",
+          "description": "Indicates if TLS is required for connections"
+        },
+        "tls_verify": {
+          "type": "boolean",
+          "description": "Indicates if full verification of TLS connections is performed"
+        },
+        "pool_size": {
+          "type": "integer",
+          "description": "The configured route connection pool size"
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "description": "Monitoring gateway information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The configured cluster name"
+        },
+        "host": {
+          "type": "string",
+          "description": "The host the gateway listens on for connections"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port gateway connections listens on"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "The time cluster connections have to complete authentication"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_required": {
+          "type": "boolean",
+          "description": "Indicates if TLS is required for connections"
+        },
+        "tls_verify": {
+          "type": "boolean",
+          "description": "Indicates if full verification of TLS connections is performed"
+        },
+        "advertise": {
+          "type": "string",
+          "description": "The URL advertised to remote gateway clients"
+        },
+        "connect_retries": {
+          "type": "integer",
+          "description": "How many connection attempts the route will make"
+        },
+        "gateways": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Monitoring remote gateway information",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name of the remote gateway"
+              },
+              "tls_timeout": {
+                "type": "number",
+                "description": "How long TLS operations have to complete"
+              },
+              "urls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The list of Gateway URLs"
+              }
+            }
+          },
+          "description": "State of configured gateway remotes"
+        },
+        "reject_unknown": {
+          "type": "boolean",
+          "description": "Indicates if unknown cluster connections will be rejected"
+        }
+      }
+    },
+    "leaf": {
+      "type": "object",
+      "description": "Monitoring leaf node information",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host the server listens on"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port the server listens on"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "The time Leafnode connections have to complete authentication"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_required": {
+          "type": "boolean",
+          "description": "Indicates if TLS is required for connections"
+        },
+        "tls_verify": {
+          "type": "boolean",
+          "description": "Indicates if full verification of TLS connections is performed"
+        },
+        "remotes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Monitoring remote leaf node information",
+            "properties": {
+              "local_account": {
+                "type": "string",
+                "description": "The local account this leaf is logged into"
+              },
+              "tls_timeout": {
+                "type": "number",
+                "description": "How long TLS operations have to complete"
+              },
+              "urls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The list of URLs for the remote Leafnode connection"
+              },
+              "deny": {
+                "type": "object",
+                "description": "Lists of subjects not allowed to be imported/exported",
+                "properties": {
+                  "exports": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Denied exports"
+                  },
+                  "imports": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Denied imports"
+                  }
+                }
+              },
+              "tls_ocsp_peer_verify": {
+                "type": "boolean",
+                "description": "Indicates if OCSP verification will be done"
+              }
+            }
+          },
+          "description": "State of configured Leafnode remotes"
+        },
+        "tls_ocsp_peer_verify": {
+          "type": "boolean",
+          "description": "Indicates if OCSP verification will be performed"
+        }
+      }
+    },
+    "mqtt": {
+      "type": "object",
+      "description": "Monitoring MQTT information",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host the server listens on"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port the server listens on"
+        },
+        "no_auth_user": {
+          "type": "string",
+          "description": "The user that will be used for unauthenticated connections"
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "How long authentication has to complete"
+        },
+        "tls_map": {
+          "type": "boolean",
+          "description": "Indicates if TLS Mapping is enabled"
+        },
+        "tls_timeout": {
+          "type": "number",
+          "description": "How long TLS operations have to complete"
+        },
+        "tls_pinned_certs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of certificates pinned to this connection"
+        },
+        "js_domain": {
+          "type": "string",
+          "description": "The JetStream domain used for MQTT state"
+        },
+        "ack_wait": {
+          "description": "How long the internal JetStream state store will allow acks to complete",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
+        },
+        "max_ack_pending": {
+          "type": "integer",
+          "description": "How many outstanding acks the internal JetStream state store will allow"
+        },
+        "tls_ocsp_peer_verify": {
+          "type": "boolean",
+          "description": "Indicates if OCSP verification will be done"
+        }
+      }
+    },
+    "websocket": {
+      "type": "object",
+      "description": "Monitoring websocket information",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The host the server listens on"
+        },
+        "port": {
+          "type": "integer",
+          "description": "The port the server listens on"
+        },
+        "advertise": {
+          "type": "string",
+          "description": "The connection URL the server advertises"
+        },
+        "no_auth_user": {
+          "type": "string",
+          "description": "The user that will be used for unauthenticated connections"
+        },
+        "jwt_cookie": {
+          "type": "string",
+          "description": "The name of a cookie the server will read for the connection JWT"
+        },
+        "handshake_timeout": {
+          "type": "number",
+          "description": "How long the connection has to complete the websocket setup",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
+        },
+        "auth_timeout": {
+          "type": "number",
+          "description": "How long authentication has to complete"
+        },
+        "no_tls": {
+          "type": "boolean",
+          "description": "Indicates if TLS is disabled"
+        },
+        "tls_map": {
+          "type": "boolean",
+          "description": "Indicates if TLS Mapping is enabled"
+        },
+        "tls_pinned_certs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of certificates pinned to this connection"
+        },
+        "same_origin": {
+          "type": "boolean",
+          "description": "Indicates if same origin connections are allowed"
+        },
+        "allowed_origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of configured trusted origins"
+        },
+        "compression": {
+          "type": "boolean",
+          "description": "Indicates if compression is supported"
+        },
+        "tls_ocsp_peer_verify": {
+          "type": "boolean",
+          "description": "Indicates if OCSP verification will be done"
+        }
+      }
+    },
+    "jetstream": {
+      "type": "object",
+      "description": "Basic runtime information about JetStream",
+      "properties": {
+        "config": {
+          "type": "object",
+          "description": "JetStream configuration",
+          "properties": {
+            "max_memory": {
+              "type": "integer",
+              "description": "The maximum size of memory type streams"
+            },
+            "max_storage": {
+              "type": "integer",
+              "description": "The maximum size of file store type streams"
+            },
+            "store_dir": {
+              "type": "string",
+              "description": "Where storage files are stored"
+            },
+            "sync_interval": {
+              "description": "How frequently we sync to disk in the background by calling fsync",
+              "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775807
+            },
+            "sync_always": {
+              "type": "boolean",
+              "description": "Indicates flushes are done after every write"
+            },
+            "domain": {
+              "type": "string",
+              "description": "The JetStream domain"
+            },
+            "compress_ok": {
+              "type": "boolean",
+              "description": "Indicates if compression is supported"
+            },
+            "unique_tag": {
+              "type": "string",
+              "description": "The unique tag assigned to this instance"
+            },
+            "strict": {
+              "type": "boolean",
+              "description": "Indicates if strict JSON parsing is performed"
+            }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "description": "Statistics about JetStream for this server",
+          "properties": {
+            "memory": {
+              "type": "integer",
+              "description": "Memory usage"
+            },
+            "storage": {
+              "type": "integer",
+              "description": "Storage usage"
+            },
+            "reserved_memory": {
+              "type": "integer",
+              "description": "Reserved memory"
+            },
+            "reserved_storage": {
+              "type": "integer",
+              "description": "Reserved storage"
+            },
+            "accounts": {
+              "type": "integer",
+              "description": "Number of accounts"
+            },
+            "ha_assets": {
+              "type": "integer",
+              "description": "Number of HA assets"
+            },
+            "api": {
+              "type": "object",
+              "description": "Stats about the API usage for this server",
+              "properties": {
+                "level": {
+                  "type": "integer",
+                  "description": "The active API level this server implements"
+                },
+                "total": {
+                  "type": "integer",
+                  "description": "The total API requests received since start"
+                },
+                "errors": {
+                  "type": "integer",
+                  "description": "The total API requests that resulted in error responses"
+                },
+                "inflight": {
+                  "type": "integer",
+                  "description": "The number of API requests currently being served"
+                }
+              }
+            }
+          }
+        },
+        "meta": {
+          "type": "object",
+          "description": "Information about the meta group",
+          "required": [
+            "cluster_size",
+            "pending"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The name of the cluster"
+            },
+            "leader": {
+              "type": "string",
+              "description": "The server name of the cluster leader"
+            },
+            "peer": {
+              "type": "string",
+              "description": "Unique ID for each peer"
+            },
+            "replicas": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "Information about all the peers in the cluster that are supporting the stream or consumer",
+                "required": [
+                  "name",
+                  "current",
+                  "active",
+                  "peer"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The unique name for the peer"
+                  },
+                  "current": {
+                    "type": "boolean",
+                    "description": "Indicates if it was seen recently and fully caught up"
+                  },
+                  "offline": {
+                    "type": "boolean",
+                    "description": "Indicates if it has not been seen recently"
+                  },
+                  "active": {
+                    "description": "The timestamp it was last active",
+                    "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                    "type": "integer",
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775807
+                  },
+                  "lag": {
+                    "type": "integer",
+                    "description": "How many operations behind it is"
+                  },
+                  "peer": {
+                    "type": "string",
+                    "description": "The unique ID for the peer"
+                  }
+                }
+              },
+              "description": "A list of known peers"
+            },
+            "cluster_size": {
+              "type": "integer",
+              "description": "The known size of the cluster"
+            },
+            "pending": {
+              "type": "integer",
+              "description": "How many RAFT messages are not yet processed"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "description": "Active limits for the meta cluster",
+          "properties": {
+            "max_request_batch": {
+              "type": "integer",
+              "description": "The maximum amount of updates that can be sent in a batch"
+            },
+            "max_ack_pending": {
+              "type": "integer",
+              "description": "The server limit for maximum amount of outstanding Acks"
+            },
+            "max_ha_assets": {
+              "type": "integer",
+              "description": "The maximum of Streams and Consumers that may have more than 1 replica"
+            },
+            "max_duplicate_window": {
+              "description": "The maximum value for duplicate tracking on Streams",
+              "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775807
+            },
+            "max_batch_inflight_per_stream": {
+              "type": "integer",
+              "description": "The maximum amount of open batches per stream"
+            },
+            "max_batch_inflight_total": {
+              "type": "integer",
+              "description": "The maximum amount of total open batches per server"
+            },
+            "max_batch_size": {
+              "type": "integer",
+              "description": "The maximum amount of messages allowed in a batch publish to a Stream"
+            },
+            "max_batch_timeout": {
+              "description": "The maximum time to receive the commit message after receiving the first message of a batch",
+              "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775807
+            }
+          }
+        }
+      }
+    },
+    "tls_timeout": {
+      "type": "number",
+      "description": "How long TLS operations have to complete"
+    },
+    "write_deadline": {
+      "description": "The maximum time writes to sockets have to complete",
+      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+      "type": "integer",
+      "maximum": 9223372036854775807,
+      "minimum": -9223372036854775807
+    },
+    "start": {
+      "type": "string",
+      "description": "Time when the server was started"
+    },
+    "now": {
+      "type": "string",
+      "description": "The current time of the server"
+    },
+    "uptime": {
+      "type": "string",
+      "description": "How long the server has been running"
+    },
+    "mem": {
+      "type": "integer",
+      "description": "The resident memory allocation"
+    },
+    "cores": {
+      "type": "integer",
+      "description": "The number of cores the process has access to"
+    },
+    "gomaxprocs": {
+      "type": "integer",
+      "description": "The configured GOMAXPROCS value"
+    },
+    "gomemlimit": {
+      "type": "integer",
+      "description": "The configured GOMEMLIMIT value"
+    },
+    "cpu": {
+      "type": "number",
+      "description": "The current total CPU usage"
+    },
+    "connections": {
+      "type": "integer",
+      "description": "The current connected connections"
+    },
+    "total_connections": {
+      "type": "integer",
+      "description": "The total connections the server have ever handled"
+    },
+    "routes": {
+      "type": "integer",
+      "description": "The number of connected route servers"
+    },
+    "remotes": {
+      "type": "integer",
+      "description": "The configured route remote endpoints"
+    },
+    "leafnodes": {
+      "type": "integer",
+      "description": "The number connected leafnode clients"
+    },
+    "in_msgs": {
+      "type": "integer",
+      "description": "The number of messages this server received"
+    },
+    "out_msgs": {
+      "type": "integer",
+      "description": "The number of message this server sent"
+    },
+    "in_bytes": {
+      "type": "integer",
+      "description": "The number of bytes this server received"
+    },
+    "out_bytes": {
+      "type": "integer",
+      "description": "The number of bytes this server sent"
+    },
+    "slow_consumers": {
+      "type": "integer",
+      "description": "The total count of clients that were disconnected since start due to being slow consumers"
+    },
+    "subscriptions": {
+      "type": "integer",
+      "description": "The count of active subscriptions"
+    },
+    "http_req_stats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "The number of requests each HTTP endpoint received"
+    },
+    "config_load_time": {
+      "type": "string",
+      "description": "The time the configuration was loaded or reloaded"
+    },
+    "config_digest": {
+      "type": "string",
+      "description": "A calculated hash of the current configuration"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The tags assigned to the server in configuration"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "The metadata assigned to the server in configuration"
+    },
+    "trusted_operators_jwt": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The JWTs for all trusted operators"
+    },
+    "trusted_operators_claim": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "The decoded claims for each trusted operator"
+    },
+    "system_account": {
+      "type": "string",
+      "description": "The name of the System account"
+    },
+    "pinned_account_fails": {
+      "type": "integer",
+      "description": "How often user logon fails due to the issuer account not being pinned"
+    },
+    "ocsp_peer_cache": {
+      "type": "object",
+      "description": "OCSP response cache information",
+      "properties": {
+        "cache_type": {
+          "type": "string",
+          "description": "The kind of cache being used"
+        },
+        "cache_hits": {
+          "type": "integer",
+          "description": "How many times the cache was able to answer a request"
+        },
+        "cache_misses": {
+          "type": "integer",
+          "description": "How many times the cache failed to answer a request"
+        },
+        "cached_responses": {
+          "type": "integer",
+          "description": "How many responses are currently stored in the cache"
+        },
+        "cached_revoked_responses": {
+          "type": "integer",
+          "description": "How many of the stored cache entries are revokes"
+        },
+        "cached_good_responses": {
+          "type": "integer",
+          "description": "How many of the stored cache entries are good responses"
+        },
+        "cached_unknown_responses": {
+          "type": "integer",
+          "description": "How many of the stored cache entries are unknown responses"
+        }
+      }
+    },
+    "slow_consumer_stats": {
+      "type": "object",
+      "description": "Information about slow consumers from different type of connections",
+      "properties": {
+        "clients": {
+          "type": "integer",
+          "description": "How many Clients were slow consumers"
+        },
+        "routes": {
+          "type": "integer",
+          "description": "How many Routes were slow consumers"
+        },
+        "gateways": {
+          "type": "integer",
+          "description": "How many Gateways were slow consumers"
+        },
+        "leafs": {
+          "type": "integer",
+          "description": "How many Leafnodes were slow consumers"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/accstatz_request.json",
+  "description": "A request to the NATS $SYS monitoring endpoint for account statistics",
+  "title": "io.nats.server.monitor.v1.accstatz_request",
+  "type": "object",
+  "properties": {
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of specific accounts to include in the statistics"
+    },
+    "include_unused": {
+      "type": "boolean",
+      "description": "Include accounts with no connections"
+    }
+  }
+}

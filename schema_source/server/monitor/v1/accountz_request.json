@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/accountz_request.json",
+  "description": "A request to the NATS $SYS monitoring endpoint for account information",
+  "title": "io.nats.server.monitor.v1.accountz_request",
+  "type": "object",
+  "properties": {
+    "account": {
+      "type": "string",
+      "description": "Return details for this specific account"
+    }
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/subsz_response.json",
+  "title": "io.nats.server.monitor.v1.subsz_response",
+  "description": "Response schema for NATS server subscriptions monitoring endpoint",
+  "type": "object",
+  "required": [
+    "server_id",
+    "now",
+    "total",
+    "offset",
+    "limit"
+  ],
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Server identifier"
+    },
+    "now": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Current timestamp"
+    },
+    "num_subscriptions": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of subscriptions"
+    },
+    "num_cache": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of cached subscriptions"
+    },
+    "num_inserts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of subscription inserts"
+    },
+    "num_removes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of subscription removes"
+    },
+    "num_matches": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of subscription matches"
+    },
+    "cache_hit_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Cache hit rate as a percentage (0.0 to 1.0)"
+    },
+    "max_fanout": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum fanout"
+    },
+    "avg_fanout": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Average fanout"
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of subscriptions"
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Pagination offset"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Pagination limit"
+    },
+    "subscriptions_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "subject",
+          "sid",
+          "msgs",
+          "cid"
+        ],
+        "properties": {
+          "account": {
+            "type": "string",
+            "description": "Account name"
+          },
+          "account_tag": {
+            "type": "string",
+            "description": "Account tag"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject pattern"
+          },
+          "qgroup": {
+            "type": "string",
+            "description": "Queue group name"
+          },
+          "sid": {
+            "type": "string",
+            "description": "Subscription ID"
+          },
+          "msgs": {
+            "type": "integer",
+            "description": "Number of messages"
+          },
+          "max": {
+            "type": "integer",
+            "description": "Maximum messages (if set)"
+          },
+          "cid": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Connection ID"
+          }
+        }
+      },
+      "description": "List of subscription details"
+    }
+  },
+  "$defs": {
+    "SubDetail": {
+      "type": "object",
+      "required": [
+        "subject",
+        "sid",
+        "msgs",
+        "cid"
+      ],
+      "properties": {
+        "account": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "account_tag": {
+          "type": "string",
+          "description": "Account tag"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject pattern"
+        },
+        "qgroup": {
+          "type": "string",
+          "description": "Queue group name"
+        },
+        "sid": {
+          "type": "string",
+          "description": "Subscription ID"
+        },
+        "msgs": {
+          "type": "integer",
+          "description": "Number of messages"
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum messages (if set)"
+        },
+        "cid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Connection ID"
+        }
+      }
+    }
+  }
+}

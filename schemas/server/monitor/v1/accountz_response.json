@@ -1,0 +1,438 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/accountz_response.json",
+  "title": "io.nats.server.monitor.v1.accountz_response",
+  "description": "Response schema for NATS server accounts monitoring endpoint",
+  "type": "object",
+  "required": [
+    "server_id",
+    "now"
+  ],
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Server identifier"
+    },
+    "now": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Current timestamp"
+    },
+    "system_account": {
+      "type": "string",
+      "description": "System account name"
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of account names"
+    },
+    "account_detail": {
+      "description": "Detailed account information",
+      "type": "object",
+      "required": [
+        "account_name",
+        "expired",
+        "complete",
+        "jetstream_enabled",
+        "leafnode_connections",
+        "client_connections",
+        "subscriptions"
+      ],
+      "properties": {
+        "account_name": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "update_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update time"
+        },
+        "is_system": {
+          "type": "boolean",
+          "description": "Whether this is a system account"
+        },
+        "expired": {
+          "type": "boolean",
+          "description": "Whether the account is expired"
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "Whether the account information is complete"
+        },
+        "jetstream_enabled": {
+          "type": "boolean",
+          "description": "Whether JetStream is enabled"
+        },
+        "leafnode_connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of leaf node connections"
+        },
+        "client_connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of client connections"
+        },
+        "subscriptions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of subscriptions"
+        },
+        "mappings": {
+          "description": "Subject mappings",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "subject",
+                "weight"
+              ],
+              "properties": {
+                "subject": {
+                  "type": "string",
+                  "description": "Destination subject"
+                },
+                "weight": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255,
+                  "description": "Weight for load balancing"
+                },
+                "cluster": {
+                  "type": "string",
+                  "description": "Cluster name"
+                }
+              }
+            }
+          }
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "approved_accounts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of approved accounts"
+              },
+              "revoked_activations": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": "Map of revoked activations with timestamps"
+              }
+            }
+          },
+          "description": "Account exports"
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "invalid": {
+                "type": "boolean",
+                "description": "Whether the import is invalid"
+              },
+              "share": {
+                "type": "boolean",
+                "description": "Whether the import is shared"
+              },
+              "tracking": {
+                "type": "boolean",
+                "description": "Whether tracking is enabled"
+              },
+              "tracking_header": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "description": "Tracking headers"
+              }
+            }
+          },
+          "description": "Account imports"
+        },
+        "jwt": {
+          "type": "string",
+          "description": "JWT token"
+        },
+        "issuer_key": {
+          "type": "string",
+          "description": "Issuer key"
+        },
+        "name_tag": {
+          "type": "string",
+          "description": "Name tag"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "AccountInfo": {
+      "type": "object",
+      "required": [
+        "account_name",
+        "expired",
+        "complete",
+        "jetstream_enabled",
+        "leafnode_connections",
+        "client_connections",
+        "subscriptions"
+      ],
+      "properties": {
+        "account_name": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "update_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update time"
+        },
+        "is_system": {
+          "type": "boolean",
+          "description": "Whether this is a system account"
+        },
+        "expired": {
+          "type": "boolean",
+          "description": "Whether the account is expired"
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "Whether the account information is complete"
+        },
+        "jetstream_enabled": {
+          "type": "boolean",
+          "description": "Whether JetStream is enabled"
+        },
+        "leafnode_connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of leaf node connections"
+        },
+        "client_connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of client connections"
+        },
+        "subscriptions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of subscriptions"
+        },
+        "mappings": {
+          "description": "Subject mappings",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "subject",
+                "weight"
+              ],
+              "properties": {
+                "subject": {
+                  "type": "string",
+                  "description": "Destination subject"
+                },
+                "weight": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255,
+                  "description": "Weight for load balancing"
+                },
+                "cluster": {
+                  "type": "string",
+                  "description": "Cluster name"
+                }
+              }
+            }
+          }
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "approved_accounts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of approved accounts"
+              },
+              "revoked_activations": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": "Map of revoked activations with timestamps"
+              }
+            }
+          },
+          "description": "Account exports"
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "invalid": {
+                "type": "boolean",
+                "description": "Whether the import is invalid"
+              },
+              "share": {
+                "type": "boolean",
+                "description": "Whether the import is shared"
+              },
+              "tracking": {
+                "type": "boolean",
+                "description": "Whether tracking is enabled"
+              },
+              "tracking_header": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "description": "Tracking headers"
+              }
+            }
+          },
+          "description": "Account imports"
+        },
+        "jwt": {
+          "type": "string",
+          "description": "JWT token"
+        },
+        "issuer_key": {
+          "type": "string",
+          "description": "Issuer key"
+        },
+        "name_tag": {
+          "type": "string",
+          "description": "Name tag"
+        }
+      }
+    },
+    "ExtMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "subject",
+            "weight"
+          ],
+          "properties": {
+            "subject": {
+              "type": "string",
+              "description": "Destination subject"
+            },
+            "weight": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Weight for load balancing"
+            },
+            "cluster": {
+              "type": "string",
+              "description": "Cluster name"
+            }
+          }
+        }
+      },
+      "description": "Map of subject mappings"
+    },
+    "MapDest": {
+      "type": "object",
+      "required": [
+        "subject",
+        "weight"
+      ],
+      "properties": {
+        "subject": {
+          "type": "string",
+          "description": "Destination subject"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Weight for load balancing"
+        },
+        "cluster": {
+          "type": "string",
+          "description": "Cluster name"
+        }
+      }
+    },
+    "ExtExport": {
+      "type": "object",
+      "properties": {
+        "approved_accounts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of approved accounts"
+        },
+        "revoked_activations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": "Map of revoked activations with timestamps"
+        }
+      }
+    },
+    "ExtImport": {
+      "type": "object",
+      "properties": {
+        "invalid": {
+          "type": "boolean",
+          "description": "Whether the import is invalid"
+        },
+        "share": {
+          "type": "boolean",
+          "description": "Whether the import is shared"
+        },
+        "tracking": {
+          "type": "boolean",
+          "description": "Whether tracking is enabled"
+        },
+        "tracking_header": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": "Tracking headers"
+        }
+      }
+    }
+  }
+}

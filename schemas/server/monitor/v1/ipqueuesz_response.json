@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/ipqueuesz_response.json",
+  "title": "io.nats.server.monitor.v1.ipqueuesz_response",
+  "description": "Map of IP queue names to their status information",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "required": [
+      "pending"
+    ],
+    "properties": {
+      "pending": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Number of pending operations in the queue"
+      },
+      "in_progress": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Number of operations currently in progress"
+      }
+    }
+  },
+  "$defs": {
+    "IpqueueszStatusIPQ": {
+      "type": "object",
+      "required": [
+        "pending"
+      ],
+      "properties": {
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of pending operations in the queue"
+        },
+        "in_progress": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of operations currently in progress"
+        }
+      }
+    }
+  }
+}

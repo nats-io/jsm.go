@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/idz_response.json",
+  "title": "io.nats.server.monitor.v1.idz_response",
+  "description": "Response schema for NATS server ID monitoring endpoint",
+  "type": "object",
+  "required": [
+    "name",
+    "host",
+    "id"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Server name"
+    },
+    "host": {
+      "type": "string",
+      "description": "Server host"
+    },
+    "id": {
+      "type": "string",
+      "description": "Server unique identifier"
+    }
+  }
+}

@@ -1,0 +1,361 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/routez_response.json",
+  "description": "A response from the NATS $SYS monitoring endpoint for route information",
+  "title": "io.nats.server.monitor.v1.routez_response",
+  "type": "object",
+  "required": [
+    "server_id",
+    "server_name",
+    "now",
+    "num_routes",
+    "routes"
+  ],
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "The unique server ID"
+    },
+    "server_name": {
+      "type": "string",
+      "description": "The server name"
+    },
+    "now": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The current time on the server"
+    },
+    "import": {
+      "type": "object",
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "export": {
+      "type": "object",
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "num_routes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The number of active routes"
+    },
+    "routes": {
+      "type": "array",
+      "description": "List of route connections",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rid": {
+            "type": "integer",
+            "description": "Route ID"
+          },
+          "remote_id": {
+            "type": "string",
+            "description": "Remote server ID"
+          },
+          "remote_name": {
+            "type": "string",
+            "description": "Remote server name"
+          },
+          "did_solicit": {
+            "type": "boolean",
+            "description": "Whether this server solicited the route"
+          },
+          "is_configured": {
+            "type": "boolean",
+            "description": "Whether this route is configured"
+          },
+          "ip": {
+            "type": "string",
+            "description": "Remote IP address"
+          },
+          "port": {
+            "type": "integer",
+            "description": "Remote port"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Route start time"
+          },
+          "last_activity": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last activity time"
+          },
+          "rtt": {
+            "type": "string",
+            "description": "Round trip time"
+          },
+          "uptime": {
+            "type": "string",
+            "description": "Route uptime"
+          },
+          "idle": {
+            "type": "string",
+            "description": "Idle time"
+          },
+          "import": {
+            "type": "object",
+            "properties": {
+              "allow": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "deny": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "export": {
+            "type": "object",
+            "properties": {
+              "allow": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "deny": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pending_size": {
+            "type": "integer",
+            "description": "Number of pending bytes"
+          },
+          "in_msgs": {
+            "type": "integer",
+            "description": "Number of inbound messages"
+          },
+          "out_msgs": {
+            "type": "integer",
+            "description": "Number of outbound messages"
+          },
+          "in_bytes": {
+            "type": "integer",
+            "description": "Number of inbound bytes"
+          },
+          "out_bytes": {
+            "type": "integer",
+            "description": "Number of outbound bytes"
+          },
+          "subscriptions": {
+            "type": "integer",
+            "description": "Number of subscriptions"
+          },
+          "subscriptions_list": {
+            "type": "array",
+            "description": "List of subscription subjects",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subscriptions_list_detail": {
+            "type": "array",
+            "description": "Detailed subscription information",
+            "items": {
+              "type": "object"
+            }
+          },
+          "account": {
+            "type": "string",
+            "description": "Account name"
+          },
+          "compression": {
+            "type": "string",
+            "description": "Compression type"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "subject_permission": {
+      "type": "object",
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "route_info": {
+      "type": "object",
+      "properties": {
+        "rid": {
+          "type": "integer",
+          "description": "Route ID"
+        },
+        "remote_id": {
+          "type": "string",
+          "description": "Remote server ID"
+        },
+        "remote_name": {
+          "type": "string",
+          "description": "Remote server name"
+        },
+        "did_solicit": {
+          "type": "boolean",
+          "description": "Whether this server solicited the route"
+        },
+        "is_configured": {
+          "type": "boolean",
+          "description": "Whether this route is configured"
+        },
+        "ip": {
+          "type": "string",
+          "description": "Remote IP address"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Remote port"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Route start time"
+        },
+        "last_activity": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last activity time"
+        },
+        "rtt": {
+          "type": "string",
+          "description": "Round trip time"
+        },
+        "uptime": {
+          "type": "string",
+          "description": "Route uptime"
+        },
+        "idle": {
+          "type": "string",
+          "description": "Idle time"
+        },
+        "import": {
+          "type": "object",
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "deny": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "export": {
+          "type": "object",
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "deny": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "pending_size": {
+          "type": "integer",
+          "description": "Number of pending bytes"
+        },
+        "in_msgs": {
+          "type": "integer",
+          "description": "Number of inbound messages"
+        },
+        "out_msgs": {
+          "type": "integer",
+          "description": "Number of outbound messages"
+        },
+        "in_bytes": {
+          "type": "integer",
+          "description": "Number of inbound bytes"
+        },
+        "out_bytes": {
+          "type": "integer",
+          "description": "Number of outbound bytes"
+        },
+        "subscriptions": {
+          "type": "integer",
+          "description": "Number of subscriptions"
+        },
+        "subscriptions_list": {
+          "type": "array",
+          "description": "List of subscription subjects",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subscriptions_list_detail": {
+          "type": "array",
+          "description": "Detailed subscription information",
+          "items": {
+            "type": "object"
+          }
+        },
+        "account": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "compression": {
+          "type": "string",
+          "description": "Compression type"
+        }
+      }
+    }
+  }
+}

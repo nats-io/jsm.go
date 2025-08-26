@@ -1,0 +1,319 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/statsz_response.json",
+  "title": "io.nats.server.monitor.v1.statsz_response",
+  "description": "Response schema for NATS server statistics monitoring endpoint",
+  "type": "object",
+  "required": [
+    "server",
+    "statsz"
+  ],
+  "properties": {
+    "server": {
+      "$ref": "#/$defs/ServerInfo",
+      "description": "Server information"
+    },
+    "statsz": {
+      "$ref": "#/$defs/ServerStats",
+      "description": "Server statistics"
+    }
+  },
+  "$defs": {
+    "ServerInfo": {
+      "type": "object",
+      "required": [
+        "name",
+        "host",
+        "id",
+        "ver",
+        "jetstream"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Server name"
+        },
+        "host": {
+          "type": "string",
+          "description": "Server host"
+        },
+        "id": {
+          "type": "string",
+          "description": "Server ID"
+        },
+        "cluster": {
+          "type": "string",
+          "description": "Cluster name"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain"
+        },
+        "ver": {
+          "type": "string",
+          "description": "Server version"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Server tags"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Server metadata"
+        },
+        "jetstream": {
+          "type": "boolean",
+          "description": "Whether JetStream is enabled"
+        }
+      }
+    },
+    "ServerStats": {
+      "type": "object",
+      "required": [
+        "start",
+        "mem",
+        "cores",
+        "cpu",
+        "connections",
+        "total_connections",
+        "active_accounts",
+        "subscriptions",
+        "sent",
+        "received",
+        "slow_consumers"
+      ],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server start time"
+        },
+        "mem": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Memory usage in bytes"
+        },
+        "cores": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of CPU cores"
+        },
+        "cpu": {
+          "type": "number",
+          "minimum": 0,
+          "description": "CPU usage percentage"
+        },
+        "connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current connections"
+        },
+        "total_connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total connections since start"
+        },
+        "active_accounts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active accounts"
+        },
+        "subscriptions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of subscriptions"
+        },
+        "sent": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Sent message statistics"
+        },
+        "received": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Received message statistics"
+        },
+        "slow_consumers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Slow consumer count"
+        },
+        "slow_consumer_stats": {
+          "$ref": "#/$defs/SlowConsumersStats",
+          "description": "Slow consumer statistics breakdown"
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RouteStat"
+          },
+          "description": "Route statistics"
+        },
+        "gateways": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GatewayStat"
+          },
+          "description": "Gateway statistics"
+        },
+        "active_servers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active servers in cluster"
+        }
+      }
+    },
+    "DataStats": {
+      "type": "object",
+      "required": [
+        "msgs",
+        "bytes"
+      ],
+      "properties": {
+        "msgs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Message count"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Byte count"
+        },
+        "gateways": {
+          "$ref": "#/$defs/dataStats",
+          "description": "Gateway statistics"
+        },
+        "routes": {
+          "$ref": "#/$defs/dataStats",
+          "description": "Route statistics"
+        },
+        "leafs": {
+          "$ref": "#/$defs/dataStats",
+          "description": "Leaf node statistics"
+        }
+      }
+    },
+    "dataStats": {
+      "type": "object",
+      "required": [
+        "msgs",
+        "bytes"
+      ],
+      "properties": {
+        "msgs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Message count"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Byte count"
+        }
+      }
+    },
+    "SlowConsumersStats": {
+      "type": "object",
+      "required": [
+        "clients",
+        "routes",
+        "gateways",
+        "leafs"
+      ],
+      "properties": {
+        "clients": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Slow client connections"
+        },
+        "routes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Slow route connections"
+        },
+        "gateways": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Slow gateway connections"
+        },
+        "leafs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Slow leaf connections"
+        }
+      }
+    },
+    "RouteStat": {
+      "type": "object",
+      "required": [
+        "rid",
+        "sent",
+        "received",
+        "pending"
+      ],
+      "properties": {
+        "rid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Route ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Route name"
+        },
+        "sent": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Sent statistics"
+        },
+        "received": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Received statistics"
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pending bytes"
+        }
+      }
+    },
+    "GatewayStat": {
+      "type": "object",
+      "required": [
+        "gwid",
+        "name",
+        "sent",
+        "received",
+        "inbound_connections"
+      ],
+      "properties": {
+        "gwid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Gateway ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Gateway name"
+        },
+        "sent": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Sent statistics"
+        },
+        "received": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Received statistics"
+        },
+        "inbound_connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of inbound connections"
+        }
+      }
+    }
+  }
+}

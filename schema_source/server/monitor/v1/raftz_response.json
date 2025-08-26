@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/raftz_response.json",
+  "title": "io.nats.server.monitor.v1.raftz_response",
+  "description": "Response schema for NATS server Raft monitoring endpoint",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "additionalProperties": {
+      "$ref": "#/$defs/RaftzGroup"
+    }
+  },
+  "description": "Map of account names to Raft group information",
+  "$defs": {
+    "RaftzGroup": {
+      "type": "object",
+      "required": [
+        "id",
+        "state",
+        "size",
+        "quorum_needed",
+        "committed",
+        "applied",
+        "ever_had_leader",
+        "term",
+        "pterm"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Raft group ID"
+        },
+        "state": {
+          "type": "string",
+          "description": "Current Raft state"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Size of the Raft group"
+        },
+        "quorum_needed": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Quorum size needed for decisions"
+        },
+        "observer": {
+          "type": "boolean",
+          "description": "Whether this node is an observer"
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Whether the Raft group is paused"
+        },
+        "committed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Last committed log index"
+        },
+        "applied": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Last applied log index"
+        },
+        "catching_up": {
+          "type": "boolean",
+          "description": "Whether this node is catching up"
+        },
+        "leader": {
+          "type": "string",
+          "description": "Leader node name"
+        },
+        "leader_since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the current leader was elected"
+        },
+        "ever_had_leader": {
+          "type": "boolean",
+          "description": "Whether this group ever had a leader"
+        },
+        "term": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current term"
+        },
+        "voted_for": {
+          "type": "string",
+          "description": "Node this instance voted for"
+        },
+        "pterm": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Previous term"
+        },
+        "replicas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RaftzReplica"
+          },
+          "description": "Information about replicas"
+        }
+      }
+    },
+    "RaftzReplica": {
+      "type": "object",
+      "required": [
+        "name",
+        "known"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Replica name"
+        },
+        "known": {
+          "type": "boolean",
+          "description": "Whether this replica is known"
+        },
+        "last_replicated_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Last replicated log index"
+        },
+        "last_seen": {
+          "type": "string",
+          "description": "When this replica was last seen"
+        }
+      }
+    }
+  }
+}

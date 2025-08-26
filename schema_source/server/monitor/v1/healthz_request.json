@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/healthz_request.json",
+  "description": "A request to the NATS $SYS monitoring endpoint for health information",
+  "title": "io.nats.server.monitor.v1.healthz_request",
+  "type": "object",
+  "properties": {
+    "js-enabled-only": {
+      "type": "boolean",
+      "description": "Only return success if JetStream is enabled"
+    },
+    "js-server-only": {
+      "type": "boolean",
+      "description": "Only return success if this server is a JetStream server"
+    },
+    "js-meta-only": {
+      "type": "boolean",
+      "description": "Only return success if this server is a JetStream meta-leader"
+    },
+    "account": {
+      "type": "string",
+      "description": "Check health for a specific account"
+    },
+    "stream": {
+      "type": "string",
+      "description": "Check health for a specific stream"
+    },
+    "consumer": {
+      "type": "string",
+      "description": "Check health for a specific consumer"
+    },
+    "details": {
+      "type": "boolean",
+      "description": "Include detailed health information"
+    }
+  }
+}

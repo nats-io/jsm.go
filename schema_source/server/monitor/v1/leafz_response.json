@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/leafz_response.json",
+  "title": "io.nats.server.monitor.v1.leafz_response",
+  "description": "Response schema for NATS server leaf nodes monitoring endpoint",
+  "type": "object",
+  "required": [
+    "server_id",
+    "now",
+    "leafnodes",
+    "leafs"
+  ],
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Server identifier"
+    },
+    "now": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Current timestamp"
+    },
+    "leafnodes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of leaf node connections"
+    },
+    "leafs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LeafInfo"
+      },
+      "description": "List of leaf node information"
+    }
+  },
+  "$defs": {
+    "LeafInfo": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "is_spoke",
+        "account",
+        "ip",
+        "port",
+        "in_msgs",
+        "out_msgs",
+        "in_bytes",
+        "out_bytes",
+        "subscriptions"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Leaf node ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Leaf node name"
+        },
+        "is_spoke": {
+          "type": "boolean",
+          "description": "Whether this is a spoke connection"
+        },
+        "account": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "ip": {
+          "type": "string",
+          "description": "IP address"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port number"
+        },
+        "rtt": {
+          "type": "string",
+          "description": "Round-trip time"
+        },
+        "in_msgs": {
+          "type": "integer",
+          "description": "Incoming messages"
+        },
+        "out_msgs": {
+          "type": "integer",
+          "description": "Outgoing messages"
+        },
+        "in_bytes": {
+          "type": "integer",
+          "description": "Incoming bytes"
+        },
+        "out_bytes": {
+          "type": "integer",
+          "description": "Outgoing bytes"
+        },
+        "subscriptions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of subscriptions"
+        },
+        "subscriptions_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of subscription subjects"
+        },
+        "compression": {
+          "type": "string",
+          "description": "Compression algorithm in use"
+        },
+        "proxy": {
+          "$ref": "#/$defs/ProxyInfo",
+          "description": "Proxy information"
+        }
+      }
+    },
+    "ProxyInfo": {
+      "type": "object",
+      "required": [
+        "key"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Proxy key"
+        }
+      }
+    }
+  }
+}

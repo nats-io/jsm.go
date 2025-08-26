@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/server/monitor/v1/accstatz_response.json",
+  "title": "io.nats.server.monitor.v1.accstatz_response",
+  "description": "Response schema for NATS server account statistics monitoring endpoint",
+  "type": "object",
+  "required": [
+    "server_id",
+    "now",
+    "account_statz"
+  ],
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Server identifier"
+    },
+    "now": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Current timestamp"
+    },
+    "account_statz": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AccountStat"
+      },
+      "description": "List of account statistics"
+    }
+  },
+  "$defs": {
+    "AccountStat": {
+      "type": "object",
+      "required": [
+        "acc",
+        "name",
+        "conns",
+        "leafnodes",
+        "total_conns",
+        "num_subscriptions",
+        "sent",
+        "received",
+        "slow_consumers"
+      ],
+      "properties": {
+        "acc": {
+          "type": "string",
+          "description": "Account identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "conns": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current connections"
+        },
+        "leafnodes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current leaf node connections"
+        },
+        "total_conns": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total connections since start"
+        },
+        "num_subscriptions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of subscriptions"
+        },
+        "sent": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Sent message statistics"
+        },
+        "received": {
+          "$ref": "#/$defs/DataStats",
+          "description": "Received message statistics"
+        },
+        "slow_consumers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Slow consumer count"
+        }
+      }
+    },
+    "DataStats": {
+      "type": "object",
+      "required": [
+        "msgs",
+        "bytes"
+      ],
+      "properties": {
+        "msgs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Message count"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Byte count"
+        },
+        "gateways": {
+          "$ref": "#/$defs/dataStats",
+          "description": "Gateway statistics"
+        },
+        "routes": {
+          "$ref": "#/$defs/dataStats",
+          "description": "Route statistics"
+        },
+        "leafs": {
+          "$ref": "#/$defs/dataStats",
+          "description": "Leaf node statistics"
+        }
+      }
+    },
+    "dataStats": {
+      "type": "object",
+      "required": [
+        "msgs",
+        "bytes"
+      ],
+      "properties": {
+        "msgs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Message count"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Byte count"
+        }
+      }
+    }
+  }
+}

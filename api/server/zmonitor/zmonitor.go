@@ -131,7 +131,7 @@ type JetStreamVarzV1 struct {
 	Limits *JSLimitOptsV1     `json:"limits,omitempty"` // Limits are the configured JetStream limits
 }
 
-// JSLimitOpts are active limits for the meta cluster
+// JSLimitOptsV1 are active limits for the meta cluster
 type JSLimitOptsV1 struct {
 	MaxRequestBatch           int           `json:"max_request_batch,omitempty"`             // MaxRequestBatch is the maximum amount of updates that can be sent in a batch
 	MaxAckPending             int           `json:"max_ack_pending,omitempty"`               // MaxAckPending is the server limit for maximum amount of outstanding Acks
@@ -164,12 +164,30 @@ type PeerInfoV1 struct {
 	Peer    string        `json:"peer"`              // Peer is the unique ID for the peer
 }
 
-// SlowConsumersStats contains information about the slow consumers from different type of connections.
-type SlowConsumersStats struct {
+// SlowConsumersStatsV1 contains information about the slow consumers from different type of connections.
+type SlowConsumersStatsV1 struct {
 	Clients  uint64 `json:"clients"`  // Clients is how many Clients were slow consumers
 	Routes   uint64 `json:"routes"`   // Routes is how many Routes were slow consumers
 	Gateways uint64 `json:"gateways"` // Gateways is how many Gateways were slow consumers
 	Leafs    uint64 `json:"leafs"`    // Leafs is how many Leafnodes were slow consumers
+}
+
+// StaleConnectionStatsV1 contains information about the stale connections from different type of connections.
+type StaleConnectionStatsV1 struct {
+	Clients  uint64 `json:"clients"`  // Clients is how many Clients were slow consumers
+	Routes   uint64 `json:"routes"`   // Routes is how many Routes were slow consumers
+	Gateways uint64 `json:"gateways"` // Gateways is how many Gateways were slow consumers
+	Leafs    uint64 `json:"leafs"`    // Leafs is how many Leafnodes were slow consumers
+}
+
+// ProxiesOptsVarzV1 contains network proxies information
+type ProxiesOptsVarzV1 struct {
+	Trusted []*ProxyOptsVarzV1 `json:"trusted,omitempty"` // Trusted holds a list of trusted proxies
+}
+
+// ProxyOptsVarzV1 contains proxy information
+type ProxyOptsVarzV1 struct {
+	Key string `json:"key"` // Key is the public key of the trusted proxy
 }
 
 // JetStreamConfigV1 determines this server's configuration.

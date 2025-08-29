@@ -608,6 +608,47 @@
         }
       }
     },
+    "stale_connection_stats_v1": {
+      "type": "object",
+      "description": "Information about stale consumers from different type of connections",
+      "properties": {
+        "clients": {
+          "type": "integer",
+          "description": "How many Clients were stale"
+        },
+        "routes": {
+          "type": "integer",
+          "description": "How many Routes were stale"
+        },
+        "gateways": {
+          "type": "integer",
+          "description": "How many Gateways were stale"
+        },
+        "leafs": {
+          "type": "integer",
+          "description": "How many Leafnodes were stale"
+        }
+      }
+    },
+    "proxies_opts_varz_v1": {
+      "type": "object",
+      "description": "Holds information about known network proxies",
+      "properties": {
+        "trusted": {
+          "description": "List of trusted proxy devices",
+          "$ref": "#/definitions/proxy_opts_varz_v1"
+        }
+      }
+    },
+    "proxy_opts_varz_v1": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "description": "Public key of the network proxy",
+          "type": "string"
+        }
+      }
+    },
     "slow_consumers_stats_v1": {
       "type": "object",
       "description": "Information about slow consumers from different type of connections",

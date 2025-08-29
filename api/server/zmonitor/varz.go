@@ -88,6 +88,8 @@ type VarzV1 struct {
 	TrustedOperatorsClaim []*jwt.OperatorClaims    `json:"trusted_operators_claim,omitempty"` // TrustedOperatorsClaim is the decoded claims for each trusted operator
 	SystemAccount         string                   `json:"system_account,omitempty"`          // SystemAccount is the name of the System account
 	PinnedAccountFail     uint64                   `json:"pinned_account_fails,omitempty"`    // PinnedAccountFail is how often user logon fails due to the issuer account not being pinned.
-	OCSPResponseCache     *OCSPResponseCacheVarzV1 `json:"ocsp_peer_cache,omitempty"`         // OCSPResponseCache is the state of the OCSP cache // OCSPResponseCache holds information about
-	SlowConsumersStats    *SlowConsumersStats      `json:"slow_consumer_stats"`               // SlowConsumersStats is statistics about all detected Slow Consumer
+	OCSPResponseCache     *OCSPResponseCacheVarzV1 `json:"ocsp_peer_cache,omitempty"`         // OCSPResponseCache is the state of the OCSP cache
+	SlowConsumersStats    *SlowConsumersStatsV1    `json:"slow_consumer_stats"`               // SlowConsumersStats is statistics about all detected Slow Consumer
+	StaleConnectionStats  *StaleConnectionStatsV1  `json:"stale_connection_stats,omitempty"`  // StaleConnectionStats are statistics about all detected Stale Connections
+	Proxies               *ProxiesOptsVarzV1       `json:"proxies,omitempty"`                 // Proxies hold information about network proxy devices
 }

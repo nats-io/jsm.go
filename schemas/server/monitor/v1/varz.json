@@ -757,6 +757,14 @@
         "type": "integer",
         "description": "The total count of clients that were disconnected since start due to being slow consumers"
       },
+      "stale_connections": {
+        "type": "integer",
+        "description": "The total count of stale connections that were detected"
+      },
+      "stalled_clients": {
+        "type": "integer",
+        "description": "The total number of times that clients have been stalled"
+      },
       "subscriptions": {
         "type": "integer",
         "description": "The count of active subscriptions"

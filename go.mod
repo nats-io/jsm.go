@@ -10,7 +10,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/klauspost/compress v1.18.0
 	github.com/nats-io/jwt/v2 v2.8.0
-	github.com/nats-io/nats-server/v2 v2.12.0-preview.1.0.20250820090345-e1094a697d1d
+	github.com/nats-io/nats-server/v2 v2.12.0-preview.1.0.20250829094354-835c0eb05088
 	github.com/nats-io/nats.go v1.45.0
 	github.com/nats-io/nkeys v0.4.11
 	github.com/nats-io/nuid v1.0.1
@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/antithesishq/antithesis-sdk-go v0.4.3-default-no-op // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/google/go-tpm v0.9.5 // indirect
@@ -34,8 +35,9 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	go.uber.org/automaxprocs v1.6.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	google.golang.org/protobuf v1.36.7 // indirect
+	google.golang.org/protobuf v1.36.8 // indirect
 )

@@ -55,9 +55,6 @@ type SchemaManagedType interface {
 	SchemaType() string
 	SchemaID() string
 	Schema() ([]byte, error)
-	JetStreamSubject() (string, JetStreamMessageDirection)
-	JetStreamCallDirection() JetStreamMessageDirection
-	Validate(v ...StructValidator) (valid bool, errors []string)
 }
 
 type JetStreamMessageDirection string
@@ -292,6 +289,17 @@ func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
 	return generator(), nil
 }
 
+// SchemaForRequestSubject matches a type for a request that might include details like $JS.API.CONSUMER.CREATE.foo.bar
+func SchemaForRequestSubject(subject string) (any, error) {
+	for k, v := range schemaWildcardSubjects {
+		if SubjectIsSubsetMatch(subject, k) {
+			return v(), nil
+		}
+	}
+
+	return nil, fmt.Errorf("unknown request subject: %q", subject)
+}
+
 // TypeForJetStreamResponseSubjectPrefix returns an empty instance for a certain JetStream response subject prefix
 func TypeForJetStreamResponseSubjectPrefix(p string) (any, error) {
 	generator, ok := schemaResponseSubjects[p]
@@ -315,4 +323,79 @@ func TypesForJetStreamSubjectPrefix(p string) (request any, response any, err er
 	}
 
 	return req, res, nil
+}
+
+const (
+	btsep = '.'
+	fwc   = '>'
+	pwc   = '*'
+)
+
+// SubjectIsSubsetMatch tests if a subject matches a standard nats wildcard
+func SubjectIsSubsetMatch(subject, test string) bool {
+	tsa := [32]string{}
+	tts := tokenizeSubjectIntoSlice(tsa[:0], subject)
+	return isSubsetMatch(tts, test)
+}
+
+// This will test a subject as an array of tokens against a test subject
+// Calls into the function isSubsetMatchTokenized
+func isSubsetMatch(tokens []string, test string) bool {
+	tsa := [32]string{}
+	tts := tokenizeSubjectIntoSlice(tsa[:0], test)
+	return isSubsetMatchTokenized(tokens, tts)
+}
+
+// use similar to append. meaning, the updated slice will be returned
+func tokenizeSubjectIntoSlice(tts []string, subject string) []string {
+	start := 0
+	for i := 0; i < len(subject); i++ {
+		if subject[i] == btsep {
+			tts = append(tts, subject[start:i])
+			start = i + 1
+		}
+	}
+	tts = append(tts, subject[start:])
+	return tts
+}
+
+// This will test a subject as an array of tokens against a test subject (also encoded as array of tokens)
+// and determine if the tokens are matched. Both test subject and tokens
+// may contain wildcards. So foo.* is a subset match of [">", "*.*", "foo.*"],
+// but not of foo.bar, etc.
+func isSubsetMatchTokenized(tokens, test []string) bool {
+	// Walk the target tokens
+	for i, t2 := range test {
+		if i >= len(tokens) {
+			return false
+		}
+		l := len(t2)
+		if l == 0 {
+			return false
+		}
+		if t2[0] == fwc && l == 1 {
+			return true
+		}
+		t1 := tokens[i]
+
+		l = len(t1)
+		if l == 0 || t1[0] == fwc && l == 1 {
+			return false
+		}
+
+		if t1[0] == pwc && len(t1) == 1 {
+			m := t2[0] == pwc && len(t2) == 1
+			if !m {
+				return false
+			}
+			if i >= len(test) {
+				return true
+			}
+			continue
+		}
+		if t2[0] != pwc && strings.Compare(t1, t2) != 0 {
+			return false
+		}
+	}
+	return len(tokens) == len(test)
 }

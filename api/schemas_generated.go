@@ -1,4 +1,4 @@
-// auto generated 2025-09-03 17:45:24.321359 +0200 CEST m=+0.012084126
+// auto generated 2025-09-03 18:14:44.788673 +0200 CEST m=+0.012540043
 
 package api
 
@@ -95,8 +95,8 @@ var schemaTypes = map[string]func() any{
 }
 
 var schemaRequestSubjects = map[string]func() any{
-	JSApiConsumerCreatePrefix:         func() any { return &JSApiConsumerCreateRequest{} },
-	JSApiConsumerMsgNextPrefix:        func() any { return &JSApiConsumerGetNextRequest{} },
+	JSApiConsumerCreateWithNamePrefix: func() any { return &JSApiConsumerCreateRequest{} },
+	JSApiRequestNextPrefix:            func() any { return &JSApiConsumerGetNextRequest{} },
 	JSApiConsumerLeaderStepDownPrefix: func() any { return &JSApiConsumerLeaderStepdownRequest{} },
 	JSApiConsumerListPrefix:           func() any { return &JSApiConsumerListRequest{} },
 	JSApiConsumerNamesPrefix:          func() any { return &JSApiConsumerNamesRequest{} },
@@ -145,6 +145,30 @@ var schemaResponseSubjects = map[string]func() any{
 	JSApiStreamRestorePrefix:          func() any { return &JSApiStreamRestoreResponse{} },
 	JSApiStreamSnapshotPrefix:         func() any { return &JSApiStreamSnapshotResponse{} },
 	JSApiStreamUpdatePrefix:           func() any { return &JSApiStreamUpdateResponse{} },
+}
+
+var schemaWildcardSubjects = map[string]func() any{
+	JSApiConsumerCreateWithName: func() any { return &JSApiConsumerCreateRequest{} },
+	JSApiRequestNext:            func() any { return &JSApiConsumerGetNextRequest{} },
+	JSApiConsumerLeaderStepDown: func() any { return &JSApiConsumerLeaderStepdownRequest{} },
+	JSApiConsumerList:           func() any { return &JSApiConsumerListRequest{} },
+	JSApiConsumerNames:          func() any { return &JSApiConsumerNamesRequest{} },
+	JSApiConsumerPause:          func() any { return &JSApiConsumerPauseRequest{} },
+	JSApiConsumerUnpin:          func() any { return &JSApiConsumerUnpinRequest{} },
+	JSApiLeaderStepDown:         func() any { return &JSApiLeaderStepDownRequest{} },
+	JSApiServerRemove:           func() any { return &JSApiMetaServerRemoveRequest{} },
+	JSApiStreamCreate:           func() any { return &JSApiStreamCreateRequest{} },
+	JSApiStreamInfo:             func() any { return &JSApiStreamInfoRequest{} },
+	JSApiStreamLeaderStepDown:   func() any { return &JSApiStreamLeaderStepDownRequest{} },
+	JSApiStreamList:             func() any { return &JSApiStreamListRequest{} },
+	JSApiMsgDelete:              func() any { return &JSApiMsgDeleteRequest{} },
+	JSApiMsgGet:                 func() any { return &JSApiMsgGetRequest{} },
+	JSApiStreamNames:            func() any { return &JSApiStreamNamesRequest{} },
+	JSApiStreamPurge:            func() any { return &JSApiStreamPurgeRequest{} },
+	JSApiStreamRemovePeer:       func() any { return &JSApiStreamRemovePeerRequest{} },
+	JSApiStreamRestore:          func() any { return &JSApiStreamRestoreRequest{} },
+	JSApiStreamSnapshot:         func() any { return &JSApiStreamSnapshotRequest{} },
+	JSApiStreamUpdate:           func() any { return &JSApiStreamUpdateRequest{} },
 }
 
 // Validate performs a JSON Schema validation of the configuration

@@ -72,6 +72,14 @@ var schemaResponseSubjects = map[string]func() any {
 {{- end }}
 }
 
+var schemaWildcardSubjects = map[string]func() any {
+{{- range . }}
+{{- if .W }}
+    {{ .W }}: func() any { return &{{ .St }}{} },
+{{- end }}
+{{- end }}
+}
+
 {{- range . }}
 {{- if .ShouldAddValidator }}
 // Validate performs a JSON Schema validation of the configuration
@@ -120,6 +128,7 @@ type schema struct {
 	St  string // struct
 	Req string // request subject
 	Res string // response subject
+	W   string // wildcard subject
 }
 
 // ShouldAddValidator only adds validator logic for package local structs
@@ -227,10 +236,10 @@ func main() {
 		&schema{P: "jetstream/api/v1/account_info_response.json", St: "JSApiAccountInfoResponse", Res: "JSApiAccountInfoPrefix"},
 		&schema{P: "jetstream/api/v1/account_purge_response.json", St: "JSApiAccountPurgeResponse", Res: "JSApiAccountPurgePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
-		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "JSApiConsumerCreateRequest", Req: "JSApiConsumerCreatePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "JSApiConsumerCreateRequest", Req: "JSApiConsumerCreateWithNamePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse", Res: "JSApiConsumerCreatePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse", Res: "JSApiConsumerDeletePrefix"},
-		&schema{P: "jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest", Req: "JSApiConsumerMsgNextPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest", Req: "JSApiRequestNextPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse", Res: "JSApiConsumerInfoPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_request.json", St: "JSApiConsumerLeaderStepdownRequest", Req: "JSApiConsumerLeaderStepDownPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_response.json", St: "JSApiConsumerLeaderStepDownResponse", Res: "JSApiConsumerLeaderStepDownPrefix"},
@@ -291,6 +300,10 @@ func main() {
 		i.S = body
 		if i.T == "" {
 			i.T = title
+		}
+
+		if i.Req != "" {
+			i.W = strings.TrimSuffix(i.Req, "Prefix")
 		}
 	}
 

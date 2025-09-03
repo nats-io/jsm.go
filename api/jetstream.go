@@ -24,10 +24,11 @@ import (
 
 // Subjects used by the JetStream API
 const (
-	JSAuditAdvisory  = "$JS.EVENT.ADVISORY.API"
-	JSMetricPrefix   = "$JS.EVENT.METRIC"
-	JSAdvisoryPrefix = "$JS.EVENT.ADVISORY"
-	JSApiAccountInfo = "$JS.API.INFO"
+	JSAuditAdvisory        = "$JS.EVENT.ADVISORY.API"
+	JSMetricPrefix         = "$JS.EVENT.METRIC"
+	JSAdvisoryPrefix       = "$JS.EVENT.ADVISORY"
+	JSApiAccountInfo       = "$JS.API.INFO"
+	JSApiAccountInfoPrefix = "$JS.API.INFO"
 
 	// also update FilterServerMetadata when this changes
 

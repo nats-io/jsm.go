@@ -1,4 +1,4 @@
-// auto generated 2025-09-03 09:56:59.454627 +0200 CEST m=+0.018465876
+// auto generated 2025-09-03 17:45:24.321359 +0200 CEST m=+0.012084126
 
 package api
 
@@ -41,6 +41,7 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.consumer_delete_response":          func() any { return &JSApiConsumerDeleteResponse{} },
 	"io.nats.jetstream.api.v1.consumer_getnext_request":          func() any { return &JSApiConsumerGetNextRequest{} },
 	"io.nats.jetstream.api.v1.consumer_info_response":            func() any { return &JSApiConsumerInfoResponse{} },
+	"io.nats.jetstream.api.v1.consumer_leader_stepdown_request":  func() any { return &JSApiConsumerLeaderStepdownRequest{} },
 	"io.nats.jetstream.api.v1.consumer_leader_stepdown_response": func() any { return &JSApiConsumerLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.consumer_list_request":             func() any { return &JSApiConsumerListRequest{} },
 	"io.nats.jetstream.api.v1.consumer_list_response":            func() any { return &JSApiConsumerListResponse{} },
@@ -61,9 +62,11 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.stream_delete_response":            func() any { return &JSApiStreamDeleteResponse{} },
 	"io.nats.jetstream.api.v1.stream_info_request":               func() any { return &JSApiStreamInfoRequest{} },
 	"io.nats.jetstream.api.v1.stream_info_response":              func() any { return &JSApiStreamInfoResponse{} },
+	"io.nats.jetstream.api.v1.stream_leader_stepdown_request":    func() any { return &JSApiStreamLeaderStepDownRequest{} },
 	"io.nats.jetstream.api.v1.stream_leader_stepdown_response":   func() any { return &JSApiStreamLeaderStepDownResponse{} },
 	"io.nats.jetstream.api.v1.stream_list_request":               func() any { return &JSApiStreamListRequest{} },
 	"io.nats.jetstream.api.v1.stream_list_response":              func() any { return &JSApiStreamListResponse{} },
+	"io.nats.jetstream.api.v1.stream_msg_delete_request":         func() any { return &JSApiMsgDeleteRequest{} },
 	"io.nats.jetstream.api.v1.stream_msg_delete_response":        func() any { return &JSApiMsgDeleteResponse{} },
 	"io.nats.jetstream.api.v1.stream_msg_get_request":            func() any { return &JSApiMsgGetRequest{} },
 	"io.nats.jetstream.api.v1.stream_msg_get_response":           func() any { return &JSApiMsgGetResponse{} },
@@ -77,6 +80,7 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.stream_restore_response":           func() any { return &JSApiStreamRestoreResponse{} },
 	"io.nats.jetstream.api.v1.stream_snapshot_request":           func() any { return &JSApiStreamSnapshotRequest{} },
 	"io.nats.jetstream.api.v1.stream_snapshot_response":          func() any { return &JSApiStreamSnapshotResponse{} },
+	"io.nats.jetstream.api.v1.stream_update_request":             func() any { return &JSApiStreamUpdateRequest{} },
 	"io.nats.jetstream.api.v1.stream_update_response":            func() any { return &JSApiStreamUpdateResponse{} },
 	"io.nats.jetstream.metric.v1.consumer_ack":                   func() any { return &jsmetric.ConsumerAckMetricV1{} },
 	"io.nats.micro.v1.info_response":                             func() any { return &micro.Info{} },
@@ -88,6 +92,59 @@ var schemaTypes = map[string]func() any{
 	"io.nats.server.metric.v1.service_latency":                   func() any { return &srvmetric.ServiceLatencyV1{} },
 	"io.nats.server.monitor.v1.varz":                             func() any { return &zmonitor.VarzV1{} },
 	"io.nats.unknown_message":                                    func() any { return &UnknownMessage{} },
+}
+
+var schemaRequestSubjects = map[string]func() any{
+	JSApiConsumerCreatePrefix:         func() any { return &JSApiConsumerCreateRequest{} },
+	JSApiConsumerMsgNextPrefix:        func() any { return &JSApiConsumerGetNextRequest{} },
+	JSApiConsumerLeaderStepDownPrefix: func() any { return &JSApiConsumerLeaderStepdownRequest{} },
+	JSApiConsumerListPrefix:           func() any { return &JSApiConsumerListRequest{} },
+	JSApiConsumerNamesPrefix:          func() any { return &JSApiConsumerNamesRequest{} },
+	JSApiConsumerPausePrefix:          func() any { return &JSApiConsumerPauseRequest{} },
+	JSApiConsumerUnpinPrefix:          func() any { return &JSApiConsumerUnpinRequest{} },
+	JSApiLeaderStepDownPrefix:         func() any { return &JSApiLeaderStepDownRequest{} },
+	JSApiServerRemovePrefix:           func() any { return &JSApiMetaServerRemoveRequest{} },
+	JSApiStreamCreatePrefix:           func() any { return &JSApiStreamCreateRequest{} },
+	JSApiStreamInfoPrefix:             func() any { return &JSApiStreamInfoRequest{} },
+	JSApiStreamLeaderStepDownPrefix:   func() any { return &JSApiStreamLeaderStepDownRequest{} },
+	JSApiStreamListPrefix:             func() any { return &JSApiStreamListRequest{} },
+	JSApiMsgDeletePrefix:              func() any { return &JSApiMsgDeleteRequest{} },
+	JSApiMsgGetPrefix:                 func() any { return &JSApiMsgGetRequest{} },
+	JSApiStreamNamesPrefix:            func() any { return &JSApiStreamNamesRequest{} },
+	JSApiStreamPurgePrefix:            func() any { return &JSApiStreamPurgeRequest{} },
+	JSApiStreamRemovePeerPrefix:       func() any { return &JSApiStreamRemovePeerRequest{} },
+	JSApiStreamRestorePrefix:          func() any { return &JSApiStreamRestoreRequest{} },
+	JSApiStreamSnapshotPrefix:         func() any { return &JSApiStreamSnapshotRequest{} },
+	JSApiStreamUpdatePrefix:           func() any { return &JSApiStreamUpdateRequest{} },
+}
+
+var schemaResponseSubjects = map[string]func() any{
+	JSApiAccountInfoPrefix:            func() any { return &JSApiAccountInfoResponse{} },
+	JSApiAccountPurgePrefix:           func() any { return &JSApiAccountPurgeResponse{} },
+	JSApiConsumerCreatePrefix:         func() any { return &JSApiConsumerCreateResponse{} },
+	JSApiConsumerDeletePrefix:         func() any { return &JSApiConsumerDeleteResponse{} },
+	JSApiConsumerInfoPrefix:           func() any { return &JSApiConsumerInfoResponse{} },
+	JSApiConsumerLeaderStepDownPrefix: func() any { return &JSApiConsumerLeaderStepDownResponse{} },
+	JSApiConsumerListPrefix:           func() any { return &JSApiConsumerListResponse{} },
+	JSApiConsumerNamesPrefix:          func() any { return &JSApiConsumerNamesResponse{} },
+	JSApiConsumerPausePrefix:          func() any { return &JSApiConsumerPauseResponse{} },
+	JSApiConsumerUnpinPrefix:          func() any { return &JSApiConsumerUnpinResponse{} },
+	JSApiLeaderStepDownPrefix:         func() any { return &JSApiLeaderStepDownResponse{} },
+	JSApiServerRemovePrefix:           func() any { return &JSApiMetaServerRemoveResponse{} },
+	JSAckPrefix:                       func() any { return &JSPubAckResponse{} },
+	JSApiStreamCreatePrefix:           func() any { return &JSApiStreamCreateResponse{} },
+	JSApiStreamDeletePrefix:           func() any { return &JSApiStreamDeleteResponse{} },
+	JSApiStreamInfoPrefix:             func() any { return &JSApiStreamInfoResponse{} },
+	JSApiStreamLeaderStepDownPrefix:   func() any { return &JSApiStreamLeaderStepDownResponse{} },
+	JSApiStreamListPrefix:             func() any { return &JSApiStreamListResponse{} },
+	JSApiMsgDeletePrefix:              func() any { return &JSApiMsgDeleteResponse{} },
+	JSApiMsgGetPrefix:                 func() any { return &JSApiMsgGetResponse{} },
+	JSApiStreamNamesPrefix:            func() any { return &JSApiStreamNamesResponse{} },
+	JSApiStreamPurgePrefix:            func() any { return &JSApiStreamPurgeResponse{} },
+	JSApiStreamRemovePeerPrefix:       func() any { return &JSApiStreamRemovePeerResponse{} },
+	JSApiStreamRestorePrefix:          func() any { return &JSApiStreamRestoreResponse{} },
+	JSApiStreamSnapshotPrefix:         func() any { return &JSApiStreamSnapshotResponse{} },
+	JSApiStreamUpdatePrefix:           func() any { return &JSApiStreamUpdateResponse{} },
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -307,6 +364,34 @@ func (t JSApiConsumerInfoResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiConsumerInfoResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerLeaderStepdownRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_leader_stepdown_request
+func (t JSApiConsumerLeaderStepdownRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_leader_stepdown_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerLeaderStepdownRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_leader_stepdown_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerLeaderStepdownRequest) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -875,6 +960,34 @@ func (t JSApiStreamInfoResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamLeaderStepDownRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_leader_stepdown_request
+func (t JSApiStreamLeaderStepDownRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_leader_stepdown_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamLeaderStepDownRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_leader_stepdown_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamLeaderStepDownRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
@@ -951,6 +1064,34 @@ func (t JSApiStreamListResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiStreamListResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMsgDeleteRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_msg_delete_request
+func (t JSApiMsgDeleteRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_msg_delete_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMsgDeleteRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_msg_delete_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMsgDeleteRequest) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err
@@ -1315,6 +1456,34 @@ func (t JSApiStreamSnapshotResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiStreamSnapshotResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamUpdateRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_update_request
+func (t JSApiStreamUpdateRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_update_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamUpdateRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_update_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamUpdateRequest) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

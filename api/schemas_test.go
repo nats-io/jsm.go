@@ -36,18 +36,49 @@ func checkErr(t *testing.T, err error, m string) {
 	t.Fatal(m + ": " + err.Error())
 }
 
-func TestSchemaTypeForWellKnownRequestSubject(t *testing.T) {
-	cases := [][]string{
-		{"$JS.API.STREAM.PEER.REMOVE.FOO", "io.nats.jetstream.api.v1.stream_remove_peer_request"},
-		{"$JS.API.STREAM.CREATE.FOO", "io.nats.jetstream.api.v1.stream_create_request"},
-		{"Unknown", ""},
+func TestTypeForJetStreamRequestSubjectPrefix(t *testing.T) {
+	v, err := TypeForJetStreamRequestSubjectPrefix("$JS.API.STREAM.CREATE")
+	checkErr(t, err, "failed")
+	instance, ok := v.(SchemaManagedType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedType got %T", v)
+	}
+	if instance.SchemaType() != "io.nats.jetstream.api.v1.stream_create_request" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_request got %s", instance.SchemaType())
+	}
+}
+
+func TestTypeForJetStreamResponseSubjectPrefix(t *testing.T) {
+	v, err := TypeForJetStreamResponseSubjectPrefix("$JS.API.STREAM.CREATE")
+	checkErr(t, err, "failed")
+	instance, ok := v.(SchemaManagedType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedType got %T", v)
+	}
+	if instance.SchemaType() != "io.nats.jetstream.api.v1.stream_create_response" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_response got %s", instance.SchemaType())
+	}
+}
+
+func TestTypesForJetStreamSubjectPrefix(t *testing.T) {
+	reqv, replyv, err := TypesForJetStreamSubjectPrefix("$JS.API.STREAM.CREATE")
+	checkErr(t, err, "failed")
+
+	req, ok := reqv.(SchemaManagedType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedType got %T", reqv)
 	}
 
-	for _, tc := range cases {
-		res := SchemaTypeForWellKnownRequestSubject(tc[0])
-		if res != tc[1] {
-			t.Fatalf("Expected %q got %q", tc[1], res)
-		}
+	reply, ok := replyv.(SchemaManagedType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedType got %T", reqv)
+	}
+
+	if req.SchemaType() != "io.nats.jetstream.api.v1.stream_create_request" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_request got %s", req)
+	}
+	if reply.SchemaType() != "io.nats.jetstream.api.v1.stream_create_response" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_response got %s", reply)
 	}
 }
 

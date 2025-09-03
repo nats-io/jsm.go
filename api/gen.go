@@ -39,12 +39,10 @@ var schemasFileTemplate = `// auto generated {{.Now}}
 package api
 
 import (
-	"encoding/base64"
 	srvadvisory "github.com/nats-io/jsm.go/api/server/advisory"
 	srvmetric "github.com/nats-io/jsm.go/api/server/metric"
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
     jsmetric "github.com/nats-io/jsm.go/api/jetstream/metric"
-	jsapi "github.com/nats-io/jsm.go/api/jetstream/api"
     scfs "github.com/nats-io/jsm.go/schemas"
 	"github.com/nats-io/nats.go/micro"
 )
@@ -56,6 +54,22 @@ var schemaTypes = map[string]func() any {
 {{- end }}
 {{- end }}
 	"io.nats.unknown_message": func() any { return &UnknownMessage{} },
+}
+
+var schemaRequestSubjects = map[string]func() any {
+{{- range . }}
+{{- if .Req }}
+    {{ .Req }}: func() any { return &{{ .St }}{} },
+{{- end }}
+{{- end }}
+}
+
+var schemaResponseSubjects = map[string]func() any {
+{{- range . }}
+{{- if .Res }}
+    {{ .Res }}: func() any { return &{{ .St }}{} },
+{{- end }}
+{{- end }}
 }
 
 {{- range . }}
@@ -100,10 +114,12 @@ type validator interface {
 }
 
 type schema struct {
-	T  string // type
-	S  string // schema
-	P  string // path
-	St string // struct
+	T   string // type
+	S   string // schema
+	P   string // path
+	St  string // struct
+	Req string // request subject
+	Res string // response subject
 }
 
 // ShouldAddValidator only adds validator logic for package local structs
@@ -208,51 +224,55 @@ func main() {
 		&schema{P: "jetstream/advisory/v1/stream_leader_elected.json", St: "jsadvisory.JSStreamLeaderElectedV1"},
 		&schema{P: "jetstream/advisory/v1/stream_quorum_lost.json", St: "jsadvisory.JSStreamQuorumLostV1"},
 		&schema{P: "jetstream/advisory/v1/terminated.json", St: "jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1"},
-		&schema{P: "jetstream/api/v1/account_info_response.json", St: "JSApiAccountInfoResponse"},
-		&schema{P: "jetstream/api/v1/account_purge_response.json", St: "JSApiAccountPurgeResponse"},
+		&schema{P: "jetstream/api/v1/account_info_response.json", St: "JSApiAccountInfoResponse", Res: "JSApiAccountInfoPrefix"},
+		&schema{P: "jetstream/api/v1/account_purge_response.json", St: "JSApiAccountPurgeResponse", Res: "JSApiAccountPurgePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_configuration.json", St: "ConsumerConfig"},
-		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "JSApiConsumerCreateRequest"},
-		&schema{P: "jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse"},
-		&schema{P: "jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse"},
-		&schema{P: "jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest"},
-		&schema{P: "jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse"},
-		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_response.json", St: "JSApiConsumerLeaderStepDownResponse"},
-		&schema{P: "jetstream/api/v1/consumer_list_request.json", St: "JSApiConsumerListRequest"},
-		&schema{P: "jetstream/api/v1/consumer_list_response.json", St: "JSApiConsumerListResponse"},
-		&schema{P: "jetstream/api/v1/consumer_names_request.json", St: "JSApiConsumerNamesRequest"},
-		&schema{P: "jetstream/api/v1/consumer_names_response.json", St: "JSApiConsumerNamesResponse"},
-		&schema{P: "jetstream/api/v1/consumer_pause_request.json", St: "JSApiConsumerPauseRequest"},
-		&schema{P: "jetstream/api/v1/consumer_pause_response.json", St: "JSApiConsumerPauseResponse"},
-		&schema{P: "jetstream/api/v1/consumer_unpin_request.json", St: "JSApiConsumerUnpinRequest"},
-		&schema{P: "jetstream/api/v1/consumer_unpin_response.json", St: "JSApiConsumerUnpinResponse"},
-		&schema{P: "jetstream/api/v1/meta_leader_stepdown_request.json", St: "JSApiLeaderStepDownRequest"},
-		&schema{P: "jetstream/api/v1/meta_leader_stepdown_response.json", St: "JSApiLeaderStepDownResponse"},
-		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "JSApiMetaServerRemoveRequest"},
-		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "JSApiMetaServerRemoveResponse"},
-		&schema{P: "jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse"},
+		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "JSApiConsumerCreateRequest", Req: "JSApiConsumerCreatePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse", Res: "JSApiConsumerCreatePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse", Res: "JSApiConsumerDeletePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest", Req: "JSApiConsumerMsgNextPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse", Res: "JSApiConsumerInfoPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_request.json", St: "JSApiConsumerLeaderStepdownRequest", Req: "JSApiConsumerLeaderStepDownPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_response.json", St: "JSApiConsumerLeaderStepDownResponse", Res: "JSApiConsumerLeaderStepDownPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_list_request.json", St: "JSApiConsumerListRequest", Req: "JSApiConsumerListPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_list_response.json", St: "JSApiConsumerListResponse", Res: "JSApiConsumerListPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_names_request.json", St: "JSApiConsumerNamesRequest", Req: "JSApiConsumerNamesPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_names_response.json", St: "JSApiConsumerNamesResponse", Res: "JSApiConsumerNamesPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_pause_request.json", St: "JSApiConsumerPauseRequest", Req: "JSApiConsumerPausePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_pause_response.json", St: "JSApiConsumerPauseResponse", Res: "JSApiConsumerPausePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_unpin_request.json", St: "JSApiConsumerUnpinRequest", Req: "JSApiConsumerUnpinPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_unpin_response.json", St: "JSApiConsumerUnpinResponse", Res: "JSApiConsumerUnpinPrefix"},
+		&schema{P: "jetstream/api/v1/meta_leader_stepdown_request.json", St: "JSApiLeaderStepDownRequest", Req: "JSApiLeaderStepDownPrefix"},
+		&schema{P: "jetstream/api/v1/meta_leader_stepdown_response.json", St: "JSApiLeaderStepDownResponse", Res: "JSApiLeaderStepDownPrefix"},
+		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "JSApiMetaServerRemoveRequest", Req: "JSApiServerRemovePrefix"},
+		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "JSApiMetaServerRemoveResponse", Res: "JSApiServerRemovePrefix"},
+		&schema{P: "jetstream/api/v1/pub_ack_response.json", St: "JSPubAckResponse", Res: "JSAckPrefix"},
 		&schema{P: "jetstream/api/v1/stream_configuration.json", St: "StreamConfig"},
-		&schema{P: "jetstream/api/v1/stream_create_request.json", St: "JSApiStreamCreateRequest"},
-		&schema{P: "jetstream/api/v1/stream_create_response.json", St: "JSApiStreamCreateResponse"},
-		&schema{P: "jetstream/api/v1/stream_delete_response.json", St: "JSApiStreamDeleteResponse"},
-		&schema{P: "jetstream/api/v1/stream_info_request.json", St: "JSApiStreamInfoRequest"},
-		&schema{P: "jetstream/api/v1/stream_info_response.json", St: "JSApiStreamInfoResponse"},
-		&schema{P: "jetstream/api/v1/stream_leader_stepdown_response.json", St: "JSApiStreamLeaderStepDownResponse"},
-		&schema{P: "jetstream/api/v1/stream_list_request.json", St: "JSApiStreamListRequest"},
-		&schema{P: "jetstream/api/v1/stream_list_response.json", St: "JSApiStreamListResponse"},
-		&schema{P: "jetstream/api/v1/stream_msg_delete_response.json", St: "JSApiMsgDeleteResponse"},
-		&schema{P: "jetstream/api/v1/stream_msg_get_request.json", St: "JSApiMsgGetRequest"},
-		&schema{P: "jetstream/api/v1/stream_msg_get_response.json", St: "JSApiMsgGetResponse"},
-		&schema{P: "jetstream/api/v1/stream_names_request.json", St: "JSApiStreamNamesRequest"},
-		&schema{P: "jetstream/api/v1/stream_names_response.json", St: "JSApiStreamNamesResponse"},
-		&schema{P: "jetstream/api/v1/stream_purge_request.json", St: "JSApiStreamPurgeRequest"},
-		&schema{P: "jetstream/api/v1/stream_purge_response.json", St: "JSApiStreamPurgeResponse"},
-		&schema{P: "jetstream/api/v1/stream_remove_peer_request.json", St: "JSApiStreamRemovePeerRequest"},
-		&schema{P: "jetstream/api/v1/stream_remove_peer_response.json", St: "JSApiStreamRemovePeerResponse"},
-		&schema{P: "jetstream/api/v1/stream_restore_request.json", St: "JSApiStreamRestoreRequest"},
-		&schema{P: "jetstream/api/v1/stream_restore_response.json", St: "JSApiStreamRestoreResponse"},
-		&schema{P: "jetstream/api/v1/stream_snapshot_request.json", St: "JSApiStreamSnapshotRequest"},
-		&schema{P: "jetstream/api/v1/stream_snapshot_response.json", St: "JSApiStreamSnapshotResponse"},
-		&schema{P: "jetstream/api/v1/stream_update_response.json", St: "JSApiStreamUpdateResponse"},
+		&schema{P: "jetstream/api/v1/stream_create_request.json", St: "JSApiStreamCreateRequest", Req: "JSApiStreamCreatePrefix"},
+		&schema{P: "jetstream/api/v1/stream_create_response.json", St: "JSApiStreamCreateResponse", Res: "JSApiStreamCreatePrefix"},
+		&schema{P: "jetstream/api/v1/stream_delete_response.json", St: "JSApiStreamDeleteResponse", Res: "JSApiStreamDeletePrefix"},
+		&schema{P: "jetstream/api/v1/stream_info_request.json", St: "JSApiStreamInfoRequest", Req: "JSApiStreamInfoPrefix"},
+		&schema{P: "jetstream/api/v1/stream_info_response.json", St: "JSApiStreamInfoResponse", Res: "JSApiStreamInfoPrefix"},
+		&schema{P: "jetstream/api/v1/stream_leader_stepdown_request.json", St: "JSApiStreamLeaderStepDownRequest", Req: "JSApiStreamLeaderStepDownPrefix"},
+		&schema{P: "jetstream/api/v1/stream_leader_stepdown_response.json", St: "JSApiStreamLeaderStepDownResponse", Res: "JSApiStreamLeaderStepDownPrefix"},
+		&schema{P: "jetstream/api/v1/stream_list_request.json", St: "JSApiStreamListRequest", Req: "JSApiStreamListPrefix"},
+		&schema{P: "jetstream/api/v1/stream_list_response.json", St: "JSApiStreamListResponse", Res: "JSApiStreamListPrefix"},
+		&schema{P: "jetstream/api/v1/stream_msg_delete_request.json", St: "JSApiMsgDeleteRequest", Req: "JSApiMsgDeletePrefix"},
+		&schema{P: "jetstream/api/v1/stream_msg_delete_response.json", St: "JSApiMsgDeleteResponse", Res: "JSApiMsgDeletePrefix"},
+		&schema{P: "jetstream/api/v1/stream_msg_get_request.json", St: "JSApiMsgGetRequest", Req: "JSApiMsgGetPrefix"},
+		&schema{P: "jetstream/api/v1/stream_msg_get_response.json", St: "JSApiMsgGetResponse", Res: "JSApiMsgGetPrefix"},
+		&schema{P: "jetstream/api/v1/stream_names_request.json", St: "JSApiStreamNamesRequest", Req: "JSApiStreamNamesPrefix"},
+		&schema{P: "jetstream/api/v1/stream_names_response.json", St: "JSApiStreamNamesResponse", Res: "JSApiStreamNamesPrefix"},
+		&schema{P: "jetstream/api/v1/stream_purge_request.json", St: "JSApiStreamPurgeRequest", Req: "JSApiStreamPurgePrefix"},
+		&schema{P: "jetstream/api/v1/stream_purge_response.json", St: "JSApiStreamPurgeResponse", Res: "JSApiStreamPurgePrefix"},
+		&schema{P: "jetstream/api/v1/stream_remove_peer_request.json", St: "JSApiStreamRemovePeerRequest", Req: "JSApiStreamRemovePeerPrefix"},
+		&schema{P: "jetstream/api/v1/stream_remove_peer_response.json", St: "JSApiStreamRemovePeerResponse", Res: "JSApiStreamRemovePeerPrefix"},
+		&schema{P: "jetstream/api/v1/stream_restore_request.json", St: "JSApiStreamRestoreRequest", Req: "JSApiStreamRestorePrefix"},
+		&schema{P: "jetstream/api/v1/stream_restore_response.json", St: "JSApiStreamRestoreResponse", Res: "JSApiStreamRestorePrefix"},
+		&schema{P: "jetstream/api/v1/stream_snapshot_request.json", St: "JSApiStreamSnapshotRequest", Req: "JSApiStreamSnapshotPrefix"},
+		&schema{P: "jetstream/api/v1/stream_snapshot_response.json", St: "JSApiStreamSnapshotResponse", Res: "JSApiStreamSnapshotPrefix"},
+		&schema{P: "jetstream/api/v1/stream_update_request.json", St: "JSApiStreamUpdateRequest", Req: "JSApiStreamUpdatePrefix"},
+		&schema{P: "jetstream/api/v1/stream_update_response.json", St: "JSApiStreamUpdateResponse", Res: "JSApiStreamUpdatePrefix"},
 		&schema{P: "jetstream/metric/v1/consumer_ack.json", St: "jsmetric.ConsumerAckMetricV1"},
 		&schema{P: "micro/v1/info_response.json", St: "micro.Info"},
 		&schema{P: "micro/v1/ping_response.json", St: "micro.Ping"},

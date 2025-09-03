@@ -512,13 +512,6 @@ func AllowSchedules() StreamOption {
 	}
 }
 
-func NoAllowSchedules() StreamOption {
-	return func(o *api.StreamConfig) error {
-		o.AllowMsgSchedules = false
-		return nil
-	}
-}
-
 func NoAllowDirect() StreamOption {
 	return func(o *api.StreamConfig) error {
 		o.AllowDirect = false

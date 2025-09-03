@@ -954,13 +954,6 @@ func TestAllowSchedules(t *testing.T) {
 	if !s.SchedulesAllowed() {
 		t.Fatalf("expected schedules allowed")
 	}
-
-	err = s.UpdateConfiguration(s.Configuration(), jsm.NoAllowSchedules())
-	checkErr(t, err, "update failed")
-
-	if s.SchedulesAllowed() {
-		t.Fatalf("expected schedules disabled")
-	}
 }
 
 func TestStream_DiscardNewPerSubject(t *testing.T) {

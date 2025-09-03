@@ -740,6 +740,14 @@
                   "raft_group": {
                     "type": "string",
                     "description": "In clustered environments the name of the Raft group managing the asset"
+                  },
+                  "system_account": {
+                    "type": "boolean",
+                    "description": "Indicates if the traffic_account is the system account. When true, replication traffic goes over the system account."
+                  },
+                  "traffic_account": {
+                    "type": "string",
+                    "description": "The account where the replication traffic goes over."
                   }
                 }
               },

@@ -875,6 +875,28 @@
             "description": "How many Leafnodes were slow consumers"
           }
         }
+      },
+      "stale_connection_stats": {
+        "type": "object",
+        "description": "Information about stale consumers from different type of connections",
+        "properties": {
+          "clients": {
+            "type": "integer",
+            "description": "How many Clients were stale"
+          },
+          "routes": {
+            "type": "integer",
+            "description": "How many Routes were stale"
+          },
+          "gateways": {
+            "type": "integer",
+            "description": "How many Gateways were stale"
+          },
+          "leafs": {
+            "type": "integer",
+            "description": "How many Leafnodes were stale"
+          }
+        }
       }
     }
   }

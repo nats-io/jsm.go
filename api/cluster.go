@@ -59,9 +59,11 @@ type JSApiAccountPurgeResponse struct {
 // that make up the stream or consumer.
 type ClusterInfo struct {
 	Name        string      `json:"name,omitempty" yaml:"name"`
-	RaftGroup   string      `json:"raft_group,omitempty"`
+	RaftGroup   string      `json:"raft_group,omitempty" yaml:"raft_group"`
 	Leader      string      `json:"leader,omitempty" yaml:"leader"`
 	LeaderSince *time.Time  `json:"leader_since,omitempty" yaml:"leader_since"`
+	SystemAcc   bool        `json:"system_account,omitempty" yaml:"system_account"`
+	TrafficAcc  string      `json:"traffic_account,omitempty" yaml:"traffic_account"`
 	Replicas    []*PeerInfo `json:"replicas,omitempty" yaml:"replicas"`
 }
 

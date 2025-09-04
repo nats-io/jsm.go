@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nats-io/nats-server/v2/server"
 	"io"
 	"net/url"
 	"regexp"
@@ -57,14 +58,6 @@ type SchemaManagedType interface {
 	Schema() ([]byte, error)
 }
 
-type JetStreamMessageDirection string
-
-const (
-	SchemaMessageDirectionUnknown  JetStreamMessageDirection = "unknown"
-	SchemaMessageDirectionRequest  JetStreamMessageDirection = "request"
-	SchemaMessageDirectionResponse JetStreamMessageDirection = "response"
-)
-
 // we dont export this since it's not official, but what this produce will be loadable by the official CE
 type cloudEvent struct {
 	Type        string          `json:"type"`
@@ -81,6 +74,8 @@ type schemaDetector struct {
 	Schema string `json:"schema"`
 	Type   string `json:"type"`
 }
+
+var ErrUnknownApiSubject = errors.New("unknown api subject")
 
 // IsNatsSchemaType determines if a schema type is a valid NATS type.
 // The logic here is currently quite naive while we learn what works best
@@ -292,7 +287,7 @@ func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
 // SchemaForRequestSubject matches a type for a request that might include details like $JS.API.CONSUMER.CREATE.foo.bar
 func SchemaForRequestSubject(subject string) (any, error) {
 	for k, v := range schemaWildcardSubjects {
-		if SubjectIsSubsetMatch(subject, k) {
+		if server.SubjectsCollide(subject, k) {
 			return v(), nil
 		}
 	}
@@ -323,79 +318,4 @@ func TypesForJetStreamSubjectPrefix(p string) (request any, response any, err er
 	}
 
 	return req, res, nil
-}
-
-const (
-	btsep = '.'
-	fwc   = '>'
-	pwc   = '*'
-)
-
-// SubjectIsSubsetMatch tests if a subject matches a standard nats wildcard
-func SubjectIsSubsetMatch(subject, test string) bool {
-	tsa := [32]string{}
-	tts := tokenizeSubjectIntoSlice(tsa[:0], subject)
-	return isSubsetMatch(tts, test)
-}
-
-// This will test a subject as an array of tokens against a test subject
-// Calls into the function isSubsetMatchTokenized
-func isSubsetMatch(tokens []string, test string) bool {
-	tsa := [32]string{}
-	tts := tokenizeSubjectIntoSlice(tsa[:0], test)
-	return isSubsetMatchTokenized(tokens, tts)
-}
-
-// use similar to append. meaning, the updated slice will be returned
-func tokenizeSubjectIntoSlice(tts []string, subject string) []string {
-	start := 0
-	for i := 0; i < len(subject); i++ {
-		if subject[i] == btsep {
-			tts = append(tts, subject[start:i])
-			start = i + 1
-		}
-	}
-	tts = append(tts, subject[start:])
-	return tts
-}
-
-// This will test a subject as an array of tokens against a test subject (also encoded as array of tokens)
-// and determine if the tokens are matched. Both test subject and tokens
-// may contain wildcards. So foo.* is a subset match of [">", "*.*", "foo.*"],
-// but not of foo.bar, etc.
-func isSubsetMatchTokenized(tokens, test []string) bool {
-	// Walk the target tokens
-	for i, t2 := range test {
-		if i >= len(tokens) {
-			return false
-		}
-		l := len(t2)
-		if l == 0 {
-			return false
-		}
-		if t2[0] == fwc && l == 1 {
-			return true
-		}
-		t1 := tokens[i]
-
-		l = len(t1)
-		if l == 0 || t1[0] == fwc && l == 1 {
-			return false
-		}
-
-		if t1[0] == pwc && len(t1) == 1 {
-			m := t2[0] == pwc && len(t2) == 1
-			if !m {
-				return false
-			}
-			if i >= len(test) {
-				return true
-			}
-			continue
-		}
-		if t2[0] != pwc && strings.Compare(t1, t2) != 0 {
-			return false
-		}
-	}
-	return len(tokens) == len(test)
 }

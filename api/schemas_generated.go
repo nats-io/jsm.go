@@ -1,4 +1,4 @@
-// auto generated 2025-09-03 18:14:44.788673 +0200 CEST m=+0.012540043
+// auto generated 2025-09-04 10:32:37.2942 +0200 CEST m=+0.009787834
 
 package api
 
@@ -283,6 +283,21 @@ func (t JSApiConsumerCreateRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerCreateRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerCreateWithName, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerCreateRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerCreateWithNameT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerCreateRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerCreateWithNamePrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiConsumerCreateResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -367,6 +382,21 @@ func (t JSApiConsumerGetNextRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerGetNextRequest) ApiSubjectPattern() (string, error) {
+	return JSApiRequestNext, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerGetNextRequest) ApiSubjectFormat() (string, error) {
+	return JSApiRequestNextT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerGetNextRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiRequestNextPrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiConsumerInfoResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -421,6 +451,21 @@ func (t JSApiConsumerLeaderStepdownRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerLeaderStepdownRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerLeaderStepDown, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerLeaderStepdownRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerLeaderStepDownT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerLeaderStepdownRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerLeaderStepDownPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -479,6 +524,21 @@ func (t JSApiConsumerListRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerListRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerList, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerListRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerListT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerListRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerListPrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiConsumerListResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -533,6 +593,21 @@ func (t JSApiConsumerNamesRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerNamesRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerNames, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerNamesRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerNamesT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerNamesRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerNamesPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -591,6 +666,21 @@ func (t JSApiConsumerPauseRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerPauseRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerPause, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerPauseRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerPauseT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerPauseRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerPausePrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiConsumerPauseResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -645,6 +735,21 @@ func (t JSApiConsumerUnpinRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerUnpinRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerUnpin, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerUnpinRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerUnpinT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerUnpinRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerUnpinPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -703,6 +808,21 @@ func (t JSApiLeaderStepDownRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiLeaderStepDownRequest) ApiSubjectPattern() (string, error) {
+	return JSApiLeaderStepDown, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiLeaderStepDownRequest) ApiSubjectFormat() (string, error) {
+	return JSApiLeaderStepDownT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiLeaderStepDownRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiLeaderStepDownPrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiLeaderStepDownResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -757,6 +877,21 @@ func (t JSApiMetaServerRemoveRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiMetaServerRemoveRequest) ApiSubjectPattern() (string, error) {
+	return JSApiServerRemove, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiMetaServerRemoveRequest) ApiSubjectFormat() (string, error) {
+	return JSApiServerRemoveT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiMetaServerRemoveRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiServerRemovePrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -871,6 +1006,21 @@ func (t JSApiStreamCreateRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamCreateRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamCreate, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamCreateRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamCreateT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamCreateRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamCreatePrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamCreateResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -955,6 +1105,21 @@ func (t JSApiStreamInfoRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamInfoRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamInfo, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamInfoRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamInfoT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamInfoRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamInfoPrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamInfoResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -1009,6 +1174,21 @@ func (t JSApiStreamLeaderStepDownRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamLeaderStepDownRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamLeaderStepDown, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamLeaderStepDownRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamLeaderStepDownT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamLeaderStepDownRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamLeaderStepDownPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -1067,6 +1247,21 @@ func (t JSApiStreamListRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamListRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamList, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamListRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamListT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamListRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamListPrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamListResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -1121,6 +1316,21 @@ func (t JSApiMsgDeleteRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiMsgDeleteRequest) ApiSubjectPattern() (string, error) {
+	return JSApiMsgDelete, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiMsgDeleteRequest) ApiSubjectFormat() (string, error) {
+	return JSApiMsgDeleteT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiMsgDeleteRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiMsgDeletePrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -1179,6 +1389,21 @@ func (t JSApiMsgGetRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiMsgGetRequest) ApiSubjectPattern() (string, error) {
+	return JSApiMsgGet, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiMsgGetRequest) ApiSubjectFormat() (string, error) {
+	return JSApiMsgGetT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiMsgGetRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiMsgGetPrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiMsgGetResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -1233,6 +1458,21 @@ func (t JSApiStreamNamesRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamNamesRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamNames, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamNamesRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamNamesT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamNamesRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamNamesPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -1291,6 +1531,21 @@ func (t JSApiStreamPurgeRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamPurgeRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamPurge, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamPurgeRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamPurgeT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamPurgeRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamPurgePrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamPurgeResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -1345,6 +1600,21 @@ func (t JSApiStreamRemovePeerRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamRemovePeerRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamRemovePeer, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamRemovePeerRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamRemovePeerT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamRemovePeerRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamRemovePeerPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration
@@ -1403,6 +1673,21 @@ func (t JSApiStreamRestoreRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamRestoreRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamRestore, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamRestoreRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamRestoreT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamRestoreRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamRestorePrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamRestoreResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -1459,6 +1744,21 @@ func (t JSApiStreamSnapshotRequest) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamSnapshotRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamSnapshot, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamSnapshotRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamSnapshotT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamSnapshotRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamSnapshotPrefix, nil
+}
+
 // Validate performs a JSON Schema validation of the configuration
 func (t JSApiStreamSnapshotResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
@@ -1513,6 +1813,21 @@ func (t JSApiStreamUpdateRequest) Schema() ([]byte, error) {
 		return nil, err
 	}
 	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamUpdateRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamUpdate, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamUpdateRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamUpdateT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamUpdateRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamUpdatePrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration

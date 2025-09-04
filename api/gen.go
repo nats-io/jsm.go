@@ -110,6 +110,22 @@ func (t {{ .St }}) Schema() ([]byte, error) {
 	return scfs.Load(f)
 }
 
+{{- if .Req }}
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t {{ .St }}) ApiSubjectPattern() (string, error) {
+	return {{ .W }}, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t {{ .St }}) ApiSubjectFormat() (string, error) {
+	return {{ .F }}, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t {{ .St }}) ApiSubjectPrefix() (string, error) {
+	return {{ .Req }}, nil
+}
+{{- end }}
 {{- end }}
 {{- end }}
 `
@@ -129,6 +145,7 @@ type schema struct {
 	Req string // request subject
 	Res string // response subject
 	W   string // wildcard subject
+	F   string // format subject
 }
 
 // ShouldAddValidator only adds validator logic for package local structs
@@ -304,6 +321,7 @@ func main() {
 
 		if i.Req != "" {
 			i.W = strings.TrimSuffix(i.Req, "Prefix")
+			i.F = fmt.Sprintf("%s%s", i.W, "T")
 		}
 	}
 

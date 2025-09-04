@@ -80,6 +80,26 @@ func TestTypesForJetStreamSubjectPrefix(t *testing.T) {
 	if reply.SchemaType() != "io.nats.jetstream.api.v1.stream_create_response" {
 		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_response got %s", reply.SchemaType())
 	}
+
+	cr, ok := req.(*JSApiStreamCreateRequest)
+	if !ok {
+		t.Fatalf("Invalid type received %T", req)
+	}
+
+	prefix, _ := cr.ApiSubjectPrefix()
+	if prefix != "$JS.API.STREAM.CREATE" {
+		t.Fatalf("expected $JS.API.STREAM.CREATE got %q", prefix)
+	}
+
+	format, _ := cr.ApiSubjectFormat()
+	if format != "$JS.API.STREAM.CREATE.%s" {
+		t.Fatalf("expected $JS.API.STREAM.CREATE.%%s got %q", format)
+	}
+
+	pattern, _ := cr.ApiSubjectPattern()
+	if pattern != "$JS.API.STREAM.CREATE.*" {
+		t.Fatalf("expected $JS.API.STREAM.CREATE.* got %q", pattern)
+	}
 }
 
 func TestSchemaForRequestSubject(t *testing.T) {
@@ -93,6 +113,26 @@ func TestSchemaForRequestSubject(t *testing.T) {
 
 	if req.SchemaType() != "io.nats.jetstream.api.v1.consumer_create_request" {
 		t.Fatalf("expected io.nats.jetstream.api.v1.consumer_create_request got %s", req.SchemaType())
+	}
+
+	cr, ok := req.(*JSApiConsumerCreateRequest)
+	if !ok {
+		t.Fatalf("Invalid type received %T", req)
+	}
+
+	prefix, _ := cr.ApiSubjectPrefix()
+	if prefix != "$JS.API.CONSUMER.CREATE" {
+		t.Fatalf("expected $JS.API.CONSUMER.CREATE got %q", prefix)
+	}
+
+	format, _ := cr.ApiSubjectFormat()
+	if format != "$JS.API.CONSUMER.CREATE.%s.%s" {
+		t.Fatalf("expected $JS.API.CONSUMER.CREATE.%%s.%%s got %q", format)
+	}
+
+	pattern, _ := cr.ApiSubjectPattern()
+	if pattern != "$JS.API.CONSUMER.CREATE.*.>" {
+		t.Fatalf("expected $JS.API.CONSUMER.CREATE.*.> got %q", pattern)
 	}
 }
 

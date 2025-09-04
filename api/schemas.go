@@ -56,6 +56,10 @@ type SchemaManagedType interface {
 	SchemaType() string
 	SchemaID() string
 	Schema() ([]byte, error)
+	ApiSubjectFormat() (string, error)
+	ApiSubjectPrefix() (string, error)
+	ApiSubjectPattern() (string, error)
+	Validate(v ...StructValidator) (valid bool, errors []string)
 }
 
 // we dont export this since it's not official, but what this produce will be loadable by the official CE

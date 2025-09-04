@@ -894,11 +894,8 @@ func (s *Stream) DirectGet(ctx context.Context, req api.JSApiMsgGetRequest, hand
 	if !s.DirectAllowed() {
 		return 0, 0, 0, fmt.Errorf("direct gets are not enabled for %s", s.Name())
 	}
-	if req.Batch == 0 {
+	if req.Batch == 0 && req.LastFor != "" {
 		return 0, 0, 0, fmt.Errorf("batch size is required")
-	}
-	if req.Seq == 0 {
-		req.Seq = 1
 	}
 
 	rj, err := json.Marshal(req)

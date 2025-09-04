@@ -18,9 +18,13 @@ import (
 )
 
 const (
-	JSApiLeaderStepDown = "$JS.API.META.LEADER.STEPDOWN"
-	JSApiRemoveServer   = "$JS.API.SERVER.REMOVE"
-	JSApiPurgeAccountT  = "$JS.API.ACCOUNT.PURGE.%s"
+	JSApiLeaderStepDown       = "$JS.API.META.LEADER.STEPDOWN"
+	JSApiLeaderStepDownPrefix = "$JS.API.META.LEADER.STEPDOWN"
+	JSApiLeaderStepDownT      = "$JS.API.META.LEADER.STEPDOWN"
+	JSApiRemoveServer         = "$JS.API.SERVER.REMOVE"
+	JSApiRemoveServerPrefix   = "$JS.API.SERVER.REMOVE"
+	JSApiPurgeAccountT        = "$JS.API.ACCOUNT.PURGE.%s"
+	JSApiPurgeAccountPrefix   = "$JS.API.ACCOUNT.PURGE"
 )
 
 // io.nats.jetstream.api.v1.meta_leader_stepdown_request

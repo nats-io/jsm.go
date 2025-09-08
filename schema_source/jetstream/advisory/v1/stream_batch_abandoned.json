@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/advisory/v1/stream_batch_abandoned.json",
+  "description": "An Advisory sent when a Stream abandons a batch",
+  "title": "io.nats.jetstream.advisory.v1.stream_batch_abandoned",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "timestamp",
+    "stream",
+    "batch",
+    "reason"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "io.nats.jetstream.advisory.v1.stream_batch_abandoned"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique correlation ID for this event"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "The time this event was created in RFC3339 format"
+    },
+    "reason": {
+      "type": "string",
+      "description": "The reason the batch was abandoned",
+      "enum": ["timeout", "incomplete"]
+    },
+    "stream": {
+      "type": "string",
+      "description": "The name of the Stream that's acted on"
+    },
+    "batch": {
+      "type": "string",
+      "description": "The ID of the batch that was abandoned"
+    },
+    "account": {
+      "type": "string",
+      "description": "The account hosting the Stream"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain hosting the Stream"
+    }
+  }
+}

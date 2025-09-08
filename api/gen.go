@@ -189,6 +189,7 @@ func getSchema(u string) (title string, id string, body string, err error) {
 func main() {
 	s := schemas{
 		&schema{P: "jetstream/advisory/v1/api_audit.json", St: "jsadvisory.JetStreamAPIAuditV1"},
+		&schema{P: "jetstream/advisory/v1/stream_batch_abandoned.json", St: "jsadvisory.JSStreamBatchAbandonedAdvisoryV1"},
 		&schema{P: "jetstream/advisory/v1/consumer_action.json", St: "jsadvisory.JSConsumerActionAdvisoryV1"},
 		&schema{P: "jetstream/advisory/v1/consumer_group_pinned.json", St: "jsadvisory.JSConsumerGroupPinnedAdvisoryV1"},
 		&schema{P: "jetstream/advisory/v1/consumer_group_unpinned.json", St: "jsadvisory.JSConsumerGroupUnPinnedAdvisoryV1"},

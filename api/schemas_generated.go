@@ -1,4 +1,4 @@
-// auto generated 2025-09-03 09:56:59.454627 +0200 CEST m=+0.018465876
+// auto generated 2025-09-08 12:11:04.886118 +0200 CEST m=+0.008242292
 
 package api
 
@@ -30,6 +30,7 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.advisory.v1.snapshot_complete":            func() any { return &jsadvisory.JSSnapshotCompleteAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.snapshot_create":              func() any { return &jsadvisory.JSSnapshotCreateAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.stream_action":                func() any { return &jsadvisory.JSStreamActionAdvisoryV1{} },
+	"io.nats.jetstream.advisory.v1.stream_batch_abandoned":       func() any { return &jsadvisory.JSStreamBatchAbandonedAdvisoryV1{} },
 	"io.nats.jetstream.advisory.v1.stream_leader_elected":        func() any { return &jsadvisory.JSStreamLeaderElectedV1{} },
 	"io.nats.jetstream.advisory.v1.stream_quorum_lost":           func() any { return &jsadvisory.JSStreamQuorumLostV1{} },
 	"io.nats.jetstream.advisory.v1.terminated":                   func() any { return &jsadvisory.JSConsumerDeliveryTerminatedAdvisoryV1{} },

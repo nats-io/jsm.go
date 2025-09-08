@@ -226,7 +226,8 @@ func (c *balancer) getConnzWithOffset(ctx context.Context, offset int) (nextOffs
 			Offset:        offset,
 		},
 		EventFilterOptions: server.EventFilterOptions{
-			Name: c.limits.ServerName,
+			Name:       c.limits.ServerName,
+			ExactMatch: true,
 		},
 	}
 

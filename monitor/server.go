@@ -182,7 +182,7 @@ func fetchVarz(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz,
 		return nil, fmt.Errorf("server name is required")
 	}
 
-	req, err := json.Marshal(server.VarzEventOptions{EventFilterOptions: server.EventFilterOptions{Name: name}})
+	req, err := json.Marshal(server.VarzEventOptions{EventFilterOptions: server.EventFilterOptions{Name: name, ExactMatch: true}})
 	if err != nil {
 		return nil, err
 	}

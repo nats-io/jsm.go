@@ -36,18 +36,103 @@ func checkErr(t *testing.T, err error, m string) {
 	t.Fatal(m + ": " + err.Error())
 }
 
-func TestSchemaTypeForWellKnownRequestSubject(t *testing.T) {
-	cases := [][]string{
-		{"$JS.API.STREAM.PEER.REMOVE.FOO", "io.nats.jetstream.api.v1.stream_remove_peer_request"},
-		{"$JS.API.STREAM.CREATE.FOO", "io.nats.jetstream.api.v1.stream_create_request"},
-		{"Unknown", ""},
+func TestTypeForJetStreamRequestSubjectPrefix(t *testing.T) {
+	v, err := TypeForJetStreamRequestSubjectPrefix("$JS.API.STREAM.CREATE")
+	checkErr(t, err, "failed")
+	instance, ok := v.(SchemaManagedApiRequestType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedApiRequestType got %T", v)
+	}
+	if instance.SchemaType() != "io.nats.jetstream.api.v1.stream_create_request" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_request got %s", instance.SchemaType())
+	}
+}
+
+func TestTypeForJetStreamResponseSubjectPrefix(t *testing.T) {
+	v, err := TypeForJetStreamResponseSubjectPrefix("$JS.API.STREAM.CREATE")
+	checkErr(t, err, "failed")
+	instance, ok := v.(SchemaManagedType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedType got %T", v)
+	}
+	if instance.SchemaType() != "io.nats.jetstream.api.v1.stream_create_response" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_response got %s", instance.SchemaType())
+	}
+}
+
+func TestTypesForJetStreamSubjectPrefix(t *testing.T) {
+	reqv, replyv, err := TypesForJetStreamSubjectPrefix("$JS.API.STREAM.CREATE")
+	checkErr(t, err, "failed")
+
+	req, ok := reqv.(SchemaManagedApiRequestType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedApiRequestType got %T", reqv)
 	}
 
-	for _, tc := range cases {
-		res := SchemaTypeForWellKnownRequestSubject(tc[0])
-		if res != tc[1] {
-			t.Fatalf("Expected %q got %q", tc[1], res)
-		}
+	reply, ok := replyv.(SchemaManagedType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedType got %T", reqv)
+	}
+
+	if req.SchemaType() != "io.nats.jetstream.api.v1.stream_create_request" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_request got %s", req.SchemaType())
+	}
+	if reply.SchemaType() != "io.nats.jetstream.api.v1.stream_create_response" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_response got %s", reply.SchemaType())
+	}
+
+	cr, ok := req.(*JSApiStreamCreateRequest)
+	if !ok {
+		t.Fatalf("Invalid type received %T", req)
+	}
+
+	prefix, _ := cr.ApiSubjectPrefix()
+	if prefix != "$JS.API.STREAM.CREATE" {
+		t.Fatalf("expected $JS.API.STREAM.CREATE got %q", prefix)
+	}
+
+	format, _ := cr.ApiSubjectFormat()
+	if format != "$JS.API.STREAM.CREATE.%s" {
+		t.Fatalf("expected $JS.API.STREAM.CREATE.%%s got %q", format)
+	}
+
+	pattern, _ := cr.ApiSubjectPattern()
+	if pattern != "$JS.API.STREAM.CREATE.*" {
+		t.Fatalf("expected $JS.API.STREAM.CREATE.* got %q", pattern)
+	}
+}
+
+func TestSchemaForRequestSubject(t *testing.T) {
+	v, err := TypeForRequestSubject("$JS.API.CONSUMER.CREATE.foo.bar")
+	checkErr(t, err, "failed")
+
+	req, ok := v.(SchemaManagedApiRequestType)
+	if !ok {
+		t.Fatalf("expected SchemaManagedApiRequestType got %T", v)
+	}
+
+	if req.SchemaType() != "io.nats.jetstream.api.v1.consumer_create_request" {
+		t.Fatalf("expected io.nats.jetstream.api.v1.consumer_create_request got %s", req.SchemaType())
+	}
+
+	cr, ok := req.(*JSApiConsumerCreateRequest)
+	if !ok {
+		t.Fatalf("Invalid type received %T", req)
+	}
+
+	prefix, _ := cr.ApiSubjectPrefix()
+	if prefix != "$JS.API.CONSUMER.CREATE" {
+		t.Fatalf("expected $JS.API.CONSUMER.CREATE got %q", prefix)
+	}
+
+	format, _ := cr.ApiSubjectFormat()
+	if format != "$JS.API.CONSUMER.CREATE.%s.%s" {
+		t.Fatalf("expected $JS.API.CONSUMER.CREATE.%%s.%%s got %q", format)
+	}
+
+	pattern, _ := cr.ApiSubjectPattern()
+	if pattern != "$JS.API.CONSUMER.CREATE.*.>" {
+		t.Fatalf("expected $JS.API.CONSUMER.CREATE.*.> got %q", pattern)
 	}
 }
 

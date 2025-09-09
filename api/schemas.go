@@ -12,6 +12,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/nats-io/nats-server/v2/server"
+
 	scfs "github.com/nats-io/jsm.go/schemas"
 )
 
@@ -50,24 +52,20 @@ const (
 	ApplicationCloudEventV1Format RenderFormat = "application/cloudeventv1"
 )
 
-var wellKnownSubjectSchemas = map[string]string{
-	JSApiStreamCreate:           "io.nats.jetstream.api.v1.stream_create_request",
-	JSApiStreamUpdate:           "io.nats.jetstream.api.v1.stream_create_request",
-	JSApiStreamNames:            "io.nats.jetstream.api.v1.stream_names_request",
-	JSApiStreamList:             "io.nats.jetstream.api.v1.stream_list_request",
-	JSApiStreamInfo:             "io.nats.jetstream.api.v1.stream_info_request",
-	JSApiStreamPurge:            "io.nats.jetstream.api.v1.stream_purge_request",
-	JSApiMsgGet:                 "io.nats.jetstream.api.v1.stream_msg_get_request",
-	JSApiStreamSnapshot:         "io.nats.jetstream.api.v1.stream_snapshot_request",
-	JSApiStreamRestore:          "io.nats.jetstream.api.v1.stream_restore_request",
-	JSApiStreamRemovePeer:       "io.nats.jetstream.api.v1.stream_remove_peer_request",
-	JSApiConsumerCreate:         "io.nats.jetstream.api.v1.consumer_create_request",
-	JSApiConsumerCreateWithName: "io.nats.jetstream.api.v1.consumer_create_request",
-	JSApiDurableCreate:          "io.nats.jetstream.api.v1.consumer_create_request",
-	JSApiConsumerCreateEx:       "io.nats.jetstream.api.v1.consumer_create_request",
-	JSApiConsumerNames:          "io.nats.jetstream.api.v1.consumer_names_request",
-	JSApiConsumerList:           "io.nats.jetstream.api.v1.consumer_list_request",
-	JSApiRequestNext:            "io.nats.jetstream.api.v1.consumer_getnext_request",
+// SchemaManagedApiRequestType is a type that supports schema based introspection including API subjects
+type SchemaManagedApiRequestType interface {
+	SchemaManagedType
+	ApiSubjectFormat() (string, error)
+	ApiSubjectPrefix() (string, error)
+	ApiSubjectPattern() (string, error)
+}
+
+// SchemaManagedType is a type that supports schema based introspection
+type SchemaManagedType interface {
+	SchemaType() string
+	SchemaID() string
+	Schema() ([]byte, error)
+	Validate(v ...StructValidator) (valid bool, errors []string)
 }
 
 // we dont export this since it's not official, but what this produce will be loadable by the official CE
@@ -87,31 +85,12 @@ type schemaDetector struct {
 	Type   string `json:"type"`
 }
 
+var ErrUnknownApiSubject = errors.New("unknown api subject")
+
 // IsNatsSchemaType determines if a schema type is a valid NATS type.
 // The logic here is currently quite naive while we learn what works best
 func IsNatsSchemaType(schemaType string) bool {
 	return strings.HasPrefix(schemaType, "io.nats.")
-}
-
-// SchemaTypeForWellKnownRequestSubject searches well known subjects, like the JetStream API, and return a schema type that match requests made to it
-func SchemaTypeForWellKnownRequestSubject(subject string) string {
-	for k, v := range wellKnownSubjectSchemas {
-		if SubjectIsSubsetMatch(subject, k) {
-			return v
-		}
-	}
-
-	return ""
-}
-
-// SchemaForWellKnownRequestSubject searches well known subjects, like the JetStream API, and return the schema if known
-func SchemaForWellKnownRequestSubject(subject string) (schema []byte, err error) {
-	st := SchemaTypeForWellKnownRequestSubject(subject)
-	if st == "" {
-		return nil, fmt.Errorf("subject not known")
-	}
-
-	return Schema(st)
 }
 
 // SchemaSearch searches all known schemas using a regular expression f
@@ -305,77 +284,48 @@ func SchemaFileForType(schemaType string) (path string, err error) {
 	return fmt.Sprintf("%s.json", strings.ReplaceAll(token, ".", "/")), nil
 }
 
-const (
-	btsep = '.'
-	fwc   = '>'
-	pwc   = '*'
-)
+// TypeForJetStreamRequestSubjectPrefix returns an empty instance for a certain JetStream request subject prefix
+func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
+	generator, ok := schemaRequestSubjects[p]
+	if !ok {
+		return nil, errors.New("unknown request subject")
+	}
 
-// SubjectIsSubsetMatch tests if a subject matches a standard nats wildcard
-func SubjectIsSubsetMatch(subject, test string) bool {
-	tsa := [32]string{}
-	tts := tokenizeSubjectIntoSlice(tsa[:0], subject)
-	return isSubsetMatch(tts, test)
+	return generator(), nil
 }
 
-// This will test a subject as an array of tokens against a test subject
-// Calls into the function isSubsetMatchTokenized
-func isSubsetMatch(tokens []string, test string) bool {
-	tsa := [32]string{}
-	tts := tokenizeSubjectIntoSlice(tsa[:0], test)
-	return isSubsetMatchTokenized(tokens, tts)
-}
-
-// use similar to append. meaning, the updated slice will be returned
-func tokenizeSubjectIntoSlice(tts []string, subject string) []string {
-	start := 0
-	for i := 0; i < len(subject); i++ {
-		if subject[i] == btsep {
-			tts = append(tts, subject[start:i])
-			start = i + 1
+// TypeForRequestSubject matches a type for a request that might include details like $JS.API.CONSUMER.CREATE.foo.bar
+func TypeForRequestSubject(subject string) (any, error) {
+	for k, generator := range schemaWildcardSubjects {
+		if server.SubjectsCollide(subject, k) {
+			return generator(), nil
 		}
 	}
-	tts = append(tts, subject[start:])
-	return tts
+
+	return nil, fmt.Errorf("unknown request subject: %q", subject)
 }
 
-// This will test a subject as an array of tokens against a test subject (also encoded as array of tokens)
-// and determine if the tokens are matched. Both test subject and tokens
-// may contain wildcards. So foo.* is a subset match of [">", "*.*", "foo.*"],
-// but not of foo.bar, etc.
-func isSubsetMatchTokenized(tokens, test []string) bool {
-	// Walk the target tokens
-	for i, t2 := range test {
-		if i >= len(tokens) {
-			return false
-		}
-		l := len(t2)
-		if l == 0 {
-			return false
-		}
-		if t2[0] == fwc && l == 1 {
-			return true
-		}
-		t1 := tokens[i]
-
-		l = len(t1)
-		if l == 0 || t1[0] == fwc && l == 1 {
-			return false
-		}
-
-		if t1[0] == pwc && len(t1) == 1 {
-			m := t2[0] == pwc && len(t2) == 1
-			if !m {
-				return false
-			}
-			if i >= len(test) {
-				return true
-			}
-			continue
-		}
-		if t2[0] != pwc && strings.Compare(t1, t2) != 0 {
-			return false
-		}
+// TypeForJetStreamResponseSubjectPrefix returns an empty instance for a certain JetStream response subject prefix
+func TypeForJetStreamResponseSubjectPrefix(p string) (any, error) {
+	generator, ok := schemaResponseSubjects[p]
+	if !ok {
+		return nil, errors.New("unknown response subject")
 	}
-	return len(tokens) == len(test)
+
+	return generator(), nil
+}
+
+// TypesForJetStreamSubjectPrefix returns an empty instance for a certain JetStream subject prefix
+func TypesForJetStreamSubjectPrefix(p string) (request any, response any, err error) {
+	req, err := TypeForJetStreamRequestSubjectPrefix(p)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	res, err := TypeForJetStreamResponseSubjectPrefix(p)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return req, res, nil
 }

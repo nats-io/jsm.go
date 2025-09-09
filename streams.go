@@ -612,7 +612,7 @@ func (s *Stream) UpdateConfiguration(cfg api.StreamConfig, opts ...StreamOption)
 		return err
 	}
 
-	req := api.JSApiStreamCreateRequest{
+	req := api.JSApiStreamUpdateRequest{
 		Pedantic:     s.mgr.pedantic,
 		StreamConfig: *ncfg,
 	}
@@ -877,7 +877,7 @@ func (s *Stream) LeaderStepDown(placement ...*api.Placement) error {
 	}
 
 	var resp api.JSApiStreamLeaderStepDownResponse
-	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamLeaderStepDownT, s.Name()), api.JSApiStreamLeaderStepdownRequest{Placement: p}, &resp)
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamLeaderStepDownT, s.Name()), api.JSApiStreamLeaderStepDownRequest{Placement: p}, &resp)
 	if err != nil {
 		return err
 	}

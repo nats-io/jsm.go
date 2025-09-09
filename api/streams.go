@@ -23,31 +23,58 @@ import (
 
 // also update wellKnownSubjectSchemas
 const (
-	JSApiStreamCreateT         = "$JS.API.STREAM.CREATE.%s"
-	JSApiStreamCreate          = "$JS.API.STREAM.CREATE.*"
-	JSApiStreamUpdateT         = "$JS.API.STREAM.UPDATE.%s"
-	JSApiStreamUpdate          = "$JS.API.STREAM.UPDATE.*"
-	JSApiStreamNames           = "$JS.API.STREAM.NAMES"
-	JSApiStreamList            = "$JS.API.STREAM.LIST"
-	JSApiStreamInfoT           = "$JS.API.STREAM.INFO.%s"
-	JSApiStreamInfo            = "$JS.API.STREAM.INFO.*"
-	JSApiStreamDeleteT         = "$JS.API.STREAM.DELETE.%s"
-	JSApiStreamPurgeT          = "$JS.API.STREAM.PURGE.%s"
-	JSApiStreamPurge           = "$JS.API.STREAM.PURGE.*"
-	JSApiMsgDeleteT            = "$JS.API.STREAM.MSG.DELETE.%s"
-	JSApiMsgGetT               = "$JS.API.STREAM.MSG.GET.%s"
-	JSApiMsgGet                = "$JS.API.STREAM.MSG.GET.*"
-	JSDirectMsgGetT            = "$JS.API.DIRECT.GET.%s"
-	JSDirectMsgGet             = "$JS.API.DIRECT.GET.*"
-	JSApiStreamSnapshotT       = "$JS.API.STREAM.SNAPSHOT.%s"
-	JSApiStreamSnapshot        = "$JS.API.STREAM.SNAPSHOT.*"
-	JSApiStreamRestoreT        = "$JS.API.STREAM.RESTORE.%s"
-	JSApiStreamRestore         = "$JS.API.STREAM.RESTORE.*"
-	JSApiStreamRemovePeerT     = "$JS.API.STREAM.PEER.REMOVE.%s"
-	JSApiStreamRemovePeer      = "$JS.API.STREAM.PEER.REMOVE.*"
-	JSApiStreamLeaderStepDownT = "$JS.API.STREAM.LEADER.STEPDOWN.%s"
-	StreamDefaultReplicas      = 1
-	StreamMaxReplicas          = 5
+	JSAck                           = "$JS.ACK"
+	JSAckPrefix                     = "$JS.ACK"
+	JSApiAccountPurge               = "$JS.API.ACCOUNT.PURGE.*"
+	JSApiAccountPurgePrefix         = "$JS.API.ACCOUNT.PURGE"
+	JSApiAccountPurgeT              = "$JS.API.ACCOUNT.PURGE.%s"
+	JSApiMsgDelete                  = "$JS.API.STREAM.MSG.DELETE.*"
+	JSApiMsgDeletePrefix            = "$JS.API.STREAM.MSG.DELETE"
+	JSApiMsgDeleteT                 = "$JS.API.STREAM.MSG.DELETE.%s"
+	JSApiMsgGet                     = "$JS.API.STREAM.MSG.GET.*"
+	JSApiMsgGetPrefix               = "$JS.API.STREAM.MSG.GET"
+	JSApiMsgGetT                    = "$JS.API.STREAM.MSG.GET.%s"
+	JSApiServerRemove               = "$JS.API.SERVER.REMOVE"
+	JSApiServerRemovePrefix         = "$JS.API.SERVER.REMOVE"
+	JSApiServerRemoveT              = "$JS.API.SERVER.REMOVE"
+	JSApiStreamCreate               = "$JS.API.STREAM.CREATE.*"
+	JSApiStreamCreatePrefix         = "$JS.API.STREAM.CREATE"
+	JSApiStreamCreateT              = "$JS.API.STREAM.CREATE.%s"
+	JSApiStreamDeletePrefix         = "$JS.API.STREAM.DELETE"
+	JSApiStreamDeleteT              = "$JS.API.STREAM.DELETE.%s"
+	JSApiStreamInfo                 = "$JS.API.STREAM.INFO.*"
+	JSApiStreamInfoPrefix           = "$JS.API.STREAM.INFO"
+	JSApiStreamInfoT                = "$JS.API.STREAM.INFO.%s"
+	JSApiStreamLeaderStepDown       = "$JS.API.STREAM.LEADER.STEPDOWN.*"
+	JSApiStreamLeaderStepDownPrefix = "$JS.API.STREAM.LEADER.STEPDOWN"
+	JSApiStreamLeaderStepDownT      = "$JS.API.STREAM.LEADER.STEPDOWN.%s"
+	JSApiStreamList                 = "$JS.API.STREAM.LIST"
+	JSApiStreamListPrefix           = "$JS.API.STREAM.LIST"
+	JSApiStreamListT                = "$JS.API.STREAM.LIST"
+	JSApiStreamNames                = "$JS.API.STREAM.NAMES"
+	JSApiStreamNamesPrefix          = "$JS.API.STREAM.NAMES"
+	JSApiStreamNamesT               = "$JS.API.STREAM.NAMES"
+	JSApiStreamPurge                = "$JS.API.STREAM.PURGE.*"
+	JSApiStreamPurgePrefix          = "$JS.API.STREAM.PURGE"
+	JSApiStreamPurgeT               = "$JS.API.STREAM.PURGE.%s"
+	JSApiStreamRemovePeer           = "$JS.API.STREAM.PEER.REMOVE.*"
+	JSApiStreamRemovePeerPrefix     = "$JS.API.STREAM.PEER.REMOVE"
+	JSApiStreamRemovePeerT          = "$JS.API.STREAM.PEER.REMOVE.%s"
+	JSApiStreamRestore              = "$JS.API.STREAM.RESTORE.*"
+	JSApiStreamRestorePrefix        = "$JS.API.STREAM.RESTORE"
+	JSApiStreamRestoreT             = "$JS.API.STREAM.RESTORE.%s"
+	JSApiStreamSnapshot             = "$JS.API.STREAM.SNAPSHOT.*"
+	JSApiStreamSnapshotPrefix       = "$JS.API.STREAM.SNAPSHOT"
+	JSApiStreamSnapshotT            = "$JS.API.STREAM.SNAPSHOT.%s"
+	JSApiStreamUpdate               = "$JS.API.STREAM.UPDATE.*"
+	JSApiStreamUpdatePrefix         = "$JS.API.STREAM.UPDATE"
+	JSApiStreamUpdateT              = "$JS.API.STREAM.UPDATE.%s"
+	JSDirectMsgGet                  = "$JS.API.DIRECT.GET.*"
+	JSDirectMsgGetPrefix            = "$JS.API.DIRECT.GET"
+	JSDirectMsgGetT                 = "$JS.API.DIRECT.GET.%s"
+
+	StreamDefaultReplicas = 1
+	StreamMaxReplicas     = 5
 )
 
 type StoredMsg struct {
@@ -84,6 +111,13 @@ type JSApiStreamInfoRequest struct {
 
 // io.nats.jetstream.api.v1.stream_create_request
 type JSApiStreamCreateRequest struct {
+	StreamConfig
+	// Pedantic disables server features that would set defaults and adjust the provided config
+	Pedantic bool `json:"pedantic,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.stream_update_request
+type JSApiStreamUpdateRequest struct {
 	StreamConfig
 	// Pedantic disables server features that would set defaults and adjust the provided config
 	Pedantic bool `json:"pedantic,omitempty"`
@@ -255,7 +289,7 @@ type JSApiStreamRemovePeerResponse struct {
 }
 
 // io.nats.jetstream.api.v1.stream_leader_stepdown_request
-type JSApiStreamLeaderStepdownRequest struct {
+type JSApiStreamLeaderStepDownRequest struct {
 	Placement *Placement `json:"placement,omitempty"`
 }
 

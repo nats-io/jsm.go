@@ -31,6 +31,7 @@
       "description": "The reason the batch was abandoned",
       "enum": [
         "timeout",
+        "large",
         "incomplete"
       ]
     },

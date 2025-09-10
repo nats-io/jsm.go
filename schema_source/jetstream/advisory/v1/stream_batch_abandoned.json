@@ -29,7 +29,7 @@
     "reason": {
       "type": "string",
       "description": "The reason the batch was abandoned",
-      "enum": ["timeout", "incomplete"]
+      "enum": ["timeout", "large","incomplete"]
     },
     "stream": {
       "type": "string",

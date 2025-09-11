@@ -129,6 +129,7 @@
           "description": "The number of bytes handled by the client"
         },
         "gateways": {
+          "description": "Gateway traffic statistics, reported only for account related events",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -143,6 +144,7 @@
           }
         },
         "routes": {
+          "description": "Route traffic statistics, reported only for account related events",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -157,6 +159,7 @@
           }
         },
         "leafs": {
+          "description": "Leafnode traffic statistics, reported only for account related events",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -186,6 +189,7 @@
           "description": "The number of bytes handled by the client"
         },
         "gateways": {
+          "description": "Gateway traffic statistics, reported only for account related events",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -200,6 +204,7 @@
           }
         },
         "routes": {
+          "description": "Route traffic statistics, reported only for account related events",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -214,6 +219,7 @@
           }
         },
         "leafs": {
+          "description": "Leafnode traffic statistics, reported only for account related events",
           "type": "object",
           "additionalProperties": false,
           "properties": {

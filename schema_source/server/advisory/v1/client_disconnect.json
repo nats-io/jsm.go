@@ -36,11 +36,11 @@
     },
     "sent": {
       "description": "Data sent by the client",
-      "$ref": "definitions.json#/definitions/datastats"
+      "$ref": "definitions.json#/definitions/datastats_v1"
     },
     "received": {
       "description": "Data sent to the client",
-      "$ref": "definitions.json#/definitions/datastats"
+      "$ref": "definitions.json#/definitions/datastats_v1"
     },
     "reason": {
       "type": "string",

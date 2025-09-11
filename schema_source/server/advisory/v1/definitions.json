@@ -6,7 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "definitions": {
-    "datastatsitem": {
+    "msg_bytes_v1": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -20,7 +20,7 @@
         }
       }
     },
-    "datastats": {
+    "datastats_v1": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -33,13 +33,16 @@
           "description": "The number of bytes handled by the client"
         },
         "gateways": {
-          "$ref": "definitions.json#/definitions/datastatsitem"
+          "description": "Gateway traffic statistics, reported only for account related events",
+          "$ref": "definitions.json#/definitions/msg_bytes_v1"
         },
         "routes": {
-          "$ref": "definitions.json#/definitions/datastatsitem"
+          "description": "Route traffic statistics, reported only for account related events",
+          "$ref": "definitions.json#/definitions/msg_bytes_v1"
         },
         "leafs": {
-          "$ref": "definitions.json#/definitions/datastatsitem"
+          "description": "Leafnode traffic statistics, reported only for account related events",
+          "$ref": "definitions.json#/definitions/msg_bytes_v1"
         }
       }
     },

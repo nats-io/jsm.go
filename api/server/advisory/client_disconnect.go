@@ -64,13 +64,7 @@ func init() {
    Stats:
                   RTT: {{ .Client.RTT }}
       Client Received: {{ .Received.Msgs }} messages ({{ .Received.Bytes | IBytes }})
-                   Gateways: {{ .Received.Gateways.Msgs }} messages ({{ .Received.Gateways.Bytes | IBytes }})
-                     Routes: {{ .Received.Routes.Msgs }} messages ({{ .Received.Routes.Bytes | IBytes }})
-                 Leaf Nodes: {{ .Received.Leafs.Msgs }} messages ({{ .Received.Leafs.Bytes | IBytes }})
-     Client Published: {{ .Sent.Msgs }} messages ({{ .Sent.Bytes | IBytes }})
-                   Gateways: {{ .Sent.Gateways.Msgs }} messages ({{ .Sent.Gateways.Bytes | IBytes }})
-                     Routes: {{ .Sent.Routes.Msgs }} messages ({{ .Sent.Routes.Bytes | IBytes }})
-                 Leaf Nodes: {{ .Sent.Leafs.Msgs }} messages ({{ .Sent.Leafs.Bytes | IBytes }})`)
+     Client Published: {{ .Sent.Msgs }} messages ({{ .Sent.Bytes | IBytes }})`)
 	if err != nil {
 		panic(err)
 	}

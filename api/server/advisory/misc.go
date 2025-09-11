@@ -46,14 +46,14 @@ type ClientInfoV1 struct {
 
 // DataStatsV1 reports how may msg and bytes. Applicable for both sent and received.
 type DataStatsV1 struct {
-	DataStatsSetV1
-	Gateways DataStatsSetV1 `json:"gateways"`
-	Routes   DataStatsSetV1 `json:"routes"`
-	Leafs    DataStatsSetV1 `json:"leafs"`
+	MsgBytesV1
+	Gateways *MsgBytesV1 `json:"gateways,omitempty"` // Gateways is usage stats for gatgeway connections, only reported for account level events
+	Routes   *MsgBytesV1 `json:"routes,omitempty"`   // Routes is usage stats for route connections, only reported for account level events
+	Leafs    *MsgBytesV1 `json:"leafs,omitempty"`    // Leafs is usage stats for leafnode connections, only reported for account level events
 }
 
-// DataStatsSetV1 reports how many messages and bytes were processed by a connection
-type DataStatsSetV1 struct {
+// MsgBytesV1 reports how many messages and bytes were processed by a connection
+type MsgBytesV1 struct {
 	Msgs  int64 `json:"msgs"`
 	Bytes int64 `json:"bytes"`
 }

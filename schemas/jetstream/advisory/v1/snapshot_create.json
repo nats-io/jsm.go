@@ -139,7 +139,7 @@
           "description": "MQTT Client ID",
           "type": "string"
         },
-        "none": {
+        "nonce": {
           "description": "The NONCE that was presented to the client during initial INFO",
           "type": "string"
         }

@@ -60,12 +60,16 @@
           "description": "The remote host the client is connected from"
         },
         "id": {
-          "type": "string",
+          "type": "number",
           "description": "The internally assigned client ID for this connection"
         },
         "acc": {
           "type": "string",
           "description": "The account this user logged in to"
+        },
+        "svc": {
+          "type": "string",
+          "description": "The service account for the user"
         },
         "user": {
           "type": "string",
@@ -128,6 +132,14 @@
             "type": "string"
           },
           "description": "Tags extracted from the JWT"
+        },
+        "client_id": {
+          "description": "MQTT Client ID",
+          "type": "string"
+        },
+        "nonce": {
+          "description": "The NONCE that was presented to the client during initial INFO",
+          "type": "string"
         }
       }
     }

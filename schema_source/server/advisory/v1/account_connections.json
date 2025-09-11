@@ -29,7 +29,7 @@
       "description": "The time this event was created in RFC3339 format"
     },
     "server": {
-      "$ref": "definitions.json#/definitions/server"
+      "$ref": "definitions.json#/definitions/server_info_v1"
     },
     "acc": {
       "type": "string",
@@ -52,11 +52,11 @@
     },
     "sent": {
       "description": "Data sent by this account",
-      "$ref": "definitions.json#/definitions/datastats"
+      "$ref": "definitions.json#/definitions/datastats_v1"
     },
     "received": {
       "description": "Data received by this account",
-      "$ref": "definitions.json#/definitions/datastats"
+      "$ref": "definitions.json#/definitions/datastats_v1"
     },
     "slow_consumers": {
       "type": "integer",

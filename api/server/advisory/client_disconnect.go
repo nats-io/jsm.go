@@ -50,7 +50,9 @@ func init() {
 {{- if .Client.Jwt }}
          Issuer Key: {{ .Client.IssuerKey }}
            Name Tag: {{ .Client.NameTag }}
+{{- if .Client.Tags }}
                Tags: {{ .Client.Tags | JoinStrings }}
+{{- end }}
 {{- end }}
 {{- if .Client.Kind }}
         Client Kind: {{ .Client.Kind }}
@@ -60,9 +62,9 @@ func init() {
 {{- end }}
 
    Stats:
-      Received: {{ .Received.Msgs }} messages ({{ .Received.Bytes | IBytes }})
-     Published: {{ .Sent.Msgs }} messages ({{ .Sent.Bytes | IBytes }})
-           RTT: {{ .Client.RTT }}`)
+                  RTT: {{ .Client.RTT }}
+      Client Received: {{ .Received.Msgs }} messages ({{ .Received.Bytes | IBytes }})
+     Client Published: {{ .Sent.Msgs }} messages ({{ .Sent.Bytes | IBytes }})`)
 	if err != nil {
 		panic(err)
 	}

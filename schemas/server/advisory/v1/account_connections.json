@@ -59,9 +59,24 @@
           "type": "string",
           "description": "The cluster the server belongs to"
         },
+        "domain": {
+          "type": "string",
+          "description": "The JetStream domain the server belongs to"
+        },
         "ver": {
           "type": "string",
           "description": "The version NATS running on the server"
+        },
+        "tags": {
+          "type": "array",
+          "description": "The tags assigned to the server",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata assigned to the server"
         },
         "seq": {
           "type": "integer",
@@ -74,6 +89,10 @@
         "time": {
           "type": "string",
           "description": "The local time of the server"
+        },
+        "flags": {
+          "type": "number",
+          "description": "The server flags"
         }
       }
     },
@@ -108,6 +127,51 @@
         "bytes": {
           "type": "integer",
           "description": "The number of bytes handled by the client"
+        },
+        "gateways": {
+          "description": "Gateway traffic statistics, reported only for account related events",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "msgs": {
+              "type": "integer",
+              "description": "The number of messages handled by the client"
+            },
+            "bytes": {
+              "type": "integer",
+              "description": "The number of bytes handled by the client"
+            }
+          }
+        },
+        "routes": {
+          "description": "Route traffic statistics, reported only for account related events",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "msgs": {
+              "type": "integer",
+              "description": "The number of messages handled by the client"
+            },
+            "bytes": {
+              "type": "integer",
+              "description": "The number of bytes handled by the client"
+            }
+          }
+        },
+        "leafs": {
+          "description": "Leafnode traffic statistics, reported only for account related events",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "msgs": {
+              "type": "integer",
+              "description": "The number of messages handled by the client"
+            },
+            "bytes": {
+              "type": "integer",
+              "description": "The number of bytes handled by the client"
+            }
+          }
         }
       }
     },
@@ -123,6 +187,51 @@
         "bytes": {
           "type": "integer",
           "description": "The number of bytes handled by the client"
+        },
+        "gateways": {
+          "description": "Gateway traffic statistics, reported only for account related events",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "msgs": {
+              "type": "integer",
+              "description": "The number of messages handled by the client"
+            },
+            "bytes": {
+              "type": "integer",
+              "description": "The number of bytes handled by the client"
+            }
+          }
+        },
+        "routes": {
+          "description": "Route traffic statistics, reported only for account related events",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "msgs": {
+              "type": "integer",
+              "description": "The number of messages handled by the client"
+            },
+            "bytes": {
+              "type": "integer",
+              "description": "The number of bytes handled by the client"
+            }
+          }
+        },
+        "leafs": {
+          "description": "Leafnode traffic statistics, reported only for account related events",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "msgs": {
+              "type": "integer",
+              "description": "The number of messages handled by the client"
+            },
+            "bytes": {
+              "type": "integer",
+              "description": "The number of bytes handled by the client"
+            }
+          }
         }
       }
     },

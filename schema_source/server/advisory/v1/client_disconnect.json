@@ -29,18 +29,18 @@
       "description": "The time this event was created in RFC3339 format"
     },
     "server": {
-      "$ref": "definitions.json#/definitions/server"
+      "$ref": "definitions.json#/definitions/server_info_v1"
     },
     "client": {
       "$ref": "../../../definitions.json#/definitions/client_info_v1"
     },
     "sent": {
-      "description": "Data sent to the client",
-      "$ref": "definitions.json#/definitions/datastats"
+      "description": "Data sent by the client",
+      "$ref": "definitions.json#/definitions/datastats_v1"
     },
     "received": {
-      "description": "Data received from the client",
-      "$ref": "definitions.json#/definitions/datastats"
+      "description": "Data sent to the client",
+      "$ref": "definitions.json#/definitions/datastats_v1"
     },
     "reason": {
       "type": "string",

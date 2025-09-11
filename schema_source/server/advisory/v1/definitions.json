@@ -6,7 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "definitions": {
-    "datastats": {
+    "datastatsitem": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -20,7 +20,30 @@
         }
       }
     },
-    "server": {
+    "datastats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "msgs": {
+          "type": "integer",
+          "description": "The number of messages handled by the client"
+        },
+        "bytes": {
+          "type": "integer",
+          "description": "The number of bytes handled by the client"
+        },
+        "gateways": {
+          "$ref": "definitions.json#/definitions/datastatsitem"
+        },
+        "routes": {
+          "$ref": "definitions.json#/definitions/datastatsitem"
+        },
+        "leafs": {
+          "$ref": "definitions.json#/definitions/datastatsitem"
+        }
+      }
+    },
+    "server_info_v1": {
       "type": "object",
       "additionalProperties": false,
       "description": "Details about the server the client connected to",
@@ -43,9 +66,24 @@
           "type": "string",
           "description": "The cluster the server belongs to"
         },
+        "domain": {
+          "type": "string",
+          "description": "The JetStream domain the server belongs to"
+        },
         "ver": {
           "type": "string",
           "description": "The version NATS running on the server"
+        },
+        "tags": {
+          "type": "array",
+          "description": "The tags assigned to the server",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata assigned to the server"
         },
         "seq": {
           "type": "integer",
@@ -58,6 +96,10 @@
         "time": {
           "type": "string",
           "description": "The local time of the server"
+        },
+        "flags": {
+          "type": "number",
+          "description": "The server flags"
         }
       }
     }

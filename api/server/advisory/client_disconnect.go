@@ -50,7 +50,9 @@ func init() {
 {{- if .Client.Jwt }}
          Issuer Key: {{ .Client.IssuerKey }}
            Name Tag: {{ .Client.NameTag }}
+{{- if .Client.Tags }}
                Tags: {{ .Client.Tags | JoinStrings }}
+{{- end }}
 {{- end }}
 {{- if .Client.Kind }}
         Client Kind: {{ .Client.Kind }}
@@ -60,9 +62,15 @@ func init() {
 {{- end }}
 
    Stats:
-      Received: {{ .Received.Msgs }} messages ({{ .Received.Bytes | IBytes }})
-     Published: {{ .Sent.Msgs }} messages ({{ .Sent.Bytes | IBytes }})
-           RTT: {{ .Client.RTT }}`)
+                  RTT: {{ .Client.RTT }}
+      Client Received: {{ .Received.Msgs }} messages ({{ .Received.Bytes | IBytes }})
+                   Gateways: {{ .Received.Gateways.Msgs }} messages ({{ .Received.Gateways.Bytes | IBytes }})
+                     Routes: {{ .Received.Routes.Msgs }} messages ({{ .Received.Routes.Bytes | IBytes }})
+                 Leaf Nodes: {{ .Received.Leafs.Msgs }} messages ({{ .Received.Leafs.Bytes | IBytes }})
+     Client Published: {{ .Sent.Msgs }} messages ({{ .Sent.Bytes | IBytes }})
+                   Gateways: {{ .Sent.Gateways.Msgs }} messages ({{ .Sent.Gateways.Bytes | IBytes }})
+                     Routes: {{ .Sent.Routes.Msgs }} messages ({{ .Sent.Routes.Bytes | IBytes }})
+                 Leaf Nodes: {{ .Sent.Leafs.Msgs }} messages ({{ .Sent.Leafs.Bytes | IBytes }})`)
 	if err != nil {
 		panic(err)
 	}

@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+	"regexp"
+	"errors"
 
 	"github.com/nats-io/jsm.go"
 )
@@ -124,6 +126,61 @@ func TestPagerWQ(t *testing.T) {
 		if last {
 			pages++
 		}
+	}
+
+	err = pgr.Close()
+	if err != nil {
+		t.Fatalf("close failed")
+	}
+}
+
+func TestPagerFilter(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
+	if err != nil {
+		t.Fatalf("stream create failed: %s", err)
+	}
+
+	for i := 1; i <= 200; i++ {
+		_, err = nc.Request("js.in.pager", []byte(fmt.Sprintf("message %d", i)), time.Second)
+		if err != nil {
+			t.Fatalf("publish failed: %s", err)
+		}
+	}
+
+	pgr, err := str.PageContents(jsm.PagerSize(25), jsm.PagerFilterRegexp(regexp.MustCompile("message 100")))
+	if err != nil {
+		t.Fatalf("pager creation failed: %s", err)
+	}
+
+	found := 0
+	seen := 0
+
+	for {
+		msg, _, err := pgr.NextMsg(context.Background())
+		if err != nil {
+			if !errors.Is(err, jsm.ErrNotMatched) {
+				break
+			}
+		}
+
+		if msg == nil && seen == 200 {
+			break
+		}
+
+		seen++
+
+		if msg != nil {
+			found++
+		}
+	}
+
+	// message 100 only has 1 matched
+	if found != 1 {
+		t.Fatalf("expected 1 message found %d", found)
 	}
 
 	err = pgr.Close()

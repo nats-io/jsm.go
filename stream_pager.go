@@ -15,10 +15,6 @@ import (
 	"github.com/nats-io/jsm.go/api"
 )
 
-var (
-	ErrNotMatched = fmt.Errorf("message not matched with filterRegexp")
-)
-
 type StreamPager struct {
 	mgr      *Manager
 	sub      *nats.Subscription
@@ -235,6 +231,7 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 		}
 	}
 
+filterNextDirectly:
 	timeout, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
@@ -257,8 +254,19 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 			msg.Ack()
 		}
 
-		if p.filterMsgRegexp != nil && !p.filterMsgRegexp.Match(msg.Data) {
-			return nil, p.seen == p.pageSize, ErrNotMatched
+		last = p.seen == p.pageSize
+
+		if p.filterMsgRegexp != nil {
+			matched := p.filterMsgRegexp.Match(msg.Data)
+			if matched {
+				return msg, last, nil
+			}
+
+			if !last {
+				goto filterNextDirectly
+			}
+
+			return nil, last, nil
 		}
 
 		return msg, p.seen == p.pageSize, nil

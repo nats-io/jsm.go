@@ -19,8 +19,6 @@ import (
 	"testing"
 	"time"
 	"regexp"
-	"errors"
-
 	"github.com/nats-io/jsm.go"
 )
 
@@ -162,9 +160,7 @@ func TestPagerFilter(t *testing.T) {
 	for {
 		msg, _, err := pgr.NextMsg(context.Background())
 		if err != nil {
-			if !errors.Is(err, jsm.ErrNotMatched) {
-				break
-			}
+			break
 		}
 
 		if msg == nil && seen == 200 {

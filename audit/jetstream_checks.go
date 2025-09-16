@@ -218,7 +218,7 @@ func checkStreamHighCardinality(check *Check, r *archive.Reader, examples *Examp
 	}
 
 	if examples.Count() > 0 {
-		log.Errorf("Found %d streams with subjects cardinality exceeding %s", examples.Count(), numSubjectsThreshold)
+		log.Errorf("Found %d streams with subjects cardinality exceeding %f", examples.Count(), numSubjectsThreshold)
 		return PassWithIssues, nil
 	}
 

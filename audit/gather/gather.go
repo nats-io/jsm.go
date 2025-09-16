@@ -73,6 +73,8 @@ type profileConfiguration struct {
 	debug int
 }
 
+func (p *profileConfiguration) Name() string { return p.name }
+
 func NewCaptureConfiguration() *Configuration {
 	return &Configuration{
 		LogLevel: api.InfoLevel,
@@ -500,12 +502,12 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 
 			responses, err := g.doReq(context.TODO(), payload, subject, 1)
 			if err != nil {
-				g.log.Errorf("Failed to request %s (%d) profile from server %s: %s", profile.name, profile.debug, serverName, err)
+				g.log.Errorf("Failed to request %v (%d) profile from server %s: %s", profile, profile.debug, serverName, err)
 				continue
 			}
 
 			if len(responses) != 1 {
-				g.log.Errorf("Unexpected number of responses to %s profile from server %s: %d", profile, serverName, len(responses))
+				g.log.Errorf("Unexpected number of responses to %v profile from server %s: %d", profile, serverName, len(responses))
 				continue
 			}
 
@@ -518,17 +520,17 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 			}
 
 			if err = json.Unmarshal(responseBytes, &apiResponse); err != nil {
-				g.log.Errorf("Failed to deserialize %s profile response from server %s: %s", profile, serverName, err)
+				g.log.Errorf("Failed to deserialize %v profile response from server %s: %s", profile, serverName, err)
 				continue
 			}
 			if apiResponse.Error != nil {
-				g.log.Errorf("Failed to retrieve %s profile from server %s: %s", profile, serverName, apiResponse.Error.Description)
+				g.log.Errorf("Failed to retrieve %v profile from server %s: %s", profile, serverName, apiResponse.Error.Description)
 				continue
 			}
 
 			profileStatus := apiResponse.Data
 			if profileStatus.Error != "" {
-				g.log.Errorf("Failed to retrieve %s profile from server %s: %s", profile, serverName, profileStatus.Error)
+				g.log.Errorf("Failed to retrieve %v profile from server %s: %s", profile, serverName, profileStatus.Error)
 				continue
 			}
 

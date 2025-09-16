@@ -1277,6 +1277,12 @@
           "description": "Enables and sets a duration for adding server markers for delete, purge and max age limits",
           "$ref": "#/definitions/golang_duration_nanos",
           "minimum": 0
+        },
+        "persist_mode": {
+          "description": "Sets a specific persistence mode for writing to the Stream",
+          "type": "string",
+          "enum": ["", "default", "async"],
+          "default": ""
         }
       }
     },

@@ -14,6 +14,7 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
+	"gopkg.in/yaml.v3"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
@@ -1395,8 +1397,85 @@ func TestStreamPedanticMirrorDirect(t *testing.T) {
 		t.Fatalf("expected direct to be false")
 	}
 
+	// sanity check that the server doesnt send stuff back when its unset
+	nfo, err := s.Information()
+	checkErr(t, err, "info failed")
+	j, err := json.Marshal(nfo.Config)
+	checkErr(t, err, "marshal failed")
+	if bytes.Contains(j, []byte("persist_mode")) {
+		t.Fatalf("Expected persist_mode not to be set")
+	}
+
 	_, err = mgr.NewStreamFromDefault("TEST_MIRROR", api.StreamConfig{}, jsm.MirrorDirect(), jsm.AllowDirect(), jsm.Mirror(&api.StreamSource{Name: "TEST"}))
 	if !api.IsNatsErr(err, 10157) {
 		t.Fatalf("expected pednatic error, got: %v", err)
+	}
+}
+
+func TestAsyncPersistenceStream(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"), jsm.AsyncPersistence())
+	checkErr(t, err, "create failed")
+	if s.PersistenceMode() != api.AsyncPersistMode {
+		t.Fatalf("expected async mode")
+	}
+
+	// should not be updatable
+	ncfg := s.Configuration()
+	ncfg.PersistMode = api.DefaultPersistMode
+	err = s.UpdateConfiguration(ncfg)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !api.IsNatsErr(err, 10052) {
+		t.Fatalf("expected config error, got: %v", err)
+	}
+
+	// should include persist mode
+	nfo, err := s.Information()
+	checkErr(t, err, "info failed")
+	j, err := json.Marshal(nfo.Config)
+	checkErr(t, err, "marshal failed")
+	if !bytes.Contains(j, []byte(`"persist_mode":"async"`)) {
+		t.Fatalf("Expected persist_mode to be set")
+	}
+
+	checkErr(t, s.Delete(), "delete failed")
+
+	// should default correctly
+	s, err = mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
+	checkErr(t, err, "create failed")
+	if s.PersistenceMode() != api.DefaultPersistMode {
+		t.Fatalf("expected default mode")
+	}
+
+	// should not include persist mode when default
+	j, err = json.Marshal(s.Configuration())
+	checkErr(t, err, "marshal failed")
+	if bytes.Contains(j, []byte("persist_mode")) {
+		t.Fatalf("Expected persist_mode not to be set")
+	}
+
+	// server should also not send it
+	nfo, err = s.Information()
+	checkErr(t, err, "info failed")
+	j, err = json.Marshal(nfo.Config)
+	checkErr(t, err, "marshal failed")
+	if bytes.Contains(j, []byte("persist_mode")) {
+		t.Fatalf("Expected persist_mode not to be set")
+	}
+
+	// yaml should work fine
+	var cfg api.StreamConfig
+	err = yaml.Unmarshal([]byte("name: x"), &cfg)
+	checkErr(t, err, "info failed")
+	if cfg.Name != "x" {
+		t.Fatalf("Expected stream name to be set")
+	}
+	if cfg.PersistMode != api.DefaultPersistMode {
+		t.Fatalf("Expected default persist mode to be set")
 	}
 }

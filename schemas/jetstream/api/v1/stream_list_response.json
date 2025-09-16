@@ -538,6 +538,16 @@
                         "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
                         "type": "integer",
                         "maximum": 9223372036854775807
+                      },
+                      "persist_mode": {
+                        "description": "Sets a specific persistence mode for writing to the Stream",
+                        "type": "string",
+                        "enum": [
+                          "",
+                          "default",
+                          "async"
+                        ],
+                        "default": ""
                       }
                     }
                   }

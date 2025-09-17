@@ -299,6 +299,77 @@ type JSApiStreamLeaderStepDownResponse struct {
 	Success bool `json:"success,omitempty"`
 }
 
+type PersistModeType int
+
+const (
+	// DefaultPersistMode specifies the default persist mode. Writes to the stream will immediately be flushed.
+	// The publish acknowledgement will be sent after the persisting completes.
+	DefaultPersistMode = PersistModeType(iota)
+	// AsyncPersistMode specifies writes to the stream will be flushed asynchronously.
+	// The publish acknowledgement may be sent before the persisting completes.
+	// This means writes could be lost if they weren't flushed prior to a hard kill of the server.
+	AsyncPersistMode
+)
+
+func (wc PersistModeType) String() string {
+	switch wc {
+	case DefaultPersistMode:
+		return "Default"
+	case AsyncPersistMode:
+		return "Async"
+	default:
+		return "Unknown Persist Mode Type"
+	}
+}
+
+func (wc PersistModeType) MarshalJSON() ([]byte, error) {
+	switch wc {
+	case DefaultPersistMode:
+		return json.Marshal("default")
+	case AsyncPersistMode:
+		return json.Marshal("async")
+	default:
+		return nil, fmt.Errorf("can not marshal %v", wc)
+	}
+}
+
+func (wc PersistModeType) MarshalYAML() (any, error) {
+	switch wc {
+	case DefaultPersistMode:
+		return "default", nil
+	case AsyncPersistMode:
+		return "async", nil
+	default:
+		return nil, fmt.Errorf("can not marshal %v", wc)
+	}
+}
+
+func (wc *PersistModeType) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case jsonString("default"), jsonString(""):
+		*wc = DefaultPersistMode
+	case jsonString("async"):
+		*wc = AsyncPersistMode
+	default:
+		return fmt.Errorf("can not unmarshal %q", data)
+	}
+
+	return nil
+}
+
+func (wc *PersistModeType) UnmarshalYAML(data *yaml.Node) error {
+	switch data.Value {
+	case "", "default":
+		*wc = DefaultPersistMode
+	case "async":
+		*wc = AsyncPersistMode
+	default:
+		return fmt.Errorf("can not unmarshal %q", data.Value)
+	}
+
+	return nil
+}
+
 type DiscardPolicy int
 
 const (
@@ -637,6 +708,8 @@ type StreamConfig struct {
 	AllowMsgCounter bool `json:"allow_msg_counter,omitempty" yaml:"allow_msg_counter" api_level:"2"`
 	// AllowMsgSchedules allows the scheduling of messages.
 	AllowMsgSchedules bool `json:"allow_msg_schedules,omitempty" yaml:"allow_msg_schedules" api_level:"2"`
+	// PersistMode allows to opt-in to different persistence mode settings.
+	PersistMode PersistModeType `json:"persist_mode,omitempty" yaml:"persist_mode" api_level:"2"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream

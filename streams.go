@@ -589,6 +589,13 @@ func SubjectTransform(subjectTransform *api.SubjectTransformConfig) StreamOption
 	}
 }
 
+func AsyncPersistence() StreamOption {
+	return func(o *api.StreamConfig) error {
+		o.PersistMode = api.AsyncPersistMode
+		return nil
+	}
+}
+
 // PageContents creates a StreamPager used to traverse the contents of the stream,
 // Close() should be called to dispose of the background consumer and resources
 func (s *Stream) PageContents(opts ...PagerOption) (*StreamPager, error) {
@@ -1176,3 +1183,4 @@ func (s *Stream) FirstSequence() uint64                    { return s.cfg.FirstS
 func (s *Stream) AllowMsgTTL() bool                        { return s.cfg.AllowMsgTTL }
 func (s *Stream) SubjectDeleteMarkerTTL() time.Duration    { return s.cfg.SubjectDeleteMarkerTTL }
 func (s *Stream) ConsumerLimits() api.StreamConsumerLimits { return s.cfg.ConsumerLimits }
+func (s *Stream) PersistenceMode() api.PersistModeType     { return s.cfg.PersistMode }

@@ -165,6 +165,7 @@ func startJSServer(t *testing.T) (*natsd.Server, *nats.Conn, *jsm.Manager) {
 		Host:      "localhost",
 		LogFile:   "/dev/stdout",
 		HTTPPort:  -1,
+		Port:      -1,
 		Trace:     true,
 	}
 

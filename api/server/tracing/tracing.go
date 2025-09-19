@@ -54,7 +54,10 @@ func TraceMsg(nc *nats.Conn, traceMsg *nats.Msg, deliverToDest bool, timeout tim
 	time.Sleep(250 * time.Millisecond) // allow for super cluster propagation
 
 	newMsg := nats.NewMsg(traceMsg.Subject)
+
+	newMsg.Data = make([]byte, len(traceMsg.Data))
 	copy(newMsg.Data, traceMsg.Data)
+
 	for k, vs := range traceMsg.Header {
 		for _, v := range vs {
 			newMsg.Header.Add(k, v)

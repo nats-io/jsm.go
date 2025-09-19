@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 
@@ -19,15 +20,16 @@ type StreamPager struct {
 	sub      *nats.Subscription
 	consumer *Consumer
 
-	q             chan *nats.Msg
-	stream        *Stream
-	startSeq      int
-	startDelta    time.Duration
-	pageSize      int
-	filterSubject string
-	started       bool
-	timeout       time.Duration
-	seen          int
+	q               chan *nats.Msg
+	stream          *Stream
+	startSeq        int
+	startDelta      time.Duration
+	pageSize        int
+	filterSubject   string
+	started         bool
+	timeout         time.Duration
+	seen            int
+	filterMsgRegexp *regexp.Regexp
 
 	useDirect bool
 	curSeq    uint64 // for direct where to get
@@ -70,6 +72,12 @@ func PagerSize(sz int) PagerOption {
 func PagerTimeout(d time.Duration) PagerOption {
 	return func(p *StreamPager) {
 		p.timeout = d
+	}
+}
+
+func PagerFilterRegexp(regexp *regexp.Regexp) PagerOption {
+	return func(p *StreamPager) {
+		p.filterMsgRegexp = regexp
 	}
 }
 
@@ -223,6 +231,7 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 		}
 	}
 
+filterNextDirectly:
 	timeout, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
@@ -243,6 +252,21 @@ func (p *StreamPager) NextMsg(ctx context.Context) (msg *nats.Msg, last bool, er
 			msg.Subject = msg.Header.Get("Nats-Subject")
 		} else {
 			msg.Ack()
+		}
+
+		last = p.seen == p.pageSize
+
+		if p.filterMsgRegexp != nil {
+			matched := p.filterMsgRegexp.Match(msg.Data)
+			if matched {
+				return msg, last, nil
+			}
+
+			if !last {
+				goto filterNextDirectly
+			}
+
+			return nil, last, nil
 		}
 
 		return msg, p.seen == p.pageSize, nil

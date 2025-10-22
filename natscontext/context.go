@@ -378,6 +378,15 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 		}
 
 		nopts = append(nopts, nko)
+
+	case c.UserJWT() != "":
+		userCB := func() (string, error) {
+			return c.UserJWT(), nil
+		}
+		sigCB := func(nonce []byte) ([]byte, error) {
+			return nil, nil
+		}
+		nopts = append(nopts, nats.UserJWT(userCB, sigCB))
 	}
 
 	if c.Token() != "" {

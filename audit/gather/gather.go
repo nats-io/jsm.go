@@ -143,7 +143,6 @@ func NewCaptureConfiguration() *Configuration {
 			{"goroutine", 1}, // includes aggregated goroutines with tags
 			{"goroutine", 2}, // includes full per-goroutine stacks
 			{"heap", 0},
-			{"allocs", 0},
 			{"mutex", 0},
 			{"threadcreate", 0},
 			{"block", 0},

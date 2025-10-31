@@ -19,15 +19,17 @@ import (
 
 // ClusterOptsVarzV1 contains monitoring cluster information
 type ClusterOptsVarzV1 struct {
-	Name        string   `json:"name,omitempty"`         // Name is the configured cluster name
-	Host        string   `json:"addr,omitempty"`         // Host is the host the cluster listens on for connections
-	Port        int      `json:"cluster_port,omitempty"` // Port is the port the cluster listens on for connections
-	AuthTimeout float64  `json:"auth_timeout,omitempty"` // AuthTimeout is the time cluster connections have to complete authentication
-	URLs        []string `json:"urls,omitempty"`         // URLs is the list of cluster URLs
-	TLSTimeout  float64  `json:"tls_timeout,omitempty"`  // TLSTimeout is how long TLS operations have to complete
-	TLSRequired bool     `json:"tls_required,omitempty"` // TLSRequired indicates if TLS is required for connections
-	TLSVerify   bool     `json:"tls_verify,omitempty"`   // TLSVerify indicates if full verification of TLS connections is performed
-	PoolSize    int      `json:"pool_size,omitempty"`    // PoolSize is the configured route connection pool size
+	Name          string        `json:"name,omitempty"`           // Name is the configured cluster name
+	Host          string        `json:"addr,omitempty"`           // Host is the host the cluster listens on for connections
+	Port          int           `json:"cluster_port,omitempty"`   // Port is the port the cluster listens on for connections
+	AuthTimeout   float64       `json:"auth_timeout,omitempty"`   // AuthTimeout is the time cluster connections have to complete authentication
+	URLs          []string      `json:"urls,omitempty"`           // URLs is the list of cluster URLs
+	TLSTimeout    float64       `json:"tls_timeout,omitempty"`    // TLSTimeout is how long TLS operations have to complete
+	TLSRequired   bool          `json:"tls_required,omitempty"`   // TLSRequired indicates if TLS is required for connections
+	TLSVerify     bool          `json:"tls_verify,omitempty"`     // TLSVerify indicates if full verification of TLS connections is performed
+	PoolSize      int           `json:"pool_size,omitempty"`      // PoolSize is the configured route connection pool size
+	WriteDeadline time.Duration `json:"write_deadline,omitempty"` // WriteDeadline is the maximum time writes to sockets have to complete
+	WriteTimeout  string        `json:"write_timeout,omitempty"`  // WriteTimeout is the closure policy for write deadline errors
 }
 
 // GatewayOptsVarzV1 contains monitoring gateway information
@@ -43,6 +45,8 @@ type GatewayOptsVarzV1 struct {
 	ConnectRetries int                       `json:"connect_retries,omitempty"` // ConnectRetries is how many connection attempts the route will make
 	Gateways       []RemoteGatewayOptsVarzV1 `json:"gateways,omitempty"`        // Gateways is state of configured gateway remotes
 	RejectUnknown  bool                      `json:"reject_unknown,omitempty"`  // RejectUnknown indicates if unknown cluster connections will be rejected
+	WriteDeadline  time.Duration             `json:"write_deadline,omitempty"`  // WriteDeadline is the maximum time writes to sockets have to complete
+	WriteTimeout   string                    `json:"write_timeout,omitempty"`   // WriteTimeout is the closure policy for write deadline errors
 }
 
 // RemoteGatewayOptsVarzV1 contains monitoring remote gateway information
@@ -62,6 +66,8 @@ type LeafNodeOptsVarzV1 struct {
 	TLSVerify         bool                 `json:"tls_verify,omitempty"`           // TLSVerify indicates if full verification of TLS connections is performed
 	Remotes           []RemoteLeafOptsVarz `json:"remotes,omitempty"`              // Remotes is state of configured Leafnode remotes
 	TLSOCSPPeerVerify bool                 `json:"tls_ocsp_peer_verify,omitempty"` // TLSOCSPPeerVerify indicates if OCSP verification will be performed
+	WriteDeadline     time.Duration        `json:"write_deadline,omitempty"`       // WriteDeadline is the maximum time writes to sockets have to complete
+	WriteTimeout      string               `json:"write_timeout,omitempty"`        // WriteTimeout is the closure policy for write deadline errors
 }
 
 // DenyRules Contains lists of subjects not allowed to be imported/exported

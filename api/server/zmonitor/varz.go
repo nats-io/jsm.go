@@ -58,6 +58,7 @@ type VarzV1 struct {
 	JetStream             JetStreamVarzV1          `json:"jetstream,omitempty"`               // JetStream is the JetStream state
 	TLSTimeout            float64                  `json:"tls_timeout"`                       // TLSTimeout is how long TLS operations have to complete
 	WriteDeadline         time.Duration            `json:"write_deadline"`                    // WriteDeadline is the maximum time writes to sockets have to complete
+	WriteTimeout          string                   `json:"write_timeout,omitempty"`           // WriteTimeout is the closure policy for write deadline errors
 	Start                 time.Time                `json:"start"`                             // Start is time when the server was started
 	Now                   time.Time                `json:"now"`                               // Now is the current time of the server
 	Uptime                string                   `json:"uptime"`                            // Uptime is how long the server has been running

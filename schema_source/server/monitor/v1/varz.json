@@ -148,6 +148,14 @@
         "$ref": "definitions.json#/definitions/golang_duration_nanos",
         "description": "The maximum time writes to sockets have to complete"
       },
+      "write_timeout": {
+        "description": "The policy to apply to sockets being closed due to write_deadline",
+        "enum": [
+          "default",
+          "close",
+          "retry"
+        ]
+      },
       "start": {
         "type": "string",
         "description": "Time when the server was started"

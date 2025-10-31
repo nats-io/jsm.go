@@ -57,6 +57,18 @@
         "pool_size": {
           "type": "integer",
           "description": "The configured route connection pool size"
+        },
+        "write_deadline": {
+          "description": "The maximum time writes to sockets have to complete",
+          "$ref": "#/definitions/golang_duration_nanos"
+        },
+        "write_timeout": {
+          "description": "The policy to apply to sockets being closed due to write_deadline",
+          "enum": [
+            "default",
+            "close",
+            "retry"
+          ]
         }
       }
     },
@@ -110,6 +122,18 @@
         "reject_unknown": {
           "type": "boolean",
           "description": "Indicates if unknown cluster connections will be rejected"
+        },
+        "write_deadline": {
+          "description": "The maximum time writes to sockets have to complete",
+          "$ref": "#/definitions/golang_duration_nanos"
+        },
+        "write_timeout": {
+          "description": "The policy to apply to sockets being closed due to write_deadline",
+          "enum": [
+            "default",
+            "close",
+            "retry"
+          ]
         }
       }
     },
@@ -176,6 +200,18 @@
           "type": "boolean",
           "description": "Indicates if OCSP verification will be performed"
         }
+      },
+      "write_deadline": {
+        "description": "The maximum time writes to sockets have to complete",
+        "$ref": "#/definitions/golang_duration_nanos"
+      },
+      "write_timeout": {
+        "description": "The policy to apply to sockets being closed due to write_deadline",
+        "enum": [
+          "default",
+          "close",
+          "retry"
+        ]
       }
     },
     "remote_leaf_opts_varz_v1": {

@@ -167,6 +167,21 @@
           "pool_size": {
             "type": "integer",
             "description": "The configured route connection pool size"
+          },
+          "write_deadline": {
+            "description": "The maximum time writes to sockets have to complete",
+            "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+            "type": "integer",
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775807
+          },
+          "write_timeout": {
+            "description": "The policy to apply to sockets being closed due to write_deadline",
+            "enum": [
+              "default",
+              "close",
+              "retry"
+            ]
           }
         }
       },
@@ -241,6 +256,21 @@
           "reject_unknown": {
             "type": "boolean",
             "description": "Indicates if unknown cluster connections will be rejected"
+          },
+          "write_deadline": {
+            "description": "The maximum time writes to sockets have to complete",
+            "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+            "type": "integer",
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775807
+          },
+          "write_timeout": {
+            "description": "The policy to apply to sockets being closed due to write_deadline",
+            "enum": [
+              "default",
+              "close",
+              "retry"
+            ]
           }
         }
       },
@@ -325,6 +355,21 @@
             "type": "boolean",
             "description": "Indicates if OCSP verification will be performed"
           }
+        },
+        "write_deadline": {
+          "description": "The maximum time writes to sockets have to complete",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775807
+        },
+        "write_timeout": {
+          "description": "The policy to apply to sockets being closed due to write_deadline",
+          "enum": [
+            "default",
+            "close",
+            "retry"
+          ]
         }
       },
       "mqtt": {
@@ -684,6 +729,14 @@
         "type": "integer",
         "maximum": 9223372036854775807,
         "minimum": -9223372036854775807
+      },
+      "write_timeout": {
+        "description": "The policy to apply to sockets being closed due to write_deadline",
+        "enum": [
+          "default",
+          "close",
+          "retry"
+        ]
       },
       "start": {
         "type": "string",

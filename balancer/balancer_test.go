@@ -128,7 +128,7 @@ func TestBalancer_FiveNodeCluster(t *testing.T) {
 		waitTime := 100 * time.Millisecond
 		streams := []*jsm.Stream{}
 
-		for i := 1; i <= 10; i++ {
+		for i := 1; i <= 50; i++ {
 			streamName := fmt.Sprintf("fivetests_stream_%d", i)
 			subjects := fmt.Sprintf("fivetest.%d.*", i)
 			s, err := mgr.NewStream(streamName, jsm.Subjects(subjects), jsm.MemoryStorage(), jsm.Replicas(3))

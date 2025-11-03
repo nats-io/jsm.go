@@ -679,7 +679,6 @@ func OverflowPriorityGroups(groups ...string) ConsumerOption {
 }
 
 // UpdateConfiguration updates the consumer configuration
-// At present the description, ack wait, max deliver, sample frequency, max ack pending, max waiting and header only settings can be changed
 func (c *Consumer) UpdateConfiguration(opts ...ConsumerOption) error {
 	if !c.IsDurable() {
 		return fmt.Errorf("only durable consumers can be updated")

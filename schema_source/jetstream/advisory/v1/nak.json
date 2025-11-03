@@ -42,8 +42,9 @@
       "description": "The sequence of the message in the consumer that was naked"
     },
     "stream_seq": {
-      "type": "string",
+      "type": "integer",
       "minimum": 1,
+      "maximum": 18446744073709551615,
       "description": "The sequence of the message in the stream that was naked"
     },
     "deliveries": {

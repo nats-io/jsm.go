@@ -37,7 +37,8 @@
       "description": "The name of the consumer where the message was terminated"
     },
     "stream_seq": {
-      "type": "string",
+      "type": "integer",
+      "maximum": 18446744073709551615,
       "minimum": 1,
       "description": "The sequence of the message in the stream that was terminated"
     },

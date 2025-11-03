@@ -36,8 +36,9 @@
       "description": "The name of the consumer where the message reached its limit"
     },
     "stream_seq": {
-      "type": "string",
+      "type": "integer",
       "minimum": 1,
+      "maximum": 18446744073709551615,
       "description": "The sequence of the message in the stream that failed"
     },
     "deliveries": {

@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +57,7 @@ type Configuration struct {
 	AccountEndpointConfigs []EndpointCaptureConfig
 	ServerProfileNames     []profileConfiguration
 	Detailed               bool
+	Version                string
 }
 
 // endpointPagingInfo maps a given endpoint's API suffix to the JSON field path that contains
@@ -76,7 +78,18 @@ type profileConfiguration struct {
 func (p *profileConfiguration) Name() string { return p.name }
 
 func NewCaptureConfiguration() *Configuration {
+	version := ""
+	bi, ok := debug.ReadBuildInfo()
+	if ok {
+		for _, setting := range bi.Settings {
+			if setting.Key == "vcs.revision" {
+				version = setting.Value
+			}
+		}
+	}
+
 	return &Configuration{
+		Version:  version,
 		LogLevel: api.InfoLevel,
 		Timeout:  5 * time.Second,
 		ServerEndpointConfigs: []EndpointCaptureConfig{

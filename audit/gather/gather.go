@@ -289,6 +289,7 @@ func (g *gather) captureMetadata() error {
 		ConnectedServerVersion: g.nc.ConnectedServerVersion(),
 		ConnectURL:             g.nc.ConnectedUrlRedacted(),
 		UserName:               username,
+		Version:                g.cfg.Version,
 	}
 
 	err = g.aw.Add(&metadata, archive.TagSpecial("audit_gather_metadata"))

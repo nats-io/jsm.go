@@ -55,7 +55,7 @@ type AuditMetadata struct {
 	ConnectedServerVersion string    `json:"connected_server_version"`
 	ConnectURL             string    `json:"connect_url"`
 	UserName               string    `json:"user_name"`
-	CLIVersion             string    `json:"cli_version"`
+	Version                string    `json:"version"`
 }
 
 func (r *Reader) rawFilesCount() int {

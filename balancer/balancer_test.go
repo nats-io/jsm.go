@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 )
 
 func TestBalancer(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
+	withJSCluster(t, 3, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
 		var err error
 		waitTime := 100 * time.Millisecond
 		streams := []*jsm.Stream{}
@@ -68,7 +69,7 @@ func TestBalancer(t *testing.T) {
 		}
 
 		if count == 0 {
-			return err
+			return fmt.Errorf("expected to balance > 0 streams. balanced 0")
 		}
 
 		consumers := []*jsm.Consumer{}
@@ -115,14 +116,96 @@ func TestBalancer(t *testing.T) {
 		}
 
 		if count == 0 {
-			return err
+			return fmt.Errorf("expected to balance > 0 consumers. balanced 0")
 		}
 
 		return nil
 	})
 }
 
-func withJSCluster(t *testing.T, cb func(*testing.T, []*server.Server, *nats.Conn, *jsm.Manager) error) {
+func TestBalancer_FiveNodeCluster(t *testing.T) {
+	withJSCluster(t, 5, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
+		waitTime := 100 * time.Millisecond
+		streams := []*jsm.Stream{}
+
+		for i := 1; i <= 10; i++ {
+			streamName := fmt.Sprintf("fivetests_stream_%d", i)
+			subjects := fmt.Sprintf("fivetest.%d.*", i)
+			s, err := mgr.NewStream(streamName, jsm.Subjects(subjects), jsm.MemoryStorage(), jsm.Replicas(3))
+			if err != nil {
+				t.Fatalf("could not create stream: %v", err)
+			}
+			streams = append(streams, s)
+			defer s.Delete()
+		}
+
+		targetReplicas := []string{}
+		for _, s := range streams {
+			info, _ := s.ClusterInfo()
+			for _, r := range info.Replicas {
+				if !slices.Contains(targetReplicas, r.Name) {
+					targetReplicas = append(targetReplicas, r.Name)
+				}
+			}
+		}
+
+		// Try and force an imbalance on the first few servers.
+		// If these tests are flakey in CI adjust this number
+		const imbalanceTargetCount = 1
+		if len(targetReplicas) > imbalanceTargetCount {
+			targetReplicas = targetReplicas[:imbalanceTargetCount]
+		}
+
+		for _, s := range streams {
+			info, _ := s.ClusterInfo()
+			validTarget := ""
+			for _, candidate := range targetReplicas {
+				if info.Leader == candidate {
+					validTarget = candidate
+					break
+				}
+				for _, r := range info.Replicas {
+					if r.Name == candidate {
+						validTarget = candidate
+						break
+					}
+				}
+				if validTarget != "" {
+					break
+				}
+			}
+			if validTarget == "" {
+				continue
+			}
+
+			if info.Leader != validTarget {
+				placement := api.Placement{Preferred: validTarget, Cluster: info.Name}
+				if err := s.LeaderStepDown(&placement); err != nil {
+					t.Fatalf("could not step down %s to %s: %v", s.Name(), validTarget, err)
+				}
+				time.Sleep(waitTime)
+			}
+		}
+
+		b, err := New(nc, api.NewDefaultLogger(api.DebugLevel))
+		if err != nil {
+			return err
+		}
+
+		count, err := b.BalanceStreams(streams)
+		if err != nil {
+			return err
+		}
+
+		if count == 0 {
+			return fmt.Errorf("expected to balance > 0 streams. balanced 0")
+		}
+
+		return nil
+	})
+}
+
+func withJSCluster(t *testing.T, clusterSize int, cb func(*testing.T, []*server.Server, *nats.Conn, *jsm.Manager) error) {
 	t.Helper()
 
 	d, err := os.MkdirTemp("", "jstest")
@@ -134,8 +217,12 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*server.Server, *nats.Con
 	var (
 		servers []*server.Server
 	)
+	routes := []*url.URL{}
+	for j := 1; j <= clusterSize; j++ {
+		routes = append(routes, &url.URL{Host: fmt.Sprintf("localhost:%d", 12000+j)})
+	}
 
-	for i := 1; i <= 3; i++ {
+	for i := 1; i <= clusterSize; i++ {
 		opts := &server.Options{
 			JetStream:  true,
 			StoreDir:   filepath.Join(d, fmt.Sprintf("s%d", i)),
@@ -147,11 +234,7 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*server.Server, *nats.Con
 				Name: "TEST",
 				Port: 12000 + i,
 			},
-			Routes: []*url.URL{
-				{Host: "localhost:12001"},
-				{Host: "localhost:12002"},
-				{Host: "localhost:12003"},
-			},
+			Routes: routes,
 		}
 
 		s, err := server.NewServer(opts)
@@ -170,7 +253,7 @@ func withJSCluster(t *testing.T, cb func(*testing.T, []*server.Server, *nats.Con
 		servers = append(servers, s)
 	}
 
-	if len(servers) != 3 {
+	if len(servers) != clusterSize {
 		t.Fatalf("servers did not start")
 	}
 

@@ -150,9 +150,24 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, clust
 					randomIndex := rand.IntN(len(s.entities))
 					entity := s.entities[randomIndex]
 
+					info, err := entity.ClusterInfo()
+					if err != nil {
+						b.log.Errorf("Unable to fetch cluster info for %s: %v", entity.Name(), err)
+						s.entities = slices.Delete(s.entities, randomIndex, randomIndex+1)
+						continue
+					}
+
 					b.log.Infof("Moving %s to available server in cluster %s", entity.Name(), cluster)
+
+					moved := false
+
 					for _, ns := range servers {
-						if ns.offset < 0 {
+						if ns.offset < 0 && isInPeerGroup(info, ns.name) {
+							// skip if this server is already the leader for the entity
+							if info.Leader == ns.name {
+								b.log.Debugf("Skipping %s '%s': %s is already leader", typeHint, entity.Name(), ns.name)
+								continue
+							}
 							b.log.Infof("Requesting leader '%s' step down for %s '%s'. New preferred leader is %s.", s.name, typeHint, entity.Name(), ns.name)
 							placement := api.Placement{Preferred: ns.name, Cluster: cluster}
 							err := entity.LeaderStepDown(&placement)
@@ -167,6 +182,7 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, clust
 								}
 								return 0, err
 							}
+
 							b.log.Infof("Successful step down for %s '%s'", typeHint, entity.Name())
 							retries = 0
 							steppedDown += 1
@@ -174,17 +190,37 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, clust
 							s.offset -= 1
 							// Remove the entity we just moved from the server so it can't be randomly selected again
 							s.entities = slices.Delete(s.entities, randomIndex, randomIndex+1)
+							moved = true
 							break
 						}
+					}
+
+					if !moved {
+						b.log.Debugf("No valid server found for %s '%s'; skipping", typeHint, entity.Name())
+						if randomIndex < len(s.entities) {
+							s.entities = slices.Delete(s.entities, randomIndex, randomIndex+1)
+						}
+						break
 					}
 				}
 			}
 		}
+
 		// We recalculate the offset count, we can't be 100% sure entities moved to their preferred server
 		b.calcOffset(&servers, evenDistribution)
 	}
 
 	return steppedDown, nil
+}
+
+func isInPeerGroup(info api.ClusterInfo, candidate string) bool {
+	for _, r := range info.Replicas {
+		if r.Name == candidate {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (b *Balancer) calcClusterDistribution(c *cluster) int {

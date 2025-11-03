@@ -512,7 +512,7 @@ func TestStream_Dedupe(t *testing.T) {
 	}
 }
 
-func TestStream_Purge(t *testing.T) {
+func TestStream_PurgeExt(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
 	defer srv.Shutdown()
 	defer nc.Flush()
@@ -537,17 +537,25 @@ func TestStream_Purge(t *testing.T) {
 
 	checkCnt(t, 100)
 
-	err = stream.Purge(&api.JSApiStreamPurgeRequest{Subject: "test.1", Keep: 4})
+	resp, err := stream.PurgeExt(&api.JSApiStreamPurgeRequest{Subject: "test.1", Keep: 4})
 	checkErr(t, err, "purge failed")
+	if resp.Purged != 46 {
+		t.Fatalf("Expected to purge 46 but purged %d", resp.Purged)
+	}
 	checkCnt(t, 54)
 
-	err = stream.Purge(&api.JSApiStreamPurgeRequest{Subject: "test.0", Keep: 4})
+	resp, err = stream.PurgeExt(&api.JSApiStreamPurgeRequest{Subject: "test.0", Keep: 4})
 	checkErr(t, err, "purge failed")
+	if resp.Purged != 46 {
+		t.Fatalf("Expected to purge 46 but purged %d", resp.Purged)
+	}
 	checkCnt(t, 8)
 
-	err = stream.Purge()
+	resp, err = stream.PurgeExt(&api.JSApiStreamPurgeRequest{})
 	checkErr(t, err, "purge failed")
-
+	if resp.Purged != 8 {
+		t.Fatalf("Expected to purge 8 but purged %d", resp.Purged)
+	}
 	checkCnt(t, 0)
 }
 

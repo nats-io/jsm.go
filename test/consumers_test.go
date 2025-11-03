@@ -93,7 +93,7 @@ func TestNextMsg(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream.Purge()
+	checkErr(t, stream.Purge(), "Purge Failed")
 
 	consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
 	checkErr(t, err, "create failed")
@@ -122,7 +122,7 @@ func TestNextMsgRequest(t *testing.T) {
 	defer srv.Shutdown()
 	defer nc.Flush()
 
-	stream.Purge()
+	checkErr(t, stream.Purge(), "Purge Failed")
 
 	consumer, err := stream.NewConsumer(jsm.DurableName("NEW"), jsm.FilterStreamBySubject("ORDERS.new"), jsm.DeliverAllAvailable())
 	checkErr(t, err, "create failed")

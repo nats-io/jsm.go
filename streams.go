@@ -775,7 +775,22 @@ func (s *Stream) Seal() error {
 	return s.UpdateConfiguration(cfg)
 }
 
-// Purge deletes messages from the Stream, an optional JSApiStreamPurgeRequest can be supplied to limit the purge to a subset of messages
+// PurgeExt deletes messages from the Stream using JSApiStreamPurgeRequest
+func (s *Stream) PurgeExt(req *api.JSApiStreamPurgeRequest) (*api.JSApiStreamPurgeResponse, error) {
+	var resp api.JSApiStreamPurgeResponse
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamPurgeT, s.Name()), req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Success {
+		return &resp, fmt.Errorf("unknown failure")
+	}
+
+	return &resp, nil
+}
+
+// Purge deletes messages from the Stream, an optional JSApiStreamPurgeRequest can be supplied to limit the purge to a subset of messages. To gain access to the full Purge response use PurgeExt
 func (s *Stream) Purge(opts ...*api.JSApiStreamPurgeRequest) error {
 	if len(opts) > 1 {
 		return fmt.Errorf("only one purge option allowed")
@@ -786,17 +801,8 @@ func (s *Stream) Purge(opts ...*api.JSApiStreamPurgeRequest) error {
 		req = opts[0]
 	}
 
-	var resp api.JSApiStreamPurgeResponse
-	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamPurgeT, s.Name()), req, &resp)
-	if err != nil {
-		return err
-	}
-
-	if !resp.Success {
-		return fmt.Errorf("unknown failure")
-	}
-
-	return nil
+	_, err := s.PurgeExt(req)
+	return err
 }
 
 // ReadLastMessageForSubject reads the last message stored in the stream for a specific subject

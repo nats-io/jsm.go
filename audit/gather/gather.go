@@ -303,11 +303,12 @@ func (g *gather) captureMetadata() error {
 // Discover streams in given account, and capture info for each one
 func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerInfo, accountId string, numServers int) error {
 	jszOptions := server.JSzOptions{
-		Account:    accountId,
-		Streams:    true,
-		Consumer:   g.cfg.Include.Consumers,
-		Config:     true,
-		RaftGroups: true,
+		Account:        accountId,
+		Streams:        true,
+		Consumer:       g.cfg.Include.Consumers,
+		Config:         true,
+		RaftGroups:     true,
+		DirectConsumer: true,
 	}
 
 	jsInfoResponses := make(map[string]*server.ServerAPIJszResponse, numServers)

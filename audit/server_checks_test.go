@@ -167,11 +167,11 @@ func TestSERVER_005(t *testing.T) {
 		result := setupServerCheck(t, "SERVER_005", map[string]any{
 			"n1": &server.ServerAPIJszResponse{
 				Data: &server.JSInfo{
+					Config: server.JetStreamConfig{
+						MaxMemory: 1000,
+					},
 					JetStreamStats: server.JetStreamStats{
-						Memory:         901,
-						ReservedMemory: 1000,
-						Store:          500,
-						ReservedStore:  1000,
+						Memory: 901,
 					},
 				},
 			},
@@ -186,11 +186,11 @@ func TestSERVER_005(t *testing.T) {
 		result := setupServerCheck(t, "SERVER_005", map[string]any{
 			"n1": &server.ServerAPIJszResponse{
 				Data: &server.JSInfo{
+					Config: server.JetStreamConfig{
+						MaxStore: 1000,
+					},
 					JetStreamStats: server.JetStreamStats{
-						Memory:         500,
-						ReservedMemory: 1000,
-						Store:          901,
-						ReservedStore:  1000,
+						Store: 901,
 					},
 				},
 			},

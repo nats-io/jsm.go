@@ -58,6 +58,7 @@ type Configuration struct {
 	ServerProfileNames     []profileConfiguration
 	Detailed               bool
 	Version                string
+	Cluster                string
 }
 
 // endpointPagingInfo maps a given endpoint's API suffix to the JSON field path that contains
@@ -206,6 +207,16 @@ func (g *gather) start() error {
 
 	// Discover servers, create map with servers info
 	serverInfoMap, err := g.discoverServers()
+
+	//Filter for servers in a specific cluster
+	if g.cfg.Cluster != "" {
+		for key, serverInfo := range serverInfoMap {
+			if serverInfo.Cluster != g.cfg.Cluster {
+				delete(serverInfoMap, key)
+			}
+		}
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to discover servers: %w", err)
 	}

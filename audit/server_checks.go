@@ -248,15 +248,15 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
 		}
 
-		if jsz.Data.ReservedMemory > 0 {
-			threshold := uint64(float64(jsz.Data.ReservedMemory) * (memoryUsageThreshold / 100))
+		if jsz.Data.Config.MaxMemory > 0 {
+			threshold := uint64(float64(jsz.Data.Config.MaxMemory) * (memoryUsageThreshold / 100))
 			if jsz.Data.Memory > threshold {
 				examples.Add("%s memory usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Memory), humanize.IBytes(jsz.Data.ReservedMemory))
 			}
 		}
 
-		if jsz.Data.ReservedStore > 0 {
-			threshold := uint64(float64(jsz.Data.ReservedStore) * (storeUsageThreshold / 100))
+		if jsz.Data.Config.MaxStore > 0 {
+			threshold := uint64(float64(jsz.Data.Config.MaxStore) * (storeUsageThreshold / 100))
 			if jsz.Data.Store > threshold {
 				examples.Add("%s store usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Store), humanize.IBytes(jsz.Data.ReservedStore))
 			}

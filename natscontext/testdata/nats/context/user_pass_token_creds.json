@@ -16,6 +16,7 @@
   "jetstream_event_prefix": "",
   "inbox_prefix": "",
   "user_jwt": "",
+  "user_seed": "",
   "color_scheme": "",
   "tls_first": false,
   "windows_cert_store": "",

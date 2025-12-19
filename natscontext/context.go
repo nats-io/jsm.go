@@ -68,6 +68,7 @@ type settings struct {
 	JSEventPrefix       string   `json:"jetstream_event_prefix"`
 	InboxPrefix         string   `json:"inbox_prefix"`
 	UserJwt             string   `json:"user_jwt"`
+	UserSeed            string   `json:"user_seed"`
 	ColorScheme         string   `json:"color_scheme"`
 	TLSFirst            bool     `json:"tls_first"`
 	WinCertStoreType    string   `json:"windows_cert_store"`
@@ -379,7 +380,10 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 
 		nopts = append(nopts, nko)
 
-	case c.UserJWT() != "":
+	case c.UserJWT() != "" && c.UserSeed() != "":
+		nopts = append(nopts, nats.UserJWTAndSeed(c.UserJWT(), c.UserSeed()))
+
+	case c.UserJWT() != "" && c.UserSeed() == "":
 		userCB := func() (string, error) {
 			return c.UserJWT(), nil
 		}
@@ -963,9 +967,23 @@ func WithUserJWT(p string) Option {
 	}
 }
 
+// WithUserSeed sets the user seed
+func WithUserSeed(p string) Option {
+	return func(s *settings) {
+		if p != "" {
+			s.UserSeed = p
+		}
+	}
+}
+
 // UserJWT retrieves the configured user jwt, empty if not set
 func (c *Context) UserJWT() string {
 	return c.config.UserJwt
+}
+
+// UserSeed retrieves the configured user seed, empty if not set
+func (c *Context) UserSeed() string {
+	return c.config.UserSeed
 }
 
 // WithSocksProxy sets the SOCKS5 Proxy.

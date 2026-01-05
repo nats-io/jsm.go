@@ -43,6 +43,7 @@ const (
 	// Server artifacts
 	healtzArtifactType   = "health"
 	varzArtifactType     = "variables"
+	expvarzArtifactType  = "exp_variables"
 	connzArtifactType    = "connections"
 	routezArtifactType   = "routes"
 	gatewayzArtifactType = "gateways"
@@ -238,6 +239,10 @@ func TagServerHealth() *Tag {
 }
 func TagServerVars() *Tag {
 	return TagArtifactType(varzArtifactType)
+}
+
+func TagServerExpVars() *Tag {
+	return TagArtifactType(expvarzArtifactType)
 }
 
 func TagServerConnections() *Tag {

@@ -99,6 +99,10 @@ func NewCaptureConfiguration() *Configuration {
 				archive.TagServerVars(),
 			},
 			{
+				"EXPVARZ",
+				archive.TagServerExpVars(),
+			},
+			{
 				"CONNZ",
 				archive.TagServerConnections(),
 			},

@@ -251,14 +251,14 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 		if jsz.Data.Config.MaxMemory > 0 {
 			threshold := uint64(float64(jsz.Data.Config.MaxMemory) * (memoryUsageThreshold / 100))
 			if jsz.Data.Memory > threshold {
-				examples.Add("%s memory usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Memory), humanize.IBytes(jsz.Data.ReservedMemory))
+				examples.Add("%s memory usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Memory), humanize.IBytes(uint64(jsz.Data.Config.MaxMemory)))
 			}
 		}
 
 		if jsz.Data.Config.MaxStore > 0 {
 			threshold := uint64(float64(jsz.Data.Config.MaxStore) * (storeUsageThreshold / 100))
 			if jsz.Data.Store > threshold {
-				examples.Add("%s store usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Store), humanize.IBytes(jsz.Data.ReservedStore))
+				examples.Add("%s store usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Store), humanize.IBytes(uint64(jsz.Data.Config.MaxStore)))
 			}
 		}
 

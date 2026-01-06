@@ -44,8 +44,10 @@ type EndpointSelection struct {
 
 // EndpointCaptureConfig configuration for capturing and tagging server and account endpoints
 type EndpointCaptureConfig struct {
-	ApiSuffix string
-	TypeTag   *archive.Tag
+	ApiSuffix      string
+	TypeTag        *archive.Tag
+	UseServerPing  bool
+	OptionsBuilder func(accountId string) any
 }
 
 type Configuration struct {
@@ -95,66 +97,86 @@ func NewCaptureConfiguration() *Configuration {
 		Timeout:  5 * time.Second,
 		ServerEndpointConfigs: []EndpointCaptureConfig{
 			{
-				"VARZ",
-				archive.TagServerVars(),
+				ApiSuffix: "VARZ",
+				TypeTag:   archive.TagServerVars(),
 			},
 			{
-				"EXPVARZ",
-				archive.TagServerExpVars(),
+				ApiSuffix: "EXPVARZ",
+				TypeTag:   archive.TagServerExpVars(),
 			},
 			{
-				"CONNZ",
-				archive.TagServerConnections(),
+				ApiSuffix: "CONNZ",
+				TypeTag:   archive.TagServerConnections(),
 			},
 			{
-				"ROUTEZ",
-				archive.TagServerRoutes(),
+				ApiSuffix: "ROUTEZ",
+				TypeTag:   archive.TagServerRoutes(),
 			},
 			{
-				"GATEWAYZ",
-				archive.TagServerGateways(),
+				ApiSuffix: "GATEWAYZ",
+				TypeTag:   archive.TagServerGateways(),
 			},
 			{
-				"LEAFZ",
-				archive.TagServerLeafs(),
+				ApiSuffix: "LEAFZ",
+				TypeTag:   archive.TagServerLeafs(),
 			},
 			{
-				"SUBSZ",
-				archive.TagServerSubs(),
+				ApiSuffix: "SUBSZ",
+				TypeTag:   archive.TagServerSubs(),
 			},
 			{
-				"JSZ",
-				archive.TagServerJetStream(),
+				ApiSuffix: "JSZ",
+				TypeTag:   archive.TagServerJetStream(),
 			},
 			{
-				"ACCOUNTZ",
-				archive.TagServerAccounts(),
+				ApiSuffix: "ACCOUNTZ",
+				TypeTag:   archive.TagServerAccounts(),
 			},
 			{
-				"HEALTHZ",
-				archive.TagServerHealth(),
+				ApiSuffix: "HEALTHZ",
+				TypeTag:   archive.TagServerHealth(),
 			},
 		},
 		AccountEndpointConfigs: []EndpointCaptureConfig{
 			{
-				"CONNZ",
-				archive.TagAccountConnections(),
+				ApiSuffix: "CONNZ",
+				TypeTag:   archive.TagAccountConnections(),
 			},
 			{
-				"LEAFZ",
-				archive.TagAccountLeafs(),
+				ApiSuffix: "LEAFZ",
+				TypeTag:   archive.TagAccountLeafs(),
 			},
 			{
-				"SUBSZ",
-				archive.TagAccountSubs(),
+				ApiSuffix: "SUBSZ",
+				TypeTag:   archive.TagAccountSubs(),
 			},
 			{
-				"INFO",
-				archive.TagAccountInfo(),
+				ApiSuffix: "INFO",
+				TypeTag:   archive.TagAccountInfo(),
 			},
 			{
-				"JSZ",
-				archive.TagAccountJetStream(),
+				ApiSuffix: "JSZ",
+				TypeTag:   archive.TagAccountJetStream(),
+			},
+			{
+				ApiSuffix:     "RAFTZ",
+				TypeTag:       archive.TagAccountRaftz(),
+				UseServerPing: true,
+				OptionsBuilder: func(accountId string) any {
+					return &server.RaftzOptions{
+						AccountFilter: accountId,
+					}
+				},
+			},
+			{
+				ApiSuffix:     "IPQUEUESZ",
+				TypeTag:       archive.TagAccountIpqueuesz(),
+				UseServerPing: true,
+				OptionsBuilder: func(accountId string) any {
+					return &server.IpqueueszOptions{
+						Filter: accountId,
+					}
+				},
 			},
 		},
 		ServerProfileNames: []profileConfiguration{
@@ -409,15 +431,28 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 		ClusterName string
 		ServerName  string
 	}
+
 	capturedCount := 0
 	g.log.Infof("Querying %d endpoints for %d known accounts...", len(g.cfg.AccountEndpointConfigs), len(accountIdsToServersCountMap))
 
 	for accountId, serversCount := range accountIdsToServersCountMap {
 		for _, endpoint := range g.cfg.AccountEndpointConfigs {
-			subject := fmt.Sprintf("$SYS.REQ.ACCOUNT.%s.%s", accountId, endpoint.ApiSuffix)
+			var subject string
+			var opts any
+
+			if endpoint.UseServerPing {
+				subject = fmt.Sprintf("$SYS.REQ.SERVER.PING.%s", endpoint.ApiSuffix)
+				if endpoint.OptionsBuilder != nil {
+					opts = endpoint.OptionsBuilder(accountId)
+				}
+			} else {
+				subject = fmt.Sprintf("$SYS.REQ.ACCOUNT.%s.%s", accountId, endpoint.ApiSuffix)
+				opts = nil
+			}
+
 			endpointResponses := make(map[Responder]io.Reader, serversCount)
 
-			err := g.doReqAsync(context.TODO(), nil, subject, serversCount, func(b []byte) {
+			err := g.doReqAsync(context.TODO(), opts, subject, serversCount, func(b []byte) {
 				var apiResponse server.ServerAPIResponse
 				err := json.Unmarshal(b, &apiResponse)
 				if err != nil {

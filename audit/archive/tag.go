@@ -57,6 +57,8 @@ const (
 	accountSubsArtifactType        = "account_subs"
 	accountJetStreamArtifactType   = "account_jetstream_info"
 	accountInfoArtifactType        = "account_info"
+	accountRaftzArtifactType       = "account_raftz"
+	accountIpqueueszArtifactType   = "account_ipqueues"
 	streamDetailsArtifactType      = "stream_info"
 	// Other artifacts
 	manifestArtifactName = "manifest"
@@ -291,6 +293,14 @@ func TagAccountJetStream() *Tag {
 
 func TagAccountInfo() *Tag {
 	return TagArtifactType(accountInfoArtifactType)
+}
+
+func TagAccountRaftz() *Tag {
+	return TagArtifactType(accountRaftzArtifactType)
+}
+
+func TagAccountIpqueuesz() *Tag {
+	return TagArtifactType(accountIpqueueszArtifactType)
 }
 
 func TagStreamInfo() *Tag { return TagArtifactType(streamDetailsArtifactType) }

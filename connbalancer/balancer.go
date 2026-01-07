@@ -30,6 +30,7 @@ import (
 
 type ConnectionSelector struct {
 	ServerName      string
+	Cluster         string
 	Idle            time.Duration
 	Account         string
 	SubjectInterest string
@@ -289,6 +290,7 @@ func (c *balancer) getConnzWithOffset(ctx context.Context, offset int) (nextOffs
 		},
 		EventFilterOptions: server.EventFilterOptions{
 			Name:       c.limits.ServerName,
+			Cluster:    c.limits.Cluster,
 			ExactMatch: true,
 		},
 	}

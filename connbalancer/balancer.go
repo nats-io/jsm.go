@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -51,6 +53,13 @@ type conn struct {
 	conn       *server.ConnInfo
 }
 
+type serverConnections struct {
+	serverId    string
+	serverName  string
+	connections []*conn
+	offset      int
+}
+
 func New(nc *nats.Conn, runTime time.Duration, log api.Logger, connections ConnectionSelector) (Balancer, error) {
 	if connections.SubjectInterest != "" && connections.Account == "" {
 		return nil, fmt.Errorf("can only filter by subject if account is given")
@@ -64,28 +73,14 @@ func New(nc *nats.Conn, runTime time.Duration, log api.Logger, connections Conne
 	}, nil
 }
 
-// TODO: remove after go 1.21
-func index[S ~[]E, E comparable](s S, v E) int {
-	for i := range s {
-		if v == s[i] {
-			return i
-		}
-	}
-	return -1
-}
-
-// TODO: remove after go 1.21 for slices.Contains()
-func contains[S ~[]E, E comparable](s S, v E) bool {
-	return index(s, v) >= 0
-}
-
 func (c *balancer) Balance(ctx context.Context) (int, error) {
 	connz, err := c.getConnz(ctx)
 	if err != nil {
 		return 0, err
 	}
+	serverCount := len(connz)
 
-	c.log.Debugf("Had %d connz responses", len(connz))
+	c.log.Debugf("Had %d connz responses", serverCount)
 
 	matched, err := c.pickConnections(connz)
 	if err != nil {
@@ -98,12 +93,33 @@ func (c *balancer) Balance(ctx context.Context) (int, error) {
 		return 0, nil
 	}
 
-	var sleep = c.duration / time.Duration(len(matched))
+	grouped := c.groupConnectionsByServer(matched)
+
+	totalConnections := len(matched)
+	evenDist := c.calculateEvenDistribution(totalConnections, serverCount)
+
+	c.calculateOffsets(grouped, evenDist)
+
+	c.log.Infof("Connection distribution across %d servers (target: %d per server):", serverCount, evenDist)
+	for _, server := range grouped {
+		c.log.Infof("  Server '%s': %d connections (offset: %+d)",
+			server.serverName, len(server.connections), server.offset)
+	}
+
+	toKick := c.selectConnectionsToKick(grouped)
+
+	c.log.Debugf("Selected %d connections to kick (from %d matched)", len(toKick), len(matched))
+
+	if len(toKick) == 0 {
+		return 0, nil
+	}
+
+	var sleep = c.duration / time.Duration(len(toKick))
 	var success int
 
-	c.log.Infof("Balancing %d connections with %v sleep between each balance request", len(matched), sleep)
+	c.log.Infof("Balancing %d connections with %v sleep between each balance request", len(toKick), sleep)
 
-	for i, m := range matched {
+	for i, m := range toKick {
 		cid, err := c.nc.GetClientID()
 		if err != nil {
 			c.log.Errorf("Could not exclude self from kicks: %v", err)
@@ -151,7 +167,7 @@ func (c *balancer) Balance(ctx context.Context) (int, error) {
 
 		success++
 
-		if i != len(matched)-1 {
+		if i != len(toKick)-1 {
 			timer := time.NewTimer(sleep)
 			c.log.Debugf("Sleeping for %v", sleep)
 			select {
@@ -175,7 +191,7 @@ func (c *balancer) pickConnections(connz []*server.ServerAPIConnzResponse) ([]*c
 
 		for _, client := range resp.Data.Conns {
 			isIdleMatch := c.limits.Idle == 0 || time.Since(client.LastActivity) > c.limits.Idle
-			kindMatch := len(c.limits.Kind) == 0 || contains(c.limits.Kind, client.Kind)
+			kindMatch := len(c.limits.Kind) == 0 || slices.Contains(c.limits.Kind, client.Kind)
 
 			// others were handled in the connz request already
 			if isIdleMatch && kindMatch {
@@ -189,6 +205,52 @@ func (c *balancer) pickConnections(connz []*server.ServerAPIConnzResponse) ([]*c
 	}
 
 	return result, nil
+}
+
+func (c *balancer) groupConnectionsByServer(matched []*conn) map[string]*serverConnections {
+	grouped := make(map[string]*serverConnections)
+
+	for _, m := range matched {
+		if _, exists := grouped[m.serverId]; !exists {
+			grouped[m.serverId] = &serverConnections{
+				serverId:    m.serverId,
+				serverName:  m.serverName,
+				connections: []*conn{},
+			}
+		}
+		grouped[m.serverId].connections = append(grouped[m.serverId].connections, m)
+	}
+
+	return grouped
+}
+
+func (c *balancer) calculateEvenDistribution(totalConnections, serverCount int) int {
+	if serverCount == 0 {
+		return 0
+	}
+
+	return int(math.Ceil(float64(totalConnections) / float64(serverCount)))
+}
+
+func (c *balancer) calculateOffsets(grouped map[string]*serverConnections, evenDistribution int) {
+	for _, server := range grouped {
+		server.offset = len(server.connections) - evenDistribution
+	}
+}
+
+func (c *balancer) selectConnectionsToKick(grouped map[string]*serverConnections) []*conn {
+	var toKick []*conn
+
+	for _, server := range grouped {
+		if server.offset <= 0 {
+			continue
+		}
+
+		kickCount := min(server.offset, len(server.connections))
+		toKick = append(toKick, server.connections[:kickCount]...)
+	}
+
+	return toKick
 }
 
 func (c *balancer) getConnz(ctx context.Context) ([]*server.ServerAPIConnzResponse, error) {

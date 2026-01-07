@@ -28,14 +28,16 @@ import (
 
 func TestSubjectInterest(t *testing.T) {
 	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
-		client1, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
-		if err != nil {
-			t.Fatalf("could not create client")
-		}
-		defer client1.Close()
-		_, err = client1.SubscribeSync("X.>")
-		if err != nil {
-			t.Fatalf("sub failed")
+		for i := 0; i < 5; i++ {
+			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			if err != nil {
+				t.Fatalf("could not create client")
+			}
+			defer client.Close()
+			_, err = client.SubscribeSync("X.>")
+			if err != nil {
+				t.Fatalf("sub failed")
+			}
 		}
 
 		client2, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
@@ -44,12 +46,12 @@ func TestSubjectInterest(t *testing.T) {
 		}
 		defer client2.Close()
 
-		checkBalanced(t, nc, 0, ConnectionSelector{
+		checkBalancedInRange(t, nc, 0, 0, ConnectionSelector{
 			Account:         "USERS",
 			SubjectInterest: "foo",
 		})
 
-		checkBalanced(t, nc, 1, ConnectionSelector{
+		checkBalancedInRange(t, nc, 2, 4, ConnectionSelector{
 			Account:         "USERS",
 			SubjectInterest: "X.>",
 		})
@@ -58,11 +60,13 @@ func TestSubjectInterest(t *testing.T) {
 
 func TestAccountLimit(t *testing.T) {
 	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
-		client1, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
-		if err != nil {
-			t.Fatalf("could not create client")
+		for i := 0; i < 5; i++ {
+			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			if err != nil {
+				t.Fatalf("could not create client")
+			}
+			defer client.Close()
 		}
-		defer client1.Close()
 
 		client2, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("SYS", "PASS"))
 		if err != nil {
@@ -70,11 +74,11 @@ func TestAccountLimit(t *testing.T) {
 		}
 		defer client2.Close()
 
-		checkBalanced(t, nc, 0, ConnectionSelector{
+		checkBalancedInRange(t, nc, 0, 0, ConnectionSelector{
 			Account: "FOO",
 		})
 
-		checkBalanced(t, nc, 1, ConnectionSelector{
+		checkBalancedInRange(t, nc, 2, 4, ConnectionSelector{
 			Account: "USERS",
 		})
 	})
@@ -82,17 +86,19 @@ func TestAccountLimit(t *testing.T) {
 
 func TestClientIdleLimit(t *testing.T) {
 	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
-		client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
-		if err != nil {
-			t.Fatalf("could not create client")
+		for i := 0; i < 5; i++ {
+			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			if err != nil {
+				t.Fatalf("could not create client")
+			}
+			defer client.Close()
 		}
-		defer client.Close()
 
-		checkBalanced(t, nc, 0, ConnectionSelector{
+		checkBalancedInRange(t, nc, 0, 0, ConnectionSelector{
 			Idle: time.Minute,
 		})
 
-		checkBalanced(t, nc, 1, ConnectionSelector{
+		checkBalancedInRange(t, nc, 2, 4, ConnectionSelector{
 			Idle: time.Millisecond,
 		})
 	})
@@ -100,35 +106,70 @@ func TestClientIdleLimit(t *testing.T) {
 
 func TestServerNameLimit(t *testing.T) {
 	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
-		tests := []struct {
-			name         string
-			targetServer int
-			expect       int
-		}{
-			{"Only ourselves on selected server", 0, 0},
-			{"Only the connection on that server", 2, 1},
-		}
+		t.Run("Only ourselves on selected server", func(t *testing.T) {
+			checkBalancedInRange(t, nc, 0, 0, ConnectionSelector{
+				ServerName: srv[0].Name(),
+			})
+		})
 
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
+		t.Run("Connections on specific server", func(t *testing.T) {
+			for i := 0; i < 5; i++ {
 				client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
 				if err != nil {
 					t.Fatalf("could not create client")
 				}
 				defer client.Close()
+			}
 
-				checkBalanced(t, nc, tc.expect, ConnectionSelector{
-					ServerName: srv[tc.targetServer].Name(),
-				})
+			checkBalancedInRange(t, nc, 0, 0, ConnectionSelector{
+				ServerName: srv[2].Name(),
 			})
-		}
+		})
 	})
 }
 
-func checkBalanced(t *testing.T, nc *nats.Conn, expect int, s ConnectionSelector) {
+func TestSuccessiveBalanceRuns(t *testing.T) {
+	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+		for i := range 10 {
+			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			if err != nil {
+				t.Fatalf("could not create client %d: %v", i, err)
+			}
+			defer client.Close()
+		}
+
+		checkBalancedInRange(t, nc, 5, 7, ConnectionSelector{})
+
+		time.Sleep(500 * time.Millisecond)
+
+		checkBalancedInRange(t, nc, 0, 1, ConnectionSelector{})
+	})
+}
+
+func TestBalanceMultiNodeCluster(t *testing.T) {
+	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+		for range 15 {
+			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			if err != nil {
+				t.Fatalf("could not create client: %v", err)
+			}
+			defer client.Close()
+		}
+
+		for range 3 {
+			client, err := nats.Connect(srv[1].ClientURL(), nats.UserInfo("USER", "PASS"))
+			if err != nil {
+				t.Fatalf("could not create client: %v", err)
+			}
+			defer client.Close()
+		}
+		checkBalancedInRange(t, nc, 8, 10, ConnectionSelector{})
+	})
+}
+
+func checkBalancedInRange(t *testing.T, nc *nats.Conn, min, max int, s ConnectionSelector) {
 	t.Helper()
 
-	// dont kick ourselves or connections on other servers
 	balancer, err := New(nc, 0, api.NewDiscardLogger(), s)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
@@ -138,8 +179,8 @@ func checkBalanced(t *testing.T, nc *nats.Conn, expect int, s ConnectionSelector
 	if err != nil {
 		t.Fatalf("balance failed: %v", err)
 	}
-	if balanced != expect {
-		t.Fatalf("Expected to balance %d connections but balanced %d", expect, balanced)
+	if balanced < min || balanced > max {
+		t.Fatalf("Expected to balance %d-%d connections but balanced %d", min, max, balanced)
 	}
 }
 

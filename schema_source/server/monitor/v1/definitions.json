@@ -69,6 +69,10 @@
             "close",
             "retry"
           ]
+        },
+        "tls_cert_not_after": {
+          "type": "string",
+          "description": "The expiration date of the TLS certificate"
         }
       }
     },
@@ -134,6 +138,10 @@
             "close",
             "retry"
           ]
+        },
+        "tls_cert_not_after": {
+          "type": "string",
+          "description": "The expiration date of the TLS certificate"
         }
       }
     },
@@ -199,19 +207,23 @@
         "tls_ocsp_peer_verify": {
           "type": "boolean",
           "description": "Indicates if OCSP verification will be performed"
+        },
+        "write_deadline": {
+          "description": "The maximum time writes to sockets have to complete",
+          "$ref": "#/definitions/golang_duration_nanos"
+        },
+        "write_timeout": {
+          "description": "The policy to apply to sockets being closed due to write_deadline",
+          "enum": [
+            "default",
+            "close",
+            "retry"
+          ]
+        },
+        "tls_cert_not_after": {
+          "type": "string",
+          "description": "The expiration date of the TLS certificate"
         }
-      },
-      "write_deadline": {
-        "description": "The maximum time writes to sockets have to complete",
-        "$ref": "#/definitions/golang_duration_nanos"
-      },
-      "write_timeout": {
-        "description": "The policy to apply to sockets being closed due to write_deadline",
-        "enum": [
-          "default",
-          "close",
-          "retry"
-        ]
       }
     },
     "remote_leaf_opts_varz_v1": {
@@ -312,6 +324,10 @@
         "tls_ocsp_peer_verify": {
           "type": "boolean",
           "description": "Indicates if OCSP verification will be done"
+        },
+        "tls_cert_not_after": {
+          "type": "string",
+          "description": "The expiration date of the TLS certificate"
         }
       }
     },
@@ -381,6 +397,10 @@
         "tls_ocsp_peer_verify": {
           "type": "boolean",
           "description": "Indicates if OCSP verification will be done"
+        },
+        "tls_cert_not_after": {
+          "type": "string",
+          "description": "The expiration date of the TLS certificate"
         }
       }
     },

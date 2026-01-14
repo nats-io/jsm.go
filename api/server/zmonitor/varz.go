@@ -93,4 +93,5 @@ type VarzV1 struct {
 	SlowConsumersStats    *SlowConsumersStatsV1    `json:"slow_consumer_stats"`               // SlowConsumersStats is statistics about all detected Slow Consumer
 	StaleConnectionStats  *StaleConnectionStatsV1  `json:"stale_connection_stats,omitempty"`  // StaleConnectionStats are statistics about all detected Stale Connections
 	Proxies               *ProxiesOptsVarzV1       `json:"proxies,omitempty"`                 // Proxies hold information about network proxy devices
+	TLSCertNotAfter       time.Time                `json:"tls_cert_not_after,omitzero"`       // TLSCertNotAfter is the expiration date of the TLS certificate
 }

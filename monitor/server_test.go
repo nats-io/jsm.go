@@ -14,6 +14,7 @@
 package monitor_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -85,6 +86,93 @@ func TestCheckVarz(t *testing.T) {
 		checkErr(t, err, "check failed: %v", err)
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "TLS required")
+	})
+
+	t.Run("tls cert expiry", func(t *testing.T) {
+		now := time.Now().UTC()
+		vz := &server.Varz{Name: "example.net", Now: now}
+		vzResolver := func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) {
+			return vz, nil
+		}
+
+		opts := monitor.CheckServerOptions{
+			Name:              "example.net",
+			TLSExpireWarning:  "30d",
+			TLSExpireCritical: "7d",
+			Resolver:          vzResolver,
+		}
+
+		vz.TLSCertNotAfter = now.Add(-1 * time.Hour)
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		if len(check.Criticals) != 1 || !strings.HasPrefix(check.Criticals[0], "server TLS certificate expired") {
+			t.Fatalf("expected expired cert critical, got: %v", check.Criticals)
+		}
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.OKs)
+
+		vz.TLSCertNotAfter = now.Add(24 * time.Hour)
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		if len(check.Criticals) != 1 || !strings.HasPrefix(check.Criticals[0], "server TLS certificate expires in") {
+			t.Fatalf("expected expiring cert critical, got: %v", check.Criticals)
+		}
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.OKs)
+
+		vz.TLSCertNotAfter = now.Add(10 * 24 * time.Hour)
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		if len(check.Warnings) != 1 || !strings.HasPrefix(check.Warnings[0], "server TLS certificate expires in") {
+			t.Fatalf("expected expiring cert warning, got: %v", check.Warnings)
+		}
+		assertListIsEmpty(t, check.Criticals)
+		assertListIsEmpty(t, check.OKs)
+
+		vz.TLSCertNotAfter = now.Add(45 * 24 * time.Hour)
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		if len(check.OKs) != 1 || !strings.HasPrefix(check.OKs[0], "server TLS certificate expires in") {
+			t.Fatalf("expected expiring cert ok, got: %v", check.OKs)
+		}
+		assertListIsEmpty(t, check.Criticals)
+		assertListIsEmpty(t, check.Warnings)
+
+		opts.TLSExpireWarning = ""
+		opts.TLSExpireCritical = ""
+		vz.TLSCertNotAfter = now.Add(-1 * time.Hour)
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListIsEmpty(t, check.Criticals)
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.OKs)
+
+		opts.TLSExpireWarning = "30d"
+		opts.TLSExpireCritical = "7d"
+		vz.TLSCertNotAfter = time.Time{}
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.Criticals, "TLS certificate expiry thresholds configured but no TLS certificates found")
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.OKs)
+
+		opts.TLSExpireWarning = "30d"
+		opts.TLSExpireCritical = ""
+		vz.TLSCertNotAfter = now.Add(24 * time.Hour)
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.Criticals, "TLS certificate expiry requires both warning and critical thresholds")
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.OKs)
+
+		opts.TLSExpireWarning = ""
+		opts.TLSExpireCritical = "7d"
+		vz.TLSCertNotAfter = now.Add(24 * time.Hour)
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.Criticals, "TLS certificate expiry requires both warning and critical thresholds")
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.OKs)
 	})
 
 	t.Run("authentication", func(t *testing.T) {

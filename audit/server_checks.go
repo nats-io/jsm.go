@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/nats-io/jsm.go/api"
@@ -97,17 +98,46 @@ func RegisterServerChecks(collection *CheckCollection) error {
 			Description: "Each server requires authentication",
 			Handler:     checkServerAuthRequired,
 		},
+		Check{
+			Code:        "SERVER_008",
+			Suite:       "server",
+			Name:        "TLS Certificate Expiry",
+			Description: "TLS certificates are valid and not expiring soon",
+			Configuration: map[string]*CheckConfiguration{
+				"tls_expire_warning": {
+					Key:         "tls_expire_warning",
+					Description: "Certificate expiry warning threshold in days",
+					Default:     30,
+					Unit:        UIntUnit,
+				},
+				"tls_expire_critical": {
+					Key:         "tls_expire_critical",
+					Description: "Certificate expiry critical threshold in days",
+					Default:     7,
+					Unit:        UIntUnit,
+				},
+			},
+			Handler: checkTLSCertificateExpiry,
+		},
 	)
+}
+
+func handleArchiveError(err error, artifactName string, serverTag *archive.Tag, log api.Logger) error {
+	if errors.Is(err, archive.ErrNoMatches) {
+		log.Warnf("Artifact '%s' is missing for server %s", artifactName, serverTag)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to load %s for server %s: %w", artifactName, serverTag, err)
+	}
+	return nil
 }
 
 // checkServerHealth verify all known servers are reporting healthy
 func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	total, err := r.EachClusterServerHealthz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, hz *server.ServerAPIHealthzResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'Healthz' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
+		if err := handleArchiveError(err, "Healthz", serverTag, log); err != nil {
+			return err
 		}
 
 		if hz.Data.Status != "ok" && hz.Data.Status != "" {
@@ -136,11 +166,8 @@ func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 	var lastVersionSeen string
 
 	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
+		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+			return err
 		}
 
 		lastVersionSeen = vz.Data.Version
@@ -177,11 +204,8 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 	cpuThreshold := check.Configuration["cpu"].Value()
 
 	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
+		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+			return err
 		}
 
 		// Example: 350% usage with 4 cores => 87.5% averaged
@@ -208,11 +232,8 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 // checkSlowConsumers verify that no server is reporting slow consumers
 func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
+		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+			return err
 		}
 
 		if slowConsumers := vz.Data.SlowConsumers; slowConsumers > 0 {
@@ -241,11 +262,8 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 	storeUsageThreshold := check.Configuration["store"].Value()
 
 	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
+		if err := handleArchiveError(err, "JSZ", serverTag, log); err != nil {
+			return err
 		}
 
 		if jsz.Data.Config.MaxMemory > 0 {
@@ -279,11 +297,8 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 // checkJetStreamDomainsForWhitespace verifies that no JetStream server is configured with whitespace in its domain
 func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'JSZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load variables for server %s: %w", serverTag, err)
+		if err := handleArchiveError(err, "JSZ", serverTag, log); err != nil {
+			return err
 		}
 
 		// check if jetstream domain contains whitespace
@@ -308,11 +323,8 @@ func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *E
 // checkServerAuthRequired verifies that all servers require authentication.
 func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	total, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if errors.Is(err, archive.ErrNoMatches) {
-			log.Warnf("Artifact 'VARZ' is missing for server %s", serverTag)
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to load VARZ for server %s: %w", serverTag, err)
+		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+			return err
 		}
 
 		if !vz.Data.AuthRequired {
@@ -330,5 +342,76 @@ func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesColl
 	}
 
 	log.Infof("%d/%d servers require authentication", total, total)
+	return Pass, nil
+}
+
+func checkTLSCertificateExpiry(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
+	warnDays := check.Configuration["tls_expire_warning"].Value()
+	critDays := check.Configuration["tls_expire_critical"].Value()
+	warnThreshold := time.Duration(warnDays * float64(24*time.Hour))
+	critThreshold := time.Duration(critDays * float64(24*time.Hour))
+
+	var warningCount int
+	var criticalCount int
+	checked := 0
+
+	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
+		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+			return err
+		}
+
+		serverNow := vz.Data.Now
+
+		checkExpiry := func(component string, expiry time.Time) {
+			if expiry.IsZero() {
+				return
+			}
+			checked += 1
+
+			untilExpiry := expiry.Sub(serverNow)
+
+			switch {
+			case untilExpiry <= 0:
+				criticalCount++
+				examples.Add("%s/%s %s TLS certificate expired (expired_at=%v)", clusterTag, serverTag, component, expiry)
+
+			case critThreshold > 0 && untilExpiry <= critThreshold:
+				criticalCount++
+				examples.Add("%s/%s %s TLS certificate expires in %v (expires_at=%v)", clusterTag, serverTag, component, untilExpiry.Truncate(time.Second), expiry)
+
+			case warnThreshold > 0 && untilExpiry <= warnThreshold:
+				warningCount++
+				examples.Add("%s/%s %s TLS certificate expires in %v (expires_at=%v)", clusterTag, serverTag, component, untilExpiry.Truncate(time.Second), expiry)
+			}
+		}
+
+		checkExpiry("server", vz.Data.TLSCertNotAfter)
+		checkExpiry("cluster", vz.Data.Cluster.TLSCertNotAfter)
+		checkExpiry("gateway", vz.Data.Gateway.TLSCertNotAfter)
+		checkExpiry("leafnode", vz.Data.LeafNode.TLSCertNotAfter)
+		checkExpiry("mqtt", vz.Data.MQTT.TLSCertNotAfter)
+		checkExpiry("websocket", vz.Data.Websocket.TLSCertNotAfter)
+
+		return nil
+	})
+	if err != nil {
+		return Skipped, err
+	}
+
+	if checked == 0 {
+		return Skipped, nil
+	}
+
+	if criticalCount > 0 {
+		log.Errorf("Found %d critical and %d warning TLS certificate expirations", criticalCount, warningCount)
+		return Fail, nil
+	}
+
+	if warningCount > 0 {
+		log.Errorf("Found %d warning TLS certificate expirations", warningCount)
+		return PassWithIssues, nil
+	}
+
+	log.Infof("No TLS certificates expiring within %.0f days", warnDays)
 	return Pass, nil
 }

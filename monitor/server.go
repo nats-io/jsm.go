@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -50,6 +51,10 @@ type CheckServerOptions struct {
 	AuthenticationRequired bool `json:"authentication_required" yaml:"authentication_required"`
 	// TLSRequired checks if TLS is required on the server
 	TLSRequired bool `json:"tls_required" yaml:"tls_required"`
+	// TLSExpireWarning is the warning threshold for TLS certificate expiry (e.g., "30d", "720h", "4w")
+	TLSExpireWarning string `json:"tls_expire_warning" yaml:"tls_expire_warning"`
+	// TLSExpireCritical is the critical threshold for TLS certificate expiry (e.g., "7d", "168h", "1w")
+	TLSExpireCritical string `json:"tls_expire_critical" yaml:"tls_expire_critical"`
 	// JetStreamRequired checks if JetStream is enabled on the server
 	JetStreamRequired bool `json:"jet_stream_required" yaml:"jet_stream_required"`
 
@@ -114,6 +119,35 @@ func CheckServerWithConnection(nc *nats.Conn, check *Result, timeout time.Durati
 		} else {
 			check.Criticalf("Authentication not required")
 		}
+	}
+
+	if opts.TLSExpireWarning != "" || opts.TLSExpireCritical != "" {
+		if opts.TLSExpireWarning == "" || opts.TLSExpireCritical == "" {
+			check.Criticalf("TLS certificate expiry requires both warning and critical thresholds")
+			return nil
+		}
+
+		warnThreshold, err := jsm.ParseDuration(opts.TLSExpireWarning)
+		if check.CriticalIfErrf(err, "invalid TLS expire warning threshold %q: %v", opts.TLSExpireWarning, err) {
+			return nil
+		}
+
+		critThreshold, err := jsm.ParseDuration(opts.TLSExpireCritical)
+		if check.CriticalIfErrf(err, "invalid TLS expire critical threshold %q: %v", opts.TLSExpireCritical, err) {
+			return nil
+		}
+
+		if !hasTLSCertNotAfter(vz) {
+			check.Criticalf("TLS certificate expiry thresholds configured but no TLS certificates found")
+			return nil
+		}
+
+		checkTLSCertExpiry(check, "server", vz.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+		checkTLSCertExpiry(check, "cluster", vz.Cluster.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+		checkTLSCertExpiry(check, "gateway", vz.Gateway.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+		checkTLSCertExpiry(check, "leafnode", vz.LeafNode.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+		checkTLSCertExpiry(check, "mqtt", vz.MQTT.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+		checkTLSCertExpiry(check, "websocket", vz.Websocket.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
 	}
 
 	up := vz.Now.Sub(vz.Start)
@@ -207,4 +241,48 @@ func fetchVarz(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz,
 	}
 
 	return resp.Data, nil
+}
+
+func hasTLSCertNotAfter(vz *server.Varz) bool {
+	if !vz.TLSCertNotAfter.IsZero() {
+		return true
+	}
+	if !vz.Cluster.TLSCertNotAfter.IsZero() {
+		return true
+	}
+	if !vz.Gateway.TLSCertNotAfter.IsZero() {
+		return true
+	}
+	if !vz.LeafNode.TLSCertNotAfter.IsZero() {
+		return true
+	}
+	if !vz.MQTT.TLSCertNotAfter.IsZero() {
+		return true
+	}
+	if !vz.Websocket.TLSCertNotAfter.IsZero() {
+		return true
+	}
+	return false
+}
+
+func checkTLSCertExpiry(check *Result, component string, expiry time.Time, serverNow time.Time, warningThreshold, criticalThreshold time.Duration) {
+	if expiry.IsZero() {
+		return
+	}
+
+	untilExpiry := expiry.Sub(serverNow).Truncate(time.Second)
+
+	switch {
+	case untilExpiry <= 0:
+		check.Critical(fmt.Sprintf("%s TLS certificate expired (expired_at=%v)", component, expiry))
+
+	case criticalThreshold > 0 && untilExpiry <= criticalThreshold:
+		check.Critical(fmt.Sprintf("%s TLS certificate expires in %v (expires_at=%v)", component, untilExpiry, expiry))
+
+	case warningThreshold > 0 && untilExpiry <= warningThreshold:
+		check.Warn(fmt.Sprintf("%s TLS certificate expires in %v (expires_at=%v)", component, untilExpiry, expiry))
+
+	default:
+		check.Ok(fmt.Sprintf("%s TLS certificate expires in %v (expires_at=%v)", component, untilExpiry, expiry))
+	}
 }

@@ -3,6 +3,7 @@ package audit
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit/archive"
@@ -268,6 +269,55 @@ func TestSERVER_007(t *testing.T) {
 		result := setupServerCheck(t, "SERVER_007", map[string]any{
 			"n1": &server.ServerAPIVarzResponse{
 				Data: &server.Varz{AuthRequired: true},
+			},
+		}, archive.TagServerVars())
+
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+}
+
+func TestSERVER_008(t *testing.T) {
+	now := time.Now().UTC()
+
+	t.Run("Should fail when a certificate expires within the critical threshold", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{
+					Now:             now,
+					TLSCertNotAfter: now.Add(24 * time.Hour),
+				},
+			},
+		}, archive.TagServerVars())
+
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
+	t.Run("Should warn when a certificate expires within the warning threshold", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{
+					Now:             now,
+					TLSCertNotAfter: now.Add(10 * 24 * time.Hour),
+				},
+			},
+		}, archive.TagServerVars())
+
+		if result != PassWithIssues {
+			t.Errorf("expected result %v, got %v", PassWithIssues, result)
+		}
+	})
+
+	t.Run("Should pass when certificates are not expiring soon", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{
+					Now:             now,
+					TLSCertNotAfter: now.Add(90 * 24 * time.Hour),
+				},
 			},
 		}, archive.TagServerVars())
 

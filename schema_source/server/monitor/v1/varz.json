@@ -299,6 +299,10 @@
       },
       "stale_connection_stats": {
         "$ref": "definitions.json#/definitions/stale_connection_stats_v1"
+      },
+      "tls_cert_not_after": {
+      "type": "string",
+      "description": "The expiration date of the TLS certificate"
       }
     }
   }

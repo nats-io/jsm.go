@@ -19,34 +19,36 @@ import (
 
 // ClusterOptsVarzV1 contains monitoring cluster information
 type ClusterOptsVarzV1 struct {
-	Name          string        `json:"name,omitempty"`           // Name is the configured cluster name
-	Host          string        `json:"addr,omitempty"`           // Host is the host the cluster listens on for connections
-	Port          int           `json:"cluster_port,omitempty"`   // Port is the port the cluster listens on for connections
-	AuthTimeout   float64       `json:"auth_timeout,omitempty"`   // AuthTimeout is the time cluster connections have to complete authentication
-	URLs          []string      `json:"urls,omitempty"`           // URLs is the list of cluster URLs
-	TLSTimeout    float64       `json:"tls_timeout,omitempty"`    // TLSTimeout is how long TLS operations have to complete
-	TLSRequired   bool          `json:"tls_required,omitempty"`   // TLSRequired indicates if TLS is required for connections
-	TLSVerify     bool          `json:"tls_verify,omitempty"`     // TLSVerify indicates if full verification of TLS connections is performed
-	PoolSize      int           `json:"pool_size,omitempty"`      // PoolSize is the configured route connection pool size
-	WriteDeadline time.Duration `json:"write_deadline,omitempty"` // WriteDeadline is the maximum time writes to sockets have to complete
-	WriteTimeout  string        `json:"write_timeout,omitempty"`  // WriteTimeout is the closure policy for write deadline errors
+	Name            string        `json:"name,omitempty"`              // Name is the configured cluster name
+	Host            string        `json:"addr,omitempty"`              // Host is the host the cluster listens on for connections
+	Port            int           `json:"cluster_port,omitempty"`      // Port is the port the cluster listens on for connections
+	AuthTimeout     float64       `json:"auth_timeout,omitempty"`      // AuthTimeout is the time cluster connections have to complete authentication
+	URLs            []string      `json:"urls,omitempty"`              // URLs is the list of cluster URLs
+	TLSTimeout      float64       `json:"tls_timeout,omitempty"`       // TLSTimeout is how long TLS operations have to complete
+	TLSRequired     bool          `json:"tls_required,omitempty"`      // TLSRequired indicates if TLS is required for connections
+	TLSVerify       bool          `json:"tls_verify,omitempty"`        // TLSVerify indicates if full verification of TLS connections is performed
+	PoolSize        int           `json:"pool_size,omitempty"`         // PoolSize is the configured route connection pool size
+	WriteDeadline   time.Duration `json:"write_deadline,omitempty"`    // WriteDeadline is the maximum time writes to sockets have to complete
+	WriteTimeout    string        `json:"write_timeout,omitempty"`     // WriteTimeout is the closure policy for write deadline errors
+	TLSCertNotAfter time.Time     `json:"tls_cert_not_after,omitzero"` // TLSCertNotAfter is the expiration date of the TLS certificate
 }
 
 // GatewayOptsVarzV1 contains monitoring gateway information
 type GatewayOptsVarzV1 struct {
-	Name           string                    `json:"name,omitempty"`            // Name is the configured cluster name
-	Host           string                    `json:"host,omitempty"`            // Host is the host the gateway listens on for connections
-	Port           int                       `json:"port,omitempty"`            // Port is the post gateway connections listens on
-	AuthTimeout    float64                   `json:"auth_timeout,omitempty"`    // AuthTimeout is the time cluster connections have to complete authentication
-	TLSTimeout     float64                   `json:"tls_timeout,omitempty"`     // TLSTimeout is how long TLS operations have to complete
-	TLSRequired    bool                      `json:"tls_required,omitempty"`    // TLSRequired indicates if TLS is required for connections
-	TLSVerify      bool                      `json:"tls_verify,omitempty"`      // TLSVerify indicates if full verification of TLS connections is performed
-	Advertise      string                    `json:"advertise,omitempty"`       // Advertise is the URL advertised to remote gateway clients
-	ConnectRetries int                       `json:"connect_retries,omitempty"` // ConnectRetries is how many connection attempts the route will make
-	Gateways       []RemoteGatewayOptsVarzV1 `json:"gateways,omitempty"`        // Gateways is state of configured gateway remotes
-	RejectUnknown  bool                      `json:"reject_unknown,omitempty"`  // RejectUnknown indicates if unknown cluster connections will be rejected
-	WriteDeadline  time.Duration             `json:"write_deadline,omitempty"`  // WriteDeadline is the maximum time writes to sockets have to complete
-	WriteTimeout   string                    `json:"write_timeout,omitempty"`   // WriteTimeout is the closure policy for write deadline errors
+	Name            string                    `json:"name,omitempty"`              // Name is the configured cluster name
+	Host            string                    `json:"host,omitempty"`              // Host is the host the gateway listens on for connections
+	Port            int                       `json:"port,omitempty"`              // Port is the post gateway connections listens on
+	AuthTimeout     float64                   `json:"auth_timeout,omitempty"`      // AuthTimeout is the time cluster connections have to complete authentication
+	TLSTimeout      float64                   `json:"tls_timeout,omitempty"`       // TLSTimeout is how long TLS operations have to complete
+	TLSRequired     bool                      `json:"tls_required,omitempty"`      // TLSRequired indicates if TLS is required for connections
+	TLSVerify       bool                      `json:"tls_verify,omitempty"`        // TLSVerify indicates if full verification of TLS connections is performed
+	Advertise       string                    `json:"advertise,omitempty"`         // Advertise is the URL advertised to remote gateway clients
+	ConnectRetries  int                       `json:"connect_retries,omitempty"`   // ConnectRetries is how many connection attempts the route will make
+	Gateways        []RemoteGatewayOptsVarzV1 `json:"gateways,omitempty"`          // Gateways is state of configured gateway remotes
+	RejectUnknown   bool                      `json:"reject_unknown,omitempty"`    // RejectUnknown indicates if unknown cluster connections will be rejected
+	WriteDeadline   time.Duration             `json:"write_deadline,omitempty"`    // WriteDeadline is the maximum time writes to sockets have to complete
+	WriteTimeout    string                    `json:"write_timeout,omitempty"`     // WriteTimeout is the closure policy for write deadline errors
+	TLSCertNotAfter time.Time                 `json:"tls_cert_not_after,omitzero"` // TLSCertNotAfter is the expiration date of the TLS certificate
 }
 
 // RemoteGatewayOptsVarzV1 contains monitoring remote gateway information
@@ -68,6 +70,7 @@ type LeafNodeOptsVarzV1 struct {
 	TLSOCSPPeerVerify bool                 `json:"tls_ocsp_peer_verify,omitempty"` // TLSOCSPPeerVerify indicates if OCSP verification will be performed
 	WriteDeadline     time.Duration        `json:"write_deadline,omitempty"`       // WriteDeadline is the maximum time writes to sockets have to complete
 	WriteTimeout      string               `json:"write_timeout,omitempty"`        // WriteTimeout is the closure policy for write deadline errors
+	TLSCertNotAfter   time.Time            `json:"tls_cert_not_after,omitzero"`    // TLSCertNotAfter is the expiration date of the TLS certificate
 }
 
 // DenyRules Contains lists of subjects not allowed to be imported/exported
@@ -98,6 +101,7 @@ type MQTTOptsVarzV1 struct {
 	AckWait           time.Duration `json:"ack_wait,omitempty"`             // AckWait is how long the internal JetStream state store will allow acks to complete
 	MaxAckPending     uint16        `json:"max_ack_pending,omitempty"`      // MaxAckPending is how many outstanding acks the internal JetStream state store will allow
 	TLSOCSPPeerVerify bool          `json:"tls_ocsp_peer_verify,omitempty"` // TLSOCSPPeerVerify indicates if OCSP verification will be done
+	TLSCertNotAfter   time.Time     `json:"tls_cert_not_after,omitzero"`    // TLSCertNotAfter is the expiration date of the TLS certificate
 }
 
 // WebsocketOptsVarzV1 contains monitoring websocket information
@@ -116,6 +120,8 @@ type WebsocketOptsVarzV1 struct {
 	AllowedOrigins    []string      `json:"allowed_origins,omitempty"`      // AllowedOrigins list of configured trusted origins
 	Compression       bool          `json:"compression,omitempty"`          // Compression indicates if compression is supported
 	TLSOCSPPeerVerify bool          `json:"tls_ocsp_peer_verify,omitempty"` // TLSOCSPPeerVerify indicates if OCSP verification will be done
+	TLSCertNotAfter   time.Time     `json:"tls_cert_not_after,omitzero"`    // TLSCertNotAfter is the expiration date of the TLS certificate
+
 }
 
 // OCSPResponseCacheVarzV1 contains OCSP response cache information

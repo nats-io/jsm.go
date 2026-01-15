@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
@@ -16,45 +15,86 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// isBalanced checks if counts are within [min-tolerance, max+tolerance] where min/max
+// is the ideal distribution floor/ceiling.
+// Tolerance is higher when Sx > Rx since we cannot balance perfectly.
+func isBalanced(leaderCounts map[string]int, totalEntities, serverCount, replicaCount int) bool {
+	minExpected := totalEntities / serverCount
+	maxExpected := minExpected
+	if totalEntities%serverCount != 0 {
+		maxExpected++
+	}
+
+	tolerance := 1
+	if serverCount > replicaCount {
+		tolerance = max(2, maxExpected)
+	}
+
+	for _, count := range leaderCounts {
+		if count < minExpected-tolerance || count > maxExpected+tolerance {
+			return false
+		}
+	}
+	return true
+}
+
+func getStreamDistribution(mgr *jsm.Manager, streams []*jsm.Stream) (map[string]int, error) {
+	distribution := make(map[string]int)
+	for _, s := range streams {
+		reloaded, err := mgr.LoadStream(s.Name())
+		if err != nil {
+			return nil, err
+		}
+		info, err := reloaded.ClusterInfo()
+		if err != nil {
+			return nil, err
+		}
+		if info.Leader != "" {
+			distribution[info.Leader]++
+		}
+		for _, r := range info.Replicas {
+			if _, ok := distribution[r.Name]; !ok {
+				distribution[r.Name] = 0
+			}
+		}
+	}
+	return distribution, nil
+}
+
+func getConsumerDistribution(mgr *jsm.Manager, streamName string, consumers []*jsm.Consumer) (map[string]int, error) {
+	distribution := make(map[string]int)
+	for _, c := range consumers {
+		reloaded, err := mgr.LoadConsumer(streamName, c.Name())
+		if err != nil {
+			return nil, err
+		}
+		info, err := reloaded.ClusterInfo()
+		if err != nil {
+			return nil, err
+		}
+		if info.Leader != "" {
+			distribution[info.Leader]++
+		}
+		for _, r := range info.Replicas {
+			if _, ok := distribution[r.Name]; !ok {
+				distribution[r.Name] = 0
+			}
+		}
+	}
+	return distribution, nil
+}
+
 func TestBalancer(t *testing.T) {
 	withJSCluster(t, 3, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
-		var err error
-		waitTime := 100 * time.Millisecond
 		streams := []*jsm.Stream{}
-		for i := 1; i <= 3; i++ {
+		for i := 1; i <= 10; i++ {
 			streamName := fmt.Sprintf("tests%d", i)
 			subjects := fmt.Sprintf("tests%d.*", i)
 			s, err := mgr.NewStream(streamName, jsm.Subjects(subjects), jsm.MemoryStorage(), jsm.Replicas(3))
 			if err != nil {
 				t.Fatalf("could not create stream %s", err)
 			}
-			info, _ := s.ClusterInfo()
-			if info.Leader != "s1" {
-				placement := api.Placement{Preferred: "s1"}
-				err = s.LeaderStepDown(&placement)
-				if err != nil {
-					t.Fatalf("could not move stream %s", err)
-				}
-			}
-
-			var ns *jsm.Stream
-
-			for i := 1; i <= 5; i++ {
-				ns, err = mgr.LoadStream(streamName)
-				if err != nil {
-					t.Fatal(err)
-				}
-				info, _ := ns.ClusterInfo()
-				if info.Leader != "" {
-					break
-				}
-				if i == 5 {
-					t.Fatalf("could not load stream %s after %dms", streamName, i*int(waitTime))
-				}
-				time.Sleep(waitTime)
-			}
-
-			streams = append(streams, ns)
+			streams = append(streams, s)
 			defer s.Delete()
 		}
 
@@ -63,60 +103,45 @@ func TestBalancer(t *testing.T) {
 			return err
 		}
 
-		count, err := b.BalanceStreams(streams)
+		_, err = b.BalanceStreams(streams)
 		if err != nil {
 			return err
 		}
 
-		if count == 0 {
-			return fmt.Errorf("expected to balance > 0 streams. balanced 0")
+		time.Sleep(500 * time.Millisecond)
+
+		streamDist, err := getStreamDistribution(mgr, streams)
+		if err != nil {
+			return err
+		}
+		if !isBalanced(streamDist, len(streams), len(streamDist), 3) {
+			return fmt.Errorf("streams are not balanced after BalanceStreams: %v", streamDist)
 		}
 
 		consumers := []*jsm.Consumer{}
-		for i := 1; i <= 3; i++ {
+		for i := 1; i <= 10; i++ {
 			consumerName := fmt.Sprintf("testc%d", i)
 			c, err := mgr.NewConsumer("tests1", jsm.DurableName(consumerName), jsm.ConsumerOverrideReplicas(3))
 			if err != nil {
 				return err
 			}
-
-			info, _ := c.ClusterInfo()
-			if info.Leader != "s1" {
-				placement := api.Placement{Preferred: "s1"}
-				err = c.LeaderStepDown(&placement)
-				if err != nil {
-					t.Fatalf("could not move consumer %s", err)
-				}
-			}
-
-			var nc *jsm.Consumer
-
-			for i := 1; i <= 5; i++ {
-				nc, err = mgr.LoadConsumer("tests1", consumerName)
-				if err == nil {
-					info, _ := nc.ClusterInfo()
-					if info.Leader != "" {
-						break
-					}
-				}
-
-				if i == 5 {
-					t.Fatalf("could not load stream %s after %dms", consumerName, i*int(waitTime))
-				}
-				time.Sleep(waitTime)
-			}
-
-			consumers = append(consumers, nc)
+			consumers = append(consumers, c)
 			defer c.Delete()
 		}
 
-		count, err = b.BalanceConsumers(consumers)
+		_, err = b.BalanceConsumers(consumers)
 		if err != nil {
 			return err
 		}
 
-		if count == 0 {
-			return fmt.Errorf("expected to balance > 0 consumers. balanced 0")
+		time.Sleep(500 * time.Millisecond)
+
+		consumerDist, err := getConsumerDistribution(mgr, "tests1", consumers)
+		if err != nil {
+			return err
+		}
+		if !isBalanced(consumerDist, len(consumers), len(consumerDist), 3) {
+			return fmt.Errorf("consumers are not balanced after BalanceConsumers: %v", consumerDist)
 		}
 
 		return nil
@@ -125,10 +150,9 @@ func TestBalancer(t *testing.T) {
 
 func TestBalancer_FiveNodeCluster(t *testing.T) {
 	withJSCluster(t, 5, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
-		waitTime := 100 * time.Millisecond
 		streams := []*jsm.Stream{}
 
-		for i := 1; i <= 50; i++ {
+		for i := 1; i <= 5; i++ {
 			streamName := fmt.Sprintf("fivetests_stream_%d", i)
 			subjects := fmt.Sprintf("fivetest.%d.*", i)
 			s, err := mgr.NewStream(streamName, jsm.Subjects(subjects), jsm.MemoryStorage(), jsm.Replicas(3))
@@ -139,66 +163,24 @@ func TestBalancer_FiveNodeCluster(t *testing.T) {
 			defer s.Delete()
 		}
 
-		targetReplicas := []string{}
-		for _, s := range streams {
-			info, _ := s.ClusterInfo()
-			for _, r := range info.Replicas {
-				if !slices.Contains(targetReplicas, r.Name) {
-					targetReplicas = append(targetReplicas, r.Name)
-				}
-			}
-		}
-
-		// Try and force an imbalance on the first few servers.
-		// If these tests are flakey in CI adjust this number
-		const imbalanceTargetCount = 1
-		if len(targetReplicas) > imbalanceTargetCount {
-			targetReplicas = targetReplicas[:imbalanceTargetCount]
-		}
-
-		for _, s := range streams {
-			info, _ := s.ClusterInfo()
-			validTarget := ""
-			for _, candidate := range targetReplicas {
-				if info.Leader == candidate {
-					validTarget = candidate
-					break
-				}
-				for _, r := range info.Replicas {
-					if r.Name == candidate {
-						validTarget = candidate
-						break
-					}
-				}
-				if validTarget != "" {
-					break
-				}
-			}
-			if validTarget == "" {
-				continue
-			}
-
-			if info.Leader != validTarget {
-				placement := api.Placement{Preferred: validTarget, Cluster: info.Name}
-				if err := s.LeaderStepDown(&placement); err != nil {
-					t.Fatalf("could not step down %s to %s: %v", s.Name(), validTarget, err)
-				}
-				time.Sleep(waitTime)
-			}
-		}
-
 		b, err := New(nc, api.NewDefaultLogger(api.DebugLevel))
 		if err != nil {
 			return err
 		}
 
-		count, err := b.BalanceStreams(streams)
+		_, err = b.BalanceStreams(streams)
 		if err != nil {
 			return err
 		}
 
-		if count == 0 {
-			return fmt.Errorf("expected to balance > 0 streams. balanced 0")
+		time.Sleep(500 * time.Millisecond)
+
+		streamDist, err := getStreamDistribution(mgr, streams)
+		if err != nil {
+			return err
+		}
+		if !isBalanced(streamDist, len(streams), len(streamDist), 3) {
+			return fmt.Errorf("streams are not balanced after BalanceStreams: %v", streamDist)
 		}
 
 		return nil

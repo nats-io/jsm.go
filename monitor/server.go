@@ -137,17 +137,19 @@ func CheckServerWithConnection(nc *nats.Conn, check *Result, timeout time.Durati
 			return nil
 		}
 
-		if !hasTLSCertNotAfter(vz) {
-			check.Criticalf("TLS certificate expiry thresholds configured but no TLS certificates found")
-			return nil
-		}
+		if warnThreshold > 0 || critThreshold > 0 {
+			if !hasTLSCertNotAfter(vz) {
+				check.Criticalf("TLS certificate expiry thresholds configured but no TLS certificates found")
+				return nil
+			}
 
-		checkTLSCertExpiry(check, "server", vz.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
-		checkTLSCertExpiry(check, "cluster", vz.Cluster.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
-		checkTLSCertExpiry(check, "gateway", vz.Gateway.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
-		checkTLSCertExpiry(check, "leafnode", vz.LeafNode.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
-		checkTLSCertExpiry(check, "mqtt", vz.MQTT.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
-		checkTLSCertExpiry(check, "websocket", vz.Websocket.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+			checkTLSCertExpiry(check, "server", vz.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+			checkTLSCertExpiry(check, "cluster", vz.Cluster.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+			checkTLSCertExpiry(check, "gateway", vz.Gateway.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+			checkTLSCertExpiry(check, "leafnode", vz.LeafNode.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+			checkTLSCertExpiry(check, "mqtt", vz.MQTT.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+			checkTLSCertExpiry(check, "websocket", vz.Websocket.TLSCertNotAfter, vz.Now, warnThreshold, critThreshold)
+		}
 	}
 
 	up := vz.Now.Sub(vz.Start)

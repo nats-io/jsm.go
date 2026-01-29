@@ -36,6 +36,7 @@ const (
 	JSApiConsumerDeleteT              = "$JS.API.CONSUMER.DELETE.%s.%s"
 	JSApiConsumerInfoPrefix           = "$JS.API.CONSUMER.INFO"
 	JSApiConsumerInfoT                = "$JS.API.CONSUMER.INFO.%s.%s"
+	JSApiConsumerInfo                 = "$JS.API.CONSUMER.INFO.*.*"
 	JSApiConsumerLeaderStepDown       = "$JS.API.CONSUMER.LEADER.STEPDOWN.*.*"
 	JSApiConsumerLeaderStepDownPrefix = "$JS.API.CONSUMER.LEADER.STEPDOWN"
 	JSApiConsumerLeaderStepDownT      = "$JS.API.CONSUMER.LEADER.STEPDOWN.%s.%s"
@@ -167,6 +168,9 @@ type JSApiConsumerNamesResponse struct {
 type JSApiConsumerListRequest struct {
 	JSApiIterableRequest
 }
+
+// io.nats.jetstream.api.v1.consumer_info_request
+type JSApiConsumerInfoRequest struct{}
 
 // io.nats.jetstream.api.v1.consumer_list_response
 type JSApiConsumerListResponse struct {

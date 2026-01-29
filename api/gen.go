@@ -258,6 +258,7 @@ func main() {
 		&schema{P: "jetstream/api/v1/consumer_create_response.json", St: "JSApiConsumerCreateResponse", Res: "JSApiConsumerCreatePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_delete_response.json", St: "JSApiConsumerDeleteResponse", Res: "JSApiConsumerDeletePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_getnext_request.json", St: "JSApiConsumerGetNextRequest", Req: "JSApiRequestNextPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_info_request.json", St: "JSApiConsumerInfoRequest", Req: "JSApiConsumerInfoPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_info_response.json", St: "JSApiConsumerInfoResponse", Res: "JSApiConsumerInfoPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_request.json", St: "JSApiConsumerLeaderStepdownRequest", Req: "JSApiConsumerLeaderStepDownPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_leader_stepdown_response.json", St: "JSApiConsumerLeaderStepDownResponse", Res: "JSApiConsumerLeaderStepDownPrefix"},

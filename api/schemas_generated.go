@@ -1,4 +1,4 @@
-// auto generated 2025-09-25 10:28:47.599294 +0200 CEST m=+0.010374543
+// auto generated 2026-01-29 12:17:13.990114 +0100 CET m=+0.009771917
 
 package api
 
@@ -41,6 +41,7 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.consumer_create_response":          func() any { return &JSApiConsumerCreateResponse{} },
 	"io.nats.jetstream.api.v1.consumer_delete_response":          func() any { return &JSApiConsumerDeleteResponse{} },
 	"io.nats.jetstream.api.v1.consumer_getnext_request":          func() any { return &JSApiConsumerGetNextRequest{} },
+	"io.nats.jetstream.api.v1.consumer_info_request":             func() any { return &JSApiConsumerInfoRequest{} },
 	"io.nats.jetstream.api.v1.consumer_info_response":            func() any { return &JSApiConsumerInfoResponse{} },
 	"io.nats.jetstream.api.v1.consumer_leader_stepdown_request":  func() any { return &JSApiConsumerLeaderStepdownRequest{} },
 	"io.nats.jetstream.api.v1.consumer_leader_stepdown_response": func() any { return &JSApiConsumerLeaderStepDownResponse{} },
@@ -98,6 +99,7 @@ var schemaTypes = map[string]func() any{
 var schemaRequestSubjects = map[string]func() any{
 	JSApiConsumerCreateWithNamePrefix: func() any { return &JSApiConsumerCreateRequest{} },
 	JSApiRequestNextPrefix:            func() any { return &JSApiConsumerGetNextRequest{} },
+	JSApiConsumerInfoPrefix:           func() any { return &JSApiConsumerInfoRequest{} },
 	JSApiConsumerLeaderStepDownPrefix: func() any { return &JSApiConsumerLeaderStepdownRequest{} },
 	JSApiConsumerListPrefix:           func() any { return &JSApiConsumerListRequest{} },
 	JSApiConsumerNamesPrefix:          func() any { return &JSApiConsumerNamesRequest{} },
@@ -151,6 +153,7 @@ var schemaResponseSubjects = map[string]func() any{
 var schemaWildcardSubjects = map[string]func() any{
 	JSApiConsumerCreateWithName: func() any { return &JSApiConsumerCreateRequest{} },
 	JSApiRequestNext:            func() any { return &JSApiConsumerGetNextRequest{} },
+	JSApiConsumerInfo:           func() any { return &JSApiConsumerInfoRequest{} },
 	JSApiConsumerLeaderStepDown: func() any { return &JSApiConsumerLeaderStepdownRequest{} },
 	JSApiConsumerList:           func() any { return &JSApiConsumerListRequest{} },
 	JSApiConsumerNames:          func() any { return &JSApiConsumerNamesRequest{} },
@@ -396,6 +399,49 @@ func (t JSApiConsumerGetNextRequest) ApiSubjectFormat() (string, error) {
 // ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
 func (t JSApiConsumerGetNextRequest) ApiSubjectPrefix() (string, error) {
 	return JSApiRequestNextPrefix, nil
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerInfoRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_info_request
+func (t JSApiConsumerInfoRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_info_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerInfoRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_info_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerInfoRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerInfoRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerInfo, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerInfoRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerInfoT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerInfoRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerInfoPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration

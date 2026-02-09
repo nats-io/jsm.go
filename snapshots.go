@@ -411,6 +411,21 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 			return
 		}
 
+		// Respond to flow control immediately. The data is already in memory
+		// and pending limits are unlimited, so it is safe to ack before writing
+		// to disk. This prevents the server's 2s flow control timeout from
+		// firing when disk writes or decompression tracking are slow.
+		// If the subsequent write fails, the backup will still error properly.
+		if m.Reply != "" {
+			if sopts.debug && sopts.progress {
+				progress.Lock()
+				log.Printf("Responded to server subject %s %s chunks, last chunk size %s", m.Reply, humanize.Comma(int64(progress.chunksReceived)), humanize.IBytes(uint64(len(m.Data))))
+				progress.Unlock()
+			}
+
+			m.Respond(nil)
+		}
+
 		if sopts.progress {
 			progress.Lock()
 			progress.bytesReceived += uint64(len(m.Data))
@@ -426,16 +441,6 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 		if n != len(m.Data) {
 			errc <- fmt.Errorf("failed to write %d bytes to %s, only wrote %d", len(m.Data), sopts.dataFile, n)
 			return
-		}
-
-		if m.Reply != "" {
-			if sopts.debug && sopts.progress {
-				progress.Lock()
-				log.Printf("Responding to server subject %s %s chunks, last chunk size %s", m.Reply, humanize.Comma(int64(progress.chunksReceived)), humanize.IBytes(uint64(len(m.Data))))
-				progress.Unlock()
-			}
-
-			m.Respond(nil)
 		}
 	})
 	if err != nil {

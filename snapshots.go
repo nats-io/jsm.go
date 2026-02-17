@@ -46,7 +46,8 @@ type snapshotOptions struct {
 	debug         bool
 	consumers     bool
 	jsck          bool
-	chunkSz       int
+	chunkSz       int // optional
+	wndSz         int // optional
 	progress      bool
 	restoreConfig *api.StreamConfig
 }
@@ -107,6 +108,13 @@ func RestoreConfiguration(cfg api.StreamConfig) SnapshotOption {
 func SnapshotChunkSize(sz int) SnapshotOption {
 	return func(o *snapshotOptions) {
 		o.chunkSz = sz
+	}
+}
+
+// SnapshotWindowSize sets the total amount of data in-flight during a stream snapshot
+func SnapshotWindowSize(sz int) SnapshotOption {
+	return func(o *snapshotOptions) {
+		o.wndSz = sz
 	}
 }
 
@@ -353,6 +361,12 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 		NoConsumers:    !sopts.consumers,
 		CheckMsgs:      sopts.jsck,
 		ChunkSize:      sopts.chunkSz,
+		WindowSize:     sopts.wndSz,
+	}
+
+	// Currently needed as otherwise the progress tracking below breaks.
+	if req.ChunkSize == 0 {
+		req.ChunkSize = 128 * 1024
 	}
 
 	var resp api.JSApiStreamSnapshotResponse
@@ -485,7 +499,6 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 		metaFile:  filepath.Join(dir, "backup.json"),
 		jsck:      false,
 		consumers: false,
-		chunkSz:   128 * 1024,
 		progress:  true,
 	}
 
@@ -516,7 +529,6 @@ func (s *Stream) SnapshotToBuffer(ctx context.Context, dataBuffer, metadataBuffe
 	sopts := &snapshotOptions{
 		jsck:      false,
 		consumers: false,
-		chunkSz:   128 * 1024,
 		progress:  false,
 	}
 

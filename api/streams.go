@@ -255,8 +255,17 @@ type JSApiStreamSnapshotRequest struct {
 	DeliverSubject string `json:"deliver_subject"`
 	// Do not include consumers in the snapshot.
 	NoConsumers bool `json:"no_consumers,omitempty"`
-	// Optional chunk size preference. Otherwise server selects.
+	// Optional chunk size preference. Defaults to 128KB,
+	// automatically clamped to within the range 1KB to 1MB.
+	// A smaller chunk size means more in-flight messages
+	// and more acks needed. Links with good throughput
+	// but high latency may need to increase this.
 	ChunkSize int `json:"chunk_size,omitempty"`
+	// Optional window size preference. Defaults to 8MB,
+	// automatically clamped to within the range 1KB to 32MB.
+	// very slow connections may need to reduce this to
+	// avoid slow consumer issues.
+	WindowSize int `json:"window_size,omitempty" api_level:"3"`
 	// Check all message's checksums prior to snapshot.
 	CheckMsgs bool `json:"jsck,omitempty"`
 }

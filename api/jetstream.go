@@ -268,7 +268,7 @@ func RequiredApiLevel(req any) (int, error) {
 // and then we can use this function to determine the required level for a request
 //
 // for cases where we introduce a change of behavior on a field structs can handle that in their RequiredApiLevel()
-// and then call into this function with skip true to determin the level for the rest of the struct, see
+// and then call into this function with skip true to determine the level for the rest of the struct, see
 // ConsumerConfig for an example of this.
 func requiredApiLevel(req any, skip bool) (int, error) {
 	val := reflect.ValueOf(req)

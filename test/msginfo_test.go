@@ -28,13 +28,26 @@ func TestParseJSMsgMetadata_New(t *testing.T) {
 		meta      string
 		pending   uint64
 		hasDomain bool
+		errorStr  string
 	}{
-		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, false},
-		{"$JS.ACK.DOMAIN.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10.random", 10, true},
+		{"$JS.ACK.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, false, ""},
+		{"$JS.ACK.DOMAIN.ORDERS.NEW.1.2.3.1587466354254920000.10", 0, true, "message metadata does not appear to be an ACK"},
+		{"$JS.ACK.DOMAIN.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, true, ""},
+		{"$JS.ACK._.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10", 10, false, ""},
+		{"$JS.ACK.DOMAIN.ACCOUNT.ORDERS.NEW.1.2.3.1587466354254920000.10.future.future", 10, true, ""},
 	}
 
 	for _, tc := range cases {
 		i, err := jsm.ParseJSMsgMetadata(&nats.Msg{Reply: tc.meta})
+		if tc.errorStr != "" {
+			if err == nil {
+				t.Fatalf("expected error '%s' got nil", tc.errorStr)
+			}
+			if err.Error() != tc.errorStr {
+				t.Fatalf("expected error '%s' got '%s'", tc.errorStr, err)
+			}
+			continue
+		}
 		checkErr(t, err, fmt.Sprintf("msg parse failed for '%s'", tc.meta))
 
 		if i.Stream() != "ORDERS" {
@@ -68,6 +81,8 @@ func TestParseJSMsgMetadata_New(t *testing.T) {
 
 		if tc.hasDomain && i.Domain() != "DOMAIN" {
 			t.Fatalf("expected DOMAIN got %q", i.Domain())
+		} else if !tc.hasDomain && i.Domain() != "" {
+			t.Fatalf("expected no domain got %q", i.Domain())
 		}
 	}
 }

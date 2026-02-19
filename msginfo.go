@@ -94,11 +94,11 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 		return nil, fmt.Errorf("message metadata does not appear to be an ACK")
 	}
 
-	// $JS.ACK.<domain>.<account hash>.<stream>.<consumer>...<random>
+	// $JS.ACK.<domain>.<account hash>.<stream>.<consumer>...
 	// $JS.ACK.<stream>.<consumer>...
 
 	offset := 0
-	if c == 12 {
+	if c >= 11 {
 		offset = 2
 	}
 
@@ -113,8 +113,11 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 	pending, _ = strconv.ParseUint(parts[8+offset], 10, 64)
 
 	domain := _EMPTY_
-	if c == 12 {
+	if c >= 11 {
 		domain = parts[2]
+		if domain == "_" {
+			domain = _EMPTY_
+		}
 	}
 
 	nfo := &MsgInfo{

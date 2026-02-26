@@ -117,11 +117,57 @@ func TestIsValidName(t *testing.T) {
 		t.Fatalf("did not detect empty string as invalid")
 	}
 
-	for _, c := range []string{".", ">", "*"} {
+	for _, c := range []string{".", ">", "*", "\x00"} {
 		tc := "x" + c + "x"
 		if jsm.IsValidName(tc) {
 			t.Fatalf("did not detect %q as invalid", tc)
 		}
+	}
+}
+
+func TestIsErrorResponseNil(t *testing.T) {
+	if jsm.IsErrorResponse(nil) {
+		t.Fatal("nil message should not be an error response")
+	}
+}
+
+func TestParseErrorResponseNil(t *testing.T) {
+	err := jsm.ParseErrorResponse(nil)
+	if err == nil {
+		t.Fatal("expected error for nil message, got nil")
+	}
+}
+
+func TestIsOKResponseNil(t *testing.T) {
+	if jsm.IsOKResponse(nil) {
+		t.Fatal("nil message should not be an OK response")
+	}
+}
+
+func TestAPISubjectNonMatchingSubject(t *testing.T) {
+	// When subject does not start with "$JS.API", it must be returned unchanged.
+	cases := []struct {
+		subject string
+		prefix  string
+		domain  string
+	}{
+		{"CUSTOM.SUBJECT", "myprefix", ""},
+		{"CUSTOM.SUBJECT", "", "mydomain"},
+	}
+
+	for _, tc := range cases {
+		got := jsm.APISubject(tc.subject, tc.prefix, tc.domain)
+		if got != tc.subject {
+			t.Errorf("APISubject(%q, %q, %q) = %q, want %q (unchanged)", tc.subject, tc.prefix, tc.domain, got, tc.subject)
+		}
+	}
+}
+
+func TestEventSubjectNonMatchingSubject(t *testing.T) {
+	// When subject does not start with "$JS.EVENT", it must be returned unchanged.
+	got := jsm.EventSubject("CUSTOM.SUBJECT", "myprefix")
+	if got != "CUSTOM.SUBJECT" {
+		t.Errorf("EventSubject(\"CUSTOM.SUBJECT\", \"myprefix\") = %q, want %q (unchanged)", got, "CUSTOM.SUBJECT")
 	}
 }
 

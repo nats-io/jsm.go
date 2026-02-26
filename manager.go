@@ -54,6 +54,18 @@ func New(nc *nats.Conn, opts ...Option) (*Manager, error) {
 		opt(m)
 	}
 
+	if m.domain != "" && !IsValidName(m.domain) {
+		return nil, fmt.Errorf("domain %q is not a valid JetStream name", m.domain)
+	}
+
+	if m.apiPrefix != "" && !isValidSubjectPrefix(m.apiPrefix) {
+		return nil, fmt.Errorf("api prefix %q contains invalid subject characters", m.apiPrefix)
+	}
+
+	if m.eventPrefix != "" && !isValidSubjectPrefix(m.eventPrefix) {
+		return nil, fmt.Errorf("event prefix %q contains invalid subject characters", m.eventPrefix)
+	}
+
 	if m.nc == nil {
 		return nil, fmt.Errorf("nats connection not supplied")
 	}

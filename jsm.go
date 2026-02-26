@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -63,6 +64,10 @@ type apiValidatable interface {
 
 // IsErrorResponse checks if the message holds a standard JetStream error
 func IsErrorResponse(m *nats.Msg) bool {
+	if m == nil {
+		return false
+	}
+
 	if strings.HasPrefix(string(m.Data), api.ErrPrefix) {
 		return true
 	}
@@ -78,6 +83,10 @@ func IsErrorResponse(m *nats.Msg) bool {
 
 // ParseErrorResponse parses the JetStream response, if it's an error returns an error instance holding the message else nil
 func ParseErrorResponse(m *nats.Msg) error {
+	if m == nil {
+		return fmt.Errorf("no message supplied")
+	}
+
 	if !IsErrorResponse(m) {
 		return nil
 	}
@@ -96,8 +105,12 @@ func ParseErrorResponse(m *nats.Msg) error {
 	return resp.ToError()
 }
 
-// IsOKResponse checks if the message holds a standard JetStream error
+// IsOKResponse checks if the message holds a standard JetStream OK response
 func IsOKResponse(m *nats.Msg) bool {
+	if m == nil {
+		return false
+	}
+
 	if strings.HasPrefix(string(m.Data), api.OK) {
 		return true
 	}
@@ -117,29 +130,62 @@ func IsValidName(n string) bool {
 		return false
 	}
 
-	return !strings.ContainsAny(n, ">*. /\\")
+	return !strings.ContainsAny(n, ">*. /\\\x00")
 }
 
-// APISubject returns API subject with prefix applied
+// isValidSubjectPrefix checks that a dot-separated subject prefix contains only
+// valid name tokens; each segment must satisfy [IsValidName].
+func isValidSubjectPrefix(s string) bool {
+	if s == "" {
+		return false
+	}
+
+	for _, token := range strings.Split(s, ".") {
+		if !IsValidName(token) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// APISubject returns API subject with prefix applied.
+// subject must begin with "$JS.API"; if it does not the subject is returned unchanged.
 func APISubject(subject string, prefix string, domain string) string {
 	if domain != "" {
-		return fmt.Sprintf("$JS.%s.API", domain) + strings.TrimPrefix(subject, "$JS.API")
+		trimmed := strings.TrimPrefix(subject, "$JS.API")
+		if trimmed == subject {
+			return subject
+		}
+
+		return fmt.Sprintf("$JS.%s.API", domain) + trimmed
 	}
 
 	if prefix == "" {
 		return subject
 	}
 
-	return prefix + strings.TrimPrefix(subject, "$JS.API")
+	trimmed := strings.TrimPrefix(subject, "$JS.API")
+	if trimmed == subject {
+		return subject
+	}
+
+	return prefix + trimmed
 }
 
-// EventSubject returns Event subject with prefix applied
+// EventSubject returns Event subject with prefix applied.
+// subject must begin with "$JS.EVENT"; if it does not the subject is returned unchanged.
 func EventSubject(subject string, prefix string) string {
 	if prefix == "" {
 		return subject
 	}
 
-	return prefix + strings.TrimPrefix(subject, "$JS.EVENT")
+	trimmed := strings.TrimPrefix(subject, "$JS.EVENT")
+	if trimmed == subject {
+		return subject
+	}
+
+	return prefix + trimmed
 }
 
 // ParsePubAck parses a stream publish response and returns an error if the publish failed or parsing failed
@@ -209,6 +255,10 @@ func LinearBackoffPeriods(steps uint, min time.Duration, max time.Duration) ([]t
 	var res []time.Duration
 
 	stepSize := uint(max-min) / steps
+	if max != min && stepSize == 0 {
+		return nil, fmt.Errorf("step range between %v and %v is too small for %d steps", min, max, steps)
+	}
+
 	for i := uint(0); i < steps; i += 1 {
 		res = append(res, min+time.Duration(i*stepSize).Round(time.Millisecond))
 	}
@@ -270,36 +320,68 @@ func ParseDuration(d string) (time.Duration, error) {
 
 		switch p[4] {
 		case "w", "W":
-			val, err := strconv.ParseFloat(p[3], 32)
+			val, err := strconv.ParseFloat(p[3], 64)
 			if err != nil {
 				return 0, fmt.Errorf("%w: %v", errInvalidDuration, err)
 			}
 
-			r += time.Duration(val*7*24) * time.Hour
+			ns := val * float64(7*24*time.Hour)
+			if ns >= math.MaxFloat64 || ns >= float64(math.MaxInt64) {
+				return 0, fmt.Errorf("%w: value too large", errInvalidDuration)
+			}
+
+			r += time.Duration(ns)
+			if r < 0 {
+				return 0, fmt.Errorf("%w: accumulated value too large", errInvalidDuration)
+			}
 
 		case "d", "D":
-			val, err := strconv.ParseFloat(p[3], 32)
+			val, err := strconv.ParseFloat(p[3], 64)
 			if err != nil {
 				return 0, fmt.Errorf("%w: %v", errInvalidDuration, err)
 			}
 
-			r += time.Duration(val*24) * time.Hour
+			ns := val * float64(24*time.Hour)
+			if ns >= math.MaxFloat64 || ns >= float64(math.MaxInt64) {
+				return 0, fmt.Errorf("%w: value too large", errInvalidDuration)
+			}
+
+			r += time.Duration(ns)
+			if r < 0 {
+				return 0, fmt.Errorf("%w: accumulated value too large", errInvalidDuration)
+			}
 
 		case "M":
-			val, err := strconv.ParseFloat(p[3], 32)
+			val, err := strconv.ParseFloat(p[3], 64)
 			if err != nil {
 				return 0, fmt.Errorf("%w: %v", errInvalidDuration, err)
 			}
 
-			r += time.Duration(val*24*30) * time.Hour
+			ns := val * float64(30*24*time.Hour)
+			if ns >= math.MaxFloat64 || ns >= float64(math.MaxInt64) {
+				return 0, fmt.Errorf("%w: value too large", errInvalidDuration)
+			}
+
+			r += time.Duration(ns)
+			if r < 0 {
+				return 0, fmt.Errorf("%w: accumulated value too large", errInvalidDuration)
+			}
 
 		case "Y", "y":
-			val, err := strconv.ParseFloat(p[3], 32)
+			val, err := strconv.ParseFloat(p[3], 64)
 			if err != nil {
 				return 0, fmt.Errorf("%w: %v", errInvalidDuration, err)
 			}
 
-			r += time.Duration(val*24*365) * time.Hour
+			ns := val * float64(365*24*time.Hour)
+			if ns >= math.MaxFloat64 || ns >= float64(math.MaxInt64) {
+				return 0, fmt.Errorf("%w: value too large", errInvalidDuration)
+			}
+
+			r += time.Duration(ns)
+			if r < 0 {
+				return 0, fmt.Errorf("%w: accumulated value too large", errInvalidDuration)
+			}
 
 		case "ns", "us", "µs", "ms", "s", "m", "h":
 			dur, err := time.ParseDuration(p[2])
@@ -308,6 +390,9 @@ func ParseDuration(d string) (time.Duration, error) {
 			}
 
 			r += dur
+			if r < 0 {
+				return 0, fmt.Errorf("%w: accumulated value too large", errInvalidDuration)
+			}
 		default:
 			return 0, fmt.Errorf("%w: invalid unit %v", errInvalidDuration, p[4])
 		}

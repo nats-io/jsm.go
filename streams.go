@@ -163,7 +163,10 @@ func (m *Manager) LoadOrNewStreamFromDefault(name string, dflt api.StreamConfig,
 	}
 
 	for _, o := range opts {
-		o(&dflt)
+		err = o(&dflt)
+		if err != nil {
+			return nil, err
+		}
 	}
 	s, err := m.LoadStream(name)
 	if IsNatsError(err, 10059) {

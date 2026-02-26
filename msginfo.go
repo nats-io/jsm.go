@@ -70,7 +70,7 @@ func (i *MsgInfo) Domain() string {
 	return i.domain
 }
 
-// Pending is the number of messages left to consume, -1 when the number is not reported
+// Pending is the number of messages left to consume, math.MaxUint64 when the number is not reported
 func (i *MsgInfo) Pending() uint64 {
 	return i.pending
 }
@@ -108,9 +108,11 @@ func ParseJSMsgMetadataReply(reply string) (info *MsgInfo, err error) {
 	streamSeq, _ := strconv.ParseUint(parts[5+offset], 10, 64)
 	consumerSeq, _ := strconv.ParseUint(parts[6+offset], 10, 64)
 	tsi, _ := strconv.ParseInt(parts[7+offset], 10, 64)
-	ts := time.Unix(0, int64(tsi))
+	ts := time.Unix(0, tsi)
 	pending := uint64(math.MaxUint64)
-	pending, _ = strconv.ParseUint(parts[8+offset], 10, 64)
+	if p, err := strconv.ParseUint(parts[8+offset], 10, 64); err == nil {
+		pending = p
+	}
 
 	domain := _EMPTY_
 	if c >= 11 {
@@ -170,6 +172,10 @@ func ParseJSMsgMetadataDirect(headers nats.Header) (*MsgInfo, error) {
 // When given a message obtained using Direct Get APIs several fields will be filled in but
 // consumer related ones will not as there is no consumer involved in that case
 func ParseJSMsgMetadata(m *nats.Msg) (info *MsgInfo, err error) {
+	if m == nil {
+		return nil, fmt.Errorf("message is nil")
+	}
+
 	switch {
 	case len(m.Reply) > 0:
 		return ParseJSMsgMetadataReply(m.Reply)

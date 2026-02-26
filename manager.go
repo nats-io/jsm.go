@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go/api"
@@ -56,6 +57,22 @@ func New(nc *nats.Conn, opts ...Option) (*Manager, error) {
 
 	if m.nc == nil {
 		return nil, fmt.Errorf("nats connection not supplied")
+	}
+
+	if m.domain != "" && !server.IsValidLiteralSubject(m.domain) {
+		return nil, fmt.Errorf("invalid domain %q", m.domain)
+	}
+
+	if m.apiPrefix != "" && !server.IsValidLiteralSubject(m.apiPrefix) {
+		return nil, fmt.Errorf("invalid API prefix %q", m.apiPrefix)
+	}
+
+	if m.eventPrefix != "" && !server.IsValidLiteralSubject(m.eventPrefix) {
+		return nil, fmt.Errorf("invalid event prefix %q", m.eventPrefix)
+	}
+
+	if m.apiPrefix != "" && m.domain != "" {
+		return nil, fmt.Errorf("WithAPIPrefix and WithDomain are mutually exclusive")
 	}
 
 	if m.timeout < 500*time.Millisecond {

@@ -48,7 +48,7 @@ func newTableWriter(title string) table.Writer {
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 var passwordRunes = append(letterRunes, []rune("@#_-%^&()")...)
 
-func randomPassword(length int) string {
+func randomString(length int) string {
 	b := make([]rune, length)
 	for i := range b {
 		b[i] = passwordRunes[rand.Intn(len(passwordRunes))]

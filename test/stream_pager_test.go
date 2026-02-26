@@ -16,6 +16,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,6 +75,116 @@ func TestPager(t *testing.T) {
 	if len(known) != 0 {
 		t.Fatalf("expected no consumers got %v", known)
 	}
+}
+
+func TestPagerDoubleClose(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	t.Run("consumer-based", func(t *testing.T) {
+		str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
+		checkErr(t, err, "stream create failed")
+
+		_, err = nc.Request("js.in.pager", []byte("msg"), time.Second)
+		checkErr(t, err, "publish failed")
+
+		pgr, err := str.PageContents(jsm.PagerSize(25))
+		checkErr(t, err, "pager creation failed")
+
+		err = pgr.Close()
+		checkErr(t, err, "first close failed")
+
+		// second close must not panic and should be a no-op
+		err = pgr.Close()
+		if err != nil {
+			t.Fatalf("second close returned unexpected error: %s", err)
+		}
+	})
+
+	t.Run("direct-wq", func(t *testing.T) {
+		str, err := mgr.NewStream("PAGERTEST_WQ", jsm.Subjects("js.in.pagerwq"), jsm.WorkQueueRetention(), jsm.AllowDirect())
+		checkErr(t, err, "stream create failed")
+
+		_, err = nc.Request("js.in.pagerwq", []byte("msg"), time.Second)
+		checkErr(t, err, "publish failed")
+
+		pgr, err := str.PageContents(jsm.PagerSize(25))
+		checkErr(t, err, "pager creation failed")
+
+		err = pgr.Close()
+		checkErr(t, err, "first close failed")
+
+		err = pgr.Close()
+		if err != nil {
+			t.Fatalf("second close returned unexpected error: %s", err)
+		}
+	})
+}
+
+func TestPagerCloseAfterConsumerDeleted(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
+	checkErr(t, err, "stream create failed")
+
+	_, err = nc.Request("js.in.pager", []byte("msg"), time.Second)
+	checkErr(t, err, "publish failed")
+
+	pgr, err := str.PageContents(jsm.PagerSize(25))
+	checkErr(t, err, "pager creation failed")
+
+	// delete the underlying consumer out-of-band to force Delete() to fail in Close()
+	names, err := str.ConsumerNames()
+	checkErr(t, err, "consumer names failed")
+
+	for _, name := range names {
+		if strings.HasPrefix(name, "stream_pager_") {
+			c, err := str.LoadConsumer(name)
+			checkErr(t, err, "load consumer failed")
+			err = c.Delete()
+			checkErr(t, err, "pre-delete failed")
+		}
+	}
+
+	// Close() should return an error (consumer already gone) but must not panic
+	// and must complete the rest of cleanup
+	err = pgr.Close()
+	if err == nil {
+		t.Fatal("expected error closing pager with pre-deleted consumer, got nil")
+	}
+
+	// second Close() must not panic — proves p.q and p.sub were nilled despite the error
+	err = pgr.Close()
+	if err != nil {
+		t.Fatalf("second close returned unexpected error: %s", err)
+	}
+}
+
+func TestPagerStartIdValidation(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
+	checkErr(t, err, "stream create failed")
+
+	_, err = nc.Request("js.in.pager", []byte("msg"), time.Second)
+	checkErr(t, err, "publish failed")
+
+	for _, id := range []int{0, -2, -100} {
+		_, err = str.PageContents(jsm.PagerStartId(id))
+		if err == nil {
+			t.Fatalf("PagerStartId(%d) should have returned an error", id)
+		}
+	}
+
+	// valid sequence should succeed
+	pgr, err := str.PageContents(jsm.PagerStartId(1))
+	checkErr(t, err, "PagerStartId(1) should succeed")
+	pgr.Close()
 }
 
 func TestPagerWQ(t *testing.T) {

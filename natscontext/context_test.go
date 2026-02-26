@@ -1,7 +1,6 @@
 package natscontext_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/nats-io/nats.go"
@@ -10,7 +9,7 @@ import (
 )
 
 func TestContext(t *testing.T) {
-	os.Setenv("XDG_CONFIG_HOME", "testdata")
+	t.Setenv("XDG_CONFIG_HOME", "testdata")
 
 	known := natscontext.KnownContexts()
 	if len(known) != 2 && known[0] != "gotest" && known[1] != "other" {
@@ -114,7 +113,7 @@ func TestContext(t *testing.T) {
 	}
 
 	// support missing config/context
-	os.Setenv("XDG_CONFIG_HOME", "/nonexisting")
+	t.Setenv("XDG_CONFIG_HOME", "/nonexisting")
 	config, err = natscontext.New("", true)
 	if err != nil {
 		t.Fatalf("error loading context: %s", err)
@@ -126,5 +125,28 @@ func TestContext(t *testing.T) {
 	config, err = natscontext.NewFromFile("./testdata/gotest.json")
 	if err != nil || (config.Name != "gotest" && config.ServerURL() != "demo.nats.io" && config.Token() != "use-nkeys!") {
 		t.Fatalf("could not load context file: %s", err)
+	}
+
+	// UserJWT counts as a credential type and must not coexist with creds/nkey
+	config, err = natscontext.New("jwt_and_creds", false,
+		natscontext.WithUserJWT("somejwt"),
+		natscontext.WithCreds("/some/path.creds"),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error creating jwt+creds context: %s", err)
+	}
+	err = config.Validate()
+	if err == nil {
+		t.Fatal("expected validation error for jwt+creds conflict, got nil")
+	}
+
+	// UserJWT alone should pass validation
+	config, err = natscontext.New("jwtonly", false, natscontext.WithUserJWT("somejwt"))
+	if err != nil {
+		t.Fatalf("unexpected error creating jwt-only context: %s", err)
+	}
+	err = config.Validate()
+	if err != nil {
+		t.Fatalf("expected jwt-only context to be valid, got: %v", err)
 	}
 }

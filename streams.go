@@ -1031,7 +1031,7 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 		return err
 	}
 
-	progress(nfo.State.Msgs, nfo.State.Msgs)
+	progress(nfo.State.FirstSeq, nfo.State.LastSeq)
 
 	if len(nfo.State.Deleted) == 0 {
 		return nil
@@ -1047,7 +1047,7 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 	start := nfo.State.Deleted[0]
 
 	for i, seq := range nfo.State.Deleted {
-		progress(seq, nfo.State.Msgs-seq)
+		progress(seq, nfo.State.LastSeq-seq)
 
 		// the last deleted message
 		if i == len(nfo.State.Deleted)-1 {
@@ -1085,10 +1085,12 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 	}
 	defer sub.Unsubscribe()
 
-	_, err = s.NewConsumer(DeliverHeadersOnly(), PushFlowControl(), DeliverySubject(sub.Subject), InactiveThreshold(time.Minute), IdleHeartbeat(time.Second), AcknowledgeNone(), StartAtSequence(nfo.State.Deleted[len(nfo.State.Deleted)-1]+1))
+	var consumer *Consumer
+	consumer, err = s.NewConsumer(DeliverHeadersOnly(), PushFlowControl(), DeliverySubject(sub.Subject), InactiveThreshold(time.Minute), IdleHeartbeat(time.Second), AcknowledgeNone(), StartAtSequence(nfo.State.Deleted[len(nfo.State.Deleted)-1]+1))
 	if err != nil {
 		return err
 	}
+	defer consumer.Delete()
 
 	last := uint64(math.MaxUint64)
 

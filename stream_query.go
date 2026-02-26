@@ -1,4 +1,4 @@
-// Copyright 2022 The NATS Authors
+// Copyright 2022-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package jsm
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -34,9 +35,7 @@ type streamQuery struct {
 	invert         bool
 	subject        string
 	replicas       int
-	mirrored       bool
 	mirroredIsSet  bool
-	sourced        bool
 	sourcedIsSet   bool
 	expression     string
 	leader         string
@@ -56,7 +55,6 @@ func StreamQueryApiLevelMin(level int) StreamQueryOpt {
 
 func StreamQueryIsSourced() StreamQueryOpt {
 	return func(q *streamQuery) error {
-		q.sourced = true
 		q.sourcedIsSet = true
 		return nil
 	}
@@ -64,7 +62,6 @@ func StreamQueryIsSourced() StreamQueryOpt {
 
 func StreamQueryIsMirror() StreamQueryOpt {
 	return func(q *streamQuery) error {
-		q.mirrored = true
 		q.mirroredIsSet = true
 		return nil
 	}
@@ -397,7 +394,7 @@ func (q *streamQuery) matchConsumerLimit(streams []*Stream) ([]*Stream, error) {
 			return nil, err
 		}
 
-		if (q.invert && state.Consumers >= *q.consumersLimit) || !q.invert && state.Consumers <= *q.consumersLimit {
+		if (q.invert && state.Consumers >= *q.consumersLimit) || (!q.invert && state.Consumers <= *q.consumersLimit) {
 			matched = append(matched, stream)
 		}
 	}
@@ -420,7 +417,11 @@ func (q *streamQuery) matchApiLevel(streams []*Stream) ([]*Stream, error) {
 		if len(meta) > 0 {
 			v = meta[api.JsMetaRequiredServerLevel]
 			if v != "" {
-				requiredLevel, _ = strconv.Atoi(v)
+				var err error
+				requiredLevel, err = strconv.Atoi(v)
+				if err != nil {
+					return nil, fmt.Errorf("invalid %s metadata value %q: %w", api.JsMetaRequiredServerLevel, v, err)
+				}
 			}
 		}
 

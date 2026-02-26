@@ -24,6 +24,19 @@ func (q *streamQuery) matchExpression(streams []*Stream) ([]*Stream, error) {
 		return streams, nil
 	}
 
+	// Pre-compile once using a representative env structure; runtime values are
+	// substituted per-stream via expr.Run, so the compiled program is reusable.
+	protoEnv := map[string]any{
+		"config": map[string]any{},
+		"state":  map[string]any{},
+		"info":   map[string]any{},
+		"Info":   map[string]any{},
+	}
+	program, err := expr.Compile(q.expression, expr.Env(protoEnv), expr.AsBool())
+	if err != nil {
+		return nil, err
+	}
+
 	var matched []*Stream
 
 	for _, stream := range streams {
@@ -31,12 +44,27 @@ func (q *streamQuery) matchExpression(streams []*Stream) ([]*Stream, error) {
 		state := map[string]any{}
 		info := map[string]any{}
 
-		cfgBytes, _ := yaml.Marshal(stream.Configuration())
+		cfgBytes, err := yaml.Marshal(stream.Configuration())
+		if err != nil {
+			return nil, err
+		}
 		yaml.Unmarshal(cfgBytes, &cfg)
-		nfo, _ := stream.LatestInformation()
-		nfoBytes, _ := yaml.Marshal(nfo)
+
+		nfo, err := stream.LatestInformation()
+		if err != nil {
+			return nil, err
+		}
+
+		nfoBytes, err := yaml.Marshal(nfo)
+		if err != nil {
+			return nil, err
+		}
 		yaml.Unmarshal(nfoBytes, &info)
-		stateBytes, _ := yaml.Marshal(nfo.State)
+
+		stateBytes, err := yaml.Marshal(nfo.State)
+		if err != nil {
+			return nil, err
+		}
 		yaml.Unmarshal(stateBytes, &state)
 
 		env := map[string]any{
@@ -44,11 +72,6 @@ func (q *streamQuery) matchExpression(streams []*Stream) ([]*Stream, error) {
 			"state":  state,
 			"info":   info,
 			"Info":   nfo,
-		}
-
-		program, err := expr.Compile(q.expression, expr.Env(env), expr.AsBool())
-		if err != nil {
-			return nil, err
 		}
 
 		out, err := expr.Run(program, env)
@@ -84,16 +107,38 @@ func (q *consumerQuery) matchExpression(consumers []*Consumer) ([]*Consumer, err
 		return consumers, nil
 	}
 
+	protoEnv := map[string]any{
+		"config": map[string]any{},
+		"state":  map[string]any{},
+		"info":   map[string]any{},
+		"Info":   map[string]any{},
+	}
+	program, err := expr.Compile(q.expression, expr.Env(protoEnv), expr.AsBool())
+	if err != nil {
+		return nil, err
+	}
+
 	var matched []*Consumer
 
 	for _, consumer := range consumers {
 		cfg := map[string]any{}
 		state := map[string]any{}
 
-		cfgBytes, _ := yaml.Marshal(consumer.Configuration())
+		cfgBytes, err := yaml.Marshal(consumer.Configuration())
+		if err != nil {
+			return nil, err
+		}
 		yaml.Unmarshal(cfgBytes, &cfg)
-		nfo, _ := consumer.LatestState()
-		stateBytes, _ := yaml.Marshal(nfo)
+
+		nfo, err := consumer.LatestState()
+		if err != nil {
+			return nil, err
+		}
+
+		stateBytes, err := yaml.Marshal(nfo)
+		if err != nil {
+			return nil, err
+		}
 		yaml.Unmarshal(stateBytes, &state)
 
 		env := map[string]any{
@@ -101,11 +146,6 @@ func (q *consumerQuery) matchExpression(consumers []*Consumer) ([]*Consumer, err
 			"state":  state,
 			"info":   state,
 			"Info":   nfo,
-		}
-
-		program, err := expr.Compile(q.expression, expr.Env(env), expr.AsBool())
-		if err != nil {
-			return nil, err
 		}
 
 		out, err := expr.Run(program, env)

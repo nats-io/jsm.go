@@ -250,3 +250,24 @@ func TestStreamApiLevelMatch(t *testing.T) {
 		checkStreamQueryMatched(t, mgr, 2, jsm.StreamQueryApiLevelMin(1), jsm.StreamQueryInvert())
 	})
 }
+
+func TestStreamQueryExpressionErrors(t *testing.T) {
+	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage())
+		checkErr(t, err, "create failed")
+
+		t.Run("invalid expression returns error", func(t *testing.T) {
+			_, err := mgr.QueryStreams(jsm.StreamQueryExpression("!!!invalid!!!"))
+			if err == nil {
+				t.Fatal("expected error for invalid expression, got nil")
+			}
+		})
+
+		t.Run("non-boolean expression returns error", func(t *testing.T) {
+			_, err := mgr.QueryStreams(jsm.StreamQueryExpression("config"))
+			if err == nil {
+				t.Fatal("expected error for non-boolean expression, got nil")
+			}
+		})
+	})
+}

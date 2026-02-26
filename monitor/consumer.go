@@ -264,10 +264,10 @@ func consumerCheckUnprocessed(nfo *api.ConsumerInfo, check *Result, opts CheckCo
 	case opts.UnprocessedCritical <= 0:
 		return
 	case nfo.NumPending >= uint64(opts.UnprocessedCritical):
-		log.Debugf("CRITICAL Unprocessed Messages: %v", nfo.NumAckPending)
-		check.Criticalf("Unprocessed Messages: %v", nfo.NumAckPending)
+		log.Debugf("CRITICAL Unprocessed Messages: %v", nfo.NumPending)
+		check.Criticalf("Unprocessed Messages: %v", nfo.NumPending)
 	default:
-		check.Okf("Unprocessed Messages: %v", nfo.NumAckPending)
+		check.Okf("Unprocessed Messages: %v", nfo.NumPending)
 	}
 }
 

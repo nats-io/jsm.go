@@ -36,6 +36,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -578,7 +579,7 @@ func (c *Context) resolveNscLookup() error {
 }
 
 func expandHomedir(path string) string {
-	if path[0] != '~' {
+	if len(path) == 0 || path[0] != '~' {
 		return path
 	}
 
@@ -601,6 +602,7 @@ func numCreds(c *Context) int {
 		c.config.Creds,
 		c.config.NKey,
 		c.config.NSCLookup,
+		c.config.UserJwt,
 	}
 
 	for _, c := range creds {
@@ -1067,4 +1069,7 @@ func wipeSlice(buf []byte) {
 	for i := range buf {
 		buf[i] = 'x'
 	}
+	// KeepAlive prevents the compiler from treating the loop as a dead store
+	// and eliding the writes before the slice is garbage collected.
+	runtime.KeepAlive(buf)
 }

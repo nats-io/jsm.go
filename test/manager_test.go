@@ -502,3 +502,43 @@ func TestEachStream(t *testing.T) {
 		t.Fatalf("incorrect streams or order, expected [ORDERS] got %v", seen)
 	}
 }
+
+func TestNewOptions(t *testing.T) {
+	srv, nc, _ := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Close()
+
+	// valid domain and prefixes
+	_, err := jsm.New(nc, jsm.WithDomain("valid"))
+	checkErr(t, err, "valid domain should be accepted")
+
+	_, err = jsm.New(nc, jsm.WithAPIPrefix("js.foreign"))
+	checkErr(t, err, "valid API prefix should be accepted")
+
+	_, err = jsm.New(nc, jsm.WithEventPrefix("js.foreign"))
+	checkErr(t, err, "valid event prefix should be accepted")
+
+	// invalid: standalone wildcards, empty tokens
+	for _, bad := range []string{">", "*", "foo.*", "foo.>", "foo..bar"} {
+		_, err = jsm.New(nc, jsm.WithDomain(bad))
+		if err == nil {
+			t.Fatalf("expected error for domain %q, got nil", bad)
+		}
+
+		_, err = jsm.New(nc, jsm.WithAPIPrefix(bad))
+		if err == nil {
+			t.Fatalf("expected error for API prefix %q, got nil", bad)
+		}
+
+		_, err = jsm.New(nc, jsm.WithEventPrefix(bad))
+		if err == nil {
+			t.Fatalf("expected error for event prefix %q, got nil", bad)
+		}
+	}
+
+	// domain and API prefix together are incompatible
+	_, err = jsm.New(nc, jsm.WithDomain("valid"), jsm.WithAPIPrefix("js.foreign"))
+	if err == nil {
+		t.Fatal("expected error when both domain and API prefix are set, got nil")
+	}
+}

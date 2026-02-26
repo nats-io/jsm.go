@@ -99,4 +99,38 @@ SUAKYITMHPMSYUGPNQBLLPGOPFQN44XNCGXHNSHLJJVMD3IKYGBOLAI7TI
 		assertListIsEmpty(t, check.Criticals)
 		assertListIsEmpty(t, check.OKs)
 	})
+
+	t.Run("no expiry no thresholds", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckCredential(check, monitor.CheckCredentialOptions{
+			File: writeCred(t, noExpiry),
+		}))
+		assertListEquals(t, check.OKs, "never expires")
+		assertListIsEmpty(t, check.Criticals)
+		assertListIsEmpty(t, check.Warnings)
+	})
+
+	t.Run("inaccessible file", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckCredential(check, monitor.CheckCredentialOptions{
+			File: "/nonexistent/path/to/cred.creds",
+		}))
+		assertListIsEmpty(t, check.OKs)
+		assertListIsEmpty(t, check.Warnings)
+		if len(check.Criticals) == 0 {
+			t.Fatal("expected a critical for inaccessible file")
+		}
+	})
+
+	t.Run("invalid jwt", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckCredential(check, monitor.CheckCredentialOptions{
+			File: writeCred(t, "this is not a valid credential"),
+		}))
+		assertListIsEmpty(t, check.OKs)
+		assertListIsEmpty(t, check.Warnings)
+		if len(check.Criticals) == 0 {
+			t.Fatal("expected a critical for invalid credential")
+		}
+	})
 }

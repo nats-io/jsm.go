@@ -38,7 +38,7 @@ type StreamPager struct {
 // PagerOption configures the stream pager
 type PagerOption func(p *StreamPager)
 
-// PagerStartId sets a starting stream sequence for the pager
+// PagerStartId sets a starting stream sequence for the pager. id must be >= 1.
 func PagerStartId(id int) PagerOption {
 	return func(p *StreamPager) {
 		p.startSeq = id
@@ -90,6 +90,10 @@ func (p *StreamPager) start(stream *Stream, mgr *Manager, opts ...PagerOption) e
 
 	for _, o := range opts {
 		o(p)
+	}
+
+	if p.startSeq != -1 && p.startSeq < 1 {
+		return fmt.Errorf("PagerStartId requires a sequence >= 1")
 	}
 
 	if p.timeout == 0 {
@@ -282,37 +286,29 @@ func (p *StreamPager) createConsumer() error {
 		return err
 	}
 
-	if p.useDirect {
-		nfo, err := p.consumer.LatestState()
-		if err != nil {
-			return err
-		}
-
-		// record the initial seq based on consumer config like time deltas etc
-		// direct will start from there following subject filter
-		p.curSeq = nfo.Delivered.Stream
-	}
-
 	return nil
 }
 
 func (p *StreamPager) close() error {
 	if p.sub != nil {
 		p.sub.Unsubscribe()
+		p.sub = nil
 	}
 
+	var deleteErr error
 	if p.consumer != nil {
-		err := p.consumer.Delete()
-		if err != nil {
-			return err
-		}
+		deleteErr = p.consumer.Delete()
+		p.consumer = nil
 	}
 
-	close(p.q)
+	if p.q != nil {
+		close(p.q)
+		p.q = nil
+	}
 
 	p.started = false
 
-	return nil
+	return deleteErr
 }
 
 // Close dispose of the resources used by the pager and should be called when done

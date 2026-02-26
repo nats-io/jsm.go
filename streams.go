@@ -976,6 +976,12 @@ func (s *Stream) DirectGet(ctx context.Context, req api.JSApiMsgGetRequest, hand
 			return
 		}
 
+		numPending, err = strconv.ParseUint(np, 10, 64)
+		if err != nil {
+			cancel(fmt.Errorf("invalid num pending header: %w", err))
+			return
+		}
+
 		handler(m)
 	})
 	if err != nil {
@@ -988,6 +994,9 @@ func (s *Stream) DirectGet(ctx context.Context, req api.JSApiMsgGetRequest, hand
 	msg.Reply = sub.Subject
 
 	err = nc.PublishMsg(msg)
+	if err != nil {
+		return 0, 0, 0, err
+	}
 
 	<-to.Done()
 

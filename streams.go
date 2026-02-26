@@ -739,6 +739,10 @@ func (s *Stream) ClusterInfo() (api.ClusterInfo, error) {
 		return api.ClusterInfo{}, err
 	}
 
+	if nfo.Cluster == nil {
+		return api.ClusterInfo{}, fmt.Errorf("stream %q has no cluster information", s.Name())
+	}
+
 	return *nfo.Cluster, nil
 }
 

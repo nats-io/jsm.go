@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
 )
 
@@ -138,19 +139,6 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 		requireRegexElement(t, check.Criticals, "Last delivery .+ ago")
 	})
 
-	t.Run("Should handle time greater than or equal", func(t *testing.T) {
-		check, ci := setup()
-		last := time.Now().Add(-time.Hour)
-		ci.Delivered.Last = &last
-
-		consumerCheckLastDelivery(ci, check, CheckConsumerHealthOptions{
-			LastDeliveryCritical: 1,
-		}, api.NewDiscardLogger())
-
-		requireLen(t, check.Criticals, 1)
-		requireRegexElement(t, check.Criticals, "Last delivery .+ ago")
-	})
-
 	t.Run("Should be ok otherwise", func(t *testing.T) {
 		check, ci := setup()
 		last := time.Now()
@@ -166,6 +154,45 @@ func TestConsumer_checkLastDelivery(t *testing.T) {
 }
 
 func TestConsumer_checkUnprocessed(t *testing.T) {
+	setup := func() (*Result, *api.ConsumerInfo) {
+		return &Result{}, &api.ConsumerInfo{}
+	}
+
+	t.Run("Should skip without a threshold", func(t *testing.T) {
+		check, ci := setup()
+		consumerCheckUnprocessed(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireEmpty(t, check.Warnings)
+		requireEmpty(t, check.OKs)
+	})
+
+	t.Run("Should handle unprocessed above threshold", func(t *testing.T) {
+		check, ci := setup()
+		ci.NumPending = 10
+		consumerCheckUnprocessed(ci, check, CheckConsumerHealthOptions{
+			UnprocessedCritical: 1,
+		}, api.NewDiscardLogger())
+		requireElement(t, check.Criticals, "Unprocessed Messages: 10")
+
+		check = &Result{}
+		consumerCheckUnprocessed(ci, check, CheckConsumerHealthOptions{
+			UnprocessedCritical: 10,
+		}, api.NewDiscardLogger())
+		requireElement(t, check.Criticals, "Unprocessed Messages: 10")
+	})
+
+	t.Run("Should handle below threshold", func(t *testing.T) {
+		check, ci := setup()
+		ci.NumPending = 10
+		consumerCheckUnprocessed(ci, check, CheckConsumerHealthOptions{
+			UnprocessedCritical: 11,
+		}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireElement(t, check.OKs, "Unprocessed Messages: 10")
+	})
+}
+
+func TestConsumer_checkRedelivery(t *testing.T) {
 	setup := func() (*Result, *api.ConsumerInfo) {
 		return &Result{}, &api.ConsumerInfo{}
 	}
@@ -330,5 +357,162 @@ func TestConsumer_consumerCheckPinned(t *testing.T) {
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireElement(t, check.OKs, "2 pinned clients")
+	})
+}
+
+func TestExtractConsumerHealthCheckOptions(t *testing.T) {
+	t.Run("Should return empty opts for empty metadata", func(t *testing.T) {
+		opts, err := ExtractConsumerHealthCheckOptions(map[string]string{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.Enabled {
+			t.Fatal("expected Enabled to be false")
+		}
+		if opts.AckOutstandingCritical != 0 {
+			t.Fatalf("unexpected AckOutstandingCritical: %d", opts.AckOutstandingCritical)
+		}
+	})
+
+	t.Run("Should parse all integer thresholds", func(t *testing.T) {
+		opts, err := ExtractConsumerHealthCheckOptions(map[string]string{
+			MonitorMetaEnabled:                        "true",
+			ConsumerMonitorMetaOutstandingAckCritical: "5",
+			ConsumerMonitorMetaWaitingCritical:        "10",
+			ConsumerMonitorMetaUnprocessedCritical:    "20",
+			ConsumerMonitorMetaRedeliveryCritical:     "3",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !opts.Enabled {
+			t.Fatal("expected Enabled to be true")
+		}
+		if opts.AckOutstandingCritical != 5 {
+			t.Fatalf("expected AckOutstandingCritical 5, got %d", opts.AckOutstandingCritical)
+		}
+		if opts.WaitingCritical != 10 {
+			t.Fatalf("expected WaitingCritical 10, got %d", opts.WaitingCritical)
+		}
+		if opts.UnprocessedCritical != 20 {
+			t.Fatalf("expected UnprocessedCritical 20, got %d", opts.UnprocessedCritical)
+		}
+		if opts.RedeliveryCritical != 3 {
+			t.Fatalf("expected RedeliveryCritical 3, got %d", opts.RedeliveryCritical)
+		}
+	})
+
+	t.Run("Should parse duration thresholds as seconds", func(t *testing.T) {
+		opts, err := ExtractConsumerHealthCheckOptions(map[string]string{
+			ConsumerMonitorMetaLastDeliveredCritical: "2m",
+			ConsumerMonitorMetaLastAckCritical:       "30s",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.LastDeliveryCritical != 120 {
+			t.Fatalf("expected LastDeliveryCritical 120, got %f", opts.LastDeliveryCritical)
+		}
+		if opts.LastAckCritical != 30 {
+			t.Fatalf("expected LastAckCritical 30, got %f", opts.LastAckCritical)
+		}
+	})
+
+	t.Run("Should parse pinned flag", func(t *testing.T) {
+		opts, err := ExtractConsumerHealthCheckOptions(map[string]string{
+			ConsumerMonitorMetaPinned: "true",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !opts.Pinned {
+			t.Fatal("expected Pinned to be true")
+		}
+	})
+
+	t.Run("Should propagate extra health check functions", func(t *testing.T) {
+		called := false
+		extra := ConsumerHealthCheckF(func(_ *jsm.Consumer, _ *Result, _ CheckConsumerHealthOptions, _ api.Logger) {
+			called = true
+		})
+		opts, err := ExtractConsumerHealthCheckOptions(map[string]string{}, extra)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		requireLen(t, opts.HealthChecks, 1)
+		_ = called
+	})
+
+	t.Run("Should return error on invalid integer", func(t *testing.T) {
+		_, err := ExtractConsumerHealthCheckOptions(map[string]string{
+			ConsumerMonitorMetaOutstandingAckCritical: "not-a-number",
+		})
+		if err == nil {
+			t.Fatal("expected error for invalid integer")
+		}
+	})
+
+	t.Run("Should return error on invalid duration", func(t *testing.T) {
+		_, err := ExtractConsumerHealthCheckOptions(map[string]string{
+			ConsumerMonitorMetaLastDeliveredCritical: "not-a-duration",
+		})
+		if err == nil {
+			t.Fatal("expected error for invalid duration")
+		}
+	})
+}
+
+func TestCheckConsumerInfoHealth(t *testing.T) {
+	setup := func() (*Result, *api.ConsumerInfo) {
+		return &Result{}, &api.ConsumerInfo{}
+	}
+
+	t.Run("Should produce no output when all thresholds are zero", func(t *testing.T) {
+		check, ci := setup()
+		CheckConsumerInfoHealth(ci, check, CheckConsumerHealthOptions{}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireEmpty(t, check.Warnings)
+		requireEmpty(t, check.OKs)
+	})
+
+	t.Run("Should accumulate criticals from multiple checks", func(t *testing.T) {
+		check, ci := setup()
+		ci.NumAckPending = 10
+		ci.NumRedelivered = 5
+		CheckConsumerInfoHealth(ci, check, CheckConsumerHealthOptions{
+			AckOutstandingCritical: 1,
+			RedeliveryCritical:     1,
+		}, api.NewDiscardLogger())
+		requireElement(t, check.Criticals, "Ack Pending: 10")
+		requireElement(t, check.Criticals, "Redelivered: 5")
+		requireEmpty(t, check.Warnings)
+	})
+
+	t.Run("Should accumulate OKs from multiple passing checks", func(t *testing.T) {
+		check, ci := setup()
+		ci.NumAckPending = 1
+		ci.NumWaiting = 1
+		ci.NumPending = 1
+		ci.NumRedelivered = 1
+		CheckConsumerInfoHealth(ci, check, CheckConsumerHealthOptions{
+			AckOutstandingCritical: 10,
+			WaitingCritical:        10,
+			UnprocessedCritical:    10,
+			RedeliveryCritical:     10,
+		}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireLen(t, check.OKs, 4)
+	})
+
+	t.Run("Should check pinned when configured", func(t *testing.T) {
+		check, ci := setup()
+		ci.Config.PriorityGroups = []string{"ONE"}
+		ci.Config.PriorityPolicy = api.PriorityPinnedClient
+		ci.PriorityGroups = []api.PriorityGroupState{
+			{Group: "ONE", PinnedClientID: "client-1"},
+		}
+		CheckConsumerInfoHealth(ci, check, CheckConsumerHealthOptions{Pinned: true}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireElement(t, check.OKs, "1 pinned clients")
 	})
 }

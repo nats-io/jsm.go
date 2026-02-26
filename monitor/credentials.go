@@ -60,6 +60,7 @@ func CheckCredential(check *Result, opts CheckCredentialOptions) error {
 	claims, err := jwt.Decode(token)
 	if err != nil {
 		check.Criticalf("invalid credential: %v", err)
+		return nil
 	}
 
 	now := time.Now().UTC().Unix()
@@ -78,7 +79,11 @@ func CheckCredential(check *Result, opts CheckCredentialOptions) error {
 	case opts.ValidityWarning > 0 && (until <= warn):
 		check.Warnf("expires sooner than %s", f(secondsToDuration(opts.ValidityWarning)))
 	default:
-		check.Okf("expires in %s", time.Unix(cd.Expires, 0).UTC())
+		if cd.Expires == 0 {
+			check.Ok("never expires")
+		} else {
+			check.Okf("expires in %s", time.Unix(cd.Expires, 0).UTC())
+		}
 	}
 
 	return nil

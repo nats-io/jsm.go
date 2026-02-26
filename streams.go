@@ -133,6 +133,10 @@ func (m *Manager) LoadFromStreamDetailBytes(sd []byte) (stream *Stream, consumer
 	}
 
 	for _, consumer := range cons.Consumers {
+		if !IsValidName(consumer.Name) {
+			return nil, nil, fmt.Errorf("%q is not a valid consumer name", consumer.Name)
+		}
+
 		c := Consumer{
 			name:     consumer.Name,
 			stream:   stream.Name(),

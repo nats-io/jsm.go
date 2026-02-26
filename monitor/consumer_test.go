@@ -376,7 +376,7 @@ func TestExtractConsumerHealthCheckOptions(t *testing.T) {
 
 	t.Run("Should parse all integer thresholds", func(t *testing.T) {
 		opts, err := ExtractConsumerHealthCheckOptions(map[string]string{
-			MonitorMetaEnabled:                       "true",
+			MonitorMetaEnabled:                        "true",
 			ConsumerMonitorMetaOutstandingAckCritical: "5",
 			ConsumerMonitorMetaWaitingCritical:        "10",
 			ConsumerMonitorMetaUnprocessedCritical:    "20",

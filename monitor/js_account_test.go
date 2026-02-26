@@ -108,5 +108,62 @@ func TestCheckAccountInfo(t *testing.T) {
 			assertListEquals(t, check.Criticals, "93% memory")
 			assertListIsEmpty(t, check.Warnings)
 		})
+
+		t.Run("Streams warning threshold", func(t *testing.T) {
+			opts, _, check := setDefaults()
+			// 10 streams / 200 max = 5%; set warn=4 crit=8 -> warning
+			opts.StreamWarning = 4
+			opts.StreamCritical = 8
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, nil, check, *opts))
+			assertListIsEmpty(t, check.Criticals)
+			assertListEquals(t, check.Warnings, "5% streams")
+		})
+
+		t.Run("Streams critical threshold", func(t *testing.T) {
+			opts, info, check := setDefaults()
+			// 180 streams / 200 max = 90%; set warn=70 crit=85 -> critical
+			info.Streams = 180
+			opts.StreamWarning = 70
+			opts.StreamCritical = 85
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, nil, check, *opts))
+			assertListEquals(t, check.Criticals, "90% streams")
+			assertListIsEmpty(t, check.Warnings)
+		})
+
+		t.Run("Consumers warning threshold", func(t *testing.T) {
+			opts, _, check := setDefaults()
+			// 100 consumers / 1000 max = 10%; set warn=8 crit=15 -> warning
+			opts.ConsumersWarning = 8
+			opts.ConsumersCritical = 15
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, nil, check, *opts))
+			assertListIsEmpty(t, check.Criticals)
+			assertListEquals(t, check.Warnings, "10% consumers")
+		})
+
+		t.Run("Consumers critical threshold", func(t *testing.T) {
+			opts, info, check := setDefaults()
+			// 900 consumers / 1000 max = 90%; set warn=70 crit=85 -> critical
+			info.Consumers = 900
+			opts.ConsumersWarning = 70
+			opts.ConsumersCritical = 85
+			assertNoError(t, monitor.CheckJetStreamAccount("", nil, nil, check, *opts))
+			assertListEquals(t, check.Criticals, "90% consumers")
+			assertListIsEmpty(t, check.Warnings)
+		})
+	})
+
+	t.Run("Nil resolver return is critical", func(t *testing.T) {
+		opts, _, check := setDefaults()
+		opts.Resolver = func() *api.JetStreamAccountStats { return nil }
+		assertNoError(t, monitor.CheckJetStreamAccount("", nil, nil, check, *opts))
+		assertListEquals(t, check.Criticals, "JetStream not available: invalid account status")
+	})
+
+	t.Run("CheckReplicas with no manager connection is critical", func(t *testing.T) {
+		opts, _, check := setDefaults()
+		opts.CheckReplicas = true
+		// Resolver is set so mgr stays nil inside CheckJetStreamAccount
+		assertNoError(t, monitor.CheckJetStreamAccount("", nil, nil, check, *opts))
+		assertListEquals(t, check.Criticals, "replica checks require a manager connection")
 	})
 }

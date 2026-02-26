@@ -58,12 +58,27 @@ func CheckJetStreamAccountWithConnection(mgr *jsm.Manager, check *Result, opts C
 	}
 
 	if opts.CheckReplicas {
+		if mgr == nil {
+			check.Criticalf("replica checks require a manager connection")
+			return nil
+		}
+
 		streams, _, _, err := mgr.Streams(nil)
 		if check.CriticalIfErrf(err, "JetStream not available: %s", err) {
 			return nil
 		}
 
-		err = checkStreamClusterHealth(check, &opts, streams)
+		var infos []*api.StreamInfo
+		for _, s := range streams {
+			nfo, err := s.LatestInformation()
+			if err != nil {
+				infos = append(infos, nil)
+			} else {
+				infos = append(infos, nfo)
+			}
+		}
+
+		err = checkStreamClusterHealth(check, &opts, infos)
 		if check.CriticalIfErrf(err, "JetStream not available: %s", err) {
 			return nil
 		}
@@ -93,12 +108,11 @@ func CheckJetStreamAccount(server string, nopts []nats.Option, jsmOpts []jsm.Opt
 	return CheckJetStreamAccountWithConnection(mgr, check, opts)
 }
 
-func checkStreamClusterHealth(check *Result, opts *CheckJetStreamAccountOptions, info []*jsm.Stream) error {
+func checkStreamClusterHealth(check *Result, opts *CheckJetStreamAccountOptions, infos []*api.StreamInfo) error {
 	var okCnt, noLeaderCnt, notEnoughReplicasCnt, critCnt, lagCritCnt, seenCritCnt int
 
-	for _, s := range info {
-		nfo, err := s.LatestInformation()
-		if err != nil {
+	for _, nfo := range infos {
+		if nfo == nil {
 			critCnt++
 			continue
 		}
@@ -118,28 +132,35 @@ func checkStreamClusterHealth(check *Result, opts *CheckJetStreamAccountOptions,
 			continue
 		}
 
-		if len(nfo.Cluster.Replicas) != s.Replicas()-1 {
+		if len(nfo.Cluster.Replicas) != nfo.Config.Replicas-1 {
 			notEnoughReplicasCnt++
 			continue
 		}
 
+		streamOk := true
 		for _, r := range nfo.Cluster.Replicas {
 			if r.Offline {
 				critCnt++
+				streamOk = false
 				continue
 			}
 
-			if r.Active > secondsToDuration(opts.ReplicaSeenCritical) {
+			if opts.ReplicaSeenCritical > 0 && r.Active > secondsToDuration(opts.ReplicaSeenCritical) {
 				seenCritCnt++
+				streamOk = false
 				continue
 			}
-			if r.Lag > opts.ReplicaLagCritical {
+
+			if opts.ReplicaLagCritical > 0 && r.Lag > opts.ReplicaLagCritical {
 				lagCritCnt++
+				streamOk = false
 				continue
 			}
 		}
 
-		okCnt++
+		if streamOk {
+			okCnt++
+		}
 	}
 
 	check.Pd(&PerfDataItem{
@@ -181,8 +202,9 @@ func checkStreamClusterHealth(check *Result, opts *CheckJetStreamAccountOptions,
 		Help:  "Streams unhealthy cluster state",
 	})
 
-	if critCnt > 0 || notEnoughReplicasCnt > 0 || noLeaderCnt > 0 || seenCritCnt > 0 || lagCritCnt > 0 {
-		check.Criticalf("%d unhealthy streams", critCnt+notEnoughReplicasCnt+noLeaderCnt)
+	unhealthyCnt := critCnt + notEnoughReplicasCnt + noLeaderCnt + seenCritCnt + lagCritCnt
+	if unhealthyCnt > 0 {
+		check.Criticalf("%d unhealthy streams", unhealthyCnt)
 	}
 
 	return nil

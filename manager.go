@@ -39,7 +39,7 @@ type Manager struct {
 	eventPrefix string
 	domain      string
 	pedantic    bool
-	apiLEvel    *int
+	apiLevel    *int
 
 	sync.Mutex
 }
@@ -96,7 +96,7 @@ func (m *Manager) JetStreamAccountInfo() (info *api.JetStreamAccountStats, err e
 	}
 
 	m.Lock()
-	m.apiLEvel = &resp.JetStreamAccountStats.API.Level
+	m.apiLevel = &resp.JetStreamAccountStats.API.Level
 	m.Unlock()
 
 	return resp.JetStreamAccountStats, nil
@@ -105,7 +105,7 @@ func (m *Manager) JetStreamAccountInfo() (info *api.JetStreamAccountStats, err e
 // MetaApiLevel determines the JetStream API level supported by the meta leader
 func (m *Manager) MetaApiLevel(refresh bool) (int, error) {
 	m.Lock()
-	mlvl := m.apiLEvel
+	mlvl := m.apiLevel
 	m.Unlock()
 
 	if !refresh && mlvl != nil {
@@ -235,6 +235,10 @@ func (m *Manager) StreamNames(filter *StreamNamesFilter) (names []string, err er
 
 // DeleteStreamMessage deletes a specific message from the Stream without erasing the data, see DeleteMessage() for a safe delete
 func (m *Manager) DeleteStreamMessage(stream string, seq uint64, noErase bool) error {
+	if !IsValidName(stream) {
+		return fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
 	var resp api.JSApiMsgDeleteResponse
 	err := m.jsonRequest(fmt.Sprintf(api.JSApiMsgDeleteT, stream), api.JSApiMsgDeleteRequest{Seq: seq, NoErase: noErase}, &resp)
 	if err != nil {
@@ -250,6 +254,10 @@ func (m *Manager) DeleteStreamMessage(stream string, seq uint64, noErase bool) e
 
 // ReadLastMessageForSubject reads the last message stored in the stream for a specific subject
 func (m *Manager) ReadLastMessageForSubject(stream string, sub string) (msg *api.StoredMsg, err error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
 	var resp api.JSApiMsgGetResponse
 	err = m.jsonRequest(fmt.Sprintf(api.JSApiMsgGetT, stream), api.JSApiMsgGetRequest{LastFor: sub}, &resp)
 	if err != nil {
@@ -276,6 +284,10 @@ func (m *Manager) iterableRequest(subj string, req apiIterableRequest, response 
 
 		if r.LastPage() {
 			break
+		}
+
+		if r.ItemsLimit() == 0 {
+			return fmt.Errorf("invalid response: server indicated more pages but returned zero item limit")
 		}
 
 		offset += r.ItemsLimit()
@@ -545,8 +557,8 @@ func (m *Manager) MetaLeaderStandDown(placement *api.Placement) error {
 
 // DeleteStream removes a stream without all the drama of loading it etc
 func (m *Manager) DeleteStream(stream string) error {
-	if stream == "" || strings.ContainsAny(stream, ".>*") {
-		return fmt.Errorf("invalid stream name")
+	if !IsValidName(stream) {
+		return fmt.Errorf("%q is not a valid stream name", stream)
 	}
 
 	var resp api.JSApiStreamDeleteResponse
@@ -564,11 +576,11 @@ func (m *Manager) DeleteStream(stream string) error {
 
 // DeleteConsumer removes a consumer without all the drama of loading it etc
 func (m *Manager) DeleteConsumer(stream string, consumer string) error {
-	if stream == "" || strings.ContainsAny(stream, ".>*") {
-		return fmt.Errorf("invalid stream name")
+	if !IsValidName(stream) {
+		return fmt.Errorf("%q is not a valid stream name", stream)
 	}
-	if consumer == "" || strings.ContainsAny(consumer, ".>*") {
-		return fmt.Errorf("invalid consumer name")
+	if !IsValidName(consumer) {
+		return fmt.Errorf("%q is not a valid consumer name", consumer)
 	}
 
 	var resp api.JSApiConsumerDeleteResponse
@@ -586,6 +598,10 @@ func (m *Manager) DeleteConsumer(stream string, consumer string) error {
 
 // StreamContainedSubjects queries the stream for the subjects it holds with optional filter
 func (m *Manager) StreamContainedSubjects(stream string, filter ...string) (map[string]uint64, error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
 	if len(filter) > 1 {
 		return nil, fmt.Errorf("only 1 filter supported")
 	}

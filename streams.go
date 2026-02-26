@@ -133,6 +133,10 @@ func (m *Manager) LoadFromStreamDetailBytes(sd []byte) (stream *Stream, consumer
 	}
 
 	for _, consumer := range cons.Consumers {
+		if !IsValidName(consumer.Name) {
+			return nil, nil, fmt.Errorf("%q is not a valid consumer name", consumer.Name)
+		}
+
 		c := Consumer{
 			name:     consumer.Name,
 			stream:   stream.Name(),
@@ -163,7 +167,10 @@ func (m *Manager) LoadOrNewStreamFromDefault(name string, dflt api.StreamConfig,
 	}
 
 	for _, o := range opts {
-		o(&dflt)
+		err = o(&dflt)
+		if err != nil {
+			return nil, err
+		}
 	}
 	s, err := m.LoadStream(name)
 	if IsNatsError(err, 10059) {
@@ -739,6 +746,10 @@ func (s *Stream) ClusterInfo() (api.ClusterInfo, error) {
 		return api.ClusterInfo{}, err
 	}
 
+	if nfo.Cluster == nil {
+		return api.ClusterInfo{}, fmt.Errorf("stream %q has no cluster information", s.Name())
+	}
+
 	return *nfo.Cluster, nil
 }
 
@@ -972,6 +983,12 @@ func (s *Stream) DirectGet(ctx context.Context, req api.JSApiMsgGetRequest, hand
 			return
 		}
 
+		numPending, err = strconv.ParseUint(np, 10, 64)
+		if err != nil {
+			cancel(fmt.Errorf("invalid num pending header: %w", err))
+			return
+		}
+
 		handler(m)
 	})
 	if err != nil {
@@ -984,6 +1001,9 @@ func (s *Stream) DirectGet(ctx context.Context, req api.JSApiMsgGetRequest, hand
 	msg.Reply = sub.Subject
 
 	err = nc.PublishMsg(msg)
+	if err != nil {
+		return 0, 0, 0, err
+	}
 
 	<-to.Done()
 
@@ -1015,7 +1035,7 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 		return err
 	}
 
-	progress(nfo.State.Msgs, nfo.State.Msgs)
+	progress(nfo.State.FirstSeq, nfo.State.LastSeq)
 
 	if len(nfo.State.Deleted) == 0 {
 		return nil
@@ -1031,7 +1051,7 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 	start := nfo.State.Deleted[0]
 
 	for i, seq := range nfo.State.Deleted {
-		progress(seq, nfo.State.Msgs-seq)
+		progress(seq, nfo.State.LastSeq-seq)
 
 		// the last deleted message
 		if i == len(nfo.State.Deleted)-1 {
@@ -1069,10 +1089,12 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 	}
 	defer sub.Unsubscribe()
 
-	_, err = s.NewConsumer(DeliverHeadersOnly(), PushFlowControl(), DeliverySubject(sub.Subject), InactiveThreshold(time.Minute), IdleHeartbeat(time.Second), AcknowledgeNone(), StartAtSequence(nfo.State.Deleted[len(nfo.State.Deleted)-1]+1))
+	var consumer *Consumer
+	consumer, err = s.NewConsumer(DeliverHeadersOnly(), PushFlowControl(), DeliverySubject(sub.Subject), InactiveThreshold(time.Minute), IdleHeartbeat(time.Second), AcknowledgeNone(), StartAtSequence(nfo.State.Deleted[len(nfo.State.Deleted)-1]+1))
 	if err != nil {
 		return err
 	}
+	defer consumer.Delete()
 
 	last := uint64(math.MaxUint64)
 

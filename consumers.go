@@ -101,7 +101,11 @@ func (m *Manager) createConsumer(req api.JSApiConsumerCreateRequest) (info *api.
 	var resp api.JSApiConsumerCreateResponse
 
 	if req.Config.Name == "" {
-		return nil, fmt.Errorf("consumer conmfiguration requires a name")
+		return nil, fmt.Errorf("consumer configuration requires a name")
+	}
+
+	if !IsValidName(req.Config.Name) {
+		return nil, fmt.Errorf("%q is not a valid consumer name", req.Config.Name)
 	}
 
 	var subj string
@@ -239,6 +243,10 @@ func (m *Manager) loadConsumerInfo(s string, c string) (info api.ConsumerInfo, e
 	err = m.jsonRequest(fmt.Sprintf(api.JSApiConsumerInfoT, s, c), nil, &resp)
 	if err != nil {
 		return info, err
+	}
+
+	if resp.ConsumerInfo == nil {
+		return info, fmt.Errorf("invalid response retrieving consumer info for %q > %q", s, c)
 	}
 
 	return *resp.ConsumerInfo, nil
@@ -575,6 +583,10 @@ func BackoffIntervals(i ...time.Duration) ConsumerOption {
 // BackoffPolicy sets a consumer policy
 func BackoffPolicy(policy []time.Duration) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {
+		if len(policy) == 0 {
+			return fmt.Errorf("at least one interval is required")
+		}
+
 		o.BackOff = policy
 		return nil
 	}
@@ -912,6 +924,10 @@ func (c *Consumer) ClusterInfo() (api.ClusterInfo, error) {
 		return api.ClusterInfo{}, err
 	}
 
+	if nfo.Cluster == nil {
+		return api.ClusterInfo{}, fmt.Errorf("consumer %q has no cluster info", c.name)
+	}
+
 	return *nfo.Cluster, nil
 }
 
@@ -985,6 +1001,10 @@ func (c *Consumer) Pause(deadline time.Time) (*api.JSApiConsumerPauseResponse, e
 		return nil, err
 	}
 
+	if resp == nil {
+		return nil, fmt.Errorf("invalid response while pausing consumer %q", c.Name())
+	}
+
 	if !resp.Paused {
 		return nil, fmt.Errorf("pause request failed, perhaps due to a time in the past")
 	}
@@ -999,6 +1019,10 @@ func (c *Consumer) Resume() error {
 	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerPauseT, c.StreamName(), c.Name()), nil, &resp)
 	if err != nil {
 		return err
+	}
+
+	if resp == nil {
+		return fmt.Errorf("invalid response while resuming consumer %q", c.Name())
 	}
 
 	if resp.Paused {

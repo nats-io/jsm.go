@@ -1487,3 +1487,135 @@ func TestAsyncPersistenceStream(t *testing.T) {
 		t.Fatalf("Expected default persist mode to be set")
 	}
 }
+
+func TestConsumerLimits(t *testing.T) {
+	cfg := testStreamConfig()
+	limits := api.StreamConsumerLimits{
+		InactiveThreshold: time.Second,
+		MaxAckPending:     100,
+	}
+	err := jsm.ConsumerLimits(limits)(cfg)
+	checkErr(t, err, "failed")
+	if cfg.ConsumerLimits.InactiveThreshold != time.Second {
+		t.Fatalf("expected InactiveThreshold 1s got %v", cfg.ConsumerLimits.InactiveThreshold)
+	}
+	if cfg.ConsumerLimits.MaxAckPending != 100 {
+		t.Fatalf("expected MaxAckPending 100 got %d", cfg.ConsumerLimits.MaxAckPending)
+	}
+}
+
+func TestStream_ConsumerLimits(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	limits := api.StreamConsumerLimits{
+		InactiveThreshold: 5 * time.Second,
+		MaxAckPending:     50,
+	}
+	s, err := mgr.NewStream("TEST", jsm.ConsumerLimits(limits))
+	checkErr(t, err, "create failed")
+
+	got := s.ConsumerLimits()
+	if got.InactiveThreshold != limits.InactiveThreshold {
+		t.Fatalf("expected InactiveThreshold %v got %v", limits.InactiveThreshold, got.InactiveThreshold)
+	}
+	if got.MaxAckPending != limits.MaxAckPending {
+		t.Fatalf("expected MaxAckPending %d got %d", limits.MaxAckPending, got.MaxAckPending)
+	}
+}
+
+func TestAppendSource(t *testing.T) {
+	cfg := testStreamConfig()
+	src1 := &api.StreamSource{Name: "one"}
+	src2 := &api.StreamSource{Name: "two"}
+
+	err := jsm.AppendSource(src1)(cfg)
+	checkErr(t, err, "failed")
+	if len(cfg.Sources) != 1 || cfg.Sources[0].Name != "one" {
+		t.Fatalf("expected [one] got %v", cfg.Sources)
+	}
+
+	err = jsm.AppendSource(src2)(cfg)
+	checkErr(t, err, "failed")
+	if len(cfg.Sources) != 2 || cfg.Sources[1].Name != "two" {
+		t.Fatalf("expected [one two] got %v", cfg.Sources)
+	}
+}
+
+func TestStreamMetadata(t *testing.T) {
+	cfg := testStreamConfig()
+	meta := map[string]string{"team": "platform", "env": "test"}
+
+	err := jsm.StreamMetadata(meta)(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.Metadata, meta) {
+		t.Fatalf("expected %v got %v", meta, cfg.Metadata)
+	}
+
+	err = jsm.StreamMetadata(map[string]string{"": "v"})(cfg)
+	if err == nil {
+		t.Fatal("expected error for empty metadata key")
+	}
+}
+
+func TestStream_Metadata(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	meta := map[string]string{"team": "platform", "env": "test"}
+	s, err := mgr.NewStream("TEST", jsm.StreamMetadata(meta))
+	checkErr(t, err, "create failed")
+
+	got := s.Metadata()
+	for k, v := range meta {
+		if got[k] != v {
+			t.Fatalf("expected metadata[%q]=%q got %q (full: %v)", k, v, got[k], got)
+		}
+	}
+}
+
+func TestSubjectTransform(t *testing.T) {
+	cfg := testStreamConfig()
+	transform := &api.SubjectTransformConfig{
+		Source:      "in.>",
+		Destination: "out.>",
+	}
+
+	err := jsm.SubjectTransform(transform)(cfg)
+	checkErr(t, err, "failed")
+	if !cmp.Equal(cfg.SubjectTransform, transform) {
+		t.Fatalf("expected %v got %v", transform, cfg.SubjectTransform)
+	}
+}
+
+func TestStream_SubjectTransform(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	transform := &api.SubjectTransformConfig{
+		Source:      "in.>",
+		Destination: "out.>",
+	}
+	s, err := mgr.NewStream("TEST", jsm.Subjects("in.>"), jsm.SubjectTransform(transform))
+	checkErr(t, err, "create failed")
+
+	nfo, err := s.Information()
+	checkErr(t, err, "info failed")
+	if !cmp.Equal(nfo.Config.SubjectTransform, transform) {
+		t.Fatalf("expected %v got %v", transform, nfo.Config.SubjectTransform)
+	}
+}
+
+func TestNoMirrorDirect(t *testing.T) {
+	cfg := testStreamConfig()
+	cfg.MirrorDirect = true
+
+	err := jsm.NoMirrorDirect()(cfg)
+	checkErr(t, err, "failed")
+	if cfg.MirrorDirect {
+		t.Fatalf("expected MirrorDirect to be false")
+	}
+}

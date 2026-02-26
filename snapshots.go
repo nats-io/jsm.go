@@ -296,13 +296,21 @@ func (sp *snapshotProgress) notify() {
 }
 
 // the tracker will uncompress and untar the stream keeping count of bytes received etc
-func (sp *snapshotProgress) trackBlockProgress(r io.Reader, debug bool, errc chan error) {
+func (sp *snapshotProgress) trackBlockProgress(ctx context.Context, r io.Reader, debug bool, errc chan error) {
 	sr := s2.NewReader(r)
 
 	for {
 		b := make([]byte, sp.chunkSize)
 		i, err := sr.Read(b)
 		if err != nil {
+			// Only propagate genuine decompression errors; EOF and pipe-closed
+			// are expected during normal shutdown when the pipe is torn down.
+			if ctx.Err() == nil && err != io.EOF {
+				select {
+				case errc <- err:
+				case <-ctx.Done():
+				}
+			}
 			sp.notify()
 			return
 		}
@@ -392,7 +400,11 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 			rcb:           sopts.rcb,
 			healthCheck:   sopts.jsck,
 		}
-		defer func() { progress.endTime = time.Now() }()
+		defer func() {
+			progress.Lock()
+			progress.endTime = time.Now()
+			progress.Unlock()
+		}()
 		go progress.trackBps(sctx)
 
 		// set up a multi writer that writes to file and the progress monitor
@@ -400,7 +412,7 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 		trackingR, trackingW := net.Pipe()
 		defer trackingR.Close()
 		defer trackingW.Close()
-		go progress.trackBlockProgress(trackingR, sopts.debug, errc)
+		go progress.trackBlockProgress(sctx, trackingR, sopts.debug, errc)
 
 		writer = io.MultiWriter(dataBuffer, trackingW)
 
@@ -480,10 +492,15 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 			return nil, err
 		}
 
-		metadataBuffer.Write(mj)
+		_, err = metadataBuffer.Write(mj)
+		if err != nil {
+			return nil, err
+		}
 
 		if sopts.progress {
+			progress.Lock()
 			progress.finished = true
+			progress.Unlock()
 			progress.notify()
 		}
 
@@ -543,6 +560,10 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 	defer dataReader.Close()
 	defer metadataReader.Close()
 
+	if !IsValidName(stream) {
+		return nil, nil, fmt.Errorf("invalid stream name %q", stream)
+	}
+
 	req := api.JSApiStreamRestoreRequest{}
 	mj, err := io.ReadAll(metadataReader)
 	if err != nil {
@@ -589,7 +610,11 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 			rcb:          sopts.rcb,
 			scb:          sopts.scb,
 		}
-		defer func() { progress.endTime = time.Now() }()
+		defer func() {
+			progress.Lock()
+			progress.endTime = time.Now()
+			progress.Unlock()
+		}()
 		go progress.trackBps(ctx)
 
 		// in debug notify ~20ish times
@@ -602,7 +627,7 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 		progress.notify()
 	}
 
-	if sopts.debug {
+	if sopts.debug && sopts.progress {
 		log.Printf("Starting restore of %q from %s using %d chunks", req.Config.Name, sopts.dataFile, progress.chunksToSend)
 	}
 
@@ -632,11 +657,10 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 		}
 
 		if sopts.progress {
+			progress.Lock()
 			if sopts.debug && progress.chunksSent > 0 && progress.chunksSent%notifyInterval == 0 {
 				log.Printf("Sent %d chunks", progress.chunksSent)
 			}
-
-			progress.Lock()
 			progress.chunksSent++
 			progress.bytesSent += uint64(n)
 			progress.Unlock()

@@ -16,14 +16,27 @@ package test
 import (
 	"context"
 	"errors"
+	"io"
 	"math/rand"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/jsm.go"
 )
+
+// nopWriteCloser wraps an io.Writer with a no-op Close.
+type nopWriteCloser struct{ io.Writer }
+
+func (n nopWriteCloser) Close() error { return nil }
+
+// failWriteCloser is an io.WriteCloser whose Write always returns the given error.
+type failWriteCloser struct{ err error }
+
+func (f *failWriteCloser) Write(p []byte) (int, error) { return 0, f.err }
+func (f *failWriteCloser) Close() error                { return nil }
 
 func TestStream_Snapshot(t *testing.T) {
 	srv, nc, mgr := startJSServer(t)
@@ -110,6 +123,63 @@ func TestStream_Snapshot(t *testing.T) {
 	}
 	if !cmp.Equal(stream.Subjects(), cfg.Subjects) {
 		t.Fatalf("stream config replace did not work")
+	}
+}
+
+// TestRestoreSnapshotInvalidStreamName verifies that stream names containing
+// characters that would be unsafe in a NATS subject are rejected before any
+// network call is made (fix for subject-injection issue).
+func TestRestoreSnapshotInvalidStreamName(t *testing.T) {
+	srv, _, mgr := startJSServer(t)
+	defer os.RemoveAll(srv.JetStreamConfig().StoreDir)
+	defer srv.Shutdown()
+
+	invalidNames := []string{
+		"",         // empty
+		"bad.name", // dot
+		"bad name", // space
+		"bad>name", // wildcard token
+		"bad*",     // wildcard
+	}
+
+	for _, name := range invalidNames {
+		_, err := mgr.RestoreSnapshotFromBuffer(
+			context.Background(),
+			name,
+			io.NopCloser(strings.NewReader("")),
+			io.NopCloser(strings.NewReader("{}")),
+		)
+		if err == nil {
+			t.Fatalf("expected error for invalid stream name %q, got nil", name)
+		}
+		if !strings.Contains(err.Error(), "invalid") {
+			t.Fatalf("expected 'invalid' in error for name %q, got: %v", name, err)
+		}
+	}
+}
+
+// TestSnapshotMetaWriteError verifies that a failure writing the metadata file
+// during snapshot is returned to the caller rather than silently discarded.
+func TestSnapshotMetaWriteError(t *testing.T) {
+	srv, nc, mgr := startJSServer(t)
+	defer os.RemoveAll(srv.JetStreamConfig().StoreDir)
+	defer srv.Shutdown()
+
+	stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("snap.meta.err"))
+	checkErr(t, err, "create failed")
+
+	err = nc.Publish("snap.meta.err", []byte("hello"))
+	checkErr(t, err, "publish failed")
+
+	diskFull := errors.New("disk full")
+
+	_, err = stream.SnapshotToBuffer(
+		context.Background(),
+		nopWriteCloser{io.Discard},
+		&failWriteCloser{err: diskFull},
+	)
+	if !errors.Is(err, diskFull) {
+		t.Fatalf("expected disk-full error, got: %v", err)
 	}
 }
 

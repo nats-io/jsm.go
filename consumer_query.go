@@ -253,7 +253,7 @@ func (q *consumerQuery) matchDelivery(consumers []*Consumer) ([]*Consumer, error
 	return q.cbMatcher(consumers, q.lastDeliveryLimit > 0, func(consumer *Consumer) bool {
 		nfo, _ := consumer.LatestState()
 
-		return nfo.Delivered.Last != nil && (!q.invert && time.Since(*nfo.Delivered.Last) < q.lastDeliveryLimit) || (q.invert && time.Since(nfo.Created) > q.ageLimit)
+		return nfo.Delivered.Last != nil && ((!q.invert && time.Since(*nfo.Delivered.Last) < q.lastDeliveryLimit) || (q.invert && time.Since(*nfo.Delivered.Last) > q.lastDeliveryLimit))
 	})
 }
 
@@ -261,7 +261,7 @@ func (q *consumerQuery) matchAge(consumers []*Consumer) ([]*Consumer, error) {
 	return q.cbMatcher(consumers, q.ageLimit > 0, func(consumer *Consumer) bool {
 		nfo, _ := consumer.LatestState()
 
-		return !nfo.Created.IsZero() && (!q.invert && time.Since(nfo.Created) < q.ageLimit) || (q.invert && time.Since(nfo.Created) > q.ageLimit)
+		return !nfo.Created.IsZero() && ((!q.invert && time.Since(nfo.Created) >= q.ageLimit) || (q.invert && time.Since(nfo.Created) < q.ageLimit))
 	})
 }
 
@@ -269,7 +269,7 @@ func (q *consumerQuery) matchPending(consumers []*Consumer) ([]*Consumer, error)
 	return q.cbMatcher(consumers, q.pending > 0, func(consumer *Consumer) bool {
 		nfo, _ := consumer.LatestState()
 
-		return nfo.NumPending > 0 && (!q.invert && nfo.NumPending < q.pending) || (q.invert && nfo.NumPending > q.pending)
+		return nfo.NumPending > 0 && ((!q.invert && nfo.NumPending < q.pending) || (q.invert && nfo.NumPending > q.pending))
 	})
 }
 
@@ -277,7 +277,7 @@ func (q *consumerQuery) matchAckPending(consumers []*Consumer) ([]*Consumer, err
 	return q.cbMatcher(consumers, q.ackPending > 0, func(consumer *Consumer) bool {
 		nfo, _ := consumer.LatestState()
 
-		return nfo.NumAckPending > 0 && (!q.invert && nfo.NumAckPending < q.ackPending) || (q.invert && nfo.NumAckPending > q.ackPending)
+		return nfo.NumAckPending > 0 && ((!q.invert && nfo.NumAckPending < q.ackPending) || (q.invert && nfo.NumAckPending > q.ackPending))
 	})
 }
 
@@ -285,7 +285,7 @@ func (q *consumerQuery) matchWaiting(consumers []*Consumer) ([]*Consumer, error)
 	return q.cbMatcher(consumers, q.waiting > 0, func(consumer *Consumer) bool {
 		nfo, _ := consumer.LatestState()
 
-		return nfo.NumWaiting > 0 && (!q.invert && nfo.NumWaiting < q.waiting) || (q.invert && nfo.NumWaiting > q.waiting)
+		return nfo.NumWaiting > 0 && ((!q.invert && nfo.NumWaiting < q.waiting) || (q.invert && nfo.NumWaiting > q.waiting))
 	})
 }
 

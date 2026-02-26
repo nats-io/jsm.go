@@ -1288,7 +1288,7 @@ func TestStream_DirectGet(t *testing.T) {
 		request                               api.JSApiMsgGetRequest
 		matched, numPending, lastSeq, upToSeq uint64
 	}{
-		{"Batch", api.JSApiMsgGetRequest{Batch: 100, Seq: 1}, 100, 0, 100, 0},
+		{"Batch", api.JSApiMsgGetRequest{Batch: 100, Seq: 1}, 100, 900, 100, 0},
 		{"Multi Batch", api.JSApiMsgGetRequest{Batch: 100, Seq: 1, MultiLastFor: []string{">"}}, 5, 0, 1000, 1000},
 	}
 

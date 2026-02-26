@@ -1095,3 +1095,77 @@ func TestConsumerOverflowPriorityGroups(t *testing.T) {
 		t.Fatalf("invalid priority group to be [foo], got %v", c.PriorityGroups())
 	}
 }
+
+// TestConsumer_ClusterInfo_NonClustered verifies ClusterInfo returns an error
+// (not a panic) when the consumer has no cluster info, e.g. in a non-clustered setup.
+func TestConsumer_ClusterInfo_NonClustered(t *testing.T) {
+	srv, nc, _, mgr := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	c, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+	checkErr(t, err, "create failed")
+
+	_, err = c.ClusterInfo()
+	if err == nil {
+		t.Fatal("expected error for consumer with no cluster info")
+	}
+}
+
+// TestConsumer_InvalidNameInTemplate verifies that a consumer template with an
+// invalid name is rejected before embedding the name in a NATS subject.
+func TestConsumer_InvalidNameInTemplate(t *testing.T) {
+	srv, nc, _, mgr := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	_, err := mgr.NewConsumerFromDefault("ORDERS", api.ConsumerConfig{Name: "bad.name"})
+	if err == nil {
+		t.Fatal("expected error for consumer with invalid name in template")
+	}
+}
+
+// TestConsumer_PauseResume exercises the Pause/Resume happy path and ensures no
+// nil-pointer dereference occurs when the server returns a valid response.
+func TestConsumer_PauseResume(t *testing.T) {
+	srv, nc, _, mgr := setupConsumerTest(t)
+	defer srv.Shutdown()
+	defer nc.Flush()
+
+	c, err := mgr.NewConsumerFromDefault("ORDERS", jsm.DefaultConsumer, jsm.DurableName("D"))
+	checkErr(t, err, "create failed")
+
+	resp, err := c.Pause(time.Now().Add(time.Hour))
+	checkErr(t, err, "pause failed")
+	if !resp.Paused {
+		t.Fatal("expected consumer to be paused")
+	}
+
+	err = c.Resume()
+	checkErr(t, err, "resume failed")
+}
+
+// TestBackoffPolicy verifies BackoffPolicy rejects nil and empty slices (consistent
+// with BackoffIntervals), and accepts a valid policy.
+func TestBackoffPolicy(t *testing.T) {
+	cfg := testConsumerConfig()
+
+	err := jsm.BackoffPolicy(nil)(cfg)
+	if err == nil {
+		t.Fatal("expected error for nil backoff policy")
+	}
+
+	err = jsm.BackoffPolicy([]time.Duration{})(cfg)
+	if err == nil {
+		t.Fatal("expected error for empty backoff policy")
+	}
+
+	policy := []time.Duration{time.Second, 2 * time.Second, 3 * time.Second}
+	err = jsm.BackoffPolicy(policy)(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error for valid policy: %v", err)
+	}
+	if !cmp.Equal(cfg.BackOff, policy) {
+		t.Fatalf("expected policy %v got %v", policy, cfg.BackOff)
+	}
+}

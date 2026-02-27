@@ -205,7 +205,7 @@ func (g *gather) start() error {
 	ts := time.Now().UTC()
 
 	if g.cfg.TargetPath == "" {
-		g.cfg.TargetPath = filepath.Join(os.TempDir(), fmt.Sprintf("audit-archive-%d.zip", ts.Unix()))
+		g.cfg.TargetPath = filepath.Join(os.TempDir(), fmt.Sprintf("audit-archive-%s.zip", ts.Format("2006-01-02T15-04-05Z")))
 	}
 	target := g.cfg.TargetPath
 

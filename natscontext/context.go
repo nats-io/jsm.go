@@ -187,12 +187,11 @@ func DeleteContext(name string) error {
 		return fmt.Errorf("cannot remove the current active context")
 	}
 
-	parent, err := parentDir()
-	if err != nil {
+	cfile, err := ctxFile(name + ".json")
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	cfile := filepath.Join(parent, "nats", "context", name+".json")
 	_, err = os.Stat(cfile)
 	if os.IsNotExist(err) {
 		return nil
@@ -204,7 +203,12 @@ func DeleteContext(name string) error {
 	}
 
 	if selected {
-		return os.Remove(filepath.Join(parent, "nats", selectedCtxFile))
+		cfile, err := natsConfigFile(selectedCtxFile)
+		if err != nil {
+			return err
+		}
+
+		return os.Remove(cfile)
 	}
 
 	return nil
@@ -212,16 +216,8 @@ func DeleteContext(name string) error {
 
 // IsKnown determines if a context is known
 func IsKnown(name string) bool {
-	if !validName(name) {
-		return false
-	}
-
-	parent, err := parentDir()
-	if err != nil {
-		return false
-	}
-
-	return knownContext(parent, name)
+	ok, _ := knownContext(name)
+	return ok
 }
 
 // ContextPath is the path on disk to store the context
@@ -230,24 +226,19 @@ func ContextPath(name string) (string, error) {
 		return "", fmt.Errorf("invalid context name %q", name)
 	}
 
-	parent, err := parentDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(ctxDir(parent), name+".json"), nil
+	return ctxFile(name + ".json")
 }
 
 // KnownContexts is a list of known context
 func KnownContexts() []string {
 	configs := []string{}
 
-	parent, err := parentDir()
+	cdir, err := ctxDir()
 	if err != nil {
 		return configs
 	}
 
-	files, err := os.ReadDir(filepath.Join(parent, "nats", "context"))
+	files, err := os.ReadDir(cdir)
 	if err != nil {
 		return configs
 	}
@@ -288,12 +279,10 @@ func PreviousContext() string {
 }
 
 func readCtxFromFile(file string) string {
-	parent, err := parentDir()
+	currentFile, err := natsConfigFile(file)
 	if err != nil {
 		return ""
 	}
-
-	currentFile := filepath.Join(parent, "nats", file)
 
 	_, err = os.Stat(currentFile)
 	if os.IsNotExist(err) {
@@ -308,13 +297,18 @@ func readCtxFromFile(file string) string {
 	return strings.TrimSpace(string(fc))
 }
 
-func knownContext(parent string, name string) bool {
+func knownContext(name string) (bool, error) {
 	if !validName(name) {
-		return false
+		return false, nil
 	}
 
-	_, err := os.Stat(filepath.Join(ctxDir(parent), name+".json"))
-	return !os.IsNotExist(err)
+	cfile, err := ctxFile(name + ".json")
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+
+	_, err = os.Stat(cfile)
+	return !os.IsNotExist(err), err
 }
 
 // Connect connects to the configured NATS server
@@ -491,11 +485,6 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 
 func (c *Context) loadActiveContext() error {
 	if c.path == "" {
-		parent, err := parentDir()
-		if err != nil {
-			return err
-		}
-
 		// none given, lets try to find it via the fs
 		if c.Name == "" {
 			c.Name = SelectedContext()
@@ -508,11 +497,16 @@ func (c *Context) loadActiveContext() error {
 			return fmt.Errorf("invalid context name %s", c.Name)
 		}
 
-		if !knownContext(parent, c.Name) {
-			return fmt.Errorf("unknown context %q", c.Name)
+		if ok, err := knownContext(c.Name); !ok {
+			return fmt.Errorf("unknown context %q: %w", c.Name, err)
 		}
 
-		c.path = filepath.Join(parent, "nats", "context", c.Name+".json")
+		cfile, err := ctxFile(c.Name + ".json")
+		if err != nil {
+			return fmt.Errorf("context file: %w", err)
+		}
+
+		c.path = cfile
 	}
 
 	ctxContent, err := os.ReadFile(c.path)
@@ -614,12 +608,49 @@ func numCreds(c *Context) int {
 	return i
 }
 
-func createTree(parent string) error {
-	return os.MkdirAll(ctxDir(parent), 0700)
+func createTree() error {
+	parent, err := ctxDir()
+	if err != nil {
+		return err
+	}
+
+	return os.MkdirAll(parent, 0700)
 }
 
-func ctxDir(parent string) string {
-	return filepath.Join(parent, "nats", "context")
+func natsConfigDir() (string, error) {
+	parent, err := parentDir()
+	if err != nil {
+		return "", fmt.Errorf("nats configuration directory: %w", err)
+	}
+
+	return filepath.Join(parent, "nats"), nil
+}
+
+func natsConfigFile(filename string) (string, error) {
+	cfg, err := natsConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(cfg, filename), nil
+}
+
+func ctxDir() (string, error) {
+	parent, err := natsConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("context directory: %w", err)
+	}
+
+	return filepath.Join(parent, "context"), nil
+}
+
+func ctxFile(filename string) (string, error) {
+	cfg, err := ctxDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(cfg, filename), nil
 }
 
 func UnSelectContext() error {
@@ -628,17 +659,16 @@ func UnSelectContext() error {
 		return nil
 	}
 
-	parent, err := parentDir()
+	if err := setPreviousContext(currentCtx); err != nil {
+		return err
+	}
+
+	cfile, err := natsConfigFile(selectedCtxFile)
 	if err != nil {
 		return err
 	}
 
-	err = setPreviousContext(parent, currentCtx)
-	if err != nil {
-		return err
-	}
-
-	return os.Remove(filepath.Join(parent, "nats", selectedCtxFile))
+	return os.Remove(cfile)
 }
 
 // SelectContext sets the given context to be the default, error if it does not exist
@@ -651,31 +681,34 @@ func SelectContext(name string) error {
 		return fmt.Errorf("unknown context")
 	}
 
-	parent, err := parentDir()
+	err := createTree()
 	if err != nil {
 		return err
 	}
 
-	err = createTree(parent)
+	if err = setPreviousContext(SelectedContext()); err != nil {
+		return err
+	}
+
+	cfile, err := natsConfigFile(selectedCtxFile)
 	if err != nil {
 		return err
 	}
 
-	currentCtx := SelectedContext()
-	err = setPreviousContext(parent, currentCtx)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(filepath.Join(parent, "nats", selectedCtxFile), []byte(name), 0600)
+	return os.WriteFile(cfile, []byte(name), 0600)
 }
 
-func setPreviousContext(parent string, name string) error {
+func setPreviousContext(name string) error {
 	if name == "" {
 		return nil
 	}
 
-	return os.WriteFile(filepath.Join(parent, "nats", previousCtxFile), []byte(name), 0600)
+	cfile, err := natsConfigFile(previousCtxFile)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(cfile, []byte(name), 0600)
 }
 
 func (c *Context) MarshalJSON() ([]byte, error) {
@@ -719,18 +752,12 @@ func (c *Context) Save(name string) error {
 		c.Name = name
 	}
 
-	if err := c.Validate(); err != nil {
-		return err
-	}
-
-	parent, err := parentDir()
+	err := c.Validate()
 	if err != nil {
 		return err
 	}
 
-	ctxDir := filepath.Join(parent, "nats", "context")
-	err = createTree(parent)
-	if err != nil {
+	if err = createTree(); err != nil {
 		return err
 	}
 
@@ -742,7 +769,10 @@ func (c *Context) Save(name string) error {
 		return err
 	}
 
-	c.path = filepath.Join(ctxDir, c.Name+".json")
+	if c.path, err = ctxFile(c.Name + ".json"); err != nil {
+		return err
+	}
+
 	return os.WriteFile(c.path, j, 0600)
 }
 

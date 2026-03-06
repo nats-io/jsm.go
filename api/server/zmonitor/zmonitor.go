@@ -155,14 +155,25 @@ type JSLimitOptsV1 struct {
 	MaxBatchTimeout           time.Duration `json:"max_batch_timeout,omitempty"`             // MaxBatchTimeout is the maximum time to receive the commit message after receiving the first message of a batch
 }
 
+// MetaSnapshotStatsV1 shows information about meta snapshots.
+type MetaSnapshotStatsV1 struct {
+	PendingEntries uint64        `json:"pending_entries"`         // PendingEntries is the count of pending entries in the meta layer
+	PendingSize    uint64        `json:"pending_size"`            // PendingSize is the size in bytes of pending entries in the meta layer
+	LastTime       time.Time     `json:"last_time,omitempty"`     // LastTime is when the last meta snapshot was taken
+	LastDuration   time.Duration `json:"last_duration,omitempty"` // LastDuration is how long the last meta snapshot took
+}
+
 // MetaClusterInfoV1 shows information about the meta group.
 type MetaClusterInfoV1 struct {
-	Name     string        `json:"name,omitempty"`     // Name is the name of the cluster
-	Leader   string        `json:"leader,omitempty"`   // Leader is the server name of the cluster leader
-	Peer     string        `json:"peer,omitempty"`     // Peer is unique ID for each peer
-	Replicas []*PeerInfoV1 `json:"replicas,omitempty"` // Replicas is a list of known peers
-	Size     int           `json:"cluster_size"`       // Size is the known size of the cluster
-	Pending  int           `json:"pending"`            // Pending is how many RAFT messages are not yet processed
+	Name            string               `json:"name,omitempty"`     // Name is the name of the cluster
+	Leader          string               `json:"leader,omitempty"`   // Leader is the server name of the cluster leader
+	Peer            string               `json:"peer,omitempty"`     // Peer is unique ID of the leader
+	Replicas        []*PeerInfoV1        `json:"replicas,omitempty"` // Replicas is a list of known peers
+	Size            int                  `json:"cluster_size"`       // Size is the known size of the cluster
+	Pending         int                  `json:"pending"`            // Pending is how many RAFT messages are not yet processed
+	PendingRequests int                  `json:"pending_requests"`   // PendingRequests is how many CRUD operations are queued for processing
+	PendingInfos    int                  `json:"pending_infos"`      // PendingInfos is how many info operations are queued for processing
+	Snapshot        *MetaSnapshotStatsV1 `json:"snapshot"`           // Snapshot contains meta snapshot statistics
 }
 
 // PeerInfoV1 shows information about all the peers in the cluster that

@@ -44,15 +44,20 @@ func (i *PerfDataItem) String() string {
 		valueFmt = "%0.4f"
 	}
 
-	pd := fmt.Sprintf("%s="+valueFmt, i.Name, i.Value)
+	name := i.Name
+	if strings.ContainsAny(name, " \t") {
+		name = "'" + name + "'"
+	}
+
+	pd := fmt.Sprintf("%s="+valueFmt, name, i.Value)
 	if i.Unit != "" {
 		pd = pd + i.Unit
 	}
 
-	if i.Warn > 0 || i.Crit > 0 {
+	if i.Warn != 0 || i.Crit != 0 {
 		if i.Warn != 0 {
 			pd = fmt.Sprintf("%s;"+valueFmt, pd, i.Warn)
-		} else if i.Crit > 0 {
+		} else if i.Crit != 0 {
 			pd = fmt.Sprintf("%s;", pd)
 		}
 

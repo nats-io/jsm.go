@@ -222,12 +222,20 @@ func checkJSAccountInfo(check *Result, opts *CheckJetStreamAccountOptions, info 
 		}
 
 		check.Pd(&PerfDataItem{Name: item, Value: float64(current), Unit: unit, Help: fmt.Sprintf("JetStream %s resource usage", item)})
+		pdWarn := float64(warn)
+		if warn < 0 {
+			pdWarn = 0
+		}
+		pdCrit := float64(crit)
+		if crit < 0 {
+			pdCrit = 0
+		}
 		check.Pd(&PerfDataItem{
 			Name:  fmt.Sprintf("%s_pct", item),
 			Value: float64(pct),
 			Unit:  "%",
-			Warn:  float64(warn),
-			Crit:  float64(crit),
+			Warn:  pdWarn,
+			Crit:  pdCrit,
 			Help:  fmt.Sprintf("JetStream %s resource usage in percent", item),
 		})
 

@@ -1,4 +1,4 @@
-// Copyright 2023 The NATS Authors
+// Copyright 2023-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -48,6 +48,8 @@ func newTableWriter(title string) table.Writer {
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 var passwordRunes = append(letterRunes, []rune("@#_-%^&()")...)
 
+// randomString generates a random string of the given length for use as test
+// message payloads. It is not suitable for cryptographic or credential use.
 func randomString(length int) string {
 	b := make([]rune, length)
 	for i := range b {
@@ -71,7 +73,7 @@ func fileAccessible(f string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	file.Close()
+	defer file.Close()
 
 	return true, nil
 }

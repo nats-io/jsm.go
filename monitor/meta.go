@@ -105,7 +105,7 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 		Help:  "Configured RAFT peers",
 	})
 
-	if len(ci.Replicas)+1 != opts.ExpectServers {
+	if opts.ExpectServers > 0 && len(ci.Replicas)+1 != opts.ExpectServers {
 		check.Criticalf("%d peers of expected %d", len(ci.Replicas)+1, opts.ExpectServers)
 	}
 
@@ -120,10 +120,10 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 		if peer.Offline {
 			offline++
 		}
-		if peer.Active > secondsToDuration(opts.SeenCritical) {
+		if opts.SeenCritical > 0 && peer.Active > secondsToDuration(opts.SeenCritical) {
 			inactive++
 		}
-		if peer.Lag > opts.LagCritical {
+		if opts.LagCritical > 0 && peer.Lag > opts.LagCritical {
 			lagged++
 		}
 	}
@@ -149,7 +149,7 @@ func CheckJetstreamMetaWithConnection(nc *nats.Conn, check *Result, opts CheckJe
 	}
 
 	if len(check.Criticals) == 0 && len(check.Warnings) == 0 {
-		check.Okf("%d peers led by %s", len(jszresp.Data.Meta.Replicas)+1, jszresp.Data.Meta.Leader)
+		check.Okf("%d peers led by %s", len(ci.Replicas)+1, ci.Leader)
 	}
 
 	return nil

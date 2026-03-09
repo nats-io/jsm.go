@@ -14,6 +14,7 @@
 package monitor_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -205,6 +206,80 @@ func TestCheckJSZ(t *testing.T) {
 		}))
 		assertListEquals(t, check.Criticals, "1 lagged more than 10 ops")
 		assertHasPDItem(t, check, "peers=3;3;3", "peer_offline=0", "peer_not_current=0", "peer_inactive=0", "peer_lagged=1")
+	})
+
+	t.Run("nil jszresp data", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				return &server.ServerAPIJszResponse{}, nil
+			},
+		}))
+		assertListEquals(t, check.Criticals, "no JSZ response received")
+	})
+
+	t.Run("resolver error", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				return nil, fmt.Errorf("resolver failed")
+			},
+		}))
+		assertListIsEmpty(t, check.Criticals)
+		assertListIsEmpty(t, check.OKs)
+	})
+
+	t.Run("unset expect servers does not fire", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				return &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader:   "l1",
+							Replicas: []*server.PeerInfo{{Name: "replica1", Current: true, Active: 10 * time.Millisecond}},
+						},
+					},
+				}, nil
+			},
+		}))
+		assertListIsEmpty(t, check.Criticals)
+	})
+
+	t.Run("unset seen critical does not flag inactive peers", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				return &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader:   "l1",
+							Replicas: []*server.PeerInfo{{Name: "replica1", Current: true, Active: 10 * time.Hour}},
+						},
+					},
+				}, nil
+			},
+		}))
+		assertListIsEmpty(t, check.Criticals)
+		assertHasPDItem(t, check, "peer_inactive=0")
+	})
+
+	t.Run("unset lag critical does not flag lagged peers", func(t *testing.T) {
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckJetstreamMeta("", nil, check, monitor.CheckJetstreamMetaOptions{
+			Resolver: func(_ *nats.Conn) (*server.ServerAPIJszResponse, error) {
+				return &server.ServerAPIJszResponse{
+					Data: &server.JSInfo{
+						Meta: &server.MetaClusterInfo{
+							Leader:   "l1",
+							Replicas: []*server.PeerInfo{{Name: "replica1", Current: true, Active: 10 * time.Millisecond, Lag: 99999}},
+						},
+					},
+				}, nil
+			},
+		}))
+		assertListIsEmpty(t, check.Criticals)
+		assertHasPDItem(t, check, "peer_lagged=0")
 	})
 
 	t.Run("multiple errors", func(t *testing.T) {

@@ -53,8 +53,16 @@ func CheckKVBucketAndKeyWithConnection(nc *nats.Conn, check *Result, opts CheckK
 		return nil
 	}
 
+	valWarn := float64(opts.ValuesWarning)
+	if opts.ValuesWarning < 0 {
+		valWarn = 0
+	}
+	valCrit := float64(opts.ValuesCritical)
+	if opts.ValuesCritical < 0 {
+		valCrit = 0
+	}
 	check.Pd(
-		&PerfDataItem{Name: "values", Value: float64(status.Values()), Warn: float64(opts.ValuesWarning), Crit: float64(opts.ValuesCritical), Help: "How many values are stored in the bucket"},
+		&PerfDataItem{Name: "values", Value: float64(status.Values()), Warn: valWarn, Crit: valCrit, Help: "How many values are stored in the bucket"},
 	)
 
 	if opts.Key != "" {

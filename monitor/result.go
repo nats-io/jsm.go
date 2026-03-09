@@ -262,19 +262,17 @@ func (r *Result) renderPrometheus() string {
 	}
 
 	registry := prometheus.NewRegistry()
-	prometheus.DefaultRegisterer = registry
-	prometheus.DefaultGatherer = registry
 
 	for _, gauge := range r.perfdataCollectors() {
-		prometheus.MustRegister(gauge)
+		registry.MustRegister(gauge)
 	}
 
 	status := r.statusCollector()
-	prometheus.MustRegister(status)
+	registry.MustRegister(status)
 
 	var buf bytes.Buffer
 
-	mfs, err := prometheus.DefaultGatherer.Gather()
+	mfs, err := registry.Gather()
 	if err != nil {
 		panic(err)
 	}
@@ -290,7 +288,10 @@ func (r *Result) renderPrometheus() string {
 }
 
 func (r *Result) renderJSON() string {
-	res, _ := json.MarshalIndent(r, "", "  ")
+	res, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return fmt.Sprintf(`{"error": "json marshal failed: %s"}`, err)
+	}
 	return string(res)
 }
 
@@ -369,32 +370,37 @@ func (r *Result) GenericExit() {
 			fmt.Fprintf(os.Stderr, "temp file failed: %s", err)
 			os.Exit(1)
 		}
-		defer os.Remove(f.Name())
 
 		_, err = fmt.Fprintln(f, r.String())
 		if err != nil {
+			f.Close()
+			os.Remove(f.Name())
 			fmt.Fprintf(os.Stderr, "temp file write failed: %s", err)
 			os.Exit(1)
 		}
 
 		err = f.Close()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "temp file write failed: %s", err)
+			os.Remove(f.Name())
+			fmt.Fprintf(os.Stderr, "temp file close failed: %s", err)
 			os.Exit(1)
 		}
 
 		err = os.Chmod(f.Name(), 0600)
 		if err != nil {
+			os.Remove(f.Name())
 			fmt.Fprintf(os.Stderr, "temp file mode change failed: %s", err)
 			os.Exit(1)
 		}
 
 		err = os.Rename(f.Name(), r.OutFile)
 		if err != nil {
+			os.Remove(f.Name())
 			fmt.Fprintf(os.Stderr, "temp file rename failed: %s", err)
+			os.Exit(1)
 		}
 
-		os.Exit(1)
+		os.Exit(r.exitCode())
 	}
 
 	fmt.Println(r.String())
@@ -419,6 +425,9 @@ func f(v any) string {
 	case uint16:
 		return humanize.Comma(int64(x))
 	case uint64:
+		if x > math.MaxInt64 {
+			return fmt.Sprintf("%d", x)
+		}
 		return humanize.Comma(int64(x))
 	case int:
 		return humanize.Comma(int64(x))

@@ -21,6 +21,160 @@ import (
 	"github.com/nats-io/jsm.go/api"
 )
 
+func TestExtractStreamHealthCheckOptions(t *testing.T) {
+	t.Run("empty metadata returns zero-value options", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.Enabled {
+			t.Error("expected Enabled=false")
+		}
+		if opts.SourcesLagCritical != 0 {
+			t.Errorf("unexpected SourcesLagCritical: %v", opts.SourcesLagCritical)
+		}
+	})
+
+	t.Run("parses enabled flag", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			MonitorMetaEnabled: "true",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !opts.Enabled {
+			t.Error("expected Enabled=true")
+		}
+	})
+
+	t.Run("parses sources lag critical", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaLagCritical: "42",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.SourcesLagCritical != 42 {
+			t.Errorf("expected SourcesLagCritical=42, got %v", opts.SourcesLagCritical)
+		}
+	})
+
+	t.Run("parses sources seen critical (not peer)", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaSeenCritical: "1s",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.SourcesSeenCritical != 1 {
+			t.Errorf("expected SourcesSeenCritical=1, got %v", opts.SourcesSeenCritical)
+		}
+		if opts.ClusterSeenCritical != 0 {
+			t.Errorf("expected ClusterSeenCritical unchanged (0), got %v", opts.ClusterSeenCritical)
+		}
+	})
+
+	t.Run("parses peer seen critical (not sources)", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaPeerSeenCritical: "2s",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.ClusterSeenCritical != 2 {
+			t.Errorf("expected ClusterSeenCritical=2, got %v", opts.ClusterSeenCritical)
+		}
+		if opts.SourcesSeenCritical != 0 {
+			t.Errorf("expected SourcesSeenCritical unchanged (0), got %v", opts.SourcesSeenCritical)
+		}
+	})
+
+	t.Run("parses min and max sources", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaMinSources: "2",
+			StreamMonitorMetaMaxSources: "5",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.MinSources != 2 {
+			t.Errorf("expected MinSources=2, got %v", opts.MinSources)
+		}
+		if opts.MaxSources != 5 {
+			t.Errorf("expected MaxSources=5, got %v", opts.MaxSources)
+		}
+	})
+
+	t.Run("parses cluster peer expect and lag", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaPeerExpect:      "3",
+			StreamMonitorMetaPeerLagCritical: "100",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.ClusterExpectedPeers != 3 {
+			t.Errorf("expected ClusterExpectedPeers=3, got %v", opts.ClusterExpectedPeers)
+		}
+		if opts.ClusterLagCritical != 100 {
+			t.Errorf("expected ClusterLagCritical=100, got %v", opts.ClusterLagCritical)
+		}
+	})
+
+	t.Run("parses messages warn and critical", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaMessagesWarn:     "500",
+			StreamMonitorMetaMessagesCritical: "200",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.MessagesWarn != 500 {
+			t.Errorf("expected MessagesWarn=500, got %v", opts.MessagesWarn)
+		}
+		if opts.MessagesCrit != 200 {
+			t.Errorf("expected MessagesCrit=200, got %v", opts.MessagesCrit)
+		}
+	})
+
+	t.Run("parses subjects warn and critical", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaSubjectsWarn:     "100",
+			StreamMonitorMetaSubjectsCritical: "200",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts.SubjectsWarn != 100 {
+			t.Errorf("expected SubjectsWarn=100, got %v", opts.SubjectsWarn)
+		}
+		if opts.SubjectsCrit != 200 {
+			t.Errorf("expected SubjectsCrit=200, got %v", opts.SubjectsCrit)
+		}
+	})
+
+	t.Run("returns error for invalid value", func(t *testing.T) {
+		_, err := ExtractStreamHealthCheckOptions(map[string]string{
+			StreamMonitorMetaLagCritical: "not-a-number",
+		})
+		if err == nil {
+			t.Error("expected error for invalid lag value")
+		}
+	})
+
+	t.Run("unknown keys are ignored", func(t *testing.T) {
+		opts, err := ExtractStreamHealthCheckOptions(map[string]string{
+			"io.nats.monitor.unknown-key": "whatever",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if opts == nil {
+			t.Error("expected non-nil opts")
+		}
+	})
+}
+
 func TestStream_checkSources(t *testing.T) {
 	setup := func() (*Result, *api.StreamInfo) {
 		return &Result{}, &api.StreamInfo{
@@ -190,6 +344,18 @@ func TestStream_checkMessages(t *testing.T) {
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireElement(t, check.OKs, "1000 messages")
+	})
+
+	t.Run("Should warn when count is between warn and crit thresholds", func(t *testing.T) {
+		check, si := setup()
+		si.State.Msgs = 400
+		streamCheckMessages(si, check, CheckStreamHealthOptions{
+			MessagesWarn: 500,
+			MessagesCrit: 200,
+		}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireElement(t, check.Warnings, "400 messages")
+		requireEmpty(t, check.OKs)
 	})
 }
 
@@ -396,6 +562,40 @@ func TestStream_checkMirror(t *testing.T) {
 		requireEmpty(t, check.Warnings)
 		requireElement(t, check.OKs, "Mirror X")
 	})
+
+	t.Run("Should be critical when stream is not a mirror", func(t *testing.T) {
+		check := &Result{}
+		si := &api.StreamInfo{
+			Config: api.StreamConfig{
+				Name: "test",
+				// Mirror is nil — stream is not configured as a mirror
+			},
+		}
+
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
+			SourcesLagCritical: 1,
+		}, api.NewDiscardLogger())
+		requireElement(t, check.Criticals, "not mirrored")
+	})
+
+	t.Run("Should skip mirror check when stream has sources", func(t *testing.T) {
+		check := &Result{}
+		si := &api.StreamInfo{
+			Config: api.StreamConfig{
+				Name:   "test",
+				Mirror: &api.StreamSource{Name: "X"},
+			},
+			Sources: []*api.StreamSourceInfo{
+				{},
+			},
+		}
+
+		streamCheckMirror(si, check, CheckStreamHealthOptions{
+			SourcesLagCritical: 1,
+		}, api.NewDiscardLogger())
+		requireEmpty(t, check.Criticals)
+		requireEmpty(t, check.OKs)
+	})
 }
 
 func TestStream_checkCluster(t *testing.T) {
@@ -563,5 +763,7 @@ func TestStream_checkCluster(t *testing.T) {
 		requireEmpty(t, check.Criticals)
 		requireEmpty(t, check.Warnings)
 		requireElement(t, check.OKs, "3 peers")
+		requireElement(t, check.OKs, "replicas are current")
+		requireElement(t, check.OKs, "replicas are active")
 	})
 }

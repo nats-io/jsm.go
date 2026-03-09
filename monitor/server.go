@@ -95,6 +95,7 @@ func CheckServerWithConnection(nc *nats.Conn, check *Result, timeout time.Durati
 
 	if vz.Name != opts.Name {
 		check.Criticalf("result from wrong server %q", vz.Name)
+		return nil
 	}
 
 	if opts.JetStreamRequired {
@@ -235,7 +236,7 @@ func fetchVarz(nc *nats.Conn, name string, timeout time.Duration) (*server.Varz,
 	}
 
 	if resp.Error != nil {
-		return nil, fmt.Errorf("invalid response received: %#v", resp.Error.Error())
+		return nil, fmt.Errorf("invalid response received: %v", resp.Error.Error())
 	}
 
 	if resp.Data == nil {

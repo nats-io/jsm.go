@@ -14,6 +14,7 @@
 package monitor_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -48,6 +49,41 @@ func TestCheckVarz(t *testing.T) {
 		assertListIsEmpty(t, check.Warnings)
 		assertListIsEmpty(t, check.OKs)
 		assertListEquals(t, check.Criticals, "result from wrong server \"other\"")
+	})
+
+	t.Run("wrong server stops subsequent checks", func(t *testing.T) {
+		// JetStreamRequired is true, but the resolver returns a wrong server name.
+		// After detecting the wrong server the function must return without running
+		// any further checks, so OKs must remain empty.
+		vzResolver := func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) {
+			return &server.Varz{Name: "impostor", JetStream: server.JetStreamVarz{Config: &server.JetStreamConfig{}}}, nil
+		}
+
+		check := &monitor.Result{}
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{
+			Name:              "example.net",
+			JetStreamRequired: true,
+			Resolver:          vzResolver,
+		})
+		checkErr(t, err, "check failed: %v", err)
+		assertListEquals(t, check.Criticals, "result from wrong server \"impostor\"")
+		assertListIsEmpty(t, check.OKs)
+		assertListIsEmpty(t, check.Warnings)
+	})
+
+	t.Run("resolver error", func(t *testing.T) {
+		vzResolver := func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) {
+			return nil, fmt.Errorf("timed out")
+		}
+
+		check := &monitor.Result{}
+		err := monitor.CheckServer("", nil, check, time.Second, monitor.CheckServerOptions{Name: "example.net", Resolver: vzResolver})
+		checkErr(t, err, "check failed: %v", err)
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.OKs)
+		if len(check.Criticals) != 1 || !strings.HasPrefix(check.Criticals[0], "varz failed:") {
+			t.Fatalf("expected varz failed critical, got: %v", check.Criticals)
+		}
 	})
 
 	t.Run("jetstream", func(t *testing.T) {
@@ -419,5 +455,182 @@ func TestCheckVarz(t *testing.T) {
 		assertListIsEmpty(t, check.Criticals)
 		assertListEquals(t, check.OKs, "Connections 1024.00")
 		assertHasPDItem(t, check, "connections=1024;900;800")
+	})
+
+	t.Run("subscriptions", func(t *testing.T) {
+		vz := &server.Varz{Name: "example.net", Subscriptions: 512}
+		vzResolver := func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) {
+			return vz, nil
+		}
+
+		opts := monitor.CheckServerOptions{
+			Name:     "example.net",
+			Resolver: vzResolver,
+		}
+
+		// critical subscriptions
+		opts.SubscriptionsCritical = 512
+		opts.SubscriptionsWarning = 400
+		check := &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.Criticals, "Subscriptions 512.00")
+		assertListIsEmpty(t, check.OKs)
+		assertListIsEmpty(t, check.Warnings)
+		assertHasPDItem(t, check, "subscriptions=512;400;512")
+
+		// critical subscriptions reverse (below minimum)
+		opts.SubscriptionsCritical = 600
+		opts.SubscriptionsWarning = 700
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.Criticals, "Subscriptions 512.00")
+		assertListIsEmpty(t, check.OKs)
+		assertListIsEmpty(t, check.Warnings)
+		assertHasPDItem(t, check, "subscriptions=512;700;600")
+
+		// warning subscriptions
+		opts.SubscriptionsCritical = 1000
+		opts.SubscriptionsWarning = 512
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.Warnings, "Subscriptions 512.00")
+		assertListIsEmpty(t, check.OKs)
+		assertListIsEmpty(t, check.Criticals)
+		assertHasPDItem(t, check, "subscriptions=512;512;1000")
+
+		// warning subscriptions reverse
+		opts.SubscriptionsCritical = 500
+		opts.SubscriptionsWarning = 600
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.Warnings, "Subscriptions 512.00")
+		assertListIsEmpty(t, check.OKs)
+		assertListIsEmpty(t, check.Criticals)
+		assertHasPDItem(t, check, "subscriptions=512;600;500")
+
+		// ok subscriptions
+		opts.SubscriptionsCritical = 1000
+		opts.SubscriptionsWarning = 700
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.OKs, "Subscriptions 512.00")
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.Criticals)
+		assertHasPDItem(t, check, "subscriptions=512;700;1000")
+
+		// ok subscriptions reverse (above minimum)
+		opts.SubscriptionsCritical = 400
+		opts.SubscriptionsWarning = 450
+		check = &monitor.Result{}
+		assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+		assertListEquals(t, check.OKs, "Subscriptions 512.00")
+		assertListIsEmpty(t, check.Warnings)
+		assertListIsEmpty(t, check.Criticals)
+		assertHasPDItem(t, check, "subscriptions=512;450;400")
+	})
+
+	t.Run("tls cert expiry per component", func(t *testing.T) {
+		now := time.Now().UTC()
+		opts := monitor.CheckServerOptions{
+			Name:              "example.net",
+			TLSExpireWarning:  "30d",
+			TLSExpireCritical: "7d",
+		}
+
+		expiredAt := now.Add(-1 * time.Hour)
+		soonAt := now.Add(24 * time.Hour)     // within critical (7d)
+		warnAt := now.Add(10 * 24 * time.Hour) // within warning (30d)
+		okAt := now.Add(45 * 24 * time.Hour)   // beyond warning
+
+		for _, tc := range []struct {
+			name    string
+			setVarz func(vz *server.Varz, t time.Time)
+			prefix  string
+		}{
+			{
+				name:   "cluster",
+				setVarz: func(vz *server.Varz, t time.Time) { vz.Cluster.TLSCertNotAfter = t },
+				prefix: "cluster TLS certificate",
+			},
+			{
+				name:   "gateway",
+				setVarz: func(vz *server.Varz, t time.Time) { vz.Gateway.TLSCertNotAfter = t },
+				prefix: "gateway TLS certificate",
+			},
+			{
+				name:   "leafnode",
+				setVarz: func(vz *server.Varz, t time.Time) { vz.LeafNode.TLSCertNotAfter = t },
+				prefix: "leafnode TLS certificate",
+			},
+			{
+				name:   "mqtt",
+				setVarz: func(vz *server.Varz, t time.Time) { vz.MQTT.TLSCertNotAfter = t },
+				prefix: "mqtt TLS certificate",
+			},
+			{
+				name:   "websocket",
+				setVarz: func(vz *server.Varz, t time.Time) { vz.Websocket.TLSCertNotAfter = t },
+				prefix: "websocket TLS certificate",
+			},
+		} {
+			t.Run(tc.name+" expired", func(t *testing.T) {
+				vz := &server.Varz{Name: "example.net", Now: now}
+				tc.setVarz(vz, expiredAt)
+				opts.Resolver = func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) { return vz, nil }
+				check := &monitor.Result{}
+				assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+				if len(check.Criticals) != 1 || !strings.HasPrefix(check.Criticals[0], tc.prefix+" expired") {
+					t.Fatalf("expected %s expired critical, got: %v", tc.name, check.Criticals)
+				}
+			})
+
+			t.Run(tc.name+" critical", func(t *testing.T) {
+				vz := &server.Varz{Name: "example.net", Now: now}
+				tc.setVarz(vz, soonAt)
+				opts.Resolver = func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) { return vz, nil }
+				check := &monitor.Result{}
+				assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+				if len(check.Criticals) != 1 || !strings.HasPrefix(check.Criticals[0], tc.prefix+" expires in") {
+					t.Fatalf("expected %s expiring critical, got: %v", tc.name, check.Criticals)
+				}
+			})
+
+			t.Run(tc.name+" warning", func(t *testing.T) {
+				vz := &server.Varz{Name: "example.net", Now: now}
+				tc.setVarz(vz, warnAt)
+				opts.Resolver = func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) { return vz, nil }
+				check := &monitor.Result{}
+				assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+				if len(check.Warnings) != 1 || !strings.HasPrefix(check.Warnings[0], tc.prefix+" expires in") {
+					t.Fatalf("expected %s expiring warning, got: %v", tc.name, check.Warnings)
+				}
+			})
+
+			t.Run(tc.name+" ok", func(t *testing.T) {
+				vz := &server.Varz{Name: "example.net", Now: now}
+				tc.setVarz(vz, okAt)
+				opts.Resolver = func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) { return vz, nil }
+				check := &monitor.Result{}
+				assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+				if len(check.OKs) != 1 || !strings.HasPrefix(check.OKs[0], tc.prefix+" expires in") {
+					t.Fatalf("expected %s expiring ok, got: %v", tc.name, check.OKs)
+				}
+			})
+		}
+
+		// hasTLSCertNotAfter: only a component cert present, no server cert
+		t.Run("component cert triggers hasTLSCertNotAfter", func(t *testing.T) {
+			vz := &server.Varz{Name: "example.net", Now: now}
+			vz.Cluster.TLSCertNotAfter = expiredAt
+			opts.Resolver = func(_ *nats.Conn, _ string, _ time.Duration) (*server.Varz, error) { return vz, nil }
+			check := &monitor.Result{}
+			assertNoError(t, monitor.CheckServer("", nil, check, time.Second, opts))
+			// Should not see "no TLS certificates found" — it found the cluster cert
+			for _, c := range check.Criticals {
+				if strings.Contains(c, "no TLS certificates found") {
+					t.Fatalf("should have found cluster cert but got: %v", check.Criticals)
+				}
+			}
+		})
 	})
 }

@@ -96,7 +96,7 @@ func populateStreamHealthCheckOptions(metadata map[string]string, opts *CheckStr
 		}},
 		{StreamMonitorMetaSeenCritical, func(v string) error {
 			p, err := jsm.ParseDuration(v)
-			opts.ClusterSeenCritical = p.Seconds()
+			opts.SourcesSeenCritical = p.Seconds()
 			return err
 		}},
 		{StreamMonitorMetaMinSources, func(v string) error {
@@ -262,10 +262,8 @@ func streamCheckSources(si *api.StreamInfo, check *Result, opts CheckStreamHealt
 
 	switch {
 	case opts.MinSources > 0 && count < opts.MinSources:
-		//log.Debugf("CRITICAL: %d/%d sources", count, opts.MinSources)
 		check.Criticalf("%d sources", count)
 	case opts.MaxSources > 0 && count > opts.MaxSources:
-		//log.Debugf("CRITICAL: %d/%d sources", count, opts.MaxSources)
 		check.Criticalf("%d sources", count)
 	default:
 		check.Okf("%d sources", count)

@@ -538,7 +538,7 @@ func TestCheckVarz(t *testing.T) {
 		}
 
 		expiredAt := now.Add(-1 * time.Hour)
-		soonAt := now.Add(24 * time.Hour)     // within critical (7d)
+		soonAt := now.Add(24 * time.Hour)      // within critical (7d)
 		warnAt := now.Add(10 * 24 * time.Hour) // within warning (30d)
 		okAt := now.Add(45 * 24 * time.Hour)   // beyond warning
 
@@ -548,29 +548,29 @@ func TestCheckVarz(t *testing.T) {
 			prefix  string
 		}{
 			{
-				name:   "cluster",
+				name:    "cluster",
 				setVarz: func(vz *server.Varz, t time.Time) { vz.Cluster.TLSCertNotAfter = t },
-				prefix: "cluster TLS certificate",
+				prefix:  "cluster TLS certificate",
 			},
 			{
-				name:   "gateway",
+				name:    "gateway",
 				setVarz: func(vz *server.Varz, t time.Time) { vz.Gateway.TLSCertNotAfter = t },
-				prefix: "gateway TLS certificate",
+				prefix:  "gateway TLS certificate",
 			},
 			{
-				name:   "leafnode",
+				name:    "leafnode",
 				setVarz: func(vz *server.Varz, t time.Time) { vz.LeafNode.TLSCertNotAfter = t },
-				prefix: "leafnode TLS certificate",
+				prefix:  "leafnode TLS certificate",
 			},
 			{
-				name:   "mqtt",
+				name:    "mqtt",
 				setVarz: func(vz *server.Varz, t time.Time) { vz.MQTT.TLSCertNotAfter = t },
-				prefix: "mqtt TLS certificate",
+				prefix:  "mqtt TLS certificate",
 			},
 			{
-				name:   "websocket",
+				name:    "websocket",
 				setVarz: func(vz *server.Varz, t time.Time) { vz.Websocket.TLSCertNotAfter = t },
-				prefix: "websocket TLS certificate",
+				prefix:  "websocket TLS certificate",
 			},
 		} {
 			t.Run(tc.name+" expired", func(t *testing.T) {

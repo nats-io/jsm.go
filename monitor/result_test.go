@@ -48,7 +48,6 @@ func requireNotContains(t *testing.T, s, sub string) {
 	}
 }
 
-
 func TestResultPrepare(t *testing.T) {
 	t.Run("criticals wins over warnings", func(t *testing.T) {
 		r := &Result{}
@@ -77,7 +76,7 @@ func TestResultPrepare(t *testing.T) {
 		}
 	})
 
-	t.Run("nil PerfData is initialised", func(t *testing.T) {
+	t.Run("nil PerfData is initialized", func(t *testing.T) {
 		r := &Result{}
 		r.prepare()
 		if r.PerfData == nil {
@@ -85,7 +84,6 @@ func TestResultPrepare(t *testing.T) {
 		}
 	})
 }
-
 
 func TestResultOkIfNoWarningsOrCriticals(t *testing.T) {
 	t.Run("adds ok when clean", func(t *testing.T) {
@@ -116,7 +114,6 @@ func TestResultOkIfNoWarningsOrCriticals(t *testing.T) {
 		requireEqual(t, r.OKs[0], "count=42")
 	})
 }
-
 
 func TestResultCriticalIfErr(t *testing.T) {
 	t.Run("nil error is no-op", func(t *testing.T) {
@@ -154,7 +151,6 @@ func TestResultCriticalIfErr(t *testing.T) {
 	})
 }
 
-
 func TestResultExitCode(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -178,7 +174,6 @@ func TestResultExitCode(t *testing.T) {
 		})
 	}
 }
-
 
 func TestResultRenderNagios(t *testing.T) {
 	t.Run("ok with no perf data", func(t *testing.T) {
@@ -225,7 +220,6 @@ func TestResultRenderNagios(t *testing.T) {
 	})
 }
 
-
 func TestResultRenderJSON(t *testing.T) {
 	t.Run("valid json output", func(t *testing.T) {
 		r := &Result{Name: "mycheck", Check: "suite"}
@@ -250,7 +244,6 @@ func TestResultRenderJSON(t *testing.T) {
 		requireContains(t, out, `"status"`)
 	})
 }
-
 
 func TestResultRenderHuman(t *testing.T) {
 	t.Run("contains name and ok message", func(t *testing.T) {
@@ -280,7 +273,6 @@ func TestResultRenderHuman(t *testing.T) {
 		requireNotContains(t, out, "Check Metrics")
 	})
 }
-
 
 func TestResultRenderPrometheus(t *testing.T) {
 	t.Run("contains status gauge", func(t *testing.T) {
@@ -326,7 +318,6 @@ func TestResultRenderPrometheus(t *testing.T) {
 		}
 	})
 }
-
 
 func TestResultGenericExitOutFile(t *testing.T) {
 	t.Run("writes result to file atomically with correct permissions", func(t *testing.T) {
@@ -386,7 +377,6 @@ func TestResultGenericExitOutFile(t *testing.T) {
 	})
 }
 
-
 func TestHumanizeDuration(t *testing.T) {
 	tests := []struct {
 		input time.Duration
@@ -409,7 +399,6 @@ func TestHumanizeDuration(t *testing.T) {
 		})
 	}
 }
-
 
 func TestF(t *testing.T) {
 	t.Run("string slice joined", func(t *testing.T) {

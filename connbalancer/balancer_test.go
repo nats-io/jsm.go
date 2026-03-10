@@ -16,6 +16,7 @@ package connbalancer
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"testing"
@@ -167,6 +168,25 @@ func TestBalanceMultiNodeCluster(t *testing.T) {
 	})
 }
 
+func TestNewValidation(t *testing.T) {
+	nc := &nats.Conn{}
+
+	_, err := New(nc, 0, api.NewDiscardLogger(), ConnectionSelector{
+		SubjectInterest: "foo.>",
+	})
+	if err == nil {
+		t.Fatal("expected error when SubjectInterest is set without Account")
+	}
+
+	_, err = New(nc, 0, api.NewDiscardLogger(), ConnectionSelector{
+		SubjectInterest: "foo.>",
+		Account:         "USERS",
+	})
+	if err != nil {
+		t.Fatalf("expected no error when both SubjectInterest and Account are set: %v", err)
+	}
+}
+
 func checkBalancedInRange(t *testing.T, nc *nats.Conn, min, max int, s ConnectionSelector) {
 	t.Helper()
 
@@ -184,6 +204,19 @@ func checkBalancedInRange(t *testing.T, nc *nats.Conn, min, max int, s Connectio
 	}
 }
 
+func getFreePort(t *testing.T) int {
+	t.Helper()
+
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("could not allocate free port: %v", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+
+	return port
+}
+
 func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, nc *nats.Conn)) {
 	t.Helper()
 
@@ -193,9 +226,15 @@ func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, n
 	}
 	defer os.RemoveAll(d)
 
-	var (
-		servers []*server.Server
-	)
+	clusterPorts := []int{getFreePort(t), getFreePort(t), getFreePort(t)}
+
+	routes := []*url.URL{
+		{Host: fmt.Sprintf("localhost:%d", clusterPorts[0])},
+		{Host: fmt.Sprintf("localhost:%d", clusterPorts[1])},
+		{Host: fmt.Sprintf("localhost:%d", clusterPorts[2])},
+	}
+
+	var servers []*server.Server
 
 	for i := 1; i <= 3; i++ {
 		sa := server.NewAccount("SYSTEM")
@@ -208,13 +247,9 @@ func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, n
 			LogFile:    "/dev/null",
 			Cluster: server.ClusterOpts{
 				Name: "TEST",
-				Port: 12000 + i,
+				Port: clusterPorts[i-1],
 			},
-			Routes: []*url.URL{
-				{Host: "localhost:12001"},
-				{Host: "localhost:12002"},
-				{Host: "localhost:12003"},
-			},
+			Routes:        routes,
 			Accounts:      []*server.Account{sa, ua},
 			SystemAccount: "SYSTEM",
 			Users: []*server.User{

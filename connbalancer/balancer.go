@@ -174,7 +174,8 @@ func (c *balancer) Balance(ctx context.Context) (int, error) {
 			select {
 			case <-timer.C:
 			case <-ctx.Done():
-				break
+				timer.Stop()
+				return success, nil
 			}
 		}
 	}
@@ -306,9 +307,9 @@ func (c *balancer) getConnzWithOffset(ctx context.Context, offset int) (nextOffs
 			return 0, nil, err
 		}
 
-		if z.Data.Offset+z.Data.Limit < z.Data.Limit {
-			if z.Data.Offset+z.Data.Limit+1 > nextOffset {
-				nextOffset = z.Data.Offset + z.Data.Limit + 1
+		if z.Data.Limit > 0 && len(z.Data.Conns) >= z.Data.Limit {
+			if next := z.Data.Offset + z.Data.Limit; next > nextOffset {
+				nextOffset = next
 			}
 		}
 
@@ -359,7 +360,7 @@ func (c *balancer) reqMany(ctx context.Context, subj string, req any, expect int
 		mu       sync.Mutex
 		ctr      int
 		finisher *time.Timer
-		errs     = make(chan error)
+		errs     = make(chan error, 1)
 		sub      *nats.Subscription
 		res      []*nats.Msg
 	)

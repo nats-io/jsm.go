@@ -231,10 +231,6 @@
                         "type": "boolean",
                         "default": false
                       },
-                      "template_owner": {
-                        "description": "When the Stream is managed by a Stream Template this identifies the template that manages the Stream.",
-                        "type": "string"
-                      },
                       "discard": {
                         "description": "When a Stream reach it's limits either old messages are deleted or new ones are denied",
                         "type": "string",
@@ -548,6 +544,11 @@
                           "async"
                         ],
                         "default": ""
+                      },
+                      "allow_batched": {
+                        "description": "Allows fast batch publishing into the Stream",
+                        "type": "boolean",
+                        "default": false
                       }
                     }
                   }
@@ -720,11 +721,6 @@
                           "type": "boolean",
                           "default": false
                         },
-                        "observer": {
-                          "description": "Indicates if the server is running as an observer only",
-                          "type": "boolean",
-                          "default": false
-                        },
                         "active": {
                           "description": "Nanoseconds since this peer was last seen",
                           "type": "number"
@@ -738,6 +734,10 @@
                           "description": "How many uncommitted operations this peer is behind the leader",
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "peer": {
+                          "description": "The unique ID for the peer",
+                          "type": "string"
                         }
                       }
                     }
@@ -990,6 +990,10 @@
                     }
                   }
                 }
+              },
+              "domain": {
+                "description": "The JetStream domain the stream is in",
+                "type": "string"
               }
             }
           }

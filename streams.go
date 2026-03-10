@@ -1133,9 +1133,6 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 	}
 }
 
-// IsTemplateManaged determines if this stream is managed by a template
-func (s *Stream) IsTemplateManaged() bool { return s.Template() != "" }
-
 // IsMirror determines if this stream is a mirror of another
 func (s *Stream) IsMirror() bool { return s.cfg.Mirror != nil }
 
@@ -1190,7 +1187,6 @@ func (s *Stream) MaxMsgSize() int32                        { return s.cfg.MaxMsg
 func (s *Stream) Storage() api.StorageType                 { return s.cfg.Storage }
 func (s *Stream) Replicas() int                            { return s.cfg.Replicas }
 func (s *Stream) NoAck() bool                              { return s.cfg.NoAck }
-func (s *Stream) Template() string                         { return s.cfg.Template }
 func (s *Stream) DuplicateWindow() time.Duration           { return s.cfg.Duplicates }
 func (s *Stream) Mirror() *api.StreamSource                { return s.cfg.Mirror }
 func (s *Stream) Sources() []*api.StreamSource             { return s.cfg.Sources }

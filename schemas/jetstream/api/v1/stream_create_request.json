@@ -151,10 +151,6 @@
           "type": "boolean",
           "default": false
         },
-        "template_owner": {
-          "description": "When the Stream is managed by a Stream Template this identifies the template that manages the Stream.",
-          "type": "string"
-        },
         "discard": {
           "description": "When a Stream reach it's limits either old messages are deleted or new ones are denied",
           "type": "string",
@@ -468,6 +464,11 @@
             "async"
           ],
           "default": ""
+        },
+        "allow_batched": {
+          "description": "Allows fast batch publishing into the Stream",
+          "type": "boolean",
+          "default": false
         }
       }
     },

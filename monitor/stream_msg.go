@@ -15,12 +15,14 @@ package monitor
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
 
@@ -56,6 +58,10 @@ func CheckStreamMessage(server string, nopts []nats.Option, jsmOpts []jsm.Option
 }
 
 func CheckStreamMessageWithConnection(mgr *jsm.Manager, check *Result, opts CheckStreamMessageOptions) error {
+	if !server.IsValidLiteralSubject(opts.Subject) {
+		return fmt.Errorf("invalid subject %q", opts.Subject)
+	}
+
 	msg, err := mgr.ReadLastMessageForSubject(opts.StreamName, opts.Subject)
 	if api.IsNatsError(err, 10037) {
 		check.Critical("no message found")
@@ -68,7 +74,9 @@ func CheckStreamMessageWithConnection(mgr *jsm.Manager, check *Result, opts Chec
 	ts := msg.Time
 	if opts.BodyAsTimestamp {
 		i, err := strconv.ParseInt(string(bytes.TrimSpace(msg.Data)), 10, 64)
-		check.CriticalIfErrf(err, "invalid timestamp body: %v", err)
+		if check.CriticalIfErrf(err, "invalid timestamp body: %v", err) {
+			return nil
+		}
 		ts = time.Unix(i, 0)
 	}
 
@@ -93,7 +101,7 @@ func CheckStreamMessageWithConnection(mgr *jsm.Manager, check *Result, opts Chec
 	if opts.AgeCritical > 0 && since > secondsToDuration(opts.AgeCritical) {
 		check.Criticalf("%v old", since.Round(time.Millisecond))
 	} else if opts.AgeWarning > 0 && since > secondsToDuration(opts.AgeWarning) {
-		check.Warnf("%v old", time.Since(ts).Round(time.Millisecond))
+		check.Warnf("%v old", since.Round(time.Millisecond))
 	}
 
 	if opts.Content != "" {

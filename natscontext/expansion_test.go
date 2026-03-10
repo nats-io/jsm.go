@@ -37,7 +37,7 @@ func TestContext(t *testing.T) {
 		t.Fatalf("expected %q, got %q", "/some/path", t5)
 	}
 
-	// Unset variable expands to empty string (os.ExpandEnv behaviour)
+	// Unset variable expands to empty string (os.ExpandEnv behavior)
 	os.Unsetenv("NATS_TEST_UNSET")
 	t6 := expandHomedir("$NATS_TEST_UNSET/foo")
 	if t6 != "/foo" {

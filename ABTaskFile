@@ -79,6 +79,10 @@ commands:
               description: Perform staticcheck
               bool: true
               default: true
+            - name: spellcheck
+              description: Spellcheck the project
+              bool: true
+              default: true
             - name: update
               description: Updates lint dependencies
               bool: true
@@ -109,4 +113,8 @@ commands:
             {{ if .Flags.staticcheck }}
             ab_say Running staticcheck
             staticcheck -f stylish ./...
+            {{ end }}
+
+            {{ if .Flags.spellcheck }}
+            find . -type f -name "*.go" | xargs misspell -error -locale US
             {{ end }}

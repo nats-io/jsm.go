@@ -671,7 +671,6 @@ type StreamConfig struct {
 	Discard      DiscardPolicy   `json:"discard" yaml:"discard"`
 	Replicas     int             `json:"num_replicas" yaml:"num_replicas"`
 	NoAck        bool            `json:"no_ack,omitempty" yaml:"no_ack"`
-	Template     string          `json:"template_owner,omitempty" yaml:"-"`
 	Duplicates   time.Duration   `json:"duplicate_window,omitempty" yaml:"duplicate_window"`
 	Placement    *Placement      `json:"placement,omitempty" yaml:"placement"`
 	Mirror       *StreamSource   `json:"mirror,omitempty" yaml:"mirror"`
@@ -717,6 +716,8 @@ type StreamConfig struct {
 	AllowMsgSchedules bool `json:"allow_msg_schedules,omitempty" yaml:"allow_msg_schedules" api_level:"2"`
 	// PersistMode allows to opt-in to different persistence mode settings.
 	PersistMode PersistModeType `json:"persist_mode,omitempty" yaml:"persist_mode" api_level:"2"`
+	// AllowBatchPublish allows fast batch publishing into the stream.
+	AllowBatchPublish bool `json:"allow_batched,omitempty" yaml:"allow_batched" api_level:"3"`
 }
 
 // StreamConsumerLimits describes limits and defaults for consumers created on a stream
@@ -771,6 +772,7 @@ type StreamInfo struct {
 	Config     StreamConfig        `json:"config" yaml:"config"`
 	Created    time.Time           `json:"created" yaml:"created"`
 	State      StreamState         `json:"state" yaml:"state"`
+	Domain     string              `json:"domain,omitempty" yaml:"domain"`
 	Cluster    *ClusterInfo        `json:"cluster,omitempty" yaml:"cluster"`
 	Mirror     *StreamSourceInfo   `json:"mirror,omitempty" yaml:"mirror"`
 	Sources    []*StreamSourceInfo `json:"sources,omitempty" yaml:"sources"`

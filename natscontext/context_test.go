@@ -1,6 +1,8 @@
 package natscontext_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/nats-io/nats.go"
@@ -8,12 +10,30 @@ import (
 	"github.com/nats-io/jsm.go/natscontext"
 )
 
+// setupEnv copies testdata into a fresh temp dir and points XDG_CONFIG_HOME
+// there so test writes never touch the checked-in fixtures.
+func setupEnv(t *testing.T) {
+	t.Helper()
+
+	tmp := t.TempDir()
+	err := os.CopyFS(tmp, os.DirFS("testdata"))
+	if err != nil {
+		t.Fatalf("failed to copy testdata: %v", err)
+	}
+
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+}
+
 func TestContext(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", "testdata")
+	setupEnv(t)
 
 	known := natscontext.KnownContexts()
-	if len(known) != 2 && known[0] != "gotest" && known[1] != "other" {
-		t.Fatalf("expected [gotest,other] got %#v", known)
+	knownSet := make(map[string]bool, len(known))
+	for _, k := range known {
+		knownSet[k] = true
+	}
+	if !knownSet["gotest"] || !knownSet["other"] {
+		t.Fatalf("expected gotest and other in known contexts, got %#v", known)
 	}
 
 	selected := natscontext.SelectedContext()
@@ -148,5 +168,140 @@ func TestContext(t *testing.T) {
 	err = config.Validate()
 	if err != nil {
 		t.Fatalf("expected jwt-only context to be valid, got: %v", err)
+	}
+}
+
+func TestNewFromFileMissing(t *testing.T) {
+	_, err := natscontext.NewFromFile("/nonexistent/path/context.json")
+	if err == nil {
+		t.Fatal("expected error loading nonexistent context file, got nil")
+	}
+}
+
+func TestDeleteContext(t *testing.T) {
+	setupEnv(t)
+
+	// Cannot delete the active context when others exist.
+	active := natscontext.SelectedContext()
+	if active == "" {
+		t.Fatal("expected an active context to be set in testdata")
+	}
+	err := natscontext.DeleteContext(active)
+	if err == nil {
+		t.Fatalf("expected error deleting active context %q when others exist, got nil", active)
+	}
+
+	// Delete a non-active context.
+	err = natscontext.DeleteContext("other")
+	if err != nil {
+		t.Fatalf("unexpected error deleting non-active context: %v", err)
+	}
+	if natscontext.IsKnown("other") {
+		t.Fatal("context 'other' should not be known after deletion")
+	}
+
+	// Deleting a non-existent context is a no-op.
+	err = natscontext.DeleteContext("other")
+	if err != nil {
+		t.Fatalf("deleting already-deleted context should be a no-op, got: %v", err)
+	}
+
+	// Deleting the active context when it is the only one should succeed.
+	known := natscontext.KnownContexts()
+	for _, name := range known {
+		if name != active {
+			err = natscontext.DeleteContext(name)
+			if err != nil {
+				t.Fatalf("deleting non-active context %q: %v", name, err)
+			}
+		}
+	}
+	err = natscontext.DeleteContext(active)
+	if err != nil {
+		t.Fatalf("expected to delete sole remaining context %q, got: %v", active, err)
+	}
+	if natscontext.IsKnown(active) {
+		t.Fatalf("context %q should not be known after deletion", active)
+	}
+
+	// Reject invalid names.
+	err = natscontext.DeleteContext("../../etc/passwd")
+	if err == nil {
+		t.Fatal("expected error for path-traversal name, got nil")
+	}
+}
+
+func TestNATSOptionsUserJWTOnly(t *testing.T) {
+	config, err := natscontext.New("jwtonly", false, natscontext.WithUserJWT("somejwt"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// NATSOptions must not return an error even when UserSeed is absent.
+	opts, err := config.NATSOptions()
+	if err != nil {
+		t.Fatalf("NATSOptions returned unexpected error for jwt-only context: %v", err)
+	}
+	if len(opts) == 0 {
+		t.Fatal("expected at least one NATS option for jwt-only context")
+	}
+}
+
+func TestExpandEnvInPaths(t *testing.T) {
+	tmp := t.TempDir()
+
+	ctxDir := filepath.Join(tmp, "nats", "context")
+	err := os.MkdirAll(ctxDir, 0700)
+	if err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// Verify $VAR expansion in all path fields.
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+	t.Setenv("NATS_TEST_DIR", tmp)
+
+	ctxFile := filepath.Join(ctxDir, "envtest.json")
+	content := `{"cert":"$NATS_TEST_DIR/client.crt","key":"$NATS_TEST_DIR/client.key","ca":"$NATS_TEST_DIR/ca.crt","nkey":"$NATS_TEST_DIR/seed.nk","creds":"$NATS_TEST_DIR/user.creds"}`
+	err = os.WriteFile(ctxFile, []byte(content), 0600)
+	if err != nil {
+		t.Fatalf("write context: %v", err)
+	}
+
+	ctx, err := natscontext.New("envtest", true)
+	if err != nil {
+		t.Fatalf("loading context: %v", err)
+	}
+
+	cases := []struct {
+		field string
+		got   string
+		want  string
+	}{
+		{"cert", ctx.Certificate(), tmp + "/client.crt"},
+		{"key", ctx.Key(), tmp + "/client.key"},
+		{"ca", ctx.CA(), tmp + "/ca.crt"},
+		{"nkey", ctx.NKey(), tmp + "/seed.nk"},
+		{"creds", ctx.Creds(), tmp + "/user.creds"},
+	}
+	for _, c := range cases {
+		if c.got != c.want {
+			t.Errorf("%s: got %q, want %q", c.field, c.got, c.want)
+		}
+	}
+
+	// Verify ~ expansion in path fields.
+	ctxFile2 := filepath.Join(ctxDir, "tildetest.json")
+	content2 := `{"cert":"~/client.crt"}`
+	err = os.WriteFile(ctxFile2, []byte(content2), 0600)
+	if err != nil {
+		t.Fatalf("write tilde context: %v", err)
+	}
+
+	ctx2, err := natscontext.New("tildetest", true)
+	if err != nil {
+		t.Fatalf("loading tilde context: %v", err)
+	}
+	if ctx2.Certificate() == "~/client.crt" {
+		t.Error("cert: ~ was not expanded")
 	}
 }

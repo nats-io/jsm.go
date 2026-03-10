@@ -81,12 +81,6 @@ func New(nc *nats.Conn, log api.Logger) (*Balancer, error) {
 	}, nil
 }
 
-func (b *Balancer) calcOffset(servers *map[string]*peer, evenDistribution int) {
-	for _, s := range *servers {
-		s.offset = len(s.entities) - evenDistribution
-	}
-}
-
 func (b *Balancer) createClusterMappings(e balanceEntity, clusterMap map[string]*cluster) (map[string]*cluster, error) {
 	info, err := e.ClusterInfo()
 	if err != nil {
@@ -145,7 +139,7 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, clust
 			if s.offset > 0 {
 				b.log.Infof("Rebalancing server '%s' with offset of %d", s.name, s.offset)
 				retries := 0
-				for s.offset > 0 {
+				for s.offset > 0 && len(s.entities) > 0 {
 					// find a random stream (or consumer) to move to another server
 					randomIndex := rand.IntN(len(s.entities))
 					entity := s.entities[randomIndex]
@@ -172,7 +166,7 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, clust
 							placement := api.Placement{Preferred: ns.name, Cluster: cluster}
 							err := entity.LeaderStepDown(&placement)
 							if err != nil {
-								b.log.Errorf("Unable to step down leader for  %s - %s", entity.Name(), err)
+								b.log.Errorf("Unable to step down leader for %s - %s", entity.Name(), err)
 								// If we failed to step down the stream, decrement the iterator so that we don't kick one too few
 								// Limit this to one retry, if we can't step down multiple leaders something is wrong
 								if retries == 0 {
@@ -207,7 +201,7 @@ func (b *Balancer) balance(servers map[string]*peer, evenDistribution int, clust
 		}
 
 		// We recalculate the offset count, we can't be 100% sure entities moved to their preferred server
-		b.calcOffset(&servers, evenDistribution)
+		b.calcLeaderOffset(servers, evenDistribution)
 	}
 
 	return steppedDown, nil
@@ -225,6 +219,10 @@ func isInPeerGroup(info api.ClusterInfo, candidate string) bool {
 
 func (b *Balancer) calcClusterDistribution(c *cluster) int {
 	servercount := len(c.peers)
+	if servercount == 0 {
+		return 0
+	}
+
 	entitycount := 0
 
 	for _, e := range c.peers {
@@ -284,11 +282,11 @@ func (b *Balancer) BalanceStreams(streams []*jsm.Stream) (int, error) {
 	// Balance each cluster
 	for k, v := range clusterMap {
 		b.log.Debugf("balancing streams on cluster %s", k)
-		b, err := b.balance(v.peers, v.balancedDistribution, k, "stream")
+		n, err := b.balance(v.peers, v.balancedDistribution, k, "stream")
 		if err != nil {
 			return 0, err
 		}
-		balanced += b
+		balanced += n
 	}
 
 	return balanced, nil
@@ -323,11 +321,11 @@ func (b *Balancer) BalanceConsumers(consumers []*jsm.Consumer) (int, error) {
 	// Balance each cluster
 	for k, v := range clusterMap {
 		b.log.Debugf("balancing consumers on cluster %s", k)
-		b, err := b.balance(v.peers, v.balancedDistribution, k, "consumer")
+		n, err := b.balance(v.peers, v.balancedDistribution, k, "consumer")
 		if err != nil {
 			return 0, err
 		}
-		balanced += b
+		balanced += n
 	}
 
 	return balanced, nil

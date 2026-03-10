@@ -87,6 +87,18 @@ type schemaDetector struct {
 
 var ErrUnknownApiSubject = errors.New("unknown api subject")
 
+// schemaWildcardSubjectsSorted holds schemaWildcardSubjects keys in a stable order so
+// TypeForRequestSubject produces deterministic results when subjects are looked up.
+var schemaWildcardSubjectsSorted []string
+
+func init() {
+	schemaWildcardSubjectsSorted = make([]string, 0, len(schemaWildcardSubjects))
+	for k := range schemaWildcardSubjects {
+		schemaWildcardSubjectsSorted = append(schemaWildcardSubjectsSorted, k)
+	}
+	sort.Strings(schemaWildcardSubjectsSorted)
+}
+
 // IsNatsSchemaType determines if a schema type is a valid NATS type.
 // The logic here is currently quite naive while we learn what works best
 func IsNatsSchemaType(schemaType string) bool {
@@ -127,16 +139,16 @@ func SchemaURL(m []byte) (address string, url *url.URL, err error) {
 }
 
 // SchemaURLForType determines the path to the JSON Schema document describing a typed message given a token like io.nats.jetstream.metric.v1.consumer_ack
-func SchemaURLForType(schemaType string) (address string, url *url.URL, err error) {
+func SchemaURLForType(schemaType string) (address string, u *url.URL, err error) {
 	if !IsNatsSchemaType(schemaType) {
 		return "", nil, fmt.Errorf("unsupported schema type %q", schemaType)
 	}
 
 	token := strings.TrimPrefix(schemaType, "io.nats.")
 	address = fmt.Sprintf("%s/%s.json", SchemasRepo, strings.ReplaceAll(token, ".", "/"))
-	url, err = url.Parse(address)
+	u, err = url.Parse(address)
 
-	return address, url, err
+	return address, u, err
 }
 
 // SchemaTypeForMessage retrieves the schema token from a typed message byte stream
@@ -200,8 +212,12 @@ func ParseMessage(m []byte) (schemaType string, msg any, err error) {
 	return schemaType, msg, err
 }
 
-// ParseAndValidateMessage parses the data using ParseMessage() and validates it against the detected schema. Will panic with a nil validator.
+// ParseAndValidateMessage parses the data using ParseMessage() and validates it against the detected schema.
 func ParseAndValidateMessage(m []byte, validator StructValidator) (schemaType string, msg any, err error) {
+	if validator == nil {
+		return "", nil, errors.New("validator must not be nil")
+	}
+
 	schemaType, msg, err = ParseMessage(m)
 	if err != nil {
 		return "", nil, err
@@ -296,9 +312,9 @@ func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
 
 // TypeForRequestSubject matches a type for a request that might include details like $JS.API.CONSUMER.CREATE.foo.bar
 func TypeForRequestSubject(subject string) (any, error) {
-	for k, generator := range schemaWildcardSubjects {
+	for _, k := range schemaWildcardSubjectsSorted {
 		if server.SubjectsCollide(subject, k) {
-			return generator(), nil
+			return schemaWildcardSubjects[k](), nil
 		}
 	}
 

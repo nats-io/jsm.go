@@ -235,14 +235,21 @@ func IsNatsErr(err error, ids ...uint16) bool {
 		return false
 	}
 
-	ce, ok := err.(ApiError)
-	if !ok {
-		return false
+	var aep *ApiError
+	if errors.As(err, &aep) {
+		for _, id := range ids {
+			if aep.ErrCode == id {
+				return true
+			}
+		}
 	}
 
-	for _, id := range ids {
-		if ce.ErrCode == id {
-			return true
+	var ae ApiError
+	if errors.As(err, &ae) {
+		for _, id := range ids {
+			if ae.ErrCode == id {
+				return true
+			}
 		}
 	}
 
@@ -294,6 +301,9 @@ func requiredApiLevel(req any, skip bool) (int, error) {
 
 	for i := 0; i < val.NumField(); i++ {
 		typeField := val.Type().Field(i)
+		if !typeField.IsExported() {
+			continue
+		}
 		valueField := val.Field(i)
 
 		// zero generally means unset so we skip it
@@ -301,8 +311,12 @@ func requiredApiLevel(req any, skip bool) (int, error) {
 			continue
 		}
 
-		// if its a struct we recurse into it and check all its fields
-		if valueField.Kind() == reflect.Struct {
+		// if its a struct or pointer to struct we recurse into it and check all its fields
+		kind := valueField.Kind()
+		if kind == reflect.Ptr {
+			kind = valueField.Elem().Kind()
+		}
+		if kind == reflect.Struct {
 			lvl, err := requiredApiLevel(valueField.Interface(), skip)
 			if err != nil {
 				return 0, err

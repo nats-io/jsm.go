@@ -14,6 +14,7 @@
 package api
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -64,5 +65,251 @@ func TestRequiredApiLevel(t *testing.T) {
 	_, err = RequiredApiLevel(invalidTags{X: "y"})
 	if err.Error() != `invalid api_level tag "a" for field X on type invalidTags` {
 		t.Fatalf("invalid error: %v", err)
+	}
+
+	// nil input returns 0
+	v, err = RequiredApiLevel(nil)
+	checkErr(t, err, "RequiredApiLevel nil failed")
+	if v != 0 {
+		t.Fatalf("expected level 0 for nil, got %v", v)
+	}
+
+	// non-struct returns 0
+	v, err = RequiredApiLevel("hello")
+	checkErr(t, err, "RequiredApiLevel string failed")
+	if v != 0 {
+		t.Fatalf("expected level 0 for string, got %v", v)
+	}
+
+	// zero-value struct returns 0
+	v, err = RequiredApiLevel(&JSApiStreamCreateRequest{})
+	checkErr(t, err, "RequiredApiLevel zero failed")
+	if v != 0 {
+		t.Fatalf("expected level 0 for zero value, got %v", v)
+	}
+}
+
+func TestRequiredApiLevelPointerFields(t *testing.T) {
+	type inner struct {
+		Field bool `api_level:"3"`
+	}
+	type outer struct {
+		Ptr *inner
+	}
+
+	// nil pointer field should be skipped
+	v, err := RequiredApiLevel(outer{})
+	checkErr(t, err, "RequiredApiLevel nil ptr failed")
+	if v != 0 {
+		t.Fatalf("expected level 0 for nil pointer, got %v", v)
+	}
+
+	// non-nil pointer to struct with api_level tag should be detected
+	v, err = RequiredApiLevel(outer{Ptr: &inner{Field: true}})
+	checkErr(t, err, "RequiredApiLevel ptr failed")
+	if v != 3 {
+		t.Fatalf("expected level 3, got %v", v)
+	}
+
+	// real world: StreamConfig with pointer fields set
+	cfg := StreamConfig{
+		SubjectTransform: &SubjectTransformConfig{
+			Source:      "foo",
+			Destination: "bar",
+		},
+		AllowMsgCounter: true, // level 2
+	}
+	v, err = RequiredApiLevel(&JSApiStreamCreateRequest{StreamConfig: cfg})
+	checkErr(t, err, "RequiredApiLevel StreamConfig ptr fields failed")
+	if v != 2 {
+		t.Fatalf("expected level 2, got %v", v)
+	}
+}
+
+func TestIsNatsErr(t *testing.T) {
+	// value ApiError
+	valErr := ApiError{Code: 400, ErrCode: 10001, Description: "bad request"}
+	if !IsNatsErr(valErr, 10001) {
+		t.Fatal("expected IsNatsErr to match value ApiError")
+	}
+	if IsNatsErr(valErr, 65535) {
+		t.Fatal("expected IsNatsErr not to match wrong code")
+	}
+
+	// pointer ApiError
+	ptrErr := &ApiError{Code: 404, ErrCode: 10014, Description: "not found"}
+	if !IsNatsErr(ptrErr, 10014) {
+		t.Fatal("expected IsNatsErr to match pointer ApiError")
+	}
+	if IsNatsErr(ptrErr, 65535) {
+		t.Fatal("expected IsNatsErr not to match wrong code on pointer")
+	}
+
+	// multiple ids, match any
+	if !IsNatsErr(valErr, 65535, 10001) {
+		t.Fatal("expected IsNatsErr to match one of multiple ids")
+	}
+
+	// nil error
+	if IsNatsErr(nil, 10001) {
+		t.Fatal("expected IsNatsErr to return false for nil")
+	}
+
+	// non-ApiError error
+	if IsNatsErr(fmt.Errorf("some error"), 10001) {
+		t.Fatal("expected IsNatsErr to return false for non-ApiError")
+	}
+
+	// wrapped value error
+	wrapped := fmt.Errorf("wrap: %w", valErr)
+	if !IsNatsErr(wrapped, 10001) {
+		t.Fatal("expected IsNatsErr to match wrapped value ApiError")
+	}
+
+	// wrapped pointer error
+	wrappedPtr := fmt.Errorf("wrap: %w", ptrErr)
+	if !IsNatsErr(wrappedPtr, 10014) {
+		t.Fatal("expected IsNatsErr to match wrapped pointer ApiError")
+	}
+}
+
+func TestIsNatsError(t *testing.T) {
+	valErr := ApiError{Code: 400, ErrCode: 10001}
+	ptrErr := &ApiError{Code: 404, ErrCode: 10014}
+
+	if !IsNatsError(valErr, 10001) {
+		t.Fatal("expected match on value ApiError")
+	}
+	if !IsNatsError(ptrErr, 10014) {
+		t.Fatal("expected match on pointer ApiError")
+	}
+	if IsNatsError(nil, 10001) {
+		t.Fatal("expected false for nil")
+	}
+	if IsNatsError(fmt.Errorf("other"), 10001) {
+		t.Fatal("expected false for non-ApiError")
+	}
+}
+
+func TestApiError(t *testing.T) {
+	// zero value
+	e := ApiError{}
+	if e.Error() != "unknown JetStream Error" {
+		t.Fatalf("unexpected error string: %s", e.Error())
+	}
+
+	// code only, no description
+	e = ApiError{Code: 503, ErrCode: 10008}
+	if e.Error() != "unknown JetStream 503 Error (10008)" {
+		t.Fatalf("unexpected error string: %s", e.Error())
+	}
+
+	// full error
+	e = ApiError{Code: 400, ErrCode: 10001, Description: "bad request"}
+	if e.Error() != "bad request (10001)" {
+		t.Fatalf("unexpected error string: %s", e.Error())
+	}
+
+	// NotFoundError
+	if e.NotFoundError() {
+		t.Fatal("400 should not be NotFoundError")
+	}
+	e.Code = 404
+	if !e.NotFoundError() {
+		t.Fatal("404 should be NotFoundError")
+	}
+
+	// ServerError
+	e.Code = 500
+	if !e.ServerError() {
+		t.Fatal("500 should be ServerError")
+	}
+	e.Code = 599
+	if !e.ServerError() {
+		t.Fatal("599 should be ServerError")
+	}
+	e.Code = 600
+	if e.ServerError() {
+		t.Fatal("600 should not be ServerError")
+	}
+
+	// UserError
+	e.Code = 400
+	if !e.UserError() {
+		t.Fatal("400 should be UserError")
+	}
+	e.Code = 499
+	if !e.UserError() {
+		t.Fatal("499 should be UserError")
+	}
+	e.Code = 500
+	if e.UserError() {
+		t.Fatal("500 should not be UserError")
+	}
+
+	// ErrorCode / NatsErrorCode
+	e = ApiError{Code: 400, ErrCode: 10001}
+	if e.ErrorCode() != 400 {
+		t.Fatalf("expected ErrorCode 400, got %d", e.ErrorCode())
+	}
+	if e.NatsErrorCode() != 10001 {
+		t.Fatalf("expected NatsErrorCode 10001, got %d", e.NatsErrorCode())
+	}
+}
+
+func TestJSApiResponse(t *testing.T) {
+	// no error
+	r := JSApiResponse{}
+	if r.IsError() {
+		t.Fatal("expected no error")
+	}
+	if r.ToError() != nil {
+		t.Fatal("expected nil error")
+	}
+
+	// with error
+	r = JSApiResponse{Error: &ApiError{Code: 400, ErrCode: 10001, Description: "bad"}}
+	if !r.IsError() {
+		t.Fatal("expected error")
+	}
+	err := r.ToError()
+	if err == nil {
+		t.Fatal("expected non-nil error")
+	}
+	if err.Error() != "bad (10001)" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLastPage(t *testing.T) {
+	// exact boundary
+	r := JSApiIterableResponse{Total: 10, Offset: 5, Limit: 5}
+	if !r.LastPage() {
+		t.Fatal("expected last page when offset+limit == total")
+	}
+
+	// past boundary
+	r = JSApiIterableResponse{Total: 10, Offset: 5, Limit: 10}
+	if !r.LastPage() {
+		t.Fatal("expected last page when offset+limit > total")
+	}
+
+	// not last page
+	r = JSApiIterableResponse{Total: 100, Offset: 0, Limit: 10}
+	if r.LastPage() {
+		t.Fatal("expected not last page")
+	}
+
+	// zero total is last page
+	r = JSApiIterableResponse{Total: 0, Offset: 0, Limit: 10}
+	if !r.LastPage() {
+		t.Fatal("expected last page when total is 0")
+	}
+
+	// env var override
+	t.Setenv("PAGE_TOTAL", "5")
+	r = JSApiIterableResponse{Total: 100, Offset: 0, Limit: 10}
+	if !r.LastPage() {
+		t.Fatal("expected last page with PAGE_TOTAL override")
 	}
 }

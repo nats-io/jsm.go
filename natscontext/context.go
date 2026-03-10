@@ -360,6 +360,7 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			wipeSlice(out)
 
 			userCB := func() (string, error) {
@@ -395,7 +396,7 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 	}
 
 	if c.Token() != "" {
-		nopts = append(nopts, nats.Token(expandHomedir(c.Token())))
+		nopts = append(nopts, nats.Token(c.Token()))
 	}
 
 	if c.Certificate() != "" && c.Key() != "" {
@@ -430,7 +431,7 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 }
 
 func (c *Context) parseWinCertStoreType(t string) (certstore.StoreType, error) {
-	storeTypeString := c.config.WinCertStoreType
+	storeTypeString := t
 	switch storeTypeString {
 	case "machine":
 		storeTypeString = "windowslocalmachine"
@@ -525,8 +526,12 @@ func (c *Context) loadActiveContext() error {
 		return err
 	}
 
-	// performing environment variable expansion for the path of the cerds.
-	c.config.Creds = os.ExpandEnv(c.config.Creds)
+	// Expand ~ and environment variables in all path fields.
+	c.config.Creds = expandHomedir(c.config.Creds)
+	c.config.NKey = expandHomedir(c.config.NKey)
+	c.config.Cert = expandHomedir(c.config.Cert)
+	c.config.Key = expandHomedir(c.config.Key)
+	c.config.CA = expandHomedir(c.config.CA)
 
 	if c.config.NSCLookup != "" {
 		err := c.resolveNscLookup()
@@ -579,6 +584,8 @@ func (c *Context) resolveNscLookup() error {
 }
 
 func expandHomedir(path string) string {
+	path = os.ExpandEnv(path)
+
 	if len(path) == 0 || path[0] != '~' {
 		return path
 	}
@@ -592,7 +599,7 @@ func expandHomedir(path string) string {
 }
 
 func validName(name string) bool {
-	return name != "" && !strings.Contains(name, "..") && !strings.Contains(name, string(os.PathSeparator))
+	return name != "" && !strings.Contains(name, "..") && !strings.ContainsAny(name, "/\\")
 }
 
 func numCreds(c *Context) int {

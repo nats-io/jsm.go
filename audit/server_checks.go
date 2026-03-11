@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -66,8 +66,8 @@ func RegisterServerChecks(collection *CheckCollection) error {
 		Check{
 			Code:        "SERVER_005",
 			Suite:       "server",
-			Name:        "Server Resources Limits ",
-			Description: "Resource are below a given threshold compared to the configured limit",
+			Name:        "Server Resources Limits",
+			Description: "Resources are below a given threshold compared to the configured limit",
 			Configuration: map[string]*CheckConfiguration{
 				"memory": {
 					Key:         "memory",
@@ -140,6 +140,11 @@ func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection
 			return err
 		}
 
+		if hz == nil || hz.Data == nil {
+			log.Warnf("Empty healthz response for server %s", serverTag)
+			return nil
+		}
+
 		if hz.Data.Status != "ok" && hz.Data.Status != "" {
 			examples.Add("%s: %d - %s", serverTag, hz.Data.StatusCode, hz.Data.Status)
 		}
@@ -208,6 +213,11 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 			return err
 		}
 
+		if vz.Data.Cores == 0 {
+			log.Warnf("Server %s reports zero cores, skipping CPU check", serverTag)
+			return nil
+		}
+
 		// Example: 350% usage with 4 cores => 87.5% averaged
 		averageCpuUtilization := vz.Data.CPU / float64(vz.Data.Cores)
 
@@ -247,7 +257,7 @@ func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 	}
 
 	if examples.Count() > 0 {
-		log.Errorf("Total slow consumers: %d", examples.Count())
+		log.Errorf("Found %d servers with slow consumers", examples.Count())
 		return PassWithIssues, nil
 	}
 
@@ -302,7 +312,7 @@ func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *E
 		}
 
 		// check if jetstream domain contains whitespace
-		if strings.ContainsAny(jsz.Data.Config.Domain, " \n") {
+		if strings.ContainsAny(jsz.Data.Config.Domain, " \t\r\n") {
 			examples.Add("Cluster %s Server %s Domain %s", clusterTag, serverTag, jsz.Data.Config.Domain)
 		}
 

@@ -139,6 +139,16 @@ func TestSERVER_003(t *testing.T) {
 			t.Errorf("expected result %v, got %v", Pass, result)
 		}
 	})
+
+	t.Run("Should skip server when Cores is zero", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_003", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{Data: &server.Varz{CPU: 999.0, Cores: 0}},
+		}, archive.TagServerVars())
+
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
 }
 
 func TestSERVER_004(t *testing.T) {
@@ -206,11 +216,13 @@ func TestSERVER_005(t *testing.T) {
 		result := setupServerCheck(t, "SERVER_005", map[string]any{
 			"n1": &server.ServerAPIJszResponse{
 				Data: &server.JSInfo{
+					Config: server.JetStreamConfig{
+						MaxMemory: 1000,
+						MaxStore:  1000,
+					},
 					JetStreamStats: server.JetStreamStats{
-						Memory:         500,
-						ReservedMemory: 1000,
-						Store:          500,
-						ReservedStore:  1000,
+						Memory: 500,
+						Store:  500,
 					},
 				},
 			},
@@ -296,6 +308,21 @@ func TestSERVER_008(t *testing.T) {
 		}
 	})
 
+	t.Run("Should fail when a certificate is already expired", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{
+					Now:             now,
+					TLSCertNotAfter: now.Add(-24 * time.Hour),
+				},
+			},
+		}, archive.TagServerVars())
+
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
 	t.Run("Should warn when a certificate expires within the warning threshold", func(t *testing.T) {
 		result := setupServerCheck(t, "SERVER_008", map[string]any{
 			"n1": &server.ServerAPIVarzResponse{
@@ -325,4 +352,80 @@ func TestSERVER_008(t *testing.T) {
 			t.Errorf("expected result %v, got %v", Pass, result)
 		}
 	})
+
+	t.Run("Should skip when no TLS certificates are present", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{Now: now},
+			},
+		}, archive.TagServerVars())
+
+		if result != Skipped {
+			t.Errorf("expected result %v, got %v", Skipped, result)
+		}
+	})
+
+	t.Run("Should fail when a cluster TLS certificate is expired", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{
+					Now: now,
+					Cluster: server.ClusterOptsVarz{
+						TLSCertNotAfter: now.Add(-1 * time.Hour),
+					},
+				},
+			},
+		}, archive.TagServerVars())
+
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
+	t.Run("Should fail when a gateway TLS certificate is expiring critically", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{
+					Now: now,
+					Gateway: server.GatewayOptsVarz{
+						TLSCertNotAfter: now.Add(24 * time.Hour),
+					},
+				},
+			},
+		}, archive.TagServerVars())
+
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
+	t.Run("Should warn when a leafnode TLS certificate is expiring soon", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_008", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{
+				Data: &server.Varz{
+					Now: now,
+					LeafNode: server.LeafNodeOptsVarz{
+						TLSCertNotAfter: now.Add(10 * 24 * time.Hour),
+					},
+				},
+			},
+		}, archive.TagServerVars())
+
+		if result != PassWithIssues {
+			t.Errorf("expected result %v, got %v", PassWithIssues, result)
+		}
+	})
+}
+
+func TestSERVER_Skipped(t *testing.T) {
+	checks := []string{"SERVER_001", "SERVER_002", "SERVER_003", "SERVER_004", "SERVER_005", "SERVER_006", "SERVER_007", "SERVER_008"}
+
+	for _, checkid := range checks {
+		t.Run("Empty archive skips "+checkid, func(t *testing.T) {
+			result := setupServerCheck(t, checkid, map[string]any{}, archive.TagServerVars())
+			if result != Pass && result != Skipped {
+				t.Errorf("expected Pass or Skipped for empty archive, got %v", result)
+			}
+		})
+	}
 }

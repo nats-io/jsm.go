@@ -219,15 +219,15 @@ func (g *gather) start() error {
 		// Add the output of this command (so far) to the archive as additional log artifact
 		err = g.aw.AddRaw(bytes.NewReader(g.capture.Bytes()), "log", archive.TagSpecial("audit_gather_log"))
 		if err != nil {
-			fmt.Printf("Failed to add capture log: %s\n", err)
+			g.log.Errorf("Failed to add capture log: %s", err)
 		}
 		g.capture.Reset()
 
 		err := g.aw.Close()
 		if err != nil {
-			fmt.Printf("Failed to close archive: %s\n", err)
+			g.log.Errorf("Failed to close archive: %s", err)
 		}
-		fmt.Printf("Archive created at: %s\n", target)
+		g.log.Infof("Archive created at: %s", target)
 	}()
 	g.aw.SetTime(ts)
 
@@ -285,7 +285,7 @@ func (g *gather) start() error {
 			}
 			err := g.captureAccountStreams(serverInfoMap, accountId, numServers)
 			if err != nil {
-				g.log.Errorf("Failed to capture streams for account %s: %v", accountId, err)
+				return fmt.Errorf("failed to capture streams for account %s: %w", accountId, err)
 			}
 		}
 	} else {
@@ -552,11 +552,10 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 			if profile.name == "cpu" {
 				payload.Duration = timeout
 				g.cfg.Timeout = timeout + 2*time.Second
-			} else {
-				g.cfg.Timeout = timeout
 			}
 
 			responses, err := g.doReq(context.TODO(), payload, subject, 1)
+			g.cfg.Timeout = timeout // restore regardless of profile type
 			if err != nil {
 				g.log.Errorf("Failed to request %v (%d) profile from server %s: %s", profile, profile.debug, serverName, err)
 				continue
@@ -585,6 +584,10 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 			}
 
 			profileStatus := apiResponse.Data
+			if profileStatus == nil {
+				g.log.Errorf("Missing profile data in response from server %s for profile %v", serverName, profile)
+				continue
+			}
 			if profileStatus.Error != "" {
 				g.log.Errorf("Failed to retrieve %v profile from server %s: %s", profile, serverName, profileStatus.Error)
 				continue
@@ -616,16 +619,11 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 	return nil
 }
 
-func (g *gather) hasNextPage(endpoint string, rawResponse []byte, pageLimit int) (bool, error) {
+func (g *gather) hasNextPage(endpoint string, decoded map[string]any, pageLimit int) (bool, error) {
 	jsonPath, pathKnown := endpointPagingInfo[endpoint]
 	if !pathKnown {
 		g.log.Debugf("no paging info configured for endpoint: %s", endpoint)
 		return false, nil
-	}
-
-	var decoded map[string]any
-	if err := json.Unmarshal(rawResponse, &decoded); err != nil {
-		return false, fmt.Errorf("unable to decode JSON response for %s: %v", endpoint, err)
 	}
 
 	currentNode := any(decoded)
@@ -740,13 +738,19 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				}
 
 				responseBytes := responses[0]
-				var apiResponse server.ServerAPIResponse
-				if err := json.Unmarshal(responseBytes, &apiResponse); err != nil {
+
+				// Decode once; reused for error check, pretty-print, and paging check
+				var decoded map[string]any
+				if err := json.Unmarshal(responseBytes, &decoded); err != nil {
 					g.log.Errorf("Failed to deserialize %s response from server %s: %s", endpoint.ApiSuffix, serverName, err)
 					break
 				}
-				if apiResponse.Error != nil {
-					g.log.Errorf("Received error from server %s: (%d) %s", serverName, apiResponse.Error.ErrCode, apiResponse.Error.Description)
+				if errField := decoded["error"]; errField != nil {
+					if errMap, ok := errField.(map[string]any); ok {
+						code, _ := errMap["err_code"].(float64)
+						desc, _ := errMap["description"].(string)
+						g.log.Errorf("Received error from server %s: (%d) %s", serverName, int(code), desc)
+					}
 					break
 				}
 
@@ -773,11 +777,16 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				}
 				capturedCount++
 
-				g.log.Debugf("Checking paging for endpoint %s", endpoint.ApiSuffix)
-				hasMore, err := g.hasNextPage(endpoint.ApiSuffix, responseBytes, pageLimit)
+				// Only paginate when pagination options were actually sent with the request;
+				// if opts is nil no offset/limit was included and re-requesting would loop forever.
+				if opts == nil {
+					break
+				}
 
+				g.log.Debugf("Checking paging for endpoint %s", endpoint.ApiSuffix)
+				hasMore, err := g.hasNextPage(endpoint.ApiSuffix, decoded, pageLimit)
 				if err != nil {
-					return fmt.Errorf("failed to add endpoint %s response to archive: %w", subject, err)
+					return fmt.Errorf("failed to check pagination for endpoint %s: %w", subject, err)
 				}
 				if !hasMore {
 					break
@@ -920,14 +929,9 @@ func (g *gather) doReqAsync(ctx context.Context, req any, subj string, waitFor i
 	var err error
 
 	if req != nil {
-		switch val := req.(type) {
-		case string:
-			jreq = []byte(val)
-		default:
-			jreq, err = json.Marshal(req)
-			if err != nil {
-				return err
-			}
+		jreq, err = json.Marshal(req)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -957,7 +961,7 @@ func (g *gather) doReqAsync(ctx context.Context, req any, subj string, waitFor i
 		}()
 	}
 
-	errs := make(chan error)
+	errs := make(chan error, 1)
 	sub, err := g.nc.Subscribe(g.nc.NewRespInbox(), func(m *nats.Msg) {
 		mu.Lock()
 		defer mu.Unlock()

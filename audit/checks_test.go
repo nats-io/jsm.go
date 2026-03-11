@@ -81,7 +81,7 @@ func TestRegister_RequiredFields(t *testing.T) {
 	base := stubCheck("TST_001", "test", "Test One", Pass)
 
 	cases := []struct {
-		name  string
+		name   string
 		mutate func(*Check)
 	}{
 		{"missing code", func(c *Check) { c.Code = "" }},

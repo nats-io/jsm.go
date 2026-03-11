@@ -64,7 +64,7 @@ func (c *CheckConfiguration) String() string {
 }
 
 // validateUnitValue checks that f satisfies the numeric constraints for unit.
-// Returns nil for an empty unit (no constraint) and for unrecognised units.
+// Returns nil for an empty unit (no constraint) and for unrecognized units.
 func validateUnitValue(unit ConfigurationUnit, f float64) error {
 	switch unit {
 	case PercentageUnit:
@@ -92,7 +92,7 @@ func validateUnitValue(unit ConfigurationUnit, f float64) error {
 // Set parses v, validates it against the unit constraints, and stores the result.
 // Supports fisk.
 func (c *CheckConfiguration) Set(v string) error {
-	// Reject non-empty unit values that are not recognised.
+	// Reject non-empty unit values that are not recognized.
 	switch c.Unit {
 	case PercentageUnit, UIntUnit, IntUnit, "":
 	default:

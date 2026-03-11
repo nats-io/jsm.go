@@ -1,4 +1,4 @@
-// Copyright 2025 The NATS Authors
+// Copyright 2025-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,9 +16,10 @@ package audit
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
-	"slices"
 	"sort"
+	"strings"
 	"text/template"
 	"time"
 
@@ -37,7 +38,7 @@ type Analysis struct {
 	Outcomes      map[string]int        `json:"outcomes"`
 }
 
-var MarkdownFormatTemplate = `# NATS Audit Report produced {{ .Timestamp | ft}}
+const MarkdownFormatTemplate = `# NATS Audit Report produced {{ .Timestamp | ft}}
 
 ## Connection Details
 
@@ -62,15 +63,17 @@ Report generated using archive from **{{.Metadata.ConnectURL}}** by **{{.Metadat
 
 Outcome: **{{ .OutcomeString }}**
 {{     if .Examples.Examples }}
-|Count|Example|
-|-----|-------|
+|#|Example|
+|-|-------|
 {{       range $index, $example := (.Examples.Examples | limitStrings ) -}}
-|{{ $index }}|{{ $example }}|
+|{{ add1 $index }}|{{ $example | escapeMarkdown }}|
 {{        end -}}
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
 `
+
+const analysisType = "io.nats.audit.v1.analysis"
 
 // LoadAnalysis loads an analysis report from a file
 func LoadAnalysis(path string) (*Analysis, error) {
@@ -79,13 +82,16 @@ func LoadAnalysis(path string) (*Analysis, error) {
 		return nil, err
 	}
 
-	analyzes := Analysis{}
-	err = json.Unmarshal(ab, &analyzes)
-	if err != nil {
+	result := Analysis{}
+	if err = json.Unmarshal(ab, &result); err != nil {
 		return nil, err
 	}
 
-	return &analyzes, nil
+	if result.Type != analysisType {
+		return nil, fmt.Errorf("unexpected analysis type %q", result.Type)
+	}
+
+	return &result, nil
 }
 
 // ToJSON renders the report in JSON format
@@ -93,12 +99,18 @@ func (a *Analysis) ToJSON() ([]byte, error) {
 	return json.MarshalIndent(a, "", "   ")
 }
 
-// ToMarkdown produce a markdown report with examples limited to limitExamples (0 for unlimited)
+// ToMarkdown produces a markdown report with examples limited to limitExamples (0 for unlimited)
 func (a *Analysis) ToMarkdown(templ string, limitExamples uint) ([]byte, error) {
+	if templ == "" {
+		return nil, fmt.Errorf("template must not be empty")
+	}
+
 	t, err := template.New("report.md").Funcs(template.FuncMap{
-		"ft":         func(t time.Time) string { return t.Format(time.RFC822Z) },
-		"bySuite":    resultsBySuite,
-		"suiteNames": suiteNames,
+		"ft":             func(t time.Time) string { return t.Format(time.RFC822Z) },
+		"bySuite":        resultsBySuite,
+		"suiteNames":     suiteNames,
+		"add1":           func(i int) int { return i + 1 },
+		"escapeMarkdown": func(s string) string { return strings.ReplaceAll(s, "|", `\|`) },
 		"limitStrings": func(a []string) []string {
 			if limitExamples == 0 || uint(len(a)) < limitExamples {
 				return a
@@ -111,8 +123,7 @@ func (a *Analysis) ToMarkdown(templ string, limitExamples uint) ([]byte, error) 
 	}
 
 	out := &bytes.Buffer{}
-	err = t.Execute(out, a)
-	if err != nil {
+	if err = t.Execute(out, a); err != nil {
 		return nil, err
 	}
 
@@ -123,6 +134,12 @@ func resultsBySuite(a *Analysis) map[string][]CheckResult {
 	suites := map[string][]CheckResult{}
 	for _, result := range a.Results {
 		suites[result.Check.Suite] = append(suites[result.Check.Suite], result)
+	}
+
+	for suite := range suites {
+		sort.Slice(suites[suite], func(i, j int) bool {
+			return suites[suite][i].Check.Code < suites[suite][j].Check.Code
+		})
 	}
 
 	return suites
@@ -137,5 +154,5 @@ func suiteNames(a *Analysis) []string {
 	names := maps.Keys(suites)
 	sort.Strings(names)
 
-	return slices.Compact(names)
+	return names
 }

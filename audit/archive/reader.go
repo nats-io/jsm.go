@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -47,6 +47,9 @@ type Reader struct {
 	streamServerNames   map[string][]string
 	ts                  *time.Time
 	invertedIndex       map[Tag][]string
+	// Warnings holds non-fatal issues detected while opening the archive,
+	// such as files present in the ZIP but absent from the manifest.
+	Warnings []string
 }
 
 type AuditMetadata struct {
@@ -91,6 +94,7 @@ func (r *Reader) loadFile(name string, v any) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	decoder := json.NewDecoder(f)
 	err = decoder.Decode(v)
 	if err != nil {
@@ -189,10 +193,11 @@ func NewReader(archivePath string) (*Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to compose expected manifest path: %w", err)
 	}
+	var warnings []string
 	for filePath := range filesMap {
 		_, present := manifestMap[filePath]
 		if filePath != manifestFilePath && !present {
-			fmt.Printf("Warning: archive file %s is not present in manifest\n", filePath)
+			warnings = append(warnings, fmt.Sprintf("archive file %s is not present in manifest", filePath))
 		}
 	}
 
@@ -265,15 +270,16 @@ func NewReader(archivePath string) (*Reader, error) {
 				tags = append(tags, tag)
 			}
 		}
+		var sortErr error
 		slices.SortFunc(tags, func(a, b Tag) int {
 			if a.Name != b.Name {
 				// Fallback to consistent ordering just in case
-				err = fmt.Errorf("unexpected comparison between different tags")
+				sortErr = fmt.Errorf("unexpected comparison between different tags")
 				return strings.Compare(string(a.Name), string(b.Name))
 			}
 			return strings.Compare(a.Value, b.Value)
 		})
-		return tags, err
+		return tags, sortErr
 	}
 
 	accountTags, err := getUniqueTags(accountTagLabel)
@@ -311,6 +317,7 @@ func NewReader(archivePath string) (*Reader, error) {
 		streamServerNames:   streamsServers,
 		ts:                  &manifestFile.Modified,
 		invertedIndex:       invertedIndex,
+		Warnings:            warnings,
 	}
 
 	return reader, nil

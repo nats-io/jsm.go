@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -498,7 +498,154 @@ func Test_IterateResourcesUsingTags(t *testing.T) {
 	}
 }
 
-// TODO test writer overwrites existing file
-// TODO test creation in non-existing directory fails
-// TODO test adding twice a file with the same name (or tags)
-// TODO test with non-unique server name in different clusters
+func Test_WriterOverwritesExistingFile(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "archive.zip")
+
+	// Write first archive with one artifact
+	aw1, err := NewWriter(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to create first archive: %s", err)
+	}
+	type Record struct{ Value string }
+	err = aw1.Add(Record{"first"}, TagCluster("C1"), TagServer("S1"), TagServerHealth())
+	if err != nil {
+		t.Fatalf("Failed to add to first archive: %s", err)
+	}
+	if err = aw1.Close(); err != nil {
+		t.Fatalf("Failed to close first archive: %s", err)
+	}
+
+	// Write second archive at same path with a different artifact
+	aw2, err := NewWriter(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to create second archive at same path: %s", err)
+	}
+	err = aw2.Add(Record{"second"}, TagCluster("C2"), TagServer("S2"), TagServerVars())
+	if err != nil {
+		t.Fatalf("Failed to add to second archive: %s", err)
+	}
+	if err = aw2.Close(); err != nil {
+		t.Fatalf("Failed to close second archive: %s", err)
+	}
+
+	ar, err := NewReader(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to open overwritten archive: %s", err)
+	}
+	defer ar.Close()
+
+	// The second archive should have C2/S2 but not C1/S1
+	if names := ar.ClusterNames(); len(names) != 1 || names[0] != "C2" {
+		t.Fatalf("Expected only cluster C2 after overwrite, got: %v", names)
+	}
+
+	var r Record
+	if err = ar.Load(&r, TagCluster("C2"), TagServer("S2"), TagServerVars()); err != nil {
+		t.Fatalf("Failed to load artifact from overwritten archive: %s", err)
+	}
+	if r.Value != "second" {
+		t.Fatalf("Expected value 'second', got: %s", r.Value)
+	}
+}
+
+func Test_WriterCreationInNonExistingDirectoryFails(t *testing.T) {
+	nonExistentDir := filepath.Join(t.TempDir(), "does", "not", "exist")
+	_, err := NewWriter(filepath.Join(nonExistentDir, "archive.zip"))
+	if err == nil {
+		t.Fatal("Expected error when creating archive in non-existent directory, got nil")
+	}
+}
+
+func Test_AddSameTagsTwiceProducesTwoPages(t *testing.T) {
+	type Record struct{ Value string }
+
+	archivePath := filepath.Join(t.TempDir(), "archive.zip")
+	aw, err := NewWriter(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to create archive: %s", err)
+	}
+
+	tags := []*Tag{TagCluster("C1"), TagServer("S1"), TagServerHealth()}
+	if err = aw.Add(Record{"first"}, tags...); err != nil {
+		t.Fatalf("Failed to add first artifact: %s", err)
+	}
+	if err = aw.Add(Record{"second"}, tags...); err != nil {
+		t.Fatalf("Failed to add second artifact: %s", err)
+	}
+	if err = aw.Close(); err != nil {
+		t.Fatalf("Failed to close archive: %s", err)
+	}
+
+	ar, err := NewReader(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to open archive: %s", err)
+	}
+	defer ar.Close()
+
+	var seen []string
+	err = ForEachTaggedArtifact(ar, tags, func(r *Record) error {
+		seen = append(seen, r.Value)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("ForEachTaggedArtifact failed: %s", err)
+	}
+	if len(seen) != 2 {
+		t.Fatalf("Expected 2 entries from duplicate tags, got %d: %v", len(seen), seen)
+	}
+	if seen[0] != "first" || seen[1] != "second" {
+		t.Fatalf("Unexpected order or values: %v", seen)
+	}
+}
+
+func Test_NonUniqueServerNameAcrossClusters(t *testing.T) {
+	type Record struct{ Cluster, Server string }
+
+	archivePath := filepath.Join(t.TempDir(), "archive.zip")
+	aw, err := NewWriter(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to create archive: %s", err)
+	}
+
+	// Same server name "s1" exists in both C1 and C2
+	for _, pair := range []struct{ cluster, server string }{
+		{"C1", "s1"},
+		{"C2", "s1"},
+	} {
+		if err = aw.Add(
+			Record{pair.cluster, pair.server},
+			TagCluster(pair.cluster),
+			TagServer(pair.server),
+			TagServerHealth(),
+		); err != nil {
+			t.Fatalf("Failed to add artifact for %s/%s: %s", pair.cluster, pair.server, err)
+		}
+	}
+	if err = aw.Close(); err != nil {
+		t.Fatalf("Failed to close archive: %s", err)
+	}
+
+	ar, err := NewReader(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to open archive: %s", err)
+	}
+	defer ar.Close()
+
+	if names := ar.ClusterNames(); len(names) != 2 {
+		t.Fatalf("Expected 2 clusters, got: %v", names)
+	}
+	for _, cluster := range []string{"C1", "C2"} {
+		servers := ar.ClusterServerNames(cluster)
+		if len(servers) != 1 || servers[0] != "s1" {
+			t.Fatalf("Cluster %s: expected server [s1], got: %v", cluster, servers)
+		}
+
+		var r Record
+		if err = ar.Load(&r, TagCluster(cluster), TagServer("s1"), TagServerHealth()); err != nil {
+			t.Fatalf("Failed to load artifact for %s/s1: %s", cluster, err)
+		}
+		if r.Cluster != cluster || r.Server != "s1" {
+			t.Fatalf("Cluster %s: unexpected record %+v", cluster, r)
+		}
+	}
+}

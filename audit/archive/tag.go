@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,6 +19,21 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+// validatePathComponent rejects values that would escape the intended directory tree.
+// Tag values are used verbatim in file paths, so they must be safe single-component names.
+// filepath.IsLocal rejects empty values, absolute paths, and traversal sequences (e.g. "..").
+// The ContainsAny check additionally rejects embedded separators so that a value cannot span
+// multiple path segments (filepath.IsLocal allows relative multi-segment paths like "a/b").
+func validatePathComponent(label, value string) error {
+	if !filepath.IsLocal(value) {
+		return fmt.Errorf("tag %q value %q is not a valid path component", label, value)
+	}
+	if strings.ContainsAny(value, "/\\") {
+		return fmt.Errorf("tag %q value %q must not contain path separators", label, value)
+	}
+	return nil
+}
 
 type TagLabel string
 
@@ -91,7 +106,14 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		return "", fmt.Errorf("at least one tag is required")
 	}
 
+	if err := validatePathComponent("extension", extension); err != nil {
+		return "", err
+	}
+
 	if len(tags) == 1 && tags[0].Name == specialTagLabel {
+		if err := validatePathComponent(string(specialTagLabel), tags[0].Value); err != nil {
+			return "", err
+		}
 		// Special-tagged go into a special subdirectory
 		return path.Join(
 			rootDirectory,
@@ -147,6 +169,26 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 	} {
 		if !hasRequiredTag {
 			return "", fmt.Errorf("missing required tag: %s", requiredTagName)
+		}
+	}
+
+	// Validate all dimension tag values that will appear in paths
+	for _, check := range []struct {
+		label   TagLabel
+		tag     *Tag
+		present bool
+	}{
+		{accountTagLabel, accountTag, hasAccountTag},
+		{clusterTagLabel, clusterTag, hasClusterTag},
+		{serverTagLabel, serverTag, hasServerTag},
+		{streamTagLabel, streamTag, hasStreamTag},
+		{typeTagLabel, typeTag, hasTypeTag},
+		{profileNameTagLabel, profileNameTag, hasProfileNameTag},
+	} {
+		if check.present {
+			if err := validatePathComponent(string(check.label), check.tag.Value); err != nil {
+				return "", err
+			}
 		}
 	}
 

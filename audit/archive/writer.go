@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -37,33 +37,34 @@ type Writer struct {
 
 // Close closes the writer
 func (w *Writer) Close() error {
+	var firstErr error
+
 	// Add manifest file to archive before closing it
 	if w.zipWriter != nil && w.fileWriter != nil {
-		err := w.Add(w.manifestMap, internalTagManifest())
-		if err != nil {
-			return fmt.Errorf("failed to add manifest: %w", err)
+		if err := w.Add(w.manifestMap, internalTagManifest()); err != nil {
+			firstErr = fmt.Errorf("failed to add manifest: %w", err)
 		}
 	}
 
-	// Close and null the zip writer
+	// Close and null the zip writer, always, even if manifest write failed
 	if w.zipWriter != nil {
 		err := w.zipWriter.Close()
 		w.zipWriter = nil
-		if err != nil {
-			return fmt.Errorf("failed to close archive zip writer: %w", err)
+		if err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("failed to close archive zip writer: %w", err)
 		}
 	}
 
-	// Close and null the file writer
+	// Close and null the file writer, always
 	if w.fileWriter != nil {
 		err := w.fileWriter.Close()
 		w.fileWriter = nil
-		if err != nil {
-			return fmt.Errorf("failed to close archive file writer: %w", err)
+		if err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("failed to close archive file writer: %w", err)
 		}
 	}
 
-	return nil
+	return firstErr
 }
 
 // addArtifact low-level API that adds bytes without adding to the index, used for special files

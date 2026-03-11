@@ -60,12 +60,54 @@ func setupLeafCheck(t *testing.T, checkid string, artifacts map[string]any, tag 
 }
 
 func TestLEAF_001(t *testing.T) {
-	t.Run("Should fail when a leafnode has whitespace in its name", func(t *testing.T) {
+	t.Run("Should fail when a leafnode has a space in its name", func(t *testing.T) {
 		result := setupLeafCheck(t, "LEAF_001", map[string]any{
 			"s1": &server.ServerAPILeafzResponse{Data: &server.Leafz{
 				Leafs: []*server.LeafInfo{
 					{Name: "foo bar"},
 					{Name: "ok"},
+				},
+			}},
+		}, archive.TagServerLeafs())
+
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
+	t.Run("Should fail when a leafnode name contains a newline", func(t *testing.T) {
+		result := setupLeafCheck(t, "LEAF_001", map[string]any{
+			"s1": &server.ServerAPILeafzResponse{Data: &server.Leafz{
+				Leafs: []*server.LeafInfo{
+					{Name: "foo\nbar"},
+				},
+			}},
+		}, archive.TagServerLeafs())
+
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
+	t.Run("Should fail when a leafnode name contains a tab", func(t *testing.T) {
+		result := setupLeafCheck(t, "LEAF_001", map[string]any{
+			"s1": &server.ServerAPILeafzResponse{Data: &server.Leafz{
+				Leafs: []*server.LeafInfo{
+					{Name: "foo\tbar"},
+				},
+			}},
+		}, archive.TagServerLeafs())
+
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
+	t.Run("Should fail when a leafnode name contains a carriage return", func(t *testing.T) {
+		result := setupLeafCheck(t, "LEAF_001", map[string]any{
+			"s1": &server.ServerAPILeafzResponse{Data: &server.Leafz{
+				Leafs: []*server.LeafInfo{
+					{Name: "foo\rbar"},
 				},
 			}},
 		}, archive.TagServerLeafs())
@@ -84,6 +126,24 @@ func TestLEAF_001(t *testing.T) {
 				},
 			}},
 		}, archive.TagServerLeafs())
+
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+
+	t.Run("Should pass when leafz data is nil", func(t *testing.T) {
+		result := setupLeafCheck(t, "LEAF_001", map[string]any{
+			"s1": &server.ServerAPILeafzResponse{},
+		}, archive.TagServerLeafs())
+
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+
+	t.Run("Should pass for an empty archive", func(t *testing.T) {
+		result := setupLeafCheck(t, "LEAF_001", map[string]any{}, archive.TagServerLeafs())
 
 		if result != Pass {
 			t.Errorf("expected result %v, got %v", Pass, result)

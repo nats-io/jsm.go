@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package audit
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/nats-io/jsm.go/api"
@@ -34,6 +35,7 @@ func RegisterLeafnodeChecks(collection *CheckCollection) error {
 	)
 }
 
+// checkLeafnodeServerNamesForWhitespace verifies that no leafnode connection has whitespace in its name
 func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	for _, clusterName := range r.ClusterNames() {
 		clusterTag := archive.TagCluster(clusterName)
@@ -51,7 +53,7 @@ func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples
 
 				for _, leaf := range resp.Data.Leafs {
 					// check if leafnode name contains whitespace
-					if strings.ContainsAny(leaf.Name, " \n") {
+					if strings.ContainsAny(leaf.Name, " \t\r\n") {
 						leafnodesWithWhitespace[leaf.Name] = struct{}{}
 					}
 				}
@@ -60,8 +62,7 @@ func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples
 			})
 
 			if err != nil {
-				log.Warnf("Failed to read leafz for server %s: %v", serverName, err)
-				continue
+				return Skipped, fmt.Errorf("failed to read leafz for server %s: %w", serverName, err)
 			}
 		}
 

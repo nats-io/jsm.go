@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,12 +19,13 @@ import (
 )
 
 // ExamplesCollection stores examples of issues found by a check as it scans entities in an archive.
-// A limit can be passed to avoid accumulating hundreds of example.
+// A limit can be passed to avoid accumulating hundreds of examples.
 // After the limit is reached, further examples are just counted but not stored.
 type ExamplesCollection struct {
 	Examples []string `json:"examples,omitempty"`
-	Error    string   `json:"error"`
+	Error    string   `json:"error,omitempty"`
 	Limit    uint     `json:"-"`
+	overflow int
 }
 
 // newExamplesCollection creates a new empty collection of examples.
@@ -36,42 +37,51 @@ func newExamplesCollection(limit uint) *ExamplesCollection {
 	}
 }
 
-// Add adds a example issue to the collection
+// Add adds an example issue to the collection.
+// If a non-zero Limit is set and already reached, the example is counted but not stored.
 func (c *ExamplesCollection) Add(format string, a ...any) {
+	if c == nil {
+		return
+	}
+	if c.Limit > 0 && len(c.Examples) >= int(c.Limit) {
+		c.overflow++
+		return
+	}
 	c.Examples = append(c.Examples, fmt.Sprintf(format, a...))
 }
 
-// Clear removes all added examples
+// Clear removes all stored examples and resets the overflow counter.
 func (c *ExamplesCollection) Clear() {
+	if c == nil {
+		return
+	}
 	c.Examples = []string{}
+	c.overflow = 0
 }
 
-// Count the number of examples added to this collection (including the omitted ones)
+// Count returns the total number of examples added to this collection, including those not stored due to the limit.
 func (c *ExamplesCollection) Count() int {
 	if c == nil {
 		return 0
 	}
 
-	return len(c.Examples)
+	return len(c.Examples) + c.overflow
 }
 
 // String produces a multi-line string with one example per line.
 // If more examples were added than the limit, an extra line is printed with the number of omitted examples.
 func (c *ExamplesCollection) String() string {
-	examples := c.Examples[:]
-	omitted := 0
-	if c.Limit > 0 && len(c.Examples) > int(c.Limit) {
-		examples = examples[:c.Limit]
-		omitted = len(c.Examples) - len(examples)
+	if c == nil {
+		return ""
 	}
 
 	b := &strings.Builder{}
-	for _, example := range examples {
+	for _, example := range c.Examples {
 		b.WriteString(fmt.Sprintf(" - %s\n", example))
 	}
 
-	if omitted > 0 {
-		b.WriteString(fmt.Sprintf(" - ... and %d more ...\n", omitted))
+	if c.overflow > 0 {
+		b.WriteString(fmt.Sprintf(" - ... and %d more ...\n", c.overflow))
 	}
 
 	return b.String()

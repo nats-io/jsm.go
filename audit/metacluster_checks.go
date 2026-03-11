@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -72,18 +72,19 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 			})
 
 			if err != nil {
-				log.Warnf("Failed to read JSZ for server %s: %v", serverName, err)
-				continue
+				return Skipped, fmt.Errorf("error reading JSZ for %s/%s: %w", clusterName, serverName, err)
 			}
 		}
 
-		if len(leaderFollowers) > 1 {
+		if _, noLeader := leaderFollowers["NO_LEADER"]; noLeader {
+			examples.Add("Members of %s have no meta leader", clusterName)
+		} else if len(leaderFollowers) > 1 {
 			examples.Add("Members of %s disagree on meta leader (%v)", clusterName, leaderFollowers)
 		}
 	}
 
 	if examples.Count() > 0 {
-		log.Errorf("Found %d instance of replicas disagreeing on meta-cluster leader", examples.Count())
+		log.Errorf("Found %d instances of replicas disagreeing on meta-cluster leader", examples.Count())
 		return Fail, nil
 	}
 
@@ -126,7 +127,7 @@ func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *Exam
 	}
 
 	if examples.Count() > 0 {
-		log.Errorf("Found %d instance of replicas marked offline by peers", examples.Count())
+		log.Errorf("Found %d instances of replicas marked offline by peers", examples.Count())
 		return Fail, nil
 	}
 

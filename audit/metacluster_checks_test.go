@@ -10,6 +10,7 @@ import (
 )
 
 func setupMetaCheck(t *testing.T, checkid string, artifacts map[string]any) Outcome {
+	t.Helper()
 	tmp := t.TempDir()
 	archivePath := filepath.Join(tmp, "audit.zip")
 
@@ -93,6 +94,28 @@ func TestMETA_001(t *testing.T) {
 			t.Errorf("expected result %v, got %v", Pass, result)
 		}
 	})
+
+	t.Run("Should pass when JetStream is disabled", func(t *testing.T) {
+		result := setupMetaCheck(t, "META_001", map[string]any{
+			"s1": &server.ServerAPIJszResponse{
+				Data: &server.JSInfo{Disabled: true},
+			},
+		})
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+
+	t.Run("Should pass when meta group info is absent", func(t *testing.T) {
+		result := setupMetaCheck(t, "META_001", map[string]any{
+			"s1": &server.ServerAPIJszResponse{
+				Data: &server.JSInfo{},
+			},
+		})
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
 }
 
 func TestMETA_002(t *testing.T) {
@@ -125,6 +148,46 @@ func TestMETA_002(t *testing.T) {
 				Data: &server.JSInfo{
 					Meta: &server.MetaClusterInfo{Leader: "s1"},
 				},
+			},
+		})
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+
+	t.Run("Should fail when there is no meta leader", func(t *testing.T) {
+		result := setupMetaCheck(t, "META_002", map[string]any{
+			"s1": &server.ServerAPIJszResponse{
+				Data: &server.JSInfo{
+					Meta: &server.MetaClusterInfo{Leader: ""},
+				},
+			},
+			"s2": &server.ServerAPIJszResponse{
+				Data: &server.JSInfo{
+					Meta: &server.MetaClusterInfo{Leader: ""},
+				},
+			},
+		})
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+	})
+
+	t.Run("Should pass when JetStream is disabled", func(t *testing.T) {
+		result := setupMetaCheck(t, "META_002", map[string]any{
+			"s1": &server.ServerAPIJszResponse{
+				Data: &server.JSInfo{Disabled: true},
+			},
+		})
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+
+	t.Run("Should pass when meta group info is absent", func(t *testing.T) {
+		result := setupMetaCheck(t, "META_002", map[string]any{
+			"s1": &server.ServerAPIJszResponse{
+				Data: &server.JSInfo{},
 			},
 		})
 		if result != Pass {

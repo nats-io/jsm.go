@@ -21,6 +21,12 @@ import (
 	"github.com/nats-io/jsm.go/monitor"
 )
 
+// streamWithConsumers extends StreamInfo with consumer detail as gathered by the audit tool.
+type streamWithConsumers struct {
+	api.StreamInfo
+	ConsumerDetail []api.ConsumerInfo `json:"consumer_detail"`
+}
+
 func RegisterJetStreamChecks(collection *CheckCollection) error {
 	return collection.Register(
 		Check{
@@ -109,7 +115,6 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 
 	accountsWithStreams := make(map[string]any)
 	streamsInspected := make(map[string]any)
-	laggingReplicas := 0
 
 	for _, accountName := range accountNames {
 		accountTag := archive.TagAccount(accountName)
@@ -171,7 +176,6 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 					lastSeq := streamDetail.State.LastSeq
 					if lastSeq < threshold {
 						examples.Add("%s/%s server %s lastSequence: %d is behind highest lastSequence: %d on server: %s", accountName, streamName, serverName, lastSeq, highestLastSeq, highestLastSeqServer)
-						laggingReplicas += 1
 					}
 				}
 			}
@@ -180,8 +184,8 @@ func checkStreamLaggingReplicas(check *Check, r *archive.Reader, examples *Examp
 
 	log.Infof("Inspected %d streams across %d accounts", len(streamsInspected), len(accountsWithStreams))
 
-	if laggingReplicas > 0 {
-		log.Errorf("Found %d replicas lagging >%.0f%% behind", laggingReplicas, lastSequenceLagThreshold)
+	if examples.Count() > 0 {
+		log.Errorf("Found %d replicas lagging >%.0f%% behind", examples.Count(), lastSequenceLagThreshold)
 		return Fail, nil
 	}
 
@@ -218,7 +222,7 @@ func checkStreamHighCardinality(check *Check, r *archive.Reader, examples *Examp
 	}
 
 	if examples.Count() > 0 {
-		log.Errorf("Found %d streams with subjects cardinality exceeding %f", examples.Count(), numSubjectsThreshold)
+		log.Errorf("Found %d streams with subjects cardinality exceeding %.0f", examples.Count(), numSubjectsThreshold)
 		return PassWithIssues, nil
 	}
 
@@ -370,11 +374,6 @@ func checkStreamMetadataMonitoring(_ *Check, r *archive.Reader, examples *Exampl
 func checkConsumerMetadataMonitoring(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	streamDetailsTag := archive.TagStreamInfo()
 	var foundCrit bool
-
-	type streamWithConsumers struct {
-		api.StreamInfo
-		ConsumerDetail []api.ConsumerInfo `json:"consumer_detail"`
-	}
 
 	for _, accountName := range r.AccountNames() {
 		accountTag := archive.TagAccount(accountName)

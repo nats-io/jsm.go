@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -118,6 +118,9 @@ func (c *CheckCollection) Register(checks ...Check) error {
 			}
 			if cfg.Description == "" {
 				return fmt.Errorf("configuration description is required")
+			}
+			if err := cfg.validateDefault(); err != nil {
+				return fmt.Errorf("invalid default for config %q in check %q: %w", cfg.Key, check.Code, err)
 			}
 
 			cfg.Check = check.Code

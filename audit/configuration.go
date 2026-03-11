@@ -63,58 +63,55 @@ func (c *CheckConfiguration) String() string {
 	return humanize.Commaf(c.Value())
 }
 
+// validateUnitValue checks that f satisfies the numeric constraints for unit.
+// Returns nil for an empty unit (no constraint) and for unrecognised units.
+func validateUnitValue(unit ConfigurationUnit, f float64) error {
+	switch unit {
+	case PercentageUnit:
+		if f < 0 {
+			return fmt.Errorf("percentage values must be non-negative")
+		}
+		if f > 100 {
+			return fmt.Errorf("percentage values may not exceed 100")
+		}
+	case UIntUnit:
+		if f < 0 {
+			return fmt.Errorf("value must be non-negative")
+		}
+		if f != math.Trunc(f) {
+			return fmt.Errorf("value must be a whole number")
+		}
+	case IntUnit:
+		if f != math.Trunc(f) {
+			return fmt.Errorf("value must be a whole number")
+		}
+	}
+	return nil
+}
+
 // Set parses v, validates it against the unit constraints, and stores the result.
 // Supports fisk.
 func (c *CheckConfiguration) Set(v string) error {
-	var f float64
-
+	// Reject non-empty unit values that are not recognised.
 	switch c.Unit {
-	case PercentageUnit:
-		val, err := strconv.ParseFloat(strings.TrimSuffix(v, "%"), 64)
-		if err != nil {
-			return err
-		}
-		if val < 0 {
-			return fmt.Errorf("percentage values must be non-negative")
-		}
-		if val > 100 {
-			return fmt.Errorf("percentage values may not exceed 100")
-		}
-		f = val
-
-	case UIntUnit:
-		val, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return err
-		}
-		if val < 0 {
-			return fmt.Errorf("value must be non-negative")
-		}
-		if val != math.Trunc(val) {
-			return fmt.Errorf("value must be a whole number")
-		}
-		f = val
-
-	case IntUnit:
-		val, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return err
-		}
-		if val != math.Trunc(val) {
-			return fmt.Errorf("value must be a whole number")
-		}
-		f = val
-
+	case PercentageUnit, UIntUnit, IntUnit, "":
 	default:
-		if c.Unit != "" {
-			return fmt.Errorf("unknown configuration unit %q", c.Unit)
-		}
-		// No unit set: accept any float without additional constraints.
-		val, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return err
-		}
-		f = val
+		return fmt.Errorf("unknown configuration unit %q", c.Unit)
+	}
+
+	// Strip the optional "%" suffix only for percentage values.
+	input := v
+	if c.Unit == PercentageUnit {
+		input = strings.TrimSuffix(v, "%")
+	}
+
+	f, err := strconv.ParseFloat(input, 64)
+	if err != nil {
+		return err
+	}
+
+	if err := validateUnitValue(c.Unit, f); err != nil {
+		return err
 	}
 
 	c.SetValue = &f
@@ -129,25 +126,5 @@ func (c *CheckConfiguration) SetVal(s fisk.Settings) {
 // validateDefault checks that the Default value satisfies the unit's own constraints.
 // It is called by Register to catch misconfigured check definitions early.
 func (c *CheckConfiguration) validateDefault() error {
-	switch c.Unit {
-	case PercentageUnit:
-		if c.Default < 0 {
-			return fmt.Errorf("default percentage value must be non-negative")
-		}
-		if c.Default > 100 {
-			return fmt.Errorf("default percentage value may not exceed 100")
-		}
-	case UIntUnit:
-		if c.Default < 0 {
-			return fmt.Errorf("default value must be non-negative")
-		}
-		if c.Default != math.Trunc(c.Default) {
-			return fmt.Errorf("default value must be a whole number")
-		}
-	case IntUnit:
-		if c.Default != math.Trunc(c.Default) {
-			return fmt.Errorf("default value must be a whole number")
-		}
-	}
-	return nil
+	return validateUnitValue(c.Unit, c.Default)
 }

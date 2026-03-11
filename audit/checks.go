@@ -1,4 +1,4 @@
-// Copyright 2024 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -108,8 +108,8 @@ func (c *CheckCollection) Register(checks ...Check) error {
 			check.Configuration = make(map[string]*CheckConfiguration)
 		}
 
-		if _, ok := c.registered[check.Name]; ok {
-			return fmt.Errorf("check %q already registered", check.Name)
+		if _, ok := c.registered[check.Code]; ok {
+			return fmt.Errorf("check %q already registered", check.Code)
 		}
 
 		for _, cfg := range check.Configuration {
@@ -119,12 +119,15 @@ func (c *CheckCollection) Register(checks ...Check) error {
 			if cfg.Description == "" {
 				return fmt.Errorf("configuration description is required")
 			}
+			if err := cfg.validateDefault(); err != nil {
+				return fmt.Errorf("invalid default for config %q in check %q: %w", cfg.Key, check.Code, err)
+			}
 
 			cfg.Check = check.Code
 			c.configuration[configItemKey(check.Code, cfg.Key)] = cfg
 		}
 
-		c.registered[check.Name] = &check
+		c.registered[check.Code] = &check
 		if _, ok := c.suites[check.Suite]; !ok {
 			c.suites[check.Suite] = []*Check{}
 		}
@@ -134,8 +137,8 @@ func (c *CheckCollection) Register(checks ...Check) error {
 	return nil
 }
 
-// MewCollection creates a new collection with no checks loaded
-func MewCollection() *CheckCollection {
+// NewCollection creates a new collection with no checks loaded
+func NewCollection() *CheckCollection {
 	return &CheckCollection{}
 }
 
@@ -169,7 +172,7 @@ func (c *CheckCollection) MustRegister(checks ...Check) {
 }
 
 func configItemKey(code string, key string) string {
-	return fmt.Sprintf("%s_%s", strings.ToLower(code), key)
+	return fmt.Sprintf("%s_%s", strings.ToLower(code), strings.ToLower(key))
 }
 
 // Outcome of running a check against the data gathered into an archive
@@ -206,7 +209,7 @@ func (o Outcome) String() string {
 	case Skipped:
 		return "SKIP"
 	default:
-		panic(fmt.Sprintf("Uknown outcome code: %d", o))
+		panic(fmt.Sprintf("Unknown outcome code: %d", o))
 	}
 }
 
@@ -280,25 +283,28 @@ func (c *CheckCollection) EachCheck(cb func(c *Check)) {
 }
 
 func (c *CheckCollection) Run(ar *archive.Reader, limit uint, log api.Logger) *Analysis {
+	// Snapshot and copy skip lists under the lock so that sorting the copies
+	// does not mutate the collection's internal slices.
+	c.mu.Lock()
+	skippedChecks := append([]string{}, c.skipCheck...)
+	skippedSuites := append([]string{}, c.skipSuite...)
+	c.mu.Unlock()
+
+	sort.Strings(skippedChecks)
+	sort.Strings(skippedSuites)
+
 	result := &Analysis{
 		Type:          "io.nats.audit.v1.analysis",
 		Timestamp:     time.Now().UTC(),
-		SkippedChecks: c.skipCheck,
-		SkippedSuites: c.skipSuite,
+		SkippedChecks: skippedChecks,
+		SkippedSuites: skippedSuites,
 		Results:       []CheckResult{},
 		Outcomes:      make(map[string]int),
 	}
 
-	if result.SkippedChecks == nil {
-		result.SkippedChecks = []string{}
+	if err := ar.Load(&result.Metadata, archive.TagSpecial("audit_gather_metadata")); err != nil {
+		log.Warnf("Could not load audit metadata: %v", err)
 	}
-	sort.Strings(result.SkippedChecks)
-	if result.SkippedSuites == nil {
-		result.SkippedSuites = []string{}
-	}
-	sort.Strings(result.SkippedSuites)
-
-	ar.Load(&result.Metadata, archive.TagSpecial("audit_gather_metadata"))
 
 	for _, outcome := range Outcomes {
 		result.Outcomes[outcome.String()] = 0
@@ -321,7 +327,7 @@ func (c *CheckCollection) Run(ar *archive.Reader, limit uint, log api.Logger) *A
 				Outcome: outcome,
 			}
 
-			if examples != nil && len(examples.Examples) > 0 {
+			if examples != nil {
 				res.Examples = *examples
 			}
 		} else {

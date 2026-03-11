@@ -1,4 +1,4 @@
-// Copyright 2024-2025 The NATS Authors
+// Copyright 2024-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package audit
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/nats-io/jsm.go/api"
@@ -50,16 +51,26 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 	connectionsThreshold := check.Configuration["connections"].Value()
 	subscriptionsThreshold := check.Configuration["subscriptions"].Value()
 
-	// Check value against limit threshold, create example if exceeded
+	var exceeded bool
+
+	// Check value against limit threshold; sets exceeded=true and creates an example if the limit is breached or approached
 	checkLimit := func(limitName, serverName, accountName string, value, limit int64, percentThreshold float64) {
 		if limit <= 0 {
 			// Limit not set
 			return
 		}
 
+		pct := float64(value) * 100 / float64(limit)
+
+		if value > limit {
+			examples.Add("account %s (on %s) exceeded %s limit (%.1f%%, %d/%d)", accountName, serverName, limitName, pct, value, limit)
+			exceeded = true
+			return
+		}
+
 		threshold := int64(float64(limit) * (percentThreshold / 100))
 		if value > threshold {
-			examples.Add("account %s (on %s) using %.1f%% of %s limit (%d/%d)", accountName, serverName, float64(value)*100/float64(limit), limitName, value, limit)
+			examples.Add("account %s (on %s) using %.1f%% of %s limit (%d/%d)", accountName, serverName, pct, limitName, value, limit)
 		}
 	}
 
@@ -79,53 +90,16 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 						return nil
 					}
 
-					checkLimit(
-						"client connections",
-						serverTag.Value,
-						ai.AccountName,
-						int64(ai.ClientCnt),
-						ai.Claim.Limits.Conn,
-						connectionsThreshold,
-					)
-
-					checkLimit(
-						"client connections (account)",
-						serverTag.Value,
-						ai.AccountName,
-						int64(ai.ClientCnt),
-						ai.Claim.Limits.AccountLimits.Conn,
-						connectionsThreshold,
-					)
-
-					checkLimit(
-						"leaf connections",
-						serverTag.Value,
-						ai.AccountName,
-						int64(ai.LeafCnt),
-						ai.Claim.Limits.LeafNodeConn,
-						connectionsThreshold,
-					)
-
-					checkLimit(
-						"leaf connections (account)",
-						serverTag.Value,
-						ai.AccountName,
-						int64(ai.LeafCnt),
-						ai.Claim.Limits.AccountLimits.LeafNodeConn,
-						connectionsThreshold,
-					)
-
-					checkLimit(
-						"subscriptions",
-						serverTag.Value,
-						ai.AccountName,
-						int64(ai.SubCnt),
-						ai.Claim.Limits.Subs,
-						subscriptionsThreshold,
-					)
+					checkLimit("client connections", serverName, ai.AccountName, int64(ai.ClientCnt), ai.Claim.Limits.Conn, connectionsThreshold)
+					checkLimit("leaf connections", serverName, ai.AccountName, int64(ai.LeafCnt), ai.Claim.Limits.LeafNodeConn, connectionsThreshold)
+					checkLimit("subscriptions", serverName, ai.AccountName, int64(ai.SubCnt), ai.Claim.Limits.Subs, subscriptionsThreshold)
 
 					return nil
 				})
+				if errors.Is(err, archive.ErrNoMatches) {
+					log.Warnf("No account info found for account %s on server %s", accountName, serverName)
+					continue
+				}
 				if err != nil {
 					return Skipped, fmt.Errorf("error processing account_info for account %s, server %s: %w", accountName, serverName, err)
 				}
@@ -133,8 +107,13 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 		}
 	}
 
+	if exceeded {
+		log.Errorf("Found %d instances of accounts exceeding or approaching limits", examples.Count())
+		return Fail, nil
+	}
+
 	if examples.Count() > 0 {
-		log.Errorf("Found %d instances of accounts approaching limit", examples.Count())
+		log.Errorf("Found %d instances of accounts approaching limits", examples.Count())
 		return PassWithIssues, nil
 	}
 

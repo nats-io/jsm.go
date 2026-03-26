@@ -175,6 +175,11 @@ func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 			return err
 		}
 
+		if vz == nil || vz.Data == nil {
+			log.Warnf("Empty varz response for server %s", serverTag)
+			return nil
+		}
+
 		lastVersionSeen = vz.Data.Version
 		_, exists := seenVersions[lastVersionSeen]
 		if !exists {
@@ -213,6 +218,11 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 			return err
 		}
 
+		if vz == nil || vz.Data == nil {
+			log.Warnf("Empty varz response for server %s", serverTag)
+			return nil
+		}
+
 		if vz.Data.Cores == 0 {
 			log.Warnf("Server %s reports zero cores, skipping CPU check", serverTag)
 			return nil
@@ -246,6 +256,11 @@ func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 			return err
 		}
 
+		if vz == nil || vz.Data == nil {
+			log.Warnf("Empty varz response for server %s", serverTag)
+			return nil
+		}
+
 		if slowConsumers := vz.Data.SlowConsumers; slowConsumers > 0 {
 			examples.Add("%s/%s: %d slow consumers", clusterTag, serverTag, slowConsumers)
 		}
@@ -274,6 +289,11 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
 		if err := handleArchiveError(err, "JSZ", serverTag, log); err != nil {
 			return err
+		}
+
+		if jsz == nil || jsz.Data == nil {
+			log.Warnf("Empty jsz response for server %s", serverTag)
+			return nil
 		}
 
 		if jsz.Data.Config.MaxMemory > 0 {
@@ -311,6 +331,11 @@ func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *E
 			return err
 		}
 
+		if jsz == nil || jsz.Data == nil {
+			log.Warnf("Empty jsz response for server %s", serverTag)
+			return nil
+		}
+
 		// check if jetstream domain contains whitespace
 		if strings.ContainsAny(jsz.Data.Config.Domain, " \t\r\n") {
 			examples.Add("Cluster %s Server %s Domain %s", clusterTag, serverTag, jsz.Data.Config.Domain)
@@ -335,6 +360,11 @@ func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesColl
 	total, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
 		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
 			return err
+		}
+
+		if vz == nil || vz.Data == nil {
+			log.Warnf("Empty varz response for server %s", serverTag)
+			return nil
 		}
 
 		if !vz.Data.AuthRequired {
@@ -368,6 +398,11 @@ func checkTLSCertificateExpiry(check *Check, r *archive.Reader, examples *Exampl
 	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
 		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
 			return err
+		}
+
+		if vz == nil || vz.Data == nil {
+			log.Warnf("Empty varz response for server %s", serverTag)
+			return nil
 		}
 
 		serverNow := vz.Data.Now

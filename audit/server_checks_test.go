@@ -429,3 +429,38 @@ func TestSERVER_Skipped(t *testing.T) {
 		})
 	}
 }
+
+func TestSERVER_MissingArtifact(t *testing.T) {
+	varzChecks := []string{"SERVER_002", "SERVER_003", "SERVER_004", "SERVER_007", "SERVER_008"}
+	for _, checkid := range varzChecks {
+		t.Run(checkid+" handles missing varz", func(t *testing.T) {
+			result := setupServerCheck(t, checkid, map[string]any{
+				"n1": &server.ServerAPIHealthzResponse{Data: &server.HealthStatus{Status: "ok"}},
+			}, archive.TagServerHealth())
+			if result != Pass && result != Skipped {
+				t.Errorf("expected Pass or Skipped, got %v", result)
+			}
+		})
+	}
+
+	jszChecks := []string{"SERVER_005", "SERVER_006"}
+	for _, checkid := range jszChecks {
+		t.Run(checkid+" handles missing jsz", func(t *testing.T) {
+			result := setupServerCheck(t, checkid, map[string]any{
+				"n1": &server.ServerAPIHealthzResponse{Data: &server.HealthStatus{Status: "ok"}},
+			}, archive.TagServerHealth())
+			if result != Pass && result != Skipped {
+				t.Errorf("expected Pass or Skipped, got %v", result)
+			}
+		})
+	}
+
+	t.Run("SERVER_001 handles missing healthz", func(t *testing.T) {
+		result := setupServerCheck(t, "SERVER_001", map[string]any{
+			"n1": &server.ServerAPIVarzResponse{Data: &server.Varz{Version: "2.11.0"}},
+		}, archive.TagServerVars())
+		if result != Pass && result != Skipped {
+			t.Errorf("expected Pass or Skipped, got %v", result)
+		}
+	})
+}

@@ -10,7 +10,7 @@ commands:
         - name: update
           description: Update dependencies
           type: exec
-          aliases: [up]
+          aliases: [up, u]
           dir: "{{ AppDir }}"
           flags:
             - name: verbose
@@ -21,6 +21,10 @@ commands:
               description: Enable using go proxy
               bool: true
               default: "true"
+            - name: actions
+              bool: true
+              default: "true"
+              description: Run actions update using pinact
           script: |
             . "{{ BashHelperPath }}"
             
@@ -38,6 +42,10 @@ commands:
             
             go mod tidy
 
+            {{ if .Flags.actions }}
+            ab_say Updating actions
+            pinact run --update
+            {{ end }}
     - name: generate
       type: parent
       aliases: [gen]

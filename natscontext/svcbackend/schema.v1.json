@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nats.io/natscontext/svcbackend/v1",
+  "title": "natscontext svcbackend protocol v1",
+  "description": "Wire envelopes for the natscontext svcbackend request/reply protocol. Each type corresponds one-to-one with a Go struct in wire.go. Sealed payloads (LoadSealed, SaveSealed) never appear on the wire at the top level; they describe the plaintext carried inside the base64-encoded Sealed string of their outer envelope.",
+  "$defs": {
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "not_found",
+            "already_exists",
+            "invalid_name",
+            "active_context",
+            "none_selected",
+            "read_only",
+            "conflict",
+            "internal"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable description. MUST NOT contain payload bytes."
+        }
+      }
+    },
+    "SysXKeyRequest": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "SysXKeyResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "xkey_pub": {
+          "type": "string",
+          "description": "Encoded curve (X) public key of the server's long-term xkey."
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "LoadRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reply_pub", "req_id"],
+      "properties": {
+        "reply_pub": {
+          "type": "string",
+          "description": "Client-generated per-request ephemeral xkey public key. The server seals LoadSealed to this key."
+        },
+        "req_id": {
+          "type": "string",
+          "description": "Correlation token echoed inside LoadSealed."
+        }
+      }
+    },
+    "LoadResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sealed": {
+          "type": "string",
+          "description": "Base64 encoding of the xkv1 ciphertext whose plaintext is a LoadSealed JSON document."
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "LoadSealed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data", "req_id"],
+      "properties": {
+        "data": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Raw context payload bytes."
+        },
+        "req_id": {
+          "type": "string",
+          "description": "Echo of the req_id from the matching LoadRequest."
+        }
+      }
+    },
+    "SaveRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sender_pub", "sealed"],
+      "properties": {
+        "sender_pub": {
+          "type": "string",
+          "description": "Client's ephemeral xkey public key. The server uses it to open Sealed."
+        },
+        "sealed": {
+          "type": "string",
+          "description": "Base64 encoding of the xkv1 ciphertext whose plaintext is a SaveSealed JSON document."
+        }
+      }
+    },
+    "SaveResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "SaveSealed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data", "req_id"],
+      "properties": {
+        "data": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Raw context payload bytes to store."
+        },
+        "req_id": {
+          "type": "string",
+          "description": "Correlation token; servers MAY use it to dedupe replays."
+        }
+      }
+    },
+    "DeleteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["req_id"],
+      "properties": {
+        "req_id": { "type": "string" }
+      }
+    },
+    "DeleteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "ListRequest": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "ListResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sorted context names."
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "SelectedRequest": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "SelectedResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Currently selected context; absent when none is selected (error carries CodeNoneSelected)."
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "SetSelectedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["req_id"],
+      "properties": {
+        "req_id": { "type": "string" }
+      }
+    },
+    "SetSelectedResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "previous": {
+          "type": "string",
+          "description": "Name of the previously selected context; empty when none."
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "ClearSelectedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["req_id"],
+      "properties": {
+        "req_id": { "type": "string" }
+      }
+    },
+    "ClearSelectedResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "previous": {
+          "type": "string",
+          "description": "Name of the previously selected context; empty when none."
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    }
+  }
+}

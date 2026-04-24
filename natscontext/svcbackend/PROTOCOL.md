@@ -1,6 +1,6 @@
 # natscontext svcbackend Protocol v1
 
-This document is the contract for server implementers. A conformant server MUST satisfy every requirement marked MUST; SHOULD requirements are strongly recommended but not mandatory. If you are writing a client, read [SERVICE.md](https://github.com/nats-io/jsm.go/blob/main/natscontext/spec/SERVICE.md) for design rationale and [wire.go](wire.go) for the Go struct definitions.
+This document is the contract for server implementers. A conformant server MUST satisfy every requirement marked MUST; SHOULD requirements are strongly recommended but not mandatory. See [wire.go](wire.go) for the Go struct definitions.
 
 ## 1. Scope
 
@@ -41,11 +41,10 @@ A conforming server MUST expose the following subjects. The subject prefix `nats
 | `natscontext.v1.ctx.save.<name>`   | `SaveRequest`          | `SaveResponse`          | Sealed request.               |
 | `natscontext.v1.ctx.delete.<name>` | `DeleteRequest`        | `DeleteResponse`        |                               |
 | `natscontext.v1.ctx.list`          | `ListRequest`          | `ListResponse`          |                               |
-| `natscontext.v1.sel.get`           | `SelectedRequest`      | `SelectedResponse`      |                               |
-| `natscontext.v1.sel.set.<name>`    | `SetSelectedRequest`   | `SetSelectedResponse`   |                               |
-| `natscontext.v1.sel.clear`         | `ClearSelectedRequest` | `ClearSelectedResponse` |                               |
 
 A conforming server SHOULD register every endpoint under a single queue group so replicas load-balance uniformly. The default queue group name is `natscontext`. Operators MAY override the queue group.
+
+Selection (which context is "active") is deliberately **not** part of this protocol. A service backend typically carries a catalog shared by many operators; the active-context choice is personal and per-machine, and storing it centrally either leaks it between operators or requires per-user partitioning the protocol does not specify. A conforming client pairs this backend with a local `Selector` at `Registry` composition time (for example `natscontext.WithLocalSelector`) rather than looking for `sel.*` subjects.
 
 ## 5. Envelopes
 
@@ -171,62 +170,6 @@ Response:
 - `names` MUST be sorted ascending (lexicographic byte order).
 - A server with zero stored contexts MUST return a response with `names` absent or set to an empty array.
 
-### 5.6 `sel.get`
-
-Request:
-
-```json
-{}
-```
-
-Response (success):
-
-```json
-{ "name": "admin" }
-```
-
-Response (error):
-
-```json
-{ "error": { "code": "none_selected", "message": "..." } }
-```
-
-- Servers without selection support MUST return `read_only`.
-
-### 5.7 `sel.set`
-
-Request:
-
-```json
-{ "req_id": "0f1e..." }
-```
-
-Response:
-
-```json
-{ "previous": "dev" }
-```
-
-- The name is part of the subject: `natscontext.v1.sel.set.<name>`.
-- `previous` is the name that was selected before the call; it MUST be empty when nothing was selected.
-- The swap MUST be atomic with respect to concurrent `sel.get` and `sel.set` callers.
-
-### 5.8 `sel.clear`
-
-Request:
-
-```json
-{ "req_id": "0f1e..." }
-```
-
-Response:
-
-```json
-{ "previous": "admin" }
-```
-
-- `previous` is empty when no context was selected.
-
 ## 6. Error codes
 
 Every response type carries an optional `error` field of the `Error` shape:
@@ -235,16 +178,16 @@ Every response type carries an optional `error` field of the `Error` shape:
 { "code": "<code>", "message": "<human-readable>" }
 ```
 
-| Wire code        | `natscontext` sentinel           |
-|------------------|----------------------------------|
-| `not_found`      | `natscontext.ErrNotFound`        |
-| `already_exists` | `natscontext.ErrAlreadyExists`   |
-| `invalid_name`   | `natscontext.ErrInvalidName`     |
-| `active_context` | `natscontext.ErrActiveContext`   |
-| `none_selected`  | `natscontext.ErrNoneSelected`    |
-| `read_only`      | `natscontext.ErrReadOnly`        |
-| `conflict`       | `natscontext.ErrConflict`        |
-| `internal`       | generic unwrapped error          |
+| Wire code        | `natscontext` sentinel                     |
+|------------------|--------------------------------------------|
+| `not_found`      | `natscontext.ErrNotFound`                  |
+| `already_exists` | `natscontext.ErrAlreadyExists`             |
+| `invalid_name`   | `natscontext.ErrInvalidName`               |
+| `active_context` | `natscontext.ErrActiveContext`             |
+| `read_only`      | `natscontext.ErrReadOnly`                  |
+| `conflict`       | `natscontext.ErrConflict`                  |
+| `stale_key`      | no sentinel — client-internal retry signal |
+| `internal`       | generic unwrapped error                    |
 
 - `Error.message` MUST NOT include payload bytes.
 - `Error.message` SHOULD be short and human-readable; clients may surface it verbatim.
@@ -252,15 +195,19 @@ Every response type carries an optional `error` field of the `Error` shape:
 
 ## 7. Name validation
 
-A conforming server MUST reject names that violate the portable intersection used by every shipped `natscontext` backend:
+The core `natscontext` layer enforces a deliberately loose rule (historical backward-compat): a name is valid iff it is non-empty, does not contain the `..` substring, and does not contain `/` or `\`. Whitespace, control characters, `.`, `*`, and `>` all pass at that layer.
+
+The svcbackend wire protocol embeds the context name as the final token of a NATS subject (`natscontext.v1.ctx.<verb>.<name>`), which is strictly tighter than that. A conforming **client** therefore MUST reject, with `invalid_name`, before publishing, any name that would break subject encoding:
 
 - The name MUST NOT be empty.
-- The name MUST NOT contain whitespace (as defined by Unicode) or control characters.
-- The name MUST NOT contain any of the characters `.`, `/`, `\`, `*`, `>`.
+- The name MUST NOT contain the `..` substring.
+- The name MUST NOT contain `/` or `\`.
+- The name MUST NOT contain whitespace (including tab, CR, LF) or control characters.
+- The name MUST NOT contain `.` (token separator), `*`, or `>` (subject wildcards).
 
-A server MAY reject additional names for storage-specific reasons (e.g. path traversal hazards on disk backends); such rejections MUST also use `invalid_name`.
+The server does NOT need to enforce the extra svcbackend-tier rules. A dotted or wildcarded name produces a subject the server's single-token wildcard subscription never matches, so the request is simply not delivered. A conforming server MUST still validate names it does receive against the core rule (non-empty, no `..`, no `/` or `\`) before any storage touch, credential decryption, or long-running work, and MUST return `invalid_name` on failure.
 
-Names MUST be validated **before** any storage touch, credential decryption, or long-running work. Invalid names MUST return `invalid_name`.
+A server MAY reject additional names for storage-specific reasons (e.g. path-traversal hazards on disk backends); such rejections MUST also use `invalid_name`.
 
 ## 8. Behavioral requirements
 
@@ -283,21 +230,8 @@ Names MUST be validated **before** any storage touch, credential decryption, or 
 - MUST return names in ascending lexicographic byte order.
 - MAY return an empty `names` field when the store is empty.
 
-### 8.5 `sel.get`
+### 8.5 Read-only servers
 
-- MUST return `none_selected` when no context has been selected.
-
-### 8.6 `sel.set`
-
-- MUST be atomic with respect to concurrent `sel.*` calls.
-
-### 8.7 `sel.clear`
-
-- MUST clear the current selection and return the prior value (if any).
-
-### 8.8 Read-only servers
-
-- Servers that do not track selection MUST return `read_only` on `sel.get`, `sel.set`, and `sel.clear`.
 - Servers that do not allow mutation MUST return `read_only` on `ctx.save` and `ctx.delete`.
 
 ## 9. Crypto
@@ -323,6 +257,9 @@ A server MAY maintain a sliding window of recently-seen `req_id` values and reje
 - A server MAY rotate its long-term xkey at any time.
 - A server SHOULD accept its previous long-term xkey for a brief overlap window (a few minutes) to reduce client-visible retries.
 - Clients that fail `Open` MUST invalidate their cached server key, refetch via `sys.xkey` once, and retry the original call once. Rotation therefore requires no operator coordination.
+- A server MUST return `stale_key` when it fails to `Open` a sealed request (e.g. `ctx.save` sealed to a prior long-term xkey). The `stale_key` code MUST NOT be used for non-rotation failures such as malformed base64 or an unparsable plaintext; those MUST return `internal`.
+- Clients MUST treat `stale_key` the same as a local `Open` failure: invalidate the cached server key, refetch once, and retry once with a freshly generated ephemeral keypair and `req_id`. A second `stale_key` reply MUST surface as an error rather than loop.
+- Servers predating this revision return `internal` on server-side `Open` failure. A conforming client cannot distinguish that from a genuine internal error, so transparent rotation is only guaranteed against conforming servers.
 
 ## 10. Logging and error hygiene
 
@@ -352,31 +289,25 @@ pre-validation ordering) are flagged in its output as `SKIP` or `WARN`.
 - [ ] `natscontext.v1.ctx.save.<name>` is registered.
 - [ ] `natscontext.v1.ctx.delete.<name>` is registered.
 - [ ] `natscontext.v1.ctx.list` is registered.
-- [ ] `natscontext.v1.sel.get` is registered.
-- [ ] `natscontext.v1.sel.set.<name>` is registered.
-- [ ] `natscontext.v1.sel.clear` is registered.
 
 ### Envelopes
 
 - [ ] Every response sets `error` to nil/absent on success.
 - [ ] Every `error.message` is free of payload bytes.
 - [ ] `ctx.list` names are sorted ascending.
-- [ ] `sel.set` and `sel.clear` return the previous selection verbatim.
 
 ### Name validation
 
 - [ ] Names are validated before any storage touch.
 - [ ] Empty names are rejected with `invalid_name`.
-- [ ] Names containing whitespace, control chars, `.`, `/`, `\`, `*`, `>` are rejected with `invalid_name`.
+- [ ] Names containing `..`, `/`, or `\` are rejected with `invalid_name`.
+- [ ] (Client-side) names containing whitespace, control characters, `.`, `*`, or `>` are rejected with `invalid_name` before publishing.
 
 ### Behavior
 
 - [ ] `ctx.load` of a missing name returns `not_found`.
 - [ ] `ctx.delete` of a missing name returns success with no error.
 - [ ] `ctx.save` is atomic vs concurrent `ctx.load`.
-- [ ] `sel.set` is atomic vs concurrent `sel.*`.
-- [ ] `sel.get` returns `none_selected` when no selection is set.
-- [ ] Non-selection servers return `read_only` from every `sel.*`.
 - [ ] Immutable servers return `read_only` from `ctx.save` and `ctx.delete`.
 
 ### Crypto
@@ -386,6 +317,7 @@ pre-validation ordering) are flagged in its output as `SKIP` or `WARN`.
 - [ ] `ctx.load` responses are sealed with `(server_priv, reply_pub)`.
 - [ ] `ctx.save` requests are opened with `(server_priv, sender_pub)`.
 - [ ] The `sealed` field is base64-encoded `xkv1` ciphertext.
+- [ ] `ctx.save` with a sealed request sealed to a prior long-term xkey returns `stale_key`, not `internal`.
 
 ### Logging
 

@@ -27,8 +27,8 @@ import (
 // of any shape (even a wire error envelope) proves a responder is
 // registered; only nats.ErrNoResponders is treated as a registration
 // failure. Wildcard subjects (ctx.load.<name>, ctx.save.<name>,
-// ctx.delete.<name>, sel.set.<name>) are probed with a harmless test
-// name so the server's wildcard subscription actually fires.
+// ctx.delete.<name>) are probed with a harmless test name so the
+// server's wildcard subscription actually fires.
 func subjectChecks() []Check {
 	type subj struct {
 		id, suffix, sample string
@@ -40,9 +40,6 @@ func subjectChecks() []Check {
 		{"ctx.save", "ctx.save", "__probe__"},
 		{"ctx.delete", "ctx.delete", "__probe__"},
 		{"ctx.list", "ctx.list", ""},
-		{"sel.get", "sel.get", ""},
-		{"sel.set", "sel.set", "__probe__"},
-		{"sel.clear", "sel.clear", ""},
 	}
 
 	var out []Check

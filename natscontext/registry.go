@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 )
 
 // Registry composes a Backend, a Selector, and a set of
@@ -28,16 +27,19 @@ import (
 // resolvers construct a Registry explicitly via Open and pass it
 // around.
 type Registry struct {
-	backend   Backend
-	selector  Selector
-	resolvers map[string]CredentialResolver
+	backend          Backend
+	selector         Selector
+	selectorOverride bool
+	resolvers        map[string]CredentialResolver
 }
 
 // NewRegistry returns a Registry using b for storage. If b also
-// implements Selector, active-context tracking is enabled. When no
-// resolver-related options are supplied the default resolvers
-// (file://, op://, nsc://) are registered automatically; pass
-// WithCredentialResolver or WithDefaultResolvers to opt in explicitly.
+// implements Selector, active-context tracking is enabled unless a
+// WithSelector, WithLocalSelector, or WithoutSelection option
+// explicitly overrides it. When no resolver-related options are
+// supplied the default resolvers (file://, op://, nsc://) are
+// registered automatically; pass WithCredentialResolver or
+// WithDefaultResolvers to opt in explicitly.
 func NewRegistry(b Backend, opts ...RegistryOption) *Registry {
 	r := &Registry{
 		backend:   b,
@@ -56,17 +58,75 @@ func NewRegistry(b Backend, opts ...RegistryOption) *Registry {
 	return r
 }
 
+// WithSelector configures the Registry's Selector explicitly,
+// overriding whatever Selector the Backend might implement. Passing
+// nil panics — use WithoutSelection to disable selection tracking.
+//
+// The common use case is composing a remote or shared Backend with a
+// local FileSelector so that every operator on a shared catalog
+// keeps their own active-context state. See "Separating selection
+// from storage" in BACKENDS.md.
+func WithSelector(s Selector) RegistryOption {
+	if s == nil {
+		panic("natscontext: WithSelector called with nil Selector; use WithoutSelection to disable selection tracking")
+	}
+	return func(r *Registry) {
+		r.selector = s
+		r.selectorOverride = true
+	}
+}
+
+// WithoutSelection disables selection tracking for the Registry, even
+// when the Backend implements Selector. Selected returns
+// ErrNoneSelected and Select returns ErrReadOnly.
+func WithoutSelection() RegistryOption {
+	return func(r *Registry) {
+		r.selector = nil
+		r.selectorOverride = true
+	}
+}
+
+// WithLocalSelector tracks the active context in a local file under
+// $XDG_CONFIG_HOME/nats/ (falling back to $HOME/.config/nats/),
+// independent of the Registry's Backend. This is the right choice
+// when the Backend is shared across users or machines — for example
+// the svcbackend Client — and each operator wants their own selection
+// to persist locally without affecting teammates.
+//
+// Equivalent to WithSelector(NewDefaultFileSelector()). Panics if
+// neither XDG_CONFIG_HOME nor a resolvable HOME directory is
+// available; callers on environments where that may occur (CI,
+// container images without a writable HOME) should construct a
+// FileSelector explicitly and pass it through WithSelector.
+func WithLocalSelector() RegistryOption {
+	sel, err := NewDefaultFileSelector()
+	if err != nil {
+		panic(fmt.Sprintf("natscontext: WithLocalSelector: %v", err))
+	}
+	return WithSelector(sel)
+}
+
 // Load returns the named context. If name is empty the currently selected
 // context is loaded; if nothing is selected an empty Context with the
 // supplied options applied is returned.
+//
+// When the caller-resolved name comes from the selector (empty input
+// name, a selection exists, the name is valid) and the backend returns
+// ErrNotFound, the selector is best-effort cleared so the Registry
+// fails open rather than wedging on a stale pointer. This matters for
+// the "shared storage, local selection" composition, where another
+// operator may have deleted a context that the local selector still
+// names.
 func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Context, error) {
 	c := &Context{config: &settings{}, resolvers: r.resolvers}
 
+	fromSelector := false
 	if name == "" {
 		if r.selector != nil {
 			selected, err := r.selector.Selected(ctx)
 			if err == nil {
 				name = selected
+				fromSelector = true
 			} else if !errors.Is(err, ErrNoneSelected) {
 				return nil, err
 			}
@@ -84,6 +144,11 @@ func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Cont
 
 	data, err := r.backend.Load(ctx, name)
 	if err != nil {
+		if fromSelector && errors.Is(err, ErrNotFound) && r.selector != nil {
+			_, _ = r.selector.SetSelected(ctx, "")
+			c.configureNewContext(opts...)
+			return c, nil
+		}
 		return nil, err
 	}
 
@@ -111,12 +176,20 @@ func (r *Registry) Save(ctx context.Context, c *Context, name string) error {
 		c.Name = name
 	}
 
-	err := c.Validate()
+	// migrateNSCLookup runs before Validate so legacy contexts that
+	// still carry NSCLookup alongside an explicitly-set Creds field
+	// can complete their upgrade: migrate clears NSCLookup so the
+	// "too many types of credentials" check no longer trips on the
+	// legacy-plus-override combination.
+	err := migrateNSCLookup(ctx, c.config)
 	if err != nil {
 		return err
 	}
 
-	migrateNSCLookup(c.config)
+	err = c.Validate()
+	if err != nil {
+		return err
+	}
 
 	c.config.Name = ""
 	data, err := json.MarshalIndent(c.config, "", "  ")
@@ -138,19 +211,37 @@ func (r *Registry) Save(ctx context.Context, c *Context, name string) error {
 
 // migrateNSCLookup folds a set NSCLookup field into Creds as an
 // nsc://<ref> URI. When both fields are set the explicit Creds wins
-// and NSCLookup is cleared with a warning, since the deprecated field
-// otherwise silently loses data on every save.
-func migrateNSCLookup(s *settings) {
+// and NSCLookup is cleared. When no URL is configured, the nsc
+// profile's Service URL is captured into settings.URL so reloads do
+// not have to invoke nsc again to know where to connect — pre-refactor
+// behavior where every load re-resolved the Service URL is preserved
+// without forcing nsc onto the load path.
+func migrateNSCLookup(ctx context.Context, s *settings) error {
 	if s.NSCLookup == "" {
-		return
+		return nil
 	}
+
+	if s.URL == "" {
+		url := s.nscUrl
+		if url == "" {
+			profile, err := runNscProfile(ctx, s.NSCLookup)
+			if err != nil {
+				return fmt.Errorf("migrate nsc lookup: %w", err)
+			}
+			url = profile.Service
+		}
+		if url != "" {
+			s.URL = url
+		}
+	}
+
 	if s.Creds == "" {
-		s.Creds = "nsc://" + s.NSCLookup
-		s.NSCLookup = ""
-		return
+		s.Creds = "nsc://" + trimSchemePrefix(s.NSCLookup, "nsc://")
 	}
-	fmt.Fprintf(os.Stderr, "natscontext: ignoring deprecated 'nsc' field on save; explicit 'creds' value %q takes precedence\n", s.Creds)
 	s.NSCLookup = ""
+	s.nscCreds = ""
+	s.nscUrl = ""
+	return nil
 }
 
 // Delete removes name from the backend. The currently selected context
@@ -229,11 +320,22 @@ func (r *Registry) Select(ctx context.Context, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !r.Known(ctx, name) {
-		return "", fmt.Errorf("%w: %q", ErrNotFound, name)
-	}
+	// Check the selector before hitting the backend: when selection
+	// is disabled (WithoutSelection or a backend that does not
+	// implement Selector) we must return ErrReadOnly regardless of
+	// whether name exists, and a remote backend should not incur an
+	// existence round-trip only to be told the operation is refused.
 	if r.selector == nil {
 		return "", fmt.Errorf("%w: backend does not support selection", ErrReadOnly)
+	}
+	// Probe existence via backend.Load so non-ErrNotFound errors
+	// (transport failures, permission issues, backend-specific
+	// validation rejections) propagate with their original sentinel
+	// wrapping. Registry.Known collapses all errors into a bool, which
+	// would mask those cases as ErrNotFound here.
+	_, err = r.backend.Load(ctx, name)
+	if err != nil {
+		return "", err
 	}
 	return r.selector.SetSelected(ctx, name)
 }

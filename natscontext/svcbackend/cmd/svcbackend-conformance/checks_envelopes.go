@@ -94,49 +94,6 @@ func envelopeChecks() []Check {
 		},
 
 		{
-			ID: "envelopes.sel_previous_verbatim", Section: "Envelopes",
-			Title: "sel.set and sel.clear return the previous selection verbatim",
-			Modes: []string{"rw"},
-			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
-				a := h.MintName("sel_a")
-				b := h.MintName("sel_b")
-
-				err := h.Client.Save(ctx, a, []byte("a"))
-				if err != nil {
-					return StatusFail, "save a: " + err.Error(), nil
-				}
-				err = h.Client.Save(ctx, b, []byte("b"))
-				if err != nil {
-					return StatusFail, "save b: " + err.Error(), nil
-				}
-
-				// Set a, then swap to b — previous must be "a". Then
-				// clear — previous must be "b".
-				_, err = h.Client.SetSelected(ctx, a)
-				if err != nil {
-					return StatusFail, "set a: " + err.Error(), nil
-				}
-
-				prev, err := h.Client.SetSelected(ctx, b)
-				if err != nil {
-					return StatusFail, "set b: " + err.Error(), nil
-				}
-				if prev != a {
-					return StatusFail, fmt.Sprintf("set previous: got %q want %q", prev, a), nil
-				}
-
-				prev, err = h.Client.SetSelected(ctx, "")
-				if err != nil {
-					return StatusFail, "clear: " + err.Error(), nil
-				}
-				if prev != b {
-					return StatusFail, fmt.Sprintf("clear previous: got %q want %q", prev, b), nil
-				}
-				return StatusPass, "", nil
-			},
-		},
-
-		{
 			ID: "envelopes.no_payload_in_error", Section: "Envelopes",
 			Title: "error.message does not leak stored payload bytes",
 			Modes: []string{"rw"},

@@ -55,9 +55,6 @@ var endpointDefs = map[string]endpointDef{
 	"ctx.save":   {"SaveRequest", "SaveResponse"},
 	"ctx.delete": {"DeleteRequest", "DeleteResponse"},
 	"ctx.list":   {"ListRequest", "ListResponse"},
-	"sel.get":    {"SelectedRequest", "SelectedResponse"},
-	"sel.set":    {"SetSelectedRequest", "SetSelectedResponse"},
-	"sel.clear":  {"ClearSelectedRequest", "ClearSelectedResponse"},
 }
 
 // sealedContext names the sealed-plaintext schema that should be
@@ -87,10 +84,10 @@ func SchemaV1() []byte {
 
 // EndpointSchemaV1 returns the EndpointSchema for a single endpoint.
 // Endpoint names match the subject suffix: "sys.xkey", "ctx.load",
-// "ctx.save", "ctx.delete", "ctx.list", "sel.get", "sel.set",
-// "sel.clear". The returned .Request / .Response are standalone JSON
-// Schema documents with the relevant $defs inlined so a consumer can
-// validate without resolving external $refs.
+// "ctx.save", "ctx.delete", "ctx.list". The returned .Request /
+// .Response are standalone JSON Schema documents with the relevant
+// $defs inlined so a consumer can validate without resolving external
+// $refs.
 func EndpointSchemaV1(endpoint string) (EndpointSchema, error) {
 	err := parseSchema()
 	if err != nil {

@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -27,6 +29,7 @@ import (
 	nserver "github.com/nats-io/nats-server/v2/server"
 	nstest "github.com/nats-io/nats-server/v2/test"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nkeys"
 
 	"github.com/nats-io/jsm.go/natscontext"
 	"github.com/nats-io/jsm.go/natscontext/backendtest"
@@ -87,6 +90,24 @@ func TestClient_Contract(t *testing.T) {
 	})
 }
 
+// TestClient_IsNotSelector locks in the contract that the remote
+// client deliberately does not implement natscontext.Selector.
+// Selection is composed at Registry time with a local selector;
+// see the Selection section of the package README.
+func TestClient_IsNotSelector(t *testing.T) {
+	nc, _ := startNATS(t)
+	c, err := svcbackend.NewClient(nc, svcbackend.WithServerKey("XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+
+	_, ok := any(c).(natscontext.Selector)
+	if ok {
+		t.Fatalf("svcbackend.Client unexpectedly implements natscontext.Selector")
+	}
+}
+
 func TestClient_NonDefaultPrefix(t *testing.T) {
 	const prefix = "test.prefix.v1"
 
@@ -127,10 +148,6 @@ func (e *errorBackend) Load(_ context.Context, _ string) ([]byte, error) { retur
 func (e *errorBackend) Save(_ context.Context, _ string, _ []byte) error { return e.err }
 func (e *errorBackend) Delete(_ context.Context, _ string) error         { return e.err }
 func (e *errorBackend) List(_ context.Context) ([]string, error)         { return nil, e.err }
-func (e *errorBackend) Selected(_ context.Context) (string, error)       { return "", e.err }
-func (e *errorBackend) SetSelected(_ context.Context, _ string) (string, error) {
-	return "", e.err
-}
 
 func TestClient_ErrorRoundTrip(t *testing.T) {
 	cases := []struct {
@@ -140,7 +157,6 @@ func TestClient_ErrorRoundTrip(t *testing.T) {
 		{"not_found", natscontext.ErrNotFound},
 		{"already_exists", natscontext.ErrAlreadyExists},
 		{"active_context", natscontext.ErrActiveContext},
-		{"none_selected", natscontext.ErrNoneSelected},
 		{"read_only", natscontext.ErrReadOnly},
 		{"conflict", natscontext.ErrConflict},
 	}
@@ -182,19 +198,42 @@ func TestClient_ValidateNameFastFail(t *testing.T) {
 
 	ctx := context.Background()
 
-	err = c.Save(ctx, "bad name", []byte("x"))
-	if !errors.Is(err, natscontext.ErrInvalidName) {
-		t.Fatalf("Save: expected ErrInvalidName, got %v", err)
+	// Covers both tiers of rejection: names the core natscontext
+	// validator blocks (empty, "/"), and names the core accepts for
+	// historical compat that the svcbackend wire protocol cannot
+	// carry (whitespace, ".", "*", ">", control chars). All must
+	// surface ErrInvalidName before any wire traffic.
+	badNames := []string{
+		"",         // empty — rejected by core
+		"bad/name", // path separator — rejected by core
+		"..",       // bare ".." — rejected by core
+		"bad name", // whitespace — svcbackend-tier rejection
+		"ngs.js",   // dot — svcbackend-tier rejection (historical core-valid name)
+		"foo.bar",  // dot — svcbackend-tier rejection
+		"foo*bar",  // NATS wildcard — svcbackend-tier rejection
+		"foo>bar",  // NATS wildcard — svcbackend-tier rejection
+		"foo\tbar", // control — svcbackend-tier rejection
 	}
 
-	_, err = c.Load(ctx, "bad/name")
-	if !errors.Is(err, natscontext.ErrInvalidName) {
-		t.Fatalf("Load: expected ErrInvalidName, got %v", err)
-	}
-
-	err = c.Delete(ctx, "")
-	if !errors.Is(err, natscontext.ErrInvalidName) {
-		t.Fatalf("Delete: expected ErrInvalidName, got %v", err)
+	for _, name := range badNames {
+		t.Run(fmt.Sprintf("Save(%q)", name), func(t *testing.T) {
+			err := c.Save(ctx, name, []byte("x"))
+			if !errors.Is(err, natscontext.ErrInvalidName) {
+				t.Fatalf("expected ErrInvalidName, got %v", err)
+			}
+		})
+		t.Run(fmt.Sprintf("Load(%q)", name), func(t *testing.T) {
+			_, err := c.Load(ctx, name)
+			if !errors.Is(err, natscontext.ErrInvalidName) {
+				t.Fatalf("expected ErrInvalidName, got %v", err)
+			}
+		})
+		t.Run(fmt.Sprintf("Delete(%q)", name), func(t *testing.T) {
+			err := c.Delete(ctx, name)
+			if !errors.Is(err, natscontext.ErrInvalidName) {
+				t.Fatalf("expected ErrInvalidName, got %v", err)
+			}
+		})
 	}
 }
 
@@ -281,6 +320,122 @@ func TestClient_XKeyRotation(t *testing.T) {
 
 	if extra := ts.SysXKeyCalls() - baseline; extra != 1 {
 		t.Fatalf("expected 1 total sys.xkey refetch, got %d", extra)
+	}
+}
+
+// TestClient_SaveRotationTransparent verifies that when the server
+// rotates its long-term xkey between a Load (which primed the cache)
+// and a Save (which seals to the cached pub), the Save succeeds
+// transparently and does exactly one sys.xkey refetch.
+func TestClient_SaveRotationTransparent(t *testing.T) {
+	backend := natscontext.NewMemoryBackend()
+	nc, ts := startTestServer(t, "", backend)
+
+	c, err := svcbackend.NewClient(nc, svcbackend.WithServerKey(ts.PublicKey()))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+
+	ctx := context.Background()
+
+	err = c.Save(ctx, "alpha", []byte("v1"))
+	if err != nil {
+		t.Fatalf("save v1: %v", err)
+	}
+
+	baseline := ts.SysXKeyCalls()
+
+	err = ts.Rotate()
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+
+	err = c.Save(ctx, "alpha", []byte("v2"))
+	if err != nil {
+		t.Fatalf("save after rotate: %v", err)
+	}
+
+	if got := ts.SysXKeyCalls() - baseline; got != 1 {
+		t.Fatalf("expected exactly 1 sys.xkey refetch on save rotation, got %d", got)
+	}
+
+	// Load through the server to confirm the new payload landed.
+	got, err := c.Load(ctx, "alpha")
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !bytes.Equal(got, []byte("v2")) {
+		t.Fatalf("payload: got %q want v2", got)
+	}
+}
+
+// TestClient_SaveStaleKeyShortCircuit verifies that if sys.xkey
+// returns the same pub after a stale_key retry (buggy or caching
+// sys.xkey responder) the client surfaces a dedicated error rather
+// than retrying forever or blaming "server xkey refresh".
+func TestClient_SaveStaleKeyShortCircuit(t *testing.T) {
+	nc, _ := startNATS(t)
+
+	// Any real curve key works — it just needs to be a value the
+	// client will accept as a recipient pub. The raw ctx.save
+	// responder returns stale_key unconditionally, so the client
+	// never actually seals-and-opens against this key.
+	kp, err := nkeys.CreateCurveKeys()
+	if err != nil {
+		t.Fatalf("create curve keys: %v", err)
+	}
+	fixedPub, err := kp.PublicKey()
+	if err != nil {
+		t.Fatalf("public key: %v", err)
+	}
+
+	const prefix = "fixedkey.v1"
+
+	// sys.xkey always advertises fixedPub. The ctx.save endpoint
+	// always returns stale_key. With a constant-advertised key the
+	// post-stale_key refetch comes back unchanged and the client
+	// must short-circuit instead of retrying.
+	_, err = nc.Subscribe(prefix+".sys.xkey", func(m *nats.Msg) {
+		resp, _ := json.Marshal(svcbackend.SysXKeyResponse{XKeyPub: fixedPub})
+		_ = m.Respond(resp)
+	})
+	if err != nil {
+		t.Fatalf("subscribe sys.xkey: %v", err)
+	}
+
+	var saveCalls atomic.Int32
+	_, err = nc.Subscribe(prefix+".ctx.save.*", func(m *nats.Msg) {
+		saveCalls.Add(1)
+		resp, _ := json.Marshal(svcbackend.SaveResponse{Error: &svcbackend.ErrorResponse{
+			Code:    string(svcbackend.CodeStaleKey),
+			Message: "open sealed request",
+		}})
+		_ = m.Respond(resp)
+	})
+	if err != nil {
+		t.Fatalf("subscribe ctx.save: %v", err)
+	}
+
+	c, err := svcbackend.NewClient(nc, svcbackend.WithSubjectPrefix(prefix))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+
+	err = c.Save(context.Background(), "alpha", []byte("x"))
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "same stale key") {
+		t.Fatalf("expected same-stale-key message, got %q", err.Error())
+	}
+
+	// The client should have issued exactly one ctx.save (the retry
+	// is short-circuited after the same-key refetch check). If it
+	// issued two, the short-circuit didn't fire.
+	if got := saveCalls.Load(); got != 1 {
+		t.Fatalf("ctx.save calls: got %d, want 1", got)
 	}
 }
 
@@ -372,7 +527,6 @@ func TestClient_TamperedCiphertext(t *testing.T) {
 		natscontext.ErrAlreadyExists,
 		natscontext.ErrInvalidName,
 		natscontext.ErrActiveContext,
-		natscontext.ErrNoneSelected,
 		natscontext.ErrReadOnly,
 		natscontext.ErrConflict,
 	} {
@@ -409,6 +563,82 @@ func TestClient_NilConn(t *testing.T) {
 	_, err := svcbackend.NewClient(nil)
 	if err == nil {
 		t.Fatalf("expected error for nil nc")
+	}
+}
+
+// TestClient_LocalSelectorComposition verifies the "shared storage,
+// local selection" pattern: a Registry composed with svcbackend.Client
+// as Backend and natscontext.FileSelector as Selector via
+// WithLocalSelector MUST NOT send any sel.* traffic to the service.
+// Selection is tracked entirely in the local file, and contexts still
+// round-trip through the remote Backend.
+func TestClient_LocalSelectorComposition(t *testing.T) {
+	backend := natscontext.NewMemoryBackend()
+	nc, ts := startTestServer(t, "", backend)
+
+	c, err := svcbackend.NewClient(nc, svcbackend.WithServerKey(ts.PublicKey()))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+
+	var selTraffic atomic.Int32
+	sub, err := nc.Subscribe(svcbackend.DefaultPrefix+".sel.>", func(*nats.Msg) {
+		selTraffic.Add(1)
+	})
+	if err != nil {
+		t.Fatalf("subscribe sel.>: %v", err)
+	}
+	t.Cleanup(func() { _ = sub.Unsubscribe() })
+
+	selectorDir := t.TempDir()
+	reg := natscontext.NewRegistry(
+		c,
+		natscontext.WithSelector(natscontext.NewFileSelectorAt(selectorDir)),
+	)
+
+	bg := context.Background()
+	nctx, err := natscontext.New("alpha", false, natscontext.WithServerURL("nats://a:4222"))
+	if err != nil {
+		t.Fatalf("new ctx: %v", err)
+	}
+	err = reg.Save(bg, nctx, "")
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	_, err = reg.Select(bg, "alpha")
+	if err != nil {
+		t.Fatalf("select: %v", err)
+	}
+
+	got, err := reg.Selected(bg)
+	if err != nil {
+		t.Fatalf("selected: %v", err)
+	}
+	if got != "alpha" {
+		t.Fatalf("Selected = %q want alpha", got)
+	}
+
+	// Give any stray sel.* traffic a chance to round-trip before we
+	// assert zero. A flushed subscription on the same connection is
+	// enough — a message already in flight would have delivered.
+	err = nc.Flush()
+	if err != nil {
+		t.Fatalf("nc.Flush: %v", err)
+	}
+
+	if n := selTraffic.Load(); n != 0 {
+		t.Fatalf("sel.* traffic count = %d, want 0", n)
+	}
+
+	// And the local file backs the selection.
+	data, err := os.ReadFile(filepath.Join(selectorDir, "nats", "context.txt"))
+	if err != nil {
+		t.Fatalf("read local context.txt: %v", err)
+	}
+	if strings.TrimSpace(string(data)) != "alpha" {
+		t.Fatalf("local context.txt = %q want alpha", data)
 	}
 }
 

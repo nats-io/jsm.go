@@ -20,6 +20,8 @@ import (
 	"fmt"
 
 	"github.com/nats-io/nkeys"
+
+	"github.com/nats-io/jsm.go/natscontext/svcbackend"
 )
 
 // cryptoChecks covers PROTOCOL.md §9 / Conformance "Crypto". A
@@ -131,6 +133,69 @@ func cryptoChecks() []Check {
 				_, err = h.Client.Load(ctx, name)
 				if err != nil {
 					return StatusFail, "load (key mismatch would fail here): " + err.Error(), nil
+				}
+				return StatusPass, "", nil
+			},
+		},
+
+		{
+			ID: "crypto.save_stale_key", Section: "Crypto",
+			Title: "ctx.save sealed to a non-current xkey returns stale_key",
+			Modes: []string{"rw"},
+			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
+				// Seal a SaveRequest to a freshly-generated curve public
+				// key that the server has never held. The server's Open
+				// MUST fail, and PROTOCOL.md §9.4 requires stale_key on
+				// the wire so clients can trigger the rotation retry.
+				wrong, err := newCurveKey()
+				if err != nil {
+					return StatusFail, "generate wrong key: " + err.Error(), nil
+				}
+				defer wrong.Wipe()
+
+				wrongPub, err := wrong.PublicKey()
+				if err != nil {
+					return StatusFail, "wrong key public: " + err.Error(), nil
+				}
+
+				eph, err := newCurveKey()
+				if err != nil {
+					return StatusFail, "generate ephemeral: " + err.Error(), nil
+				}
+				defer eph.Wipe()
+
+				ephPub, err := eph.PublicKey()
+				if err != nil {
+					return StatusFail, "ephemeral public: " + err.Error(), nil
+				}
+
+				reqID, err := newHexID()
+				if err != nil {
+					return StatusFail, "req_id: " + err.Error(), nil
+				}
+
+				sealed, err := sealSave(eph, wrongPub, svcbackend.SaveSealed{Data: []byte("x"), ReqID: reqID})
+				if err != nil {
+					return StatusFail, "seal: " + err.Error(), nil
+				}
+
+				name := h.MintName("stalekey")
+
+				var resp svcbackend.SaveResponse
+				err = rawRequest(ctx, h, h.Prefix+".ctx.save."+name, svcbackend.SaveRequest{
+					SenderPub: ephPub,
+					Sealed:    sealed,
+				}, &resp)
+				if err != nil {
+					return StatusFail, "raw save: " + err.Error(), nil
+				}
+
+				if resp.Error == nil {
+					h.Track(name)
+					return StatusFail, "expected stale_key error, got success (server accepted payload sealed to an unknown key)", nil
+				}
+				if resp.Error.Code != string(svcbackend.CodeStaleKey) {
+					return StatusFail, fmt.Sprintf("expected code %q, got %q (message %q)", svcbackend.CodeStaleKey, resp.Error.Code, resp.Error.Message), nil
 				}
 				return StatusPass, "", nil
 			},

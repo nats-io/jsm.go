@@ -79,6 +79,19 @@ func defaultResolvers() []CredentialResolver {
 	}
 }
 
+// trimSchemePrefix removes prefix from the front of ref if the
+// leading bytes match case-insensitively, otherwise it returns ref
+// unchanged. URI schemes are case-insensitive per RFC 3986 and
+// parseScheme normalizes via url.Parse, so a value like ENV://NAME or
+// FILE:///tmp/x reaches the matching resolver — this helper lets each
+// resolver strip the prefix without regard to the original casing.
+func trimSchemePrefix(ref, prefix string) string {
+	if len(ref) >= len(prefix) && strings.EqualFold(ref[:len(prefix)], prefix) {
+		return ref[len(prefix):]
+	}
+	return ref
+}
+
 // parseScheme returns the URI scheme (lowercased) for ref, or the
 // empty string when ref does not start with one we should route
 // through a resolver. url.Parse handles both "scheme://…" (op, nsc,
@@ -98,17 +111,14 @@ func parseScheme(ref string) string {
 }
 
 // resolveLiteral treats ref as a literal value unless it begins with a
-// URI scheme that matches a registered resolver. Known-scheme refs are
-// resolved to bytes and returned as a string; anything else passes
-// through unchanged.
+// URI scheme that matches a registered resolver, or unless a fallback
+// resolver is registered under the empty scheme. Resolved refs are
+// returned as a string; anything else passes through unchanged.
 func resolveLiteral(ctx context.Context, resolvers map[string]CredentialResolver, ref string) (string, error) {
 	if ref == "" {
 		return "", nil
 	}
 	scheme := parseScheme(ref)
-	if scheme == "" {
-		return ref, nil
-	}
 	r, ok := resolvers[scheme]
 	if !ok {
 		return ref, nil

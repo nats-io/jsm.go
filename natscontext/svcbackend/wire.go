@@ -91,35 +91,3 @@ type ListResponse struct {
 	Names []string       `json:"names,omitempty"`
 	Error *ErrorResponse `json:"error,omitempty"`
 }
-
-// SelectedRequest is the request for natscontext.v1.sel.get.
-type SelectedRequest struct{}
-
-// SelectedResponse carries the currently selected context name. A
-// missing selection is signaled by Error with CodeNoneSelected.
-type SelectedResponse struct {
-	Name  string         `json:"name,omitempty"`
-	Error *ErrorResponse `json:"error,omitempty"`
-}
-
-// SetSelectedRequest is the envelope for natscontext.v1.sel.set.
-type SetSelectedRequest struct {
-	ReqID string `json:"req_id"`
-}
-
-// SetSelectedResponse carries the previously selected name, if any.
-type SetSelectedResponse struct {
-	Previous string         `json:"previous,omitempty"`
-	Error    *ErrorResponse `json:"error,omitempty"`
-}
-
-// ClearSelectedRequest is the envelope for natscontext.v1.sel.clear.
-type ClearSelectedRequest struct {
-	ReqID string `json:"req_id"`
-}
-
-// ClearSelectedResponse carries the previously selected name, if any.
-type ClearSelectedResponse struct {
-	Previous string         `json:"previous,omitempty"`
-	Error    *ErrorResponse `json:"error,omitempty"`
-}

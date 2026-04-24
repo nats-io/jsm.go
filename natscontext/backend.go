@@ -17,7 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
+	"strings"
 )
 
 // Error sentinels returned by Backend, Selector and Registry implementations.
@@ -64,22 +64,31 @@ type Selector interface {
 	SetSelected(ctx context.Context, name string) (previous string, err error)
 }
 
-// invalidNameRE matches any character disallowed in a context name:
-// whitespace, control characters, and any of . / \ * >. The dot and
-// subject-wildcard characters are rejected so names round-trip between
-// filesystem and future KV backends.
-var invalidNameRE = regexp.MustCompile(`[\s/\\.*>\x00-\x1f\x7f]`)
-
-// ValidateName checks that name conforms to the portable intersection
-// accepted by all shipped Backends: non-empty, and none of whitespace,
-// control characters, or the characters . / \ * >. Backends MAY surface
-// additional rejections via ErrInvalidName for backend-specific reasons.
+// ValidateName enforces the historical portable rule that shipped
+// natscontext users already have on disk: a name is valid iff it is
+// non-empty, does not contain the ".." substring, and does not
+// contain "/" or "\". The rule is deliberately loose — whitespace,
+// control characters, and the NATS subject wildcards "*" and ">" all
+// pass at this layer because in-the-wild context names predate a
+// stricter validator and must keep working after upgrade.
+//
+// Backends whose storage model cannot express some of those names
+// layer their own rejection on top: for example the shipped
+// svcbackend client rejects names containing whitespace, control
+// characters, ".", "*", or ">" before publishing, because each of
+// those would break the single-token NATS subject the wire protocol
+// embeds the name in. Such backends MUST surface their additional
+// rejections via ErrInvalidName so callers can tell validation
+// failures apart from other errors with errors.Is.
 func ValidateName(name string) error {
 	if name == "" {
 		return fmt.Errorf("%w: name is empty", ErrInvalidName)
 	}
-	if invalidNameRE.MatchString(name) {
-		return fmt.Errorf(`%w: %q must not contain whitespace, control characters, or any of . / \ * >`, ErrInvalidName, name)
+	if strings.Contains(name, "..") {
+		return fmt.Errorf(`%w: %q must not contain ".."`, ErrInvalidName, name)
+	}
+	if strings.ContainsAny(name, `/\`) {
+		return fmt.Errorf(`%w: %q must not contain "/" or "\"`, ErrInvalidName, name)
 	}
 	return nil
 }

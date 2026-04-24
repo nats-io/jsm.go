@@ -29,6 +29,11 @@ func (r *opResolver) Schemes() []string {
 }
 
 func (r *opResolver) Resolve(ctx context.Context, ref string) ([]byte, error) {
+	const prefix = "op://"
+	rest := trimSchemePrefix(ref, prefix)
+	if rest != ref {
+		ref = prefix + rest
+	}
 	cmd := exec.CommandContext(ctx, "op", "read", ref)
 	out, err := cmd.Output()
 	if err != nil {

@@ -35,7 +35,7 @@ func (r *nscResolver) Schemes() []string {
 }
 
 func (r *nscResolver) Resolve(ctx context.Context, ref string) ([]byte, error) {
-	profile, err := runNscProfile(ctx, trimNscPrefix(ref))
+	profile, err := runNscProfile(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -61,16 +61,19 @@ type nscProfileRaw struct {
 }
 
 // runNscProfile invokes `nsc generate profile <ref>` and parses the
-// JSON output. It is shared between the nsc:// resolver and the
-// load-time NSCLookup field handling so both code paths produce
-// identical results. Stdout is never included in returned errors
-// because it can carry decorated JWTs.
+// JSON output. It is shared between the nsc:// resolver, the
+// load-time NSCLookup field handling, and the save-time migration so
+// every path produces identical results. ref may be the URI form
+// (nsc://op/acct/user) or bare form (op/acct/user); a leading
+// nsc:// is stripped before invoking the CLI. Stdout is never
+// included in returned errors because it can carry decorated JWTs.
 func runNscProfile(ctx context.Context, ref string) (*nscProfile, error) {
 	path, err := exec.LookPath("nsc")
 	if err != nil {
 		return nil, fmt.Errorf("cannot find 'nsc' in user path")
 	}
 
+	ref = trimSchemePrefix(ref, "nsc://")
 	cmd := exec.CommandContext(ctx, path, "generate", "profile", ref)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -93,8 +96,4 @@ func runNscProfile(ctx context.Context, ref string) (*nscProfile, error) {
 		UserCreds: raw.UserCreds,
 		Service:   strings.Join(raw.Operator.Service, ","),
 	}, nil
-}
-
-func trimNscPrefix(ref string) string {
-	return strings.TrimPrefix(ref, "nsc://")
 }

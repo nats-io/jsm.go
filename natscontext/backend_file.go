@@ -27,13 +27,18 @@ import (
 
 // FileBackend stores contexts as JSON files under <root>/nats/context/<name>.json
 // and tracks the active and previously-selected context in
-// <root>/nats/context.txt and <root>/nats/previous-context.txt.
+// <root>/nats/context.txt and <root>/nats/previous-context.txt. The
+// selection half is delegated to a composed FileSelector so the same
+// on-disk format and atomicity guarantees are used whether the caller
+// picks up selection via FileBackend (the Selector type assertion) or
+// composes a standalone FileSelector with a different Backend.
 //
 // All disk mutations use write-temp-then-rename so concurrent readers never
 // observe a partially-written file.
 type FileBackend struct {
-	root string
-	mu   sync.Mutex
+	root     string
+	mu       sync.Mutex
+	selector *FileSelector
 }
 
 const (
@@ -51,16 +56,23 @@ func NewDefaultFileBackend() Backend {
 		// Mirror the pre-refactor behavior: reads against a backend with
 		// an unresolvable root silently return empty results; only writes
 		// surface the error.
-		return &FileBackend{root: ""}
+		return newFileBackend("")
 	}
-	return &FileBackend{root: root}
+	return newFileBackend(root)
 }
 
 // NewFileBackendAt returns a FileBackend rooted at dir. The backend keeps
 // its context files under dir/nats/context/. The directory is created on
 // first write.
 func NewFileBackendAt(dir string) Backend {
-	return &FileBackend{root: dir}
+	return newFileBackend(dir)
+}
+
+func newFileBackend(root string) *FileBackend {
+	return &FileBackend{
+		root:     root,
+		selector: &FileSelector{root: root},
+	}
 }
 
 func defaultRoot() (string, error) {
@@ -80,14 +92,6 @@ func defaultRoot() (string, error) {
 
 func (fb *FileBackend) contextDir() string {
 	return filepath.Join(fb.root, "nats", "context")
-}
-
-func (fb *FileBackend) selectedPath() string {
-	return filepath.Join(fb.root, "nats", selectedCtxFile)
-}
-
-func (fb *FileBackend) previousPath() string {
-	return filepath.Join(fb.root, "nats", previousCtxFile)
 }
 
 // Path returns the on-disk path for a context with the given name.
@@ -206,68 +210,24 @@ func (fb *FileBackend) List(_ context.Context) ([]string, error) {
 }
 
 // Selected returns the currently selected context, or ErrNoneSelected
-// when nothing is selected.
-func (fb *FileBackend) Selected(_ context.Context) (string, error) {
-	name := fb.readSelection(fb.selectedPath())
-	if name == "" {
-		return "", ErrNoneSelected
-	}
-	return name, nil
+// when nothing is selected. Delegates to the composed FileSelector.
+func (fb *FileBackend) Selected(ctx context.Context) (string, error) {
+	return fb.selector.Selected(ctx)
 }
 
 // Previous returns the previously-selected context, or an empty string
 // if there is none. It is not part of the Selector interface; callers
 // obtain it via the package-level PreviousContext helper.
 func (fb *FileBackend) Previous() string {
-	return fb.readSelection(fb.previousPath())
-}
-
-func (fb *FileBackend) readSelection(path string) string {
-	if fb.root == "" {
-		return ""
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(data))
+	return fb.selector.Previous()
 }
 
 // SetSelected sets name as the active context, returning whatever was
 // selected before the swap. Passing an empty name clears the selection.
 // Both the selected and previous files are updated via write-temp-then-
 // rename so concurrent readers never see a torn value.
-func (fb *FileBackend) SetSelected(_ context.Context, name string) (string, error) {
-	fb.mu.Lock()
-	defer fb.mu.Unlock()
-
-	err := fb.ensureTree()
-	if err != nil {
-		return "", err
-	}
-
-	previous := fb.readSelection(fb.selectedPath())
-
-	if previous != "" {
-		err = writeFileAtomic(fb.previousPath(), []byte(previous), 0600)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	if name == "" {
-		err = os.Remove(fb.selectedPath())
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return "", err
-		}
-		return previous, nil
-	}
-
-	err = writeFileAtomic(fb.selectedPath(), []byte(name), 0600)
-	if err != nil {
-		return "", err
-	}
-	return previous, nil
+func (fb *FileBackend) SetSelected(ctx context.Context, name string) (string, error) {
+	return fb.selector.SetSelected(ctx, name)
 }
 
 // SingleFileBackend stores exactly one context at a caller-supplied
@@ -290,9 +250,17 @@ type SingleFileBackend struct {
 // extension) so Registry.Load(name) and Registry.Save(c, name) both
 // work when the caller passes the same name.
 func NewSingleFileBackend(path string) Backend {
+	base := filepath.Base(path)
+	name := strings.TrimSuffix(base, filepath.Ext(base))
+	// Dotfile basenames like ".ctx" report the whole basename as the
+	// extension, which would leave name empty and push Registry.Load
+	// into its no-name-selected branch instead of reading the file.
+	if name == "" {
+		name = base
+	}
 	return &SingleFileBackend{
 		path: path,
-		name: strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)),
+		name: name,
 	}
 }
 
@@ -341,6 +309,10 @@ func (sb *SingleFileBackend) Save(_ context.Context, name string, data []byte) e
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 
+	err := os.MkdirAll(filepath.Dir(sb.path), 0700)
+	if err != nil {
+		return err
+	}
 	return writeFileAtomic(sb.path, data, 0600)
 }
 

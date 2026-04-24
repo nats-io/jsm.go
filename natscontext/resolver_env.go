@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // envResolver reads secret material from an environment variable named
@@ -30,7 +29,7 @@ func (r *envResolver) Schemes() []string {
 }
 
 func (r *envResolver) Resolve(ctx context.Context, ref string) ([]byte, error) {
-	name := strings.TrimPrefix(ref, "env://")
+	name := trimSchemePrefix(ref, "env://")
 	if name == "" {
 		return nil, fmt.Errorf("env: missing variable name in reference %q", ref)
 	}

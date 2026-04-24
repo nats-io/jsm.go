@@ -16,7 +16,6 @@
             "already_exists",
             "invalid_name",
             "active_context",
-            "none_selected",
             "read_only",
             "conflict",
             "internal"
@@ -150,59 +149,6 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Sorted context names."
-        },
-        "error": { "$ref": "#/$defs/Error" }
-      }
-    },
-    "SelectedRequest": {
-      "type": "object",
-      "additionalProperties": false
-    },
-    "SelectedResponse": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Currently selected context; absent when none is selected (error carries CodeNoneSelected)."
-        },
-        "error": { "$ref": "#/$defs/Error" }
-      }
-    },
-    "SetSelectedRequest": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["req_id"],
-      "properties": {
-        "req_id": { "type": "string" }
-      }
-    },
-    "SetSelectedResponse": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "previous": {
-          "type": "string",
-          "description": "Name of the previously selected context; empty when none."
-        },
-        "error": { "$ref": "#/$defs/Error" }
-      }
-    },
-    "ClearSelectedRequest": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["req_id"],
-      "properties": {
-        "req_id": { "type": "string" }
-      }
-    },
-    "ClearSelectedResponse": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "previous": {
-          "type": "string",
-          "description": "Name of the previously selected context; empty when none."
         },
         "error": { "$ref": "#/$defs/Error" }
       }

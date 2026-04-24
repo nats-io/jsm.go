@@ -81,59 +81,6 @@ func behaviorChecks() []Check {
 		},
 
 		{
-			ID: "behavior.sel_get_empty", Section: "Behavior",
-			Title: "sel.get returns none_selected when no selection is set",
-			Modes: []string{"rw"},
-			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
-				_, err := h.Client.SetSelected(ctx, "") // clear
-				if err != nil {
-					return StatusFail, "clear: " + err.Error(), nil
-				}
-
-				_, err = h.Client.Selected(ctx)
-				if !errors.Is(err, natscontext.ErrNoneSelected) {
-					return StatusFail, fmt.Sprintf("expected none_selected, got %v", err), nil
-				}
-				return StatusPass, "", nil
-			},
-		},
-
-		{
-			ID: "behavior.sel_clear_returns_prev", Section: "Behavior",
-			Title: "sel.clear returns the prior selection (empty when none)",
-			Modes: []string{"rw"},
-			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
-				name := h.MintName("sel_prev")
-				err := h.Client.Save(ctx, name, []byte("x"))
-				if err != nil {
-					return StatusFail, "save: " + err.Error(), nil
-				}
-
-				_, err = h.Client.SetSelected(ctx, name)
-				if err != nil {
-					return StatusFail, "set: " + err.Error(), nil
-				}
-
-				prev, err := h.Client.SetSelected(ctx, "")
-				if err != nil {
-					return StatusFail, "clear: " + err.Error(), nil
-				}
-				if prev != name {
-					return StatusFail, fmt.Sprintf("clear prev: got %q want %q", prev, name), nil
-				}
-
-				prev, err = h.Client.SetSelected(ctx, "")
-				if err != nil {
-					return StatusFail, "clear-again: " + err.Error(), nil
-				}
-				if prev != "" {
-					return StatusFail, fmt.Sprintf("clear-again prev: got %q want empty", prev), nil
-				}
-				return StatusPass, "", nil
-			},
-		},
-
-		{
 			ID: "behavior.immutable_readonly_save", Section: "Behavior",
 			Title: "immutable servers return read_only from ctx.save",
 			Modes: []string{"ro"},
@@ -152,45 +99,6 @@ func behaviorChecks() []Check {
 			Modes: []string{"ro"},
 			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
 				err := h.Client.Delete(ctx, "anything")
-				if !errors.Is(err, natscontext.ErrReadOnly) {
-					return StatusFail, fmt.Sprintf("expected read_only, got %v", err), nil
-				}
-				return StatusPass, "", nil
-			},
-		},
-
-		{
-			ID: "behavior.no_selection_readonly_get", Section: "Behavior",
-			Title: "no-selection servers return read_only from sel.get",
-			Modes: []string{"no-sel"},
-			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
-				_, err := h.Client.Selected(ctx)
-				if !errors.Is(err, natscontext.ErrReadOnly) {
-					return StatusFail, fmt.Sprintf("expected read_only, got %v", err), nil
-				}
-				return StatusPass, "", nil
-			},
-		},
-
-		{
-			ID: "behavior.no_selection_readonly_set", Section: "Behavior",
-			Title: "no-selection servers return read_only from sel.set",
-			Modes: []string{"no-sel"},
-			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
-				_, err := h.Client.SetSelected(ctx, "anything")
-				if !errors.Is(err, natscontext.ErrReadOnly) {
-					return StatusFail, fmt.Sprintf("expected read_only, got %v", err), nil
-				}
-				return StatusPass, "", nil
-			},
-		},
-
-		{
-			ID: "behavior.no_selection_readonly_clear", Section: "Behavior",
-			Title: "no-selection servers return read_only from sel.clear",
-			Modes: []string{"no-sel"},
-			Run: func(ctx context.Context, h *Harness) (Status, string, error) {
-				_, err := h.Client.SetSelected(ctx, "")
 				if !errors.Is(err, natscontext.ErrReadOnly) {
 					return StatusFail, fmt.Sprintf("expected read_only, got %v", err), nil
 				}

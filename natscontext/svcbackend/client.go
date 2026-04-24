@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"sync"
 	"time"
 
@@ -59,7 +60,14 @@ func WithServerKey(xkeyPub string) ClientOption {
 }
 
 // Client is the reference svcbackend client. It implements
-// natscontext.Backend, natscontext.Selector, and io.Closer.
+// natscontext.Backend and io.Closer.
+//
+// The Client deliberately does NOT implement natscontext.Selector.
+// Selection is a personal, per-machine choice that a shared service
+// backend should not carry; callers construct a Registry that pairs
+// this Client with a local Selector (for example
+// natscontext.WithLocalSelector) or with WithoutSelection when no
+// selection tracking is required.
 //
 // The caller owns the *nats.Conn; Close tears down per-client state
 // but does not close the connection.
@@ -108,7 +116,7 @@ func (c *Client) Close() error {
 // the response is sealed with the server's long-term xkey and opened
 // with a per-request client ephemeral.
 func (c *Client) Load(ctx context.Context, name string) ([]byte, error) {
-	err := natscontext.ValidateName(name)
+	err := validateWireName(name)
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +155,11 @@ func (c *Client) Load(ctx context.Context, name string) ([]byte, error) {
 }
 
 // Save writes data for name. The plaintext is sealed to the cached
-// server xkey with a per-request client ephemeral.
+// server xkey with a per-request client ephemeral. A stale_key reply
+// (server rotated) triggers a single invalidate/refetch/retry per
+// PROTOCOL.md §9.4.
 func (c *Client) Save(ctx context.Context, name string, data []byte) error {
-	err := natscontext.ValidateName(name)
+	err := validateWireName(name)
 	if err != nil {
 		return err
 	}
@@ -159,20 +169,59 @@ func (c *Client) Save(ctx context.Context, name string, data []byte) error {
 		return err
 	}
 
-	reqID, err := newReqID()
+	er, err := c.saveOnce(ctx, name, data, serverPub)
 	if err != nil {
 		return err
+	}
+	if er == nil {
+		return nil
+	}
+	if er.Code != string(CodeStaleKey) {
+		return SentinelFromError(er)
+	}
+
+	c.invalidateServerPub(serverPub)
+
+	refreshed, refetchErr := c.ensureServerPub(ctx)
+	if refetchErr != nil {
+		return fmt.Errorf("refetch server xkey after stale_key: %w", refetchErr)
+	}
+	if refreshed == serverPub {
+		return errors.New("svcbackend: sys.xkey returned the same stale key")
+	}
+
+	er, err = c.saveOnce(ctx, name, data, refreshed)
+	if err != nil {
+		return fmt.Errorf("save failed after server xkey refresh: %w", err)
+	}
+	if er != nil {
+		return fmt.Errorf("save failed after server xkey refresh: %w", SentinelFromError(er))
+	}
+	return nil
+}
+
+// saveOnce issues a single ctx.save round-trip against serverPub.
+// Each call generates a fresh req_id and a fresh ephemeral keypair so
+// a retry does not look like a replay on the wire and does not share
+// a sender_pub with the original attempt. A non-nil ErrorResponse is
+// a protocol-level reply the caller can inspect (including stale_key
+// for the rotation retry path); a non-nil error is a transport-level
+// failure.
+func (c *Client) saveOnce(ctx context.Context, name string, data []byte, serverPub string) (*ErrorResponse, error) {
+	reqID, err := newReqID()
+	if err != nil {
+		return nil, err
 	}
 
 	ephPriv, ephPub, err := newEphemeral()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer ephPriv.Wipe()
 
 	sealed, err := sealSaveRequest(ephPriv, serverPub, SaveSealed{Data: data, ReqID: reqID})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	env := SaveRequest{SenderPub: ephPub, Sealed: sealed}
@@ -180,16 +229,16 @@ func (c *Client) Save(ctx context.Context, name string, data []byte) error {
 	var resp SaveResponse
 	err = c.roundTrip(ctx, c.prefix+".ctx.save."+name, env, &resp)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return SentinelFromError(resp.Error)
+	return resp.Error, nil
 }
 
 // Delete removes name. A missing name is a no-op; invalid names
 // fast-fail without a network round-trip.
 func (c *Client) Delete(ctx context.Context, name string) error {
-	err := natscontext.ValidateName(name)
+	err := validateWireName(name)
 	if err != nil {
 		return err
 	}
@@ -220,71 +269,6 @@ func (c *Client) List(ctx context.Context) ([]string, error) {
 		return nil, SentinelFromError(resp.Error)
 	}
 	return resp.Names, nil
-}
-
-// Selected returns the currently selected context name, or
-// ErrNoneSelected when no selection has been set.
-func (c *Client) Selected(ctx context.Context) (string, error) {
-	var resp SelectedResponse
-	err := c.roundTrip(ctx, c.prefix+".sel.get", SelectedRequest{}, &resp)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.Error != nil {
-		return "", SentinelFromError(resp.Error)
-	}
-	return resp.Name, nil
-}
-
-// SetSelected sets the active context. An empty name clears any
-// current selection; both shapes return the previous selection.
-func (c *Client) SetSelected(ctx context.Context, name string) (string, error) {
-	if name == "" {
-		return c.clearSelected(ctx)
-	}
-	return c.setSelected(ctx, name)
-}
-
-func (c *Client) setSelected(ctx context.Context, name string) (string, error) {
-	err := natscontext.ValidateName(name)
-	if err != nil {
-		return "", err
-	}
-
-	reqID, err := newReqID()
-	if err != nil {
-		return "", err
-	}
-
-	var resp SetSelectedResponse
-	err = c.roundTrip(ctx, c.prefix+".sel.set."+name, SetSelectedRequest{ReqID: reqID}, &resp)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.Error != nil {
-		return "", SentinelFromError(resp.Error)
-	}
-	return resp.Previous, nil
-}
-
-func (c *Client) clearSelected(ctx context.Context) (string, error) {
-	reqID, err := newReqID()
-	if err != nil {
-		return "", err
-	}
-
-	var resp ClearSelectedResponse
-	err = c.roundTrip(ctx, c.prefix+".sel.clear", ClearSelectedRequest{ReqID: reqID}, &resp)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.Error != nil {
-		return "", SentinelFromError(resp.Error)
-	}
-	return resp.Previous, nil
 }
 
 // decryptError marks a Load failure caused by Open returning an
@@ -319,6 +303,12 @@ func (c *Client) loadOnce(ctx context.Context, name, serverPub string) ([]byte, 
 	}
 
 	if resp.Error != nil {
+		// A stale_key reply means a hypothetical server-side failure on
+		// the sealed path that mirrors the client-side Open failure
+		// handled below; route it through the same rotation retry.
+		if resp.Error.Code == string(CodeStaleKey) {
+			return nil, decryptError{err: fmt.Errorf("server reported stale_key: %s", resp.Error.Message)}
+		}
 		return nil, SentinelFromError(resp.Error)
 	}
 
@@ -452,6 +442,35 @@ func (c *Client) checkOpen() error {
 
 	if c.closed {
 		return errors.New("svcbackend: client closed")
+	}
+	return nil
+}
+
+// subjectHostileRE matches any character that cannot appear in a
+// single NATS subject token: whitespace (which terminates a subject
+// in parsing), control characters, the token separator ".", and the
+// subject wildcards "*" and ">". The core natscontext.ValidateName
+// rule is deliberately loose for historical compat, so any of these
+// characters may legally reach the svcbackend client; we reject them
+// up-front with ErrInvalidName rather than publish a malformed or
+// wildcard-matching subject.
+var subjectHostileRE = regexp.MustCompile(`[\s.*>\x00-\x1f\x7f]`)
+
+// validateWireName layers svcbackend-specific rejections on top of
+// the portable natscontext.ValidateName. The wire protocol embeds
+// the context name as the final token of a NATS subject, which
+// constrains the character set beyond what the core validator
+// permits. The client fast-fails rather than publishing a subject
+// the server's single-token wildcard subscription would never match
+// (or worse, a subject whose wildcards leak a request onto an
+// unintended tree).
+func validateWireName(name string) error {
+	err := natscontext.ValidateName(name)
+	if err != nil {
+		return err
+	}
+	if subjectHostileRE.MatchString(name) {
+		return fmt.Errorf(`%w: %q must not contain whitespace, control characters, or any of . * > — the svcbackend wire protocol carries the name as a single NATS subject token`, natscontext.ErrInvalidName, name)
 	}
 	return nil
 }

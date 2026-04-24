@@ -129,6 +129,8 @@ func TestFileResolver(t *testing.T) {
 	}{
 		{"bare path", credsPath},
 		{"file scheme", "file://" + credsPath},
+		{"file scheme uppercase", "FILE://" + credsPath},
+		{"file scheme mixed case", "File://" + credsPath},
 		{"env-var expansion", "$NATS_TEST_CREDS_DIR/user.creds"},
 	}
 
@@ -149,6 +151,44 @@ func TestFileResolver(t *testing.T) {
 	}
 }
 
+// TestFileResolverEagerRead covers the path that actually opens the
+// referenced file (resolveLiteral → fileResolver.Resolve →
+// os.ReadFile) so a broken file:// prefix strip surfaces as a hard
+// error rather than being papered over by lazy nats.UserCredentials.
+func TestFileResolverEagerRead(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file-path semantics differ on Windows; covered on unix")
+	}
+
+	tmp := t.TempDir()
+	tokenPath := filepath.Join(tmp, "token.txt")
+	err := os.WriteFile(tokenPath, []byte("super-secret-token"), 0600)
+	if err != nil {
+		t.Fatalf("write token: %v", err)
+	}
+
+	cases := []string{
+		"file://" + tokenPath,
+		"FILE://" + tokenPath,
+		"File://" + tokenPath,
+	}
+	for _, ref := range cases {
+		t.Run(ref, func(t *testing.T) {
+			ctx, err := natscontext.New("filetoken", false, natscontext.WithToken(ref))
+			if err != nil {
+				t.Fatalf("new: %v", err)
+			}
+			opts, err := ctx.NATSOptions()
+			if err != nil {
+				t.Fatalf("NATSOptions: %v", err)
+			}
+			if len(opts) == 0 {
+				t.Fatal("expected token option from file resolver")
+			}
+		})
+	}
+}
+
 // TestOpResolver installs a fake `op` binary on PATH that returns the
 // fixture creds, then verifies a Creds="op://..." value plumbs through
 // NATSOptions without error.
@@ -161,16 +201,18 @@ func TestOpResolver(t *testing.T) {
 	writeShellShim(t, binDir, "op", makeFixtureCreds(t))
 	prependToPATH(t, binDir)
 
-	ctx, err := natscontext.New("optest", false, natscontext.WithCreds("op://vault/item/field"))
-	if err != nil {
-		t.Fatalf("new: %v", err)
-	}
-	opts, err := ctx.NATSOptions()
-	if err != nil {
-		t.Fatalf("NATSOptions: %v", err)
-	}
-	if len(opts) == 0 {
-		t.Fatal("expected creds option from op resolver")
+	for _, ref := range []string{"op://vault/item/field", "OP://vault/item/field", "Op://vault/item/field"} {
+		ctx, err := natscontext.New("optest", false, natscontext.WithCreds(ref))
+		if err != nil {
+			t.Fatalf("new (%s): %v", ref, err)
+		}
+		opts, err := ctx.NATSOptions()
+		if err != nil {
+			t.Fatalf("NATSOptions (%s): %v", ref, err)
+		}
+		if len(opts) == 0 {
+			t.Fatalf("expected creds option from op resolver for %s", ref)
+		}
 	}
 }
 
@@ -190,16 +232,18 @@ func TestNscResolver(t *testing.T) {
 	writeShellShim(t, binDir, "nsc", nscJSON)
 	prependToPATH(t, binDir)
 
-	ctx, err := natscontext.New("nsctest", false, natscontext.WithCreds("nsc://op/acct/user"))
-	if err != nil {
-		t.Fatalf("new: %v", err)
-	}
-	opts, err := ctx.NATSOptions()
-	if err != nil {
-		t.Fatalf("NATSOptions: %v", err)
-	}
-	if len(opts) == 0 {
-		t.Fatal("expected creds option from nsc resolver")
+	for _, ref := range []string{"nsc://op/acct/user", "NSC://op/acct/user", "Nsc://op/acct/user"} {
+		ctx, err := natscontext.New("nsctest", false, natscontext.WithCreds(ref))
+		if err != nil {
+			t.Fatalf("new (%s): %v", ref, err)
+		}
+		opts, err := ctx.NATSOptions()
+		if err != nil {
+			t.Fatalf("NATSOptions (%s): %v", ref, err)
+		}
+		if len(opts) == 0 {
+			t.Fatalf("expected creds option from nsc resolver for %s", ref)
+		}
 	}
 }
 
@@ -255,6 +299,182 @@ func TestNSCLookupDeprecation(t *testing.T) {
 	if strings.Contains(body, `"nsc": "op/acct/user"`) {
 		t.Errorf("expected NSCLookup field to be cleared on save, got:\n%s", body)
 	}
+	// The nsc service URL must survive the migration so reloads do not
+	// have to invoke nsc again to know where to connect.
+	if !strings.Contains(body, `"url": "nats://legacy:4222"`) {
+		t.Errorf("expected nsc service URL persisted into url field, got:\n%s", body)
+	}
+
+	reloaded, err := natscontext.New("legacy", true)
+	if err != nil {
+		t.Fatalf("reload legacy: %v", err)
+	}
+	if reloaded.ServerURL() != "nats://legacy:4222" {
+		t.Fatalf("ServerURL lost after migration save+reload: got %q want nats://legacy:4222", reloaded.ServerURL())
+	}
+}
+
+// TestRunNscProfileNormalizesPrefix asserts that every code path that
+// invokes the nsc CLI hands it the bare op/acct/user form even when
+// the caller supplied the nsc:// URI form. The shim records its
+// argument so the test can verify the prefix was stripped exactly
+// once regardless of which entry point dispatched the call.
+func TestRunNscProfileNormalizesPrefix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-shim dispatch not portable on Windows")
+	}
+
+	binDir := t.TempDir()
+	credsDir := t.TempDir()
+	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
+	argLog := filepath.Join(t.TempDir(), "nsc-arg.txt")
+	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://prefixed:4222"]}}`, credsPath)
+	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s' \"$3\" >> %q\ncat <<'__NATS_SHIM_EOF__'\n%s\n__NATS_SHIM_EOF__\n", argLog, nscJSON)
+	err := os.WriteFile(filepath.Join(binDir, "nsc"), []byte(script), 0755)
+	if err != nil {
+		t.Fatalf("write shim: %v", err)
+	}
+	prependToPATH(t, binDir)
+
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	ctxDir := filepath.Join(dir, "nats", "context")
+	err = os.MkdirAll(ctxDir, 0700)
+	if err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(ctxDir, "loadprefixed.json"), []byte(`{"nsc":"nsc://op/acct/user"}`), 0600)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	_, err = natscontext.New("loadprefixed", true)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	c, err := natscontext.New("creds-resolve", false, natscontext.WithCreds("nsc://op/acct/user"))
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	_, err = c.NATSOptions()
+	if err != nil {
+		t.Fatalf("NATSOptions: %v", err)
+	}
+
+	logged, err := os.ReadFile(argLog)
+	if err != nil {
+		t.Fatalf("read arg log: %v", err)
+	}
+	if strings.Contains(string(logged), "nsc://") {
+		t.Fatalf("nsc CLI received URI form somewhere; argLog=%q", string(logged))
+	}
+	if !strings.Contains(string(logged), "op/acct/user") {
+		t.Fatalf("expected nsc CLI to receive bare ref; argLog=%q", string(logged))
+	}
+}
+
+// TestNSCLookupAlreadyPrefixedOnSave covers the legacy upgrade path
+// where NSCLookup already carries an "nsc://" prefix (the form that
+// WithNscUrl documents). Migrate must not blindly re-prepend the
+// scheme: the saved creds reference must be a single nsc:// URI so
+// later resolver dispatch is idempotent.
+func TestNSCLookupAlreadyPrefixedOnSave(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-shim dispatch not portable on Windows")
+	}
+
+	binDir := t.TempDir()
+	credsDir := t.TempDir()
+	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
+	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://prefixed:4222"]}}`, credsPath)
+	writeShellShim(t, binDir, "nsc", nscJSON)
+	prependToPATH(t, binDir)
+
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	ctxDir := filepath.Join(dir, "nats", "context")
+	err := os.MkdirAll(ctxDir, 0700)
+	if err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	c, err := natscontext.New("prefixed", false, natscontext.WithNscUrl("nsc://op/acct/user"))
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	err = c.Save("")
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(ctxDir, "prefixed.json"))
+	if err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	body := string(data)
+	if !strings.Contains(body, `"creds": "nsc://op/acct/user"`) {
+		t.Errorf("expected single-prefix creds URI, got:\n%s", body)
+	}
+	if strings.Contains(body, "nsc://nsc://") {
+		t.Errorf("creds was double-prefixed, got:\n%s", body)
+	}
+}
+
+// TestNSCLookupOverrideOnSave covers the legacy-upgrade path where a
+// context loaded with NSCLookup set is then assigned an explicit
+// Creds value before Save. Validate must not reject the
+// NSCLookup+Creds combination as "too many types of credentials":
+// migrate runs first, drops NSCLookup, and Save persists the explicit
+// Creds.
+func TestNSCLookupOverrideOnSave(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-shim dispatch not portable on Windows")
+	}
+
+	binDir := t.TempDir()
+	credsDir := t.TempDir()
+	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
+	overridePath := writeCredsFile(t, credsDir, "override.creds")
+	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://legacy:4222"]}}`, credsPath)
+	writeShellShim(t, binDir, "nsc", nscJSON)
+	prependToPATH(t, binDir)
+
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	ctxDir := filepath.Join(dir, "nats", "context")
+	err := os.MkdirAll(ctxDir, 0700)
+	if err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(ctxDir, "legacy.json"), []byte(`{"nsc":"op/acct/user"}`), 0600)
+	if err != nil {
+		t.Fatalf("write legacy: %v", err)
+	}
+
+	loaded, err := natscontext.New("legacy", true, natscontext.WithCreds(overridePath))
+	if err != nil {
+		t.Fatalf("load legacy: %v", err)
+	}
+
+	err = loaded.Save("")
+	if err != nil {
+		t.Fatalf("save with override: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(ctxDir, "legacy.json"))
+	if err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	body := string(data)
+	expectedCreds := fmt.Sprintf(`"creds": %q`, overridePath)
+	if !strings.Contains(body, expectedCreds) {
+		t.Errorf("expected explicit override creds preserved, got:\n%s", body)
+	}
+	if strings.Contains(body, `"nsc": "op/acct/user"`) {
+		t.Errorf("expected NSCLookup field cleared on save, got:\n%s", body)
+	}
 }
 
 // TestCustomResolver registers a handmade resolver for a fake scheme
@@ -290,6 +510,66 @@ func TestCustomResolver(t *testing.T) {
 	}
 }
 
+// TestBareFallbackResolver verifies that a resolver registering the
+// empty scheme is invoked for bare (unschemed) Token/Password/UserJwt/
+// UserSeed values, honoring the Schemes()/BACKENDS.md contract.
+// resolveLiteral previously short-circuited on an empty scheme and
+// never consulted resolvers[""].
+func TestBareFallbackResolver(t *testing.T) {
+	fallback := &recordingResolver{
+		scheme: "",
+		reply:  []byte("resolved-token"),
+	}
+	reg := natscontext.NewRegistry(
+		natscontext.NewFileBackendAt(t.TempDir()),
+		natscontext.WithDefaultResolvers(),
+		natscontext.WithCredentialResolver(fallback),
+	)
+
+	nctx, err := reg.Load(context.Background(), "", natscontext.WithToken("bare-ref"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	_, err = nctx.NATSOptions()
+	if err != nil {
+		t.Fatalf("NATSOptions: %v", err)
+	}
+
+	got := fallback.seen()
+	if len(got) != 1 || got[0] != "bare-ref" {
+		t.Fatalf("fallback resolver invocations = %v, want [bare-ref]", got)
+	}
+}
+
+// TestBareValueLiteralWithoutFallback verifies that without a
+// resolver registered for the empty scheme, bare Token values pass
+// through as literals — the pre-existing default behavior must be
+// preserved by the fallback fix.
+func TestBareValueLiteralWithoutFallback(t *testing.T) {
+	probe := &recordingResolver{scheme: "never"}
+	reg := natscontext.NewRegistry(
+		natscontext.NewFileBackendAt(t.TempDir()),
+		natscontext.WithDefaultResolvers(),
+		natscontext.WithCredentialResolver(probe),
+	)
+
+	nctx, err := reg.Load(context.Background(), "", natscontext.WithToken("plain-token"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	_, err = nctx.NATSOptions()
+	if err != nil {
+		t.Fatalf("NATSOptions: %v", err)
+	}
+
+	if len(probe.seen()) != 0 {
+		t.Fatalf("no resolver should have been consulted, got %v", probe.seen())
+	}
+	if nctx.Token() != "plain-token" {
+		t.Fatalf("bare token mutated: got %q", nctx.Token())
+	}
+}
+
 // TestEnvResolver exercises the env:// resolver. It asserts that a
 // set variable is resolved verbatim and that a missing or empty
 // variable surfaces an error rather than a silent empty secret.
@@ -297,19 +577,21 @@ func TestEnvResolver(t *testing.T) {
 	t.Setenv("NATS_TEST_TOKEN", "super-secret-token")
 	t.Setenv("NATS_TEST_EMPTY", "")
 
-	ctx, err := natscontext.New("envtest", false, natscontext.WithToken("env://NATS_TEST_TOKEN"))
-	if err != nil {
-		t.Fatalf("new: %v", err)
-	}
-	opts, err := ctx.NATSOptions()
-	if err != nil {
-		t.Fatalf("NATSOptions: %v", err)
-	}
-	if len(opts) == 0 {
-		t.Fatal("expected a token option from env resolver")
+	for _, ref := range []string{"env://NATS_TEST_TOKEN", "ENV://NATS_TEST_TOKEN", "Env://NATS_TEST_TOKEN"} {
+		ctx, err := natscontext.New("envtest", false, natscontext.WithToken(ref))
+		if err != nil {
+			t.Fatalf("new (%s): %v", ref, err)
+		}
+		opts, err := ctx.NATSOptions()
+		if err != nil {
+			t.Fatalf("NATSOptions (%s): %v", ref, err)
+		}
+		if len(opts) == 0 {
+			t.Fatalf("expected a token option from env resolver for %s", ref)
+		}
 	}
 
-	ctx, err = natscontext.New("envmissing", false, natscontext.WithToken("env://NATS_TEST_UNSET_VARIABLE"))
+	ctx, err := natscontext.New("envmissing", false, natscontext.WithToken("env://NATS_TEST_UNSET_VARIABLE"))
 	if err != nil {
 		t.Fatalf("new: %v", err)
 	}
@@ -334,17 +616,19 @@ func TestEnvResolver(t *testing.T) {
 func TestDataResolver(t *testing.T) {
 	encoded := base64.StdEncoding.EncodeToString([]byte("hello-secret"))
 
-	ctx, err := natscontext.New("datatest", false,
-		natscontext.WithToken("data:;base64,"+encoded))
-	if err != nil {
-		t.Fatalf("new: %v", err)
-	}
-	opts, err := ctx.NATSOptions()
-	if err != nil {
-		t.Fatalf("NATSOptions: %v", err)
-	}
-	if len(opts) == 0 {
-		t.Fatal("expected a token option from data resolver")
+	for _, prefix := range []string{"data:", "DATA:", "Data:"} {
+		ref := prefix + ";base64," + encoded
+		ctx, err := natscontext.New("datatest", false, natscontext.WithToken(ref))
+		if err != nil {
+			t.Fatalf("new (%s): %v", ref, err)
+		}
+		opts, err := ctx.NATSOptions()
+		if err != nil {
+			t.Fatalf("NATSOptions (%s): %v", ref, err)
+		}
+		if len(opts) == 0 {
+			t.Fatalf("expected a token option from data resolver for %s", ref)
+		}
 	}
 
 	cases := []struct {

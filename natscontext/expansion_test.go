@@ -64,7 +64,23 @@ func TestWipeSlice(t *testing.T) {
 }
 
 func TestValidateName(t *testing.T) {
-	valid := []string{"foo", "my-context", "ctx_1", "a"}
+	// ValidateName is deliberately loose: historical user contexts
+	// persisted before a stricter validator existed, and upgrading
+	// must not strand them. The rule is exactly "non-empty, no ".."
+	// substring, no / or \". Anything else is a concern for specific
+	// backends to layer on top (see svcbackend, which rejects
+	// subject-hostile characters before publishing).
+	valid := []string{
+		"foo", "my-context", "ctx_1", "a",
+		"ngs.js",   // the regression-of-record — had to keep working
+		"foo.bar",  // single dot mid-name
+		"foo bar",  // whitespace — legal at the core
+		"foo\tbar", // tab — legal at the core
+		"foo*bar",  // subject wildcard — legal at the core
+		"foo>bar",  // subject wildcard — legal at the core
+		"foo\x00a", // control character — legal at the core
+		"foo\x7fa", // DEL — legal at the core
+	}
 	for _, name := range valid {
 		err := ValidateName(name)
 		if err != nil {
@@ -78,16 +94,10 @@ func TestValidateName(t *testing.T) {
 		"foo\\bar", // backslash
 		"../evil",  // parent traversal with forward slash
 		"..\\evil", // parent traversal with backslash
-		"foo..bar", // double dot mid-name (rejected: contains .)
-		"..",       // bare double dot
-		"foo.bar",  // single dot mid-name
-		"foo bar",  // whitespace
-		"foo\tbar", // tab
-		"foo\nbar", // newline
-		"foo*bar",  // subject wildcard
-		"foo>bar",  // subject wildcard
-		"foo\x00a", // control character
-		"foo\x7fa", // DEL
+		"foo..bar", // contains ".." substring
+		"..",       // bare ".."
+		"a..",      // ".." at the end
+		"..a",      // ".." at the start
 	}
 	for _, name := range invalid {
 		err := ValidateName(name)

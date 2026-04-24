@@ -28,14 +28,19 @@ type ErrorCode string
 // CodeInternal fallback is used when the originating error is not
 // one of the known sentinels; the original error is never echoed to
 // the wire.
+//
+// CodeStaleKey is intentionally not mapped to a natscontext sentinel:
+// it is a client-internal retry signal that a server returns when
+// opening a sealed request fails because the client sealed to a
+// prior long-term xkey. See PROTOCOL.md §9.4.
 const (
 	CodeNotFound      ErrorCode = "not_found"
 	CodeAlreadyExists ErrorCode = "already_exists"
 	CodeInvalidName   ErrorCode = "invalid_name"
 	CodeActiveContext ErrorCode = "active_context"
-	CodeNoneSelected  ErrorCode = "none_selected"
 	CodeReadOnly      ErrorCode = "read_only"
 	CodeConflict      ErrorCode = "conflict"
+	CodeStaleKey      ErrorCode = "stale_key"
 	CodeInternal      ErrorCode = "internal"
 )
 
@@ -52,7 +57,6 @@ var codeToSentinel = map[ErrorCode]error{
 	CodeAlreadyExists: natscontext.ErrAlreadyExists,
 	CodeInvalidName:   natscontext.ErrInvalidName,
 	CodeActiveContext: natscontext.ErrActiveContext,
-	CodeNoneSelected:  natscontext.ErrNoneSelected,
 	CodeReadOnly:      natscontext.ErrReadOnly,
 	CodeConflict:      natscontext.ErrConflict,
 }
@@ -67,7 +71,6 @@ var sentinelToCode = []struct {
 	{natscontext.ErrAlreadyExists, CodeAlreadyExists},
 	{natscontext.ErrInvalidName, CodeInvalidName},
 	{natscontext.ErrActiveContext, CodeActiveContext},
-	{natscontext.ErrNoneSelected, CodeNoneSelected},
 	{natscontext.ErrReadOnly, CodeReadOnly},
 	{natscontext.ErrConflict, CodeConflict},
 }

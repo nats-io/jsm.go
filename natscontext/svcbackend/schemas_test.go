@@ -28,9 +28,6 @@ var allEndpoints = []string{
 	"ctx.save",
 	"ctx.delete",
 	"ctx.list",
-	"sel.get",
-	"sel.set",
-	"sel.clear",
 }
 
 func TestSchemaV1Parses(t *testing.T) {
@@ -155,12 +152,6 @@ func TestEnvelopesMatchSchemaStructurally(t *testing.T) {
 		{"DeleteResponse", DeleteResponse{}},
 		{"ListRequest", ListRequest{}},
 		{"ListResponse", ListResponse{Names: []string{"a", "b"}}},
-		{"SelectedRequest", SelectedRequest{}},
-		{"SelectedResponse", SelectedResponse{Name: "active"}},
-		{"SetSelectedRequest", SetSelectedRequest{ReqID: "rid"}},
-		{"SetSelectedResponse", SetSelectedResponse{Previous: "old"}},
-		{"ClearSelectedRequest", ClearSelectedRequest{ReqID: "rid"}},
-		{"ClearSelectedResponse", ClearSelectedResponse{Previous: "old"}},
 	}
 
 	for _, tc := range cases {

@@ -45,6 +45,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/user"
 	"runtime"
@@ -107,8 +108,34 @@ func (c *Context) String() string {
 	if c == nil {
 		return "natscontext.Context{<nil>}"
 	}
+	url := ""
+	if c.config != nil {
+		url = redactServerURL(c.ServerURL())
+	}
 	return fmt.Sprintf("natscontext.Context{name=%q url=%q auth=%s credentials=<redacted>}",
-		c.Name, c.ServerURL(), c.authLabel())
+		c.Name, url, c.authLabel())
+}
+
+// redactServerURL returns urls with any user-info component replaced
+// by "xxxxx@". NATS server URLs may carry user:password@host or
+// token@host forms (the comma-separated list form is also supported),
+// either of which would otherwise leak through Context.String. Each
+// element is parsed independently; elements that do not parse as URLs
+// or that carry no user-info pass through unchanged.
+func redactServerURL(urls string) string {
+	if urls == "" {
+		return ""
+	}
+	parts := strings.Split(urls, ",")
+	for i, p := range parts {
+		u, err := url.Parse(strings.TrimSpace(p))
+		if err != nil || u.User == nil {
+			continue
+		}
+		u.User = url.User("xxxxx")
+		parts[i] = u.String()
+	}
+	return strings.Join(parts, ",")
 }
 
 // GoString mirrors String so %#v is safe too.
@@ -251,7 +278,11 @@ func ContextPath(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b, ok := NewDefaultFileBackend().(*FileBackend)
+	root, err := defaultRoot()
+	if err != nil {
+		return "", err
+	}
+	b, ok := NewFileBackendAt(root).(*FileBackend)
 	if !ok {
 		return "", fmt.Errorf("default backend does not expose a path")
 	}
@@ -278,11 +309,25 @@ func SelectedContext() string {
 
 // PreviousContext returns the name of the previous selected context, empty if it hasn't been selected before.
 func PreviousContext() string {
-	b, ok := defaultRegistry().backend.(*FileBackend)
+	reg := defaultRegistry()
+	type previouser interface {
+		Previous() string
+	}
+	// A configured Selector owns "previous"; probe the backend only when
+	// the Registry has no Selector. Falling back across the two would
+	// mix selection state from different sources.
+	if reg.selector != nil {
+		p, ok := reg.selector.(previouser)
+		if !ok {
+			return ""
+		}
+		return p.Previous()
+	}
+	p, ok := reg.backend.(previouser)
 	if !ok {
 		return ""
 	}
-	return b.Previous()
+	return p.Previous()
 }
 
 // Connect connects to the configured NATS server
@@ -652,15 +697,24 @@ func (c *Context) Validate() error {
 
 // Save saves the current context to name. When the context was loaded
 // from a specific file (via NewFromFile, or via a Registry that
-// recorded a path) and name is empty or matches the loaded name,
-// Save writes back to that original path through a
-// SingleFileBackend-backed Registry. A different name is a rename
-// and goes through the package-level default Registry so it lands in
-// the XDG filesystem hierarchy. Callers using a custom Registry
-// should prefer Registry.Save directly.
+// recorded a path) and the effective save name matches the loaded
+// basename, Save writes back to that original path through a
+// SingleFileBackend-backed Registry. Anything else — an explicit
+// rename via the name argument, or a rename via mutation of c.Name
+// before Save("") — is treated as a rename and goes through the
+// package-level default Registry so it lands in the XDG filesystem
+// hierarchy. Callers using a custom Registry should prefer
+// Registry.Save directly.
 func (c *Context) Save(name string) error {
-	if c.path != "" && (name == "" || name == c.Name) {
-		return NewRegistry(NewSingleFileBackend(c.path)).Save(context.Background(), c, name)
+	if c.path != "" {
+		backend := NewSingleFileBackend(c.path).(*SingleFileBackend)
+		effective := name
+		if effective == "" {
+			effective = c.Name
+		}
+		if effective == backend.Name() {
+			return NewRegistry(backend).Save(context.Background(), c, name)
+		}
 	}
 	return defaultRegistry().Save(context.Background(), c, name)
 }
@@ -819,7 +873,12 @@ func WithNscUrl(u string) Option {
 	}
 }
 
-// NscURL is the url used to resolve credentials in nsc
+// NscURL is the url used to resolve credentials in nsc. Returns ""
+// for contexts that have been saved since the legacy field was
+// migrated into Creds; use Creds() with parseScheme to check for the
+// nsc:// scheme instead.
+//
+// Deprecated: use Creds() and inspect for an nsc:// scheme.
 func (c *Context) NscURL() string { return c.config.NSCLookup }
 
 // Description retrieves the description, empty if not set

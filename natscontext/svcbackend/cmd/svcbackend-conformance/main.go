@@ -58,7 +58,7 @@ func main() {
 
 	app.Flag("context", "NATS context name to connect with").Short('c').Required().StringVar(&ctxName)
 	app.Flag("prefix", "Subject prefix the server was configured with").Default(svcbackend.DefaultPrefix).StringVar(&prefix)
-	app.Flag("mode", "Expected server mode (rw, ro, no-sel)").Default("rw").EnumVar(&mode, "rw", "ro", "no-sel")
+	app.Flag("mode", "Expected server mode (rw, ro)").Default("rw").EnumVar(&mode, "rw", "ro")
 	app.Flag("namespace", "Prefix used for test-created context names").Default("__conf_").StringVar(&namespace)
 	app.Flag("timeout", "Per-request timeout").Default("5s").DurationVar(&timeout)
 	app.Flag("concurrency", "Workers for atomicity stress tests").Default("16").IntVar(&concurrency)

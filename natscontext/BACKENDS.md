@@ -20,6 +20,7 @@ A `Backend` trades raw payload bytes. A `CredentialResolver` is invoked later, a
 | `FileBackend`            | Backend  | JSON files under `<root>/nats/context/<name>.json`, tracks selection       |
 | `SingleFileBackend`      | Backend  | One context at a caller-supplied file path, used by `NewFromFile`          |
 | `MemoryBackend`          | Backend  | Mutex-protected map, primarily for tests and embeds                        |
+| `FileSelector`           | Selector | Tracks active/previous context on disk; composes with any Backend          |
 | `file://` (and bare path)| Resolver | Reads bytes from a filesystem path                                         |
 | `op://`                  | Resolver | Shells `op read` against the 1Password CLI                                 |
 | `nsc://`                 | Resolver | Shells `nsc generate profile`, returns the bytes of the generated creds    |
@@ -82,7 +83,17 @@ Wrap, do not replace: `fmt.Errorf("%w: %q", ErrNotFound, name)` remains `errors.
 
 ### Name validation
 
-`ValidateName` enforces the portable intersection accepted by every shipped backend: non-empty, no whitespace, no control characters, no `.`, `/`, `\`, `*`, or `>`. A backend may reject additional names for storage-specific reasons; those rejections return `ErrInvalidName` as well. Round-tripping a name created on one backend to another never produces a surprise rejection as long as both respect `ValidateName`.
+`ValidateName` enforces the historical portable rule, kept deliberately loose so context names users already have on disk keep working after upgrade:
+
+- non-empty,
+- does not contain the `..` substring,
+- does not contain `/` or `\`.
+
+Whitespace, control characters, a single `.`, and the NATS subject wildcards `*` and `>` all pass at this layer. That was the behavior shipped before the `Backend` refactor; tightening the rule at this layer would strand existing on-disk contexts (e.g. `ngs.js`) and break unknown user setups in-the-wild. `FileBackend` uses this rule as-is — the filesystem handles the permitted characters fine.
+
+Backends whose storage model cannot carry some of those characters layer their own rejection on top. The shipped `svcbackend` client rejects whitespace, control characters, and `.`, `*`, `>` before publishing because each of those would break the single-token NATS subject the wire protocol embeds the name in. Each such additional rejection MUST surface `ErrInvalidName` so callers can still use `errors.Is`.
+
+Round-tripping a name that passes `ValidateName` between two backends never produces a surprise rejection unless one of them imposes extra backend-specific rules; see each backend's docs for any such extras.
 
 ### Atomicity
 
@@ -198,6 +209,33 @@ func (e *encryptedBackend) Save(ctx context.Context, name string, data []byte) e
 
 Paired with a remote `Backend` that only knows how to move bytes (S3, HTTP, Redis, a different KV) this gives secret-at-rest coverage without the remote backend growing its own envelope format. A new remote backend should reach for the wrapper before reimplementing encryption. The shipped `natscontextkv` backend (see `spec/KV.md`) is the first to follow this pattern; later remote backends are expected to compose with the same wrapper rather than invent a second envelope.
 
+### Separating selection from storage
+
+A `Backend` stores contexts; a `Selector` tracks which one is active. By default `Registry` picks up a `Selector` via a type assertion on the `Backend`, which is the right behavior when storage is single-user (for example `FileBackend` on a developer's laptop).
+
+When the `Backend` is shared across users or machines — the `svcbackend` client talking to a service multiple operators connect to, a KV bucket replicated across a team — the "active context" is still a personal, per-machine choice. Storing it centrally leaks one operator's preference to every other operator (or requires per-user partitioning on the server). The composition for that case is "shared Backend, local Selector":
+
+```go
+sel, err := natscontext.NewDefaultFileSelector()
+if err != nil {
+    // fail loudly — see the XDG caveat below
+}
+reg := natscontext.NewRegistry(
+    svcClient,
+    natscontext.WithSelector(sel),
+)
+```
+
+`natscontext.WithLocalSelector()` is sugar for the same composition when the default `$XDG_CONFIG_HOME/nats/` (falling back to `$HOME/.config/nats/`) location is acceptable. It panics if neither is resolvable; on CI or container environments where that may happen, construct a `FileSelector` explicitly with `NewFileSelectorAt(dir)` and a known-writable directory.
+
+`WithoutSelection()` explicitly disables selection tracking even when the `Backend` implements `Selector`, for read-only pipelines or tools that always load by explicit name.
+
+Caveats the composition inherits and the Registry does not fully hide:
+
+- **Stale local selection.** Machine A deletes a context that machine B's local selector still names. When B next calls `Registry.Load("")`, the stale-selection guard clears the local selector and returns an empty `Context` — no error, but the next command that relied on a selection now starts from scratch. `Registry.Delete` cannot protect the remote catalog across machines; active-context refusal only covers the local selector.
+- **Local `previous-context.txt`.** The `previous` pointer is also local. `nats context previous` can reference a name the shared backend no longer has; surface those as `ErrNotFound` to the user.
+- **Inverse composition is undefined.** "Local `FileBackend` + remote `Selector`" (selection persisted to a shared store, contexts kept on one machine) is nonsense and not supported. A remote `Selector` naming a context the local backend does not have produces an `ErrNotFound` that no guard can meaningfully recover from.
+
 ### Contract tests
 
 A shared contract-conformance suite lives in `natscontext/backendtest`. New backends should call it from a `_test.go` file:
@@ -257,7 +295,7 @@ Context fields that go through resolvers fall into two shapes:
 
 `Cert`, `Key`, and `CA` are currently file-path only. Non-`file:` schemes for these fields are rejected with a clear error until nats.go exposes in-memory TLS equivalents.
 
-Scheme detection is `net/url`-based with a two-character minimum on the scheme, so Windows drive letters like `C:\foo` do not masquerade as URIs.
+Scheme detection is `net/url`-based with a two-character minimum on the scheme, so Windows drive letters like `C:\foo` do not masquerade as URIs. Schemes are matched case-insensitively per RFC 3986, so `FILE:///tmp/x`, `ENV://NAME`, and similar variants reach the same resolvers as their lowercase forms.
 
 ### Registration
 

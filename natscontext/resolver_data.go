@@ -51,10 +51,10 @@ func (r *dataResolver) Schemes() []string {
 
 func (r *dataResolver) Resolve(ctx context.Context, ref string) ([]byte, error) {
 	const prefix = "data:"
-	if !strings.HasPrefix(ref, prefix) {
+	rest := trimSchemePrefix(ref, prefix)
+	if rest == ref {
 		return nil, fmt.Errorf("data: reference does not start with %q", prefix)
 	}
-	rest := ref[len(prefix):]
 
 	comma := strings.Index(rest, ",")
 	if comma < 0 {

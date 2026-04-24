@@ -112,6 +112,110 @@ func TestNewFromFileSaveAsRename(t *testing.T) {
 	}
 }
 
+// TestNewFromFileDotfile verifies that NewFromFile reads a dotfile
+// basename like ".ctx" rather than silently returning a fresh default
+// context. filepath.Ext(".ctx") returns the whole basename, so naive
+// Ext-stripping produced an empty logical name and the Registry.Load
+// path short-circuited to configureNewContext.
+func TestNewFromFileDotfile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".ctx")
+	err := os.WriteFile(path, []byte(`{"url":"nats://hidden:4222"}`), 0600)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	c, err := natscontext.NewFromFile(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if c.ServerURL() != "nats://hidden:4222" {
+		t.Fatalf("dotfile path not read from disk: ServerURL=%q", c.ServerURL())
+	}
+}
+
+// TestSaveAfterNameMutation covers the rename-via-c.Name idiom that
+// pre-Backend-refactor code supported: load a context, mutate the
+// exported Name field, then call Save(""). Save must treat the
+// mutation as a rename and write to the new XDG slot rather than
+// rejecting the save because the loaded SingleFileBackend was rooted
+// at the original basename.
+func TestSaveAfterNameMutation(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+
+	ctxDir := filepath.Join(xdg, "nats", "context")
+	err := os.MkdirAll(ctxDir, 0700)
+	if err != nil {
+		t.Fatalf("seed dir: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(ctxDir, "foo.json"), []byte(`{"url":"nats://orig:4222"}`), 0600)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	loaded, err := natscontext.New("foo", true)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	loaded.Name = "bar"
+	err = loaded.Save("")
+	if err != nil {
+		t.Fatalf("save after rename: %v", err)
+	}
+
+	renamed := filepath.Join(ctxDir, "bar.json")
+	_, err = os.Stat(renamed)
+	if err != nil {
+		t.Fatalf("expected renamed context at %s, got %v", renamed, err)
+	}
+}
+
+// TestSaveRecreatesMissingContextDir covers the regression where a
+// context loaded via New(..., true) routed Save through a
+// SingleFileBackend, which skipped the MkdirAll performed by
+// FileBackend.Save. Removing the context directory between load and
+// save used to cause Save("") to fail with ENOENT instead of
+// recreating the tree.
+func TestSaveRecreatesMissingContextDir(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+
+	ctxDir := filepath.Join(xdg, "nats", "context")
+	err := os.MkdirAll(ctxDir, 0700)
+	if err != nil {
+		t.Fatalf("seed dir: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(ctxDir, "foo.json"), []byte(`{"url":"nats://first:4222"}`), 0600)
+	if err != nil {
+		t.Fatalf("seed file: %v", err)
+	}
+
+	loaded, err := natscontext.New("foo", true, natscontext.WithServerURL("nats://second:4222"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	err = os.RemoveAll(ctxDir)
+	if err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+
+	err = loaded.Save("")
+	if err != nil {
+		t.Fatalf("save after dir removal: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(ctxDir, "foo.json"))
+	if err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if !bytes.Contains(data, []byte(`"url": "nats://second:4222"`)) {
+		t.Fatalf("expected new URL persisted; body=\n%s", data)
+	}
+}
+
 // TestNscErrorDoesNotLeakCreds stubs nsc with a binary that emits a
 // decorated-JWT-looking string on stdout and then fails, and asserts
 // the returned error does not echo the JWT.
@@ -168,6 +272,71 @@ func TestRedactedString(t *testing.T) {
 			out := fmt.Sprintf(verb, ctx)
 			if strings.Contains(out, secret) {
 				t.Fatalf("%s output leaked secret: %s", verb, out)
+			}
+		})
+	}
+}
+
+// TestRedactedStringZeroValue verifies that a zero-value context and
+// a nil receiver both format without panicking.
+func TestRedactedStringZeroValue(t *testing.T) {
+	cases := []struct {
+		name string
+		ctx  *natscontext.Context
+	}{
+		{"nil receiver", nil},
+		{"zero value", &natscontext.Context{}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			for _, verb := range []string{"%v", "%+v", "%#v", "%s"} {
+				_ = fmt.Sprintf(verb, c.ctx)
+			}
+		})
+	}
+}
+
+// TestRedactedStringServerURL covers credentials embedded in the
+// connection URL itself (user:password@host and token@host forms,
+// including comma-separated lists). String must redact the user-info
+// portion so %v/%+v on a Context never echoes it back to logs.
+func TestRedactedStringServerURL(t *testing.T) {
+	const userSecret = "url-pass-do-not-leak-9ce4"
+	const tokenSecret = "url-token-do-not-leak-3a17"
+
+	cases := []struct {
+		name string
+		url  string
+		leak []string
+	}{
+		{
+			name: "user and password",
+			url:  "nats://carol:" + userSecret + "@host:4222",
+			leak: []string{userSecret},
+		},
+		{
+			name: "token in user position",
+			url:  "nats://" + tokenSecret + "@host:4222",
+			leak: []string{tokenSecret},
+		},
+		{
+			name: "comma separated mixed",
+			url:  "nats://carol:" + userSecret + "@h1:4222,nats://" + tokenSecret + "@h2:4222",
+			leak: []string{userSecret, tokenSecret},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx, err := natscontext.New("urlredact", false, natscontext.WithServerURL(c.url))
+			if err != nil {
+				t.Fatalf("new: %v", err)
+			}
+			out := fmt.Sprintf("%v", ctx)
+			for _, secret := range c.leak {
+				if strings.Contains(out, secret) {
+					t.Fatalf("String leaked %q: %s", secret, out)
+				}
 			}
 		})
 	}

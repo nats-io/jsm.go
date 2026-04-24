@@ -136,16 +136,21 @@ func RunBackendContract(t *testing.T, newBackend NewBackendFunc) {
 	})
 
 	t.Run("InvalidNameIsRejected", func(t *testing.T) {
+		// "bad/name" exercises the core natscontext validator rule
+		// (forward slash is always rejected, regardless of backend).
+		// Whitespace and subject-wildcard names are deliberately
+		// accepted at this layer for historical backward compat, so
+		// they are not portable invalid-name probes.
 		b := newBackend(t)
-		err := b.Save(ctx, "bad name", []byte("x"))
+		err := b.Save(ctx, "bad/name", []byte("x"))
 		if !errors.Is(err, natscontext.ErrInvalidName) {
 			t.Fatalf("Save invalid: expected ErrInvalidName, got %v", err)
 		}
-		_, err = b.Load(ctx, "bad name")
+		_, err = b.Load(ctx, "bad/name")
 		if !errors.Is(err, natscontext.ErrInvalidName) {
 			t.Fatalf("Load invalid: expected ErrInvalidName, got %v", err)
 		}
-		err = b.Delete(ctx, "bad name")
+		err = b.Delete(ctx, "bad/name")
 		if !errors.Is(err, natscontext.ErrInvalidName) {
 			t.Fatalf("Delete invalid: expected ErrInvalidName, got %v", err)
 		}
@@ -157,22 +162,38 @@ func RunBackendContract(t *testing.T, newBackend NewBackendFunc) {
 		return
 	}
 
+	RunSelectorContract(t, func(t *testing.T) natscontext.Selector {
+		return newBackend(t).(natscontext.Selector)
+	})
+}
+
+// NewSelectorFunc returns a fresh Selector for a single subtest.
+type NewSelectorFunc func(t *testing.T) natscontext.Selector
+
+// RunSelectorContract executes the selector contract against selectors
+// produced by newSelector. Suitable for Selector-only implementations
+// (e.g. the standalone FileSelector) where there is no Backend to run
+// the full backend contract against.
+func RunSelectorContract(t *testing.T, newSelector NewSelectorFunc) {
+	t.Helper()
+	ctx := context.Background()
+
 	t.Run("Selector", func(t *testing.T) {
-		t.Run("FreshBackendHasNoSelection", func(t *testing.T) {
-			b := newBackend(t).(natscontext.Selector)
-			_, err := b.Selected(ctx)
+		t.Run("FreshHasNoSelection", func(t *testing.T) {
+			s := newSelector(t)
+			_, err := s.Selected(ctx)
 			if !errors.Is(err, natscontext.ErrNoneSelected) {
 				t.Fatalf("fresh Selected: expected ErrNoneSelected, got %v", err)
 			}
 		})
 
 		t.Run("SelectedAfterSetReturnsName", func(t *testing.T) {
-			b := newBackend(t).(natscontext.Selector)
-			_, err := b.SetSelected(ctx, "alpha")
+			s := newSelector(t)
+			_, err := s.SetSelected(ctx, "alpha")
 			if err != nil {
 				t.Fatalf("set: %v", err)
 			}
-			got, err := b.Selected(ctx)
+			got, err := s.Selected(ctx)
 			if err != nil {
 				t.Fatalf("selected: %v", err)
 			}
@@ -182,8 +203,8 @@ func RunBackendContract(t *testing.T, newBackend NewBackendFunc) {
 		})
 
 		t.Run("SetSelectedReturnsPrior", func(t *testing.T) {
-			b := newBackend(t).(natscontext.Selector)
-			prev, err := b.SetSelected(ctx, "alpha")
+			s := newSelector(t)
+			prev, err := s.SetSelected(ctx, "alpha")
 			if err != nil {
 				t.Fatalf("set alpha: %v", err)
 			}
@@ -191,7 +212,7 @@ func RunBackendContract(t *testing.T, newBackend NewBackendFunc) {
 				t.Fatalf("expected empty prior on first set, got %q", prev)
 			}
 
-			prev, err = b.SetSelected(ctx, "bravo")
+			prev, err = s.SetSelected(ctx, "bravo")
 			if err != nil {
 				t.Fatalf("set bravo: %v", err)
 			}
@@ -201,26 +222,26 @@ func RunBackendContract(t *testing.T, newBackend NewBackendFunc) {
 		})
 
 		t.Run("EmptyNameClearsSelection", func(t *testing.T) {
-			b := newBackend(t).(natscontext.Selector)
-			_, err := b.SetSelected(ctx, "alpha")
+			s := newSelector(t)
+			_, err := s.SetSelected(ctx, "alpha")
 			if err != nil {
 				t.Fatalf("set alpha: %v", err)
 			}
-			prev, err := b.SetSelected(ctx, "")
+			prev, err := s.SetSelected(ctx, "")
 			if err != nil {
 				t.Fatalf("clear: %v", err)
 			}
 			if prev != "alpha" {
 				t.Fatalf("clear prior: got %q want alpha", prev)
 			}
-			_, err = b.Selected(ctx)
+			_, err = s.Selected(ctx)
 			if !errors.Is(err, natscontext.ErrNoneSelected) {
 				t.Fatalf("post-clear Selected: expected ErrNoneSelected, got %v", err)
 			}
 		})
 
 		t.Run("ConcurrentSetSelectedConverges", func(t *testing.T) {
-			b := newBackend(t).(natscontext.Selector)
+			s := newSelector(t)
 			candidates := []string{"alpha", "bravo", "charlie", "delta"}
 
 			var wg sync.WaitGroup
@@ -229,7 +250,7 @@ func RunBackendContract(t *testing.T, newBackend NewBackendFunc) {
 				go func(n string) {
 					defer wg.Done()
 					for i := 0; i < 30; i++ {
-						_, err := b.SetSelected(ctx, n)
+						_, err := s.SetSelected(ctx, n)
 						if err != nil {
 							t.Errorf("concurrent set %s: %v", n, err)
 							return
@@ -239,7 +260,7 @@ func RunBackendContract(t *testing.T, newBackend NewBackendFunc) {
 			}
 			wg.Wait()
 
-			got, err := b.Selected(ctx)
+			got, err := s.Selected(ctx)
 			if err != nil {
 				t.Fatalf("final Selected: %v", err)
 			}

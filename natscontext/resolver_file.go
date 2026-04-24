@@ -16,16 +16,18 @@ package natscontext
 import (
 	"context"
 	"os"
-	"strings"
 )
 
-// fileResolver handles file:// URIs and bare paths. Bare paths are the
-// historical default for Creds/NKey fields; the empty scheme keeps
-// backward compatibility with those values.
+// fileResolver handles file:// URIs. Bare paths for Creds/NKey are
+// routed directly to nats.UserCredentials / nats.NkeyOptionFromSeed by
+// the short-circuits in buildCredsOption / buildNkeyOption without
+// consulting the resolver map, so fileResolver deliberately does not
+// claim the empty scheme: that slot is reserved for a user-supplied
+// fallback resolver for bare Token/Password/UserJwt/UserSeed values.
 type fileResolver struct{}
 
 func (r *fileResolver) Schemes() []string {
-	return []string{"file", ""}
+	return []string{"file"}
 }
 
 func (r *fileResolver) Resolve(ctx context.Context, ref string) ([]byte, error) {
@@ -37,5 +39,5 @@ func (r *fileResolver) Resolve(ctx context.Context, ref string) ([]byte, error) 
 // expandHomedir so ~ and $VAR expansion match the pre-refactor
 // behavior for raw paths.
 func filePathFromRef(ref string) string {
-	return expandHomedir(strings.TrimPrefix(ref, "file://"))
+	return expandHomedir(trimSchemePrefix(ref, "file://"))
 }

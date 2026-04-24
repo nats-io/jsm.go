@@ -34,7 +34,6 @@ var sentinelCases = []struct {
 	{"already_exists", natscontext.ErrAlreadyExists, CodeAlreadyExists},
 	{"invalid_name", natscontext.ErrInvalidName, CodeInvalidName},
 	{"active_context", natscontext.ErrActiveContext, CodeActiveContext},
-	{"none_selected", natscontext.ErrNoneSelected, CodeNoneSelected},
 	{"read_only", natscontext.ErrReadOnly, CodeReadOnly},
 	{"conflict", natscontext.ErrConflict, CodeConflict},
 }

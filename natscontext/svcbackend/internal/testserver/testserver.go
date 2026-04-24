@@ -160,9 +160,6 @@ func (s *Server) registerEndpoints() error {
 		{"ctx_save", s.prefix + ".ctx.save.*", s.handleSave},
 		{"ctx_delete", s.prefix + ".ctx.delete.*", s.handleDelete},
 		{"ctx_list", s.prefix + ".ctx.list", s.handleList},
-		{"sel_get", s.prefix + ".sel.get", s.handleSelected},
-		{"sel_set", s.prefix + ".sel.set.*", s.handleSetSelected},
-		{"sel_clear", s.prefix + ".sel.clear", s.handleClearSelected},
 	}
 
 	for _, r := range routes {
@@ -262,7 +259,7 @@ func (s *Server) handleSave(req micro.Request) {
 	var sealed svcbackend.SaveSealed
 	err = s.openFromClient(in.SenderPub, in.Sealed, &sealed)
 	if err != nil {
-		respondJSON(req, svcbackend.SaveResponse{Error: &svcbackend.ErrorResponse{Code: string(svcbackend.CodeInternal), Message: "open request"}})
+		respondJSON(req, svcbackend.SaveResponse{Error: &svcbackend.ErrorResponse{Code: string(svcbackend.CodeStaleKey), Message: "open sealed request"}})
 		return
 	}
 
@@ -301,62 +298,6 @@ func (s *Server) handleList(req micro.Request) {
 	}
 
 	respondJSON(req, svcbackend.ListResponse{Names: names})
-}
-
-func (s *Server) handleSelected(req micro.Request) {
-	sel, ok := s.backend.(natscontext.Selector)
-	if !ok {
-		respondJSON(req, svcbackend.SelectedResponse{Error: svcbackend.ErrorFromSentinel(natscontext.ErrReadOnly)})
-		return
-	}
-
-	name, err := sel.Selected(context.Background())
-	if err != nil {
-		respondJSON(req, svcbackend.SelectedResponse{Error: svcbackend.ErrorFromSentinel(err)})
-		return
-	}
-
-	respondJSON(req, svcbackend.SelectedResponse{Name: name})
-}
-
-func (s *Server) handleSetSelected(req micro.Request) {
-	sel, ok := s.backend.(natscontext.Selector)
-	if !ok {
-		respondJSON(req, svcbackend.SetSelectedResponse{Error: svcbackend.ErrorFromSentinel(natscontext.ErrReadOnly)})
-		return
-	}
-
-	name := nameFromSubject(req.Subject())
-
-	err := natscontext.ValidateName(name)
-	if err != nil {
-		respondJSON(req, svcbackend.SetSelectedResponse{Error: svcbackend.ErrorFromSentinel(err)})
-		return
-	}
-
-	prev, err := sel.SetSelected(context.Background(), name)
-	if err != nil {
-		respondJSON(req, svcbackend.SetSelectedResponse{Error: svcbackend.ErrorFromSentinel(err)})
-		return
-	}
-
-	respondJSON(req, svcbackend.SetSelectedResponse{Previous: prev})
-}
-
-func (s *Server) handleClearSelected(req micro.Request) {
-	sel, ok := s.backend.(natscontext.Selector)
-	if !ok {
-		respondJSON(req, svcbackend.ClearSelectedResponse{Error: svcbackend.ErrorFromSentinel(natscontext.ErrReadOnly)})
-		return
-	}
-
-	prev, err := sel.SetSelected(context.Background(), "")
-	if err != nil {
-		respondJSON(req, svcbackend.ClearSelectedResponse{Error: svcbackend.ErrorFromSentinel(err)})
-		return
-	}
-
-	respondJSON(req, svcbackend.ClearSelectedResponse{Previous: prev})
 }
 
 // -------- crypto helpers --------

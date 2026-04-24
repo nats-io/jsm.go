@@ -228,9 +228,56 @@ func TestRegistryNotFound(t *testing.T) {
 // TestRegistryInvalidName asserts validation errors surface ErrInvalidName.
 func TestRegistryInvalidName(t *testing.T) {
 	reg := natscontext.NewRegistry(natscontext.NewFileBackendAt(t.TempDir()))
-	_, err := reg.Load(context.Background(), "bad name")
+	_, err := reg.Load(context.Background(), "bad/name")
 	if !errors.Is(err, natscontext.ErrInvalidName) {
 		t.Fatalf("expected ErrInvalidName, got %v", err)
+	}
+}
+
+// TestFileBackendDottedName round-trips a name containing a dot
+// through FileBackend + FileSelector. Historical contexts such as
+// "ngs.js" were persisted before the Backend refactor introduced
+// stricter validation; an upgrade that rejected them would strand
+// user data, so dots must keep working.
+func TestFileBackendDottedName(t *testing.T) {
+	dir := t.TempDir()
+	reg := natscontext.NewRegistry(natscontext.NewFileBackendAt(dir))
+	bg := context.Background()
+
+	nctx, err := natscontext.New("ngs.js", false, natscontext.WithServerURL("nats://ngs:4222"))
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	err = reg.Save(bg, nctx, "")
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	path := filepath.Join(dir, "nats", "context", "ngs.js.json")
+	_, err = os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat %s: %v", path, err)
+	}
+
+	loaded, err := reg.Load(bg, "ngs.js")
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if loaded.ServerURL() != "nats://ngs:4222" {
+		t.Fatalf("ServerURL = %q want nats://ngs:4222", loaded.ServerURL())
+	}
+
+	_, err = reg.Select(bg, "ngs.js")
+	if err != nil {
+		t.Fatalf("select: %v", err)
+	}
+
+	list, err := reg.List(bg)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if !contains(list, "ngs.js") {
+		t.Fatalf("list missing ngs.js: %v", list)
 	}
 }
 

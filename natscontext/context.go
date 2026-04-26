@@ -1,4 +1,4 @@
-// Copyright 2020-2023 The NATS Authors
+// Copyright 2020-2026 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,33 +11,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package natscontext provides a way for sets of configuration options to be stored
-// in named files and later retrieved either by name or if no name is supplied by access
-// a chosen default context.
+// Package natscontext stores named sets of NATS connection settings and
+// resolves the credentials they reference at connect time.
 //
-// Files are stored in ~/.config/nats or in the directory set by XDG_CONFIG_HOME environment
+// The package composes two orthogonal abstractions:
 //
-//	.config/nats
-//	.config/nats/context
-//	.config/nats/context/ngs.js.json
-//	.config/nats/context/ngs.stats.json
-//	.config/nats/context.txt
+//   - A Backend persists context payloads as opaque bytes. Shipped
+//     backends include FileBackend (XDG-based JSON files),
+//     SingleFileBackend (one context at a caller-supplied path), and
+//     MemoryBackend (for tests and embeds).
+//   - A CredentialResolver materializes secret material referenced by
+//     URI. Stock resolvers handle file://, op://, nsc://, env://, and
+//     data: inline payloads.
 //
-// Here the context.txt holds simply the string matching a context name like 'ngs.js'
+// A Registry composes one Backend with one or more CredentialResolvers;
+// construct one explicitly with NewRegistry for custom storage or
+// resolver sets. Package-level helpers (New, NewFromFile, Connect,
+// KnownContexts, SelectContext, and so on) delegate to a lazily
+// initialized default Registry backed by NewDefaultFileBackend, which
+// reads and writes under ~/.config/nats (or $XDG_CONFIG_HOME/nats):
+//
+//	~/.config/nats/context/<name>.json   // one file per context
+//	~/.config/nats/context.txt            // currently selected context
+//
+// See BACKENDS.md for the Backend and CredentialResolver contracts and
+// guidance on adding new implementations.
 package natscontext
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
-	"os/exec"
 	"os/user"
-	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 
 	"github.com/nats-io/jsm.go"
@@ -49,20 +60,25 @@ import (
 type Option func(c *settings)
 
 type settings struct {
-	Name                string `json:"name,omitempty"`
-	Description         string `json:"description"`
-	URL                 string `json:"url"`
-	nscUrl              string
-	SocksProxy          string `json:"socks_proxy"`
-	Token               string `json:"token"`
-	User                string `json:"user"`
-	Password            string `json:"password"`
-	Creds               string `json:"creds"`
-	nscCreds            string
-	NKey                string   `json:"nkey"`
-	Cert                string   `json:"cert"`
-	Key                 string   `json:"key"`
-	CA                  string   `json:"ca"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description"`
+	URL         string `json:"url"`
+	nscUrl      string
+	SocksProxy  string `json:"socks_proxy"`
+	Token       string `json:"token"`
+	User        string `json:"user"`
+	Password    string `json:"password"`
+	Creds       string `json:"creds"`
+	nscCreds    string
+	NKey        string `json:"nkey"`
+	Cert        string `json:"cert"`
+	Key         string `json:"key"`
+	CA          string `json:"ca"`
+	// NSCLookup is loaded forever for backward compatibility but MUST
+	// NOT be set on new contexts. Registry.Save rewrites it into Creds
+	// as an nsc://<path> URI and clears the field.
+	//
+	// Deprecated: use Creds with an nsc:// scheme instead.
 	NSCLookup           string   `json:"nsc"`
 	JSDomain            string   `json:"jetstream_domain"`
 	JSAPIPrefix         string   `json:"jetstream_api_prefix"`
@@ -79,15 +95,90 @@ type settings struct {
 }
 
 type Context struct {
-	Name   string `json:"-"`
-	config *settings
-	path   string
+	Name      string `json:"-"`
+	config    *settings
+	path      string
+	resolvers map[string]CredentialResolver
 }
 
-const (
-	selectedCtxFile string = "context.txt"
-	previousCtxFile string = "previous-context.txt"
-)
+// String returns a redacted summary of the context so %s, %v, and %+v
+// never bleed plaintext credentials. Callers that need the raw
+// material should reach for the typed accessors (Creds, Token, …).
+func (c *Context) String() string {
+	if c == nil {
+		return "natscontext.Context{<nil>}"
+	}
+	url := ""
+	if c.config != nil {
+		url = redactServerURL(c.ServerURL())
+	}
+	return fmt.Sprintf("natscontext.Context{name=%q url=%q auth=%s credentials=<redacted>}",
+		c.Name, url, c.authLabel())
+}
+
+// redactServerURL returns urls with any user-info component replaced
+// by "xxxxx@". NATS server URLs may carry user:password@host or
+// token@host forms (the comma-separated list form is also supported),
+// either of which would otherwise leak through Context.String. Each
+// element is parsed independently; elements that do not parse as URLs
+// or that carry no user-info pass through unchanged.
+func redactServerURL(urls string) string {
+	if urls == "" {
+		return ""
+	}
+	parts := strings.Split(urls, ",")
+	for i, p := range parts {
+		u, err := url.Parse(strings.TrimSpace(p))
+		if err != nil || u.User == nil {
+			continue
+		}
+		u.User = url.User("xxxxx")
+		parts[i] = u.String()
+	}
+	return strings.Join(parts, ",")
+}
+
+// GoString mirrors String so %#v is safe too.
+func (c *Context) GoString() string {
+	return c.String()
+}
+
+// authLabel identifies which credential scheme a context is configured
+// with without revealing any of the material itself.
+func (c *Context) authLabel() string {
+	if c == nil || c.config == nil {
+		return "none"
+	}
+	switch {
+	case c.config.User != "":
+		return "user/password"
+	case c.config.Creds != "" || c.config.nscCreds != "":
+		return "creds"
+	case c.config.NKey != "":
+		return "nkey"
+	case c.config.UserJwt != "":
+		return "user_jwt"
+	case c.config.Token != "":
+		return "token"
+	default:
+		return "none"
+	}
+}
+
+// String on *settings makes %+v on a *Context (which embeds a
+// *settings pointer) safe even when callers reach into the unexported
+// field via reflection-based dumpers.
+func (s *settings) String() string {
+	if s == nil {
+		return "<nil>"
+	}
+	return "<redacted>"
+}
+
+// GoString keeps %#v output in lockstep with String.
+func (s *settings) GoString() string {
+	return s.String()
+}
 
 // New loads a new configuration context. If name is empty the current active
 // one will be loaded.  If load is false no loading of existing data is done
@@ -96,42 +187,54 @@ const (
 // When opts is supplied those settings will override what was loaded or supply
 // values for an empty context
 func New(name string, load bool, opts ...Option) (*Context, error) {
-	c := &Context{
-		Name:   name,
-		config: &settings{},
+	if !load {
+		c := &Context{Name: name, config: &settings{}}
+		c.configureNewContext(opts...)
+		return c, nil
 	}
-
-	if load {
-		err := c.loadActiveContext()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	c.configureNewContext(opts...)
-
-	return c, nil
+	return defaultRegistry().Load(context.Background(), name, opts...)
 }
 
-// NewFromFile loads a new configuration context from the given filename.
+// NewFromFile loads a new configuration context from the given
+// filename. It constructs a SingleFileBackend so the load, unmarshal,
+// path-capture, and resolver-population logic is identical to a
+// Registry.Load against any other Backend — no separate disk IO path.
 //
-// When opts is supplied those settings will override what was loaded or supply
-// values for an empty context
+// When opts is supplied those settings will override what was loaded
+// or supply values for an empty context.
 func NewFromFile(filename string, opts ...Option) (*Context, error) {
-	c := &Context{
-		Name:   strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)),
-		config: &settings{},
-		path:   filename,
-	}
+	backend := NewSingleFileBackend(filename)
+	name := backend.(*SingleFileBackend).Name()
+	return NewRegistry(backend).Load(context.Background(), name, opts...)
+}
 
-	err := c.loadActiveContext()
+// unmarshalAndExpand decodes data into c.config and expands ~ and
+// environment variables in path-bearing fields. It is shared by
+// Registry.Load and NewFromFile so both code paths post-process loaded
+// payloads identically. When the deprecated NSCLookup field is set it
+// is resolved eagerly so legacy callers still see ServerURL() populated
+// from the nsc output.
+func (c *Context) unmarshalAndExpand(data []byte) error {
+	err := json.Unmarshal(data, c.config)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	c.configureNewContext(opts...)
+	c.config.Creds = expandHomedir(c.config.Creds)
+	c.config.NKey = expandHomedir(c.config.NKey)
+	c.config.Cert = expandHomedir(c.config.Cert)
+	c.config.Key = expandHomedir(c.config.Key)
+	c.config.CA = expandHomedir(c.config.CA)
 
-	return c, nil
+	if c.config.NSCLookup != "" {
+		profile, err := runNscProfile(context.Background(), c.config.NSCLookup)
+		if err != nil {
+			return err
+		}
+		c.config.nscCreds = profile.UserCreds
+		c.config.nscUrl = profile.Service
+	}
+	return nil
 }
 
 func (c *Context) configureNewContext(opts ...Option) {
@@ -155,166 +258,76 @@ func Connect(name string, opts ...nats.Option) (*nats.Conn, error) {
 	return nctx.Connect(opts...)
 }
 
-func parentDir() (string, error) {
-	parent := os.Getenv("XDG_CONFIG_HOME")
-	if parent != "" {
-		return parent, nil
-	}
-
-	u, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-
-	if u.HomeDir == "" {
-		return "", fmt.Errorf("cannot determine home directory")
-	}
-
-	return filepath.Join(u.HomeDir, parent, ".config"), nil
-}
-
 // DeleteContext deletes a context with a given name, the active context
-// can not be deleted unless it's the only context
+// can not be deleted unless it's the only context.
 func DeleteContext(name string) error {
-	if !validName(name) {
-		return fmt.Errorf("invalid context name %q", name)
-	}
-
-	known := KnownContexts()
-	selected := SelectedContext() == name
-
-	if selected && len(known) > 1 {
-		return fmt.Errorf("cannot remove the current active context")
-	}
-
-	parent, err := parentDir()
-	if err != nil {
-		return err
-	}
-
-	cfile := filepath.Join(parent, "nats", "context", name+".json")
-	_, err = os.Stat(cfile)
-	if os.IsNotExist(err) {
-		return nil
-	}
-
-	err = os.Remove(cfile)
-	if err != nil {
-		return err
-	}
-
-	if selected {
-		return os.Remove(filepath.Join(parent, "nats", selectedCtxFile))
-	}
-
-	return nil
+	return defaultRegistry().Delete(context.Background(), name)
 }
 
 // IsKnown determines if a context is known
 func IsKnown(name string) bool {
-	if !validName(name) {
-		return false
-	}
-
-	parent, err := parentDir()
-	if err != nil {
-		return false
-	}
-
-	return knownContext(parent, name)
+	return defaultRegistry().Known(context.Background(), name)
 }
 
-// ContextPath is the path on disk to store the context
+// ContextPath is the path on disk to store the context. The default
+// filesystem backend is intrinsically path-based; this helper is not
+// available on Registry because non-filesystem backends have no
+// meaningful path.
 func ContextPath(name string) (string, error) {
-	if !validName(name) {
-		return "", fmt.Errorf("invalid context name %q", name)
-	}
-
-	parent, err := parentDir()
+	err := ValidateName(name)
 	if err != nil {
 		return "", err
 	}
-
-	return filepath.Join(ctxDir(parent), name+".json"), nil
+	root, err := defaultRoot()
+	if err != nil {
+		return "", err
+	}
+	b, ok := NewFileBackendAt(root).(*FileBackend)
+	if !ok {
+		return "", fmt.Errorf("default backend does not expose a path")
+	}
+	return b.Path(name), nil
 }
 
-// KnownContexts is a list of known context
+// KnownContexts is a list of known context names.
 func KnownContexts() []string {
-	configs := []string{}
-
-	parent, err := parentDir()
-	if err != nil {
-		return configs
+	list, err := defaultRegistry().List(context.Background())
+	if err != nil || list == nil {
+		return []string{}
 	}
-
-	files, err := os.ReadDir(filepath.Join(parent, "nats", "context"))
-	if err != nil {
-		return configs
-	}
-
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		nfo, err := f.Info()
-		if err != nil {
-			continue
-		}
-		if nfo.Size() == 0 {
-			continue
-		}
-
-		ext := filepath.Ext(f.Name())
-		if ext != ".json" {
-			continue
-		}
-
-		configs = append(configs, strings.TrimSuffix(f.Name(), ext))
-	}
-
-	sort.Strings(configs)
-
-	return configs
+	return list
 }
 
-// SelectedContext returns the name of the current selected context, empty when non is selected
+// SelectedContext returns the name of the current selected context, empty when none is selected.
 func SelectedContext() string {
-	return readCtxFromFile(selectedCtxFile)
+	name, err := defaultRegistry().Selected(context.Background())
+	if err != nil {
+		return ""
+	}
+	return name
 }
 
-// PreviousContext returns the name of the previous selected context, empty if it hasn't been selected before
+// PreviousContext returns the name of the previous selected context, empty if it hasn't been selected before.
 func PreviousContext() string {
-	return readCtxFromFile(previousCtxFile)
-}
-
-func readCtxFromFile(file string) string {
-	parent, err := parentDir()
-	if err != nil {
+	reg := defaultRegistry()
+	type previouser interface {
+		Previous() string
+	}
+	// A configured Selector owns "previous"; probe the backend only when
+	// the Registry has no Selector. Falling back across the two would
+	// mix selection state from different sources.
+	if reg.selector != nil {
+		p, ok := reg.selector.(previouser)
+		if !ok {
+			return ""
+		}
+		return p.Previous()
+	}
+	p, ok := reg.backend.(previouser)
+	if !ok {
 		return ""
 	}
-
-	currentFile := filepath.Join(parent, "nats", file)
-
-	_, err = os.Stat(currentFile)
-	if os.IsNotExist(err) {
-		return ""
-	}
-
-	fc, err := os.ReadFile(currentFile)
-	if err != nil {
-		return ""
-	}
-
-	return strings.TrimSpace(string(fc))
-}
-
-func knownContext(parent string, name string) bool {
-	if !validName(name) {
-		return false
-	}
-
-	_, err := os.Stat(filepath.Join(ctxDir(parent), name+".json"))
-	return !os.IsNotExist(err)
+	return p.Previous()
 }
 
 // Connect connects to the configured NATS server
@@ -338,56 +351,53 @@ func (c *Context) JSMOptions(opts ...jsm.Option) ([]jsm.Option, error) {
 	return append(jsmopts, opts...), nil
 }
 
-// NATSOptions creates NATS client configuration based on the contents of the context
+// NATSOptions creates NATS client configuration based on the contents of the context.
 func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
+	ctx := context.Background()
+	resolvers := c.activeResolvers()
+
 	var nopts []nats.Option
 
 	switch {
 	case c.User() != "":
-		nopts = append(nopts, nats.UserInfo(c.User(), c.Password()))
-	case c.Creds() != "":
-		if strings.HasPrefix(c.Creds(), "op://") {
-			cmd := exec.Command("op", "read", c.Creds())
-			out, err := cmd.Output()
-			if err != nil {
-				return nil, err
-			}
-			jwt, err := nkeys.ParseDecoratedJWT(out)
-			if err != nil {
-				return nil, err
-			}
-			kp, err := nkeys.ParseDecoratedNKey(out)
-			if err != nil {
-				return nil, err
-			}
-
-			wipeSlice(out)
-
-			userCB := func() (string, error) {
-				return jwt, nil
-			}
-			sigCB := func(nonce []byte) ([]byte, error) {
-				return kp.Sign(nonce)
-			}
-			nopts = append(nopts, nats.UserJWT(userCB, sigCB))
-		} else {
-			nopts = append(nopts, nats.UserCredentials(expandHomedir(c.Creds())))
+		password, err := resolveLiteral(ctx, resolvers, c.Password())
+		if err != nil {
+			return nil, fmt.Errorf("password: %w", err)
 		}
+		nopts = append(nopts, nats.UserInfo(c.User(), password))
 
-	case c.NKey() != "":
-		nko, err := nats.NkeyOptionFromSeed(expandHomedir(c.NKey()))
+	case c.Creds() != "":
+		opt, err := buildCredsOption(ctx, resolvers, c.Creds())
 		if err != nil {
 			return nil, err
 		}
+		nopts = append(nopts, opt)
 
-		nopts = append(nopts, nko)
+	case c.NKey() != "":
+		opt, err := buildNkeyOption(ctx, resolvers, c.NKey())
+		if err != nil {
+			return nil, err
+		}
+		nopts = append(nopts, opt)
 
 	case c.UserJWT() != "" && c.UserSeed() != "":
-		nopts = append(nopts, nats.UserJWTAndSeed(c.UserJWT(), c.UserSeed()))
+		jwt, err := resolveLiteral(ctx, resolvers, c.UserJWT())
+		if err != nil {
+			return nil, fmt.Errorf("user_jwt: %w", err)
+		}
+		seed, err := resolveLiteral(ctx, resolvers, c.UserSeed())
+		if err != nil {
+			return nil, fmt.Errorf("user_seed: %w", err)
+		}
+		nopts = append(nopts, nats.UserJWTAndSeed(jwt, seed))
 
 	case c.UserJWT() != "" && c.UserSeed() == "":
+		jwt, err := resolveLiteral(ctx, resolvers, c.UserJWT())
+		if err != nil {
+			return nil, fmt.Errorf("user_jwt: %w", err)
+		}
 		userCB := func() (string, error) {
-			return c.UserJWT(), nil
+			return jwt, nil
 		}
 		sigCB := func(nonce []byte) ([]byte, error) {
 			return nil, nil
@@ -396,15 +406,31 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 	}
 
 	if c.Token() != "" {
-		nopts = append(nopts, nats.Token(c.Token()))
+		token, err := resolveLiteral(ctx, resolvers, c.Token())
+		if err != nil {
+			return nil, fmt.Errorf("token: %w", err)
+		}
+		nopts = append(nopts, nats.Token(token))
 	}
 
 	if c.Certificate() != "" && c.Key() != "" {
-		nopts = append(nopts, nats.ClientCert(expandHomedir(c.Certificate()), expandHomedir(c.Key())))
+		certPath, err := requireFilePath(c.Certificate(), "cert")
+		if err != nil {
+			return nil, err
+		}
+		keyPath, err := requireFilePath(c.Key(), "key")
+		if err != nil {
+			return nil, err
+		}
+		nopts = append(nopts, nats.ClientCert(certPath, keyPath))
 	}
 
 	if c.CA() != "" {
-		nopts = append(nopts, nats.RootCAs(expandHomedir(c.CA())))
+		caPath, err := requireFilePath(c.CA(), "ca")
+		if err != nil {
+			return nil, err
+		}
+		nopts = append(nopts, nats.RootCAs(caPath))
 	}
 
 	if c.SocksProxy() != "" {
@@ -428,6 +454,102 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 	nopts = append(nopts, opts...)
 
 	return nopts, nil
+}
+
+// activeResolvers returns the resolver set that should drive scheme
+// dispatch for this context. Registry.Load and NewFromFile populate
+// c.resolvers, but contexts built by options alone (e.g. New(name,
+// false, WithCreds(...))) fall back to the package-wide defaults.
+func (c *Context) activeResolvers() map[string]CredentialResolver {
+	if c.resolvers != nil {
+		return c.resolvers
+	}
+	return defaultRegistry().resolvers
+}
+
+// buildCredsOption turns a Creds URI into a nats.Option. File-scheme
+// references (including bare paths) are passed to nats.UserCredentials
+// so credentials are read lazily at dial time. Non-file schemes are
+// resolved eagerly to bytes and routed through nats.UserJWT with
+// callbacks so nats.go never sees a path.
+func buildCredsOption(ctx context.Context, resolvers map[string]CredentialResolver, ref string) (nats.Option, error) {
+	scheme := parseScheme(ref)
+	if scheme == "" || scheme == "file" {
+		return nats.UserCredentials(filePathFromRef(ref)), nil
+	}
+
+	r, ok := resolvers[scheme]
+	if !ok {
+		return nil, fmt.Errorf("creds: no resolver registered for scheme %q", scheme)
+	}
+	data, err := r.Resolve(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("creds: %w", err)
+	}
+	defer wipeSlice(data)
+
+	jwt, err := nkeys.ParseDecoratedJWT(data)
+	if err != nil {
+		return nil, fmt.Errorf("creds: %w", err)
+	}
+	kp, err := nkeys.ParseDecoratedNKey(data)
+	if err != nil {
+		return nil, fmt.Errorf("creds: %w", err)
+	}
+
+	userCB := func() (string, error) {
+		return jwt, nil
+	}
+	sigCB := func(nonce []byte) ([]byte, error) {
+		return kp.Sign(nonce)
+	}
+	return nats.UserJWT(userCB, sigCB), nil
+}
+
+// buildNkeyOption turns an NKey URI into a nats.Option. File-scheme
+// references use nats.NkeyOptionFromSeed for byte-for-byte parity with
+// the pre-refactor behavior; other schemes resolve the seed bytes and
+// construct the option from nats.Nkey directly.
+func buildNkeyOption(ctx context.Context, resolvers map[string]CredentialResolver, ref string) (nats.Option, error) {
+	scheme := parseScheme(ref)
+	if scheme == "" || scheme == "file" {
+		return nats.NkeyOptionFromSeed(filePathFromRef(ref))
+	}
+
+	r, ok := resolvers[scheme]
+	if !ok {
+		return nil, fmt.Errorf("nkey: no resolver registered for scheme %q", scheme)
+	}
+	data, err := r.Resolve(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("nkey: %w", err)
+	}
+	defer wipeSlice(data)
+
+	kp, err := nkeys.ParseDecoratedNKey(data)
+	if err != nil {
+		return nil, fmt.Errorf("nkey: %w", err)
+	}
+	pub, err := kp.PublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("nkey: %w", err)
+	}
+	sigCB := func(nonce []byte) ([]byte, error) {
+		return kp.Sign(nonce)
+	}
+	return nats.Nkey(pub, sigCB), nil
+}
+
+// requireFilePath returns a resolvable filesystem path for a TLS field
+// (cert, key, CA). Supporting non-file schemes here needs in-memory
+// nats.go equivalents that do not yet exist, so non-file schemes are
+// rejected with a clear error instead of being silently ignored.
+func requireFilePath(ref, field string) (string, error) {
+	scheme := parseScheme(ref)
+	if scheme != "" && scheme != "file" {
+		return "", fmt.Errorf("%s: scheme %q not supported (file/bare only)", field, scheme)
+	}
+	return filePathFromRef(ref), nil
 }
 
 func (c *Context) parseWinCertStoreType(t string) (certstore.StoreType, error) {
@@ -480,7 +602,8 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 			return nil, err
 		}
 
-		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+		ok := rootCAs.AppendCertsFromPEM(certs)
+		if !ok {
 			return nil, fmt.Errorf("failed to append CA certificates from %s", c.config.CA)
 		}
 
@@ -488,99 +611,6 @@ func (c *Context) certStoreNatsOptions() ([]nats.Option, error) {
 	}
 
 	return []nats.Option{nats.Secure(tlsc)}, nil
-}
-
-func (c *Context) loadActiveContext() error {
-	if c.path == "" {
-		parent, err := parentDir()
-		if err != nil {
-			return err
-		}
-
-		// none given, lets try to find it via the fs
-		if c.Name == "" {
-			c.Name = SelectedContext()
-			if c.Name == "" {
-				return nil
-			}
-		}
-
-		if !validName(c.Name) {
-			return fmt.Errorf("invalid context name %s", c.Name)
-		}
-
-		if !knownContext(parent, c.Name) {
-			return fmt.Errorf("unknown context %q", c.Name)
-		}
-
-		c.path = filepath.Join(parent, "nats", "context", c.Name+".json")
-	}
-
-	ctxContent, err := os.ReadFile(c.path)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(ctxContent, c.config)
-	if err != nil {
-		return err
-	}
-
-	// Expand ~ and environment variables in all path fields.
-	c.config.Creds = expandHomedir(c.config.Creds)
-	c.config.NKey = expandHomedir(c.config.NKey)
-	c.config.Cert = expandHomedir(c.config.Cert)
-	c.config.Key = expandHomedir(c.config.Key)
-	c.config.CA = expandHomedir(c.config.CA)
-
-	if c.config.NSCLookup != "" {
-		err := c.resolveNscLookup()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *Context) resolveNscLookup() error {
-	if c.config.NSCLookup == "" {
-		return nil
-	}
-
-	path, err := exec.LookPath("nsc")
-	if err != nil {
-		return fmt.Errorf("cannot find 'nsc' in user path")
-	}
-
-	cmd := exec.Command(path, "generate", "profile", c.config.NSCLookup)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("nsc invoke failed: %s", string(out))
-	}
-
-	type nscCreds struct {
-		UserCreds string `json:"user_creds"`
-		Operator  struct {
-			Service []string `json:"service"`
-		} `json:"operator"`
-	}
-
-	var result nscCreds
-	err = json.Unmarshal(out, &result)
-	if err != nil {
-		return fmt.Errorf("could not parse nsc output: %s", err)
-	}
-
-	if result.UserCreds != "" {
-		c.config.nscCreds = result.UserCreds
-	}
-
-	if len(result.Operator.Service) > 0 {
-		c.config.nscUrl = strings.Join(result.Operator.Service, ",")
-	}
-
-	return nil
 }
 
 func expandHomedir(path string) string {
@@ -596,10 +626,6 @@ func expandHomedir(path string) string {
 	}
 
 	return strings.Replace(path, "~", usr.HomeDir, 1)
-}
-
-func validName(name string) bool {
-	return name != "" && !strings.Contains(name, "..") && !strings.ContainsAny(name, "/\\")
 }
 
 func numCreds(c *Context) int {
@@ -621,68 +647,16 @@ func numCreds(c *Context) int {
 	return i
 }
 
-func createTree(parent string) error {
-	return os.MkdirAll(ctxDir(parent), 0700)
-}
-
-func ctxDir(parent string) string {
-	return filepath.Join(parent, "nats", "context")
-}
-
+// UnSelectContext clears the active context selection.
 func UnSelectContext() error {
-	currentCtx := SelectedContext()
-	if currentCtx == "" {
-		return nil
-	}
-
-	parent, err := parentDir()
-	if err != nil {
-		return err
-	}
-
-	err = setPreviousContext(parent, currentCtx)
-	if err != nil {
-		return err
-	}
-
-	return os.Remove(filepath.Join(parent, "nats", selectedCtxFile))
+	_, err := defaultRegistry().Unselect(context.Background())
+	return err
 }
 
-// SelectContext sets the given context to be the default, error if it does not exist
+// SelectContext sets the given context to be the default, error if it does not exist.
 func SelectContext(name string) error {
-	if !validName(name) {
-		return fmt.Errorf("invalid context name %q", name)
-	}
-
-	if !IsKnown(name) {
-		return fmt.Errorf("unknown context")
-	}
-
-	parent, err := parentDir()
-	if err != nil {
-		return err
-	}
-
-	err = createTree(parent)
-	if err != nil {
-		return err
-	}
-
-	currentCtx := SelectedContext()
-	err = setPreviousContext(parent, currentCtx)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(filepath.Join(parent, "nats", selectedCtxFile), []byte(name), 0600)
-}
-
-func setPreviousContext(parent string, name string) error {
-	if name == "" {
-		return nil
-	}
-
-	return os.WriteFile(filepath.Join(parent, "nats", previousCtxFile), []byte(name), 0600)
+	_, err := defaultRegistry().Select(context.Background(), name)
+	return err
 }
 
 func (c *Context) MarshalJSON() ([]byte, error) {
@@ -691,8 +665,9 @@ func (c *Context) MarshalJSON() ([]byte, error) {
 }
 
 func (c *Context) Validate() error {
-	if !validName(c.Name) {
-		return fmt.Errorf("invalid context name %q", c.Name)
+	err := ValidateName(c.Name)
+	if err != nil {
+		return err
 	}
 
 	if numCreds(c) > 1 {
@@ -720,37 +695,28 @@ func (c *Context) Validate() error {
 	return nil
 }
 
-// Save saves the current context to name
+// Save saves the current context to name. When the context was loaded
+// from a specific file (via NewFromFile, or via a Registry that
+// recorded a path) and the effective save name matches the loaded
+// basename, Save writes back to that original path through a
+// SingleFileBackend-backed Registry. Anything else — an explicit
+// rename via the name argument, or a rename via mutation of c.Name
+// before Save("") — is treated as a rename and goes through the
+// package-level default Registry so it lands in the XDG filesystem
+// hierarchy. Callers using a custom Registry should prefer
+// Registry.Save directly.
 func (c *Context) Save(name string) error {
-	if name != "" {
-		c.Name = name
+	if c.path != "" {
+		backend := NewSingleFileBackend(c.path).(*SingleFileBackend)
+		effective := name
+		if effective == "" {
+			effective = c.Name
+		}
+		if effective == backend.Name() {
+			return NewRegistry(backend).Save(context.Background(), c, name)
+		}
 	}
-
-	if err := c.Validate(); err != nil {
-		return err
-	}
-
-	parent, err := parentDir()
-	if err != nil {
-		return err
-	}
-
-	ctxDir := filepath.Join(parent, "nats", "context")
-	err = createTree(parent)
-	if err != nil {
-		return err
-	}
-
-	// make sure no disk representations change while supporting showing a name for external serializers
-	c.config.Name = ""
-
-	j, err := json.MarshalIndent(c.config, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	c.path = filepath.Join(ctxDir, c.Name+".json")
-	return os.WriteFile(c.path, j, 0600)
+	return defaultRegistry().Save(context.Background(), c, name)
 }
 
 // WithServerURL supplies the url(s) to connect to nats with
@@ -907,7 +873,12 @@ func WithNscUrl(u string) Option {
 	}
 }
 
-// NscURL is the url used to resolve credentials in nsc
+// NscURL is the url used to resolve credentials in nsc. Returns ""
+// for contexts that have been saved since the legacy field was
+// migrated into Creds; use Creds() with parseScheme to check for the
+// nsc:// scheme instead.
+//
+// Deprecated: use Creds() and inspect for an nsc:// scheme.
 func (c *Context) NscURL() string { return c.config.NSCLookup }
 
 // Description retrieves the description, empty if not set

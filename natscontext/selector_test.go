@@ -235,13 +235,14 @@ func TestWithSelector_NilPanics(t *testing.T) {
 	_ = natscontext.WithSelector(nil)
 }
 
-// TestRegistry_LoadClearsStaleSelection confirms that when the
-// Backend returns ErrNotFound for a name produced by the Selector,
-// the Registry clears the selector and falls through to the
-// "no selection" path rather than failing. This is the guard that
-// keeps the shared-backend + local-selector composition workable when
-// another operator deletes a context the local pointer still names.
-func TestRegistry_LoadClearsStaleSelection(t *testing.T) {
+// TestRegistry_LoadStaleSelectionPropagatesNotFound confirms that
+// when the Backend returns ErrNotFound for a name produced by the
+// Selector, the Registry surfaces the error and leaves the selection
+// untouched. Auto-clearing on a single not-found would persistently
+// wipe the user's selection on transient backend hiccups; failing
+// fast lets the caller decide whether to recover (manually unselect)
+// or retry.
+func TestRegistry_LoadStaleSelectionPropagatesNotFound(t *testing.T) {
 	selectorDir := t.TempDir()
 	sel := natscontext.NewFileSelectorAt(selectorDir)
 	_, err := sel.SetSelected(context.Background(), "ghost")
@@ -254,17 +255,17 @@ func TestRegistry_LoadClearsStaleSelection(t *testing.T) {
 		natscontext.WithSelector(sel),
 	)
 
-	nctx, err := reg.Load(context.Background(), "")
-	if err != nil {
-		t.Fatalf("Load with stale selection: %v", err)
-	}
-	if nctx.Name != "" {
-		t.Fatalf("Load should have fallen through to empty context, got Name=%q", nctx.Name)
+	_, err = reg.Load(context.Background(), "")
+	if !errors.Is(err, natscontext.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 
-	_, err = sel.Selected(context.Background())
-	if !errors.Is(err, natscontext.ErrNoneSelected) {
-		t.Fatalf("selector should be cleared after stale load, got %v", err)
+	got, err := sel.Selected(context.Background())
+	if err != nil {
+		t.Fatalf("selector should be untouched, got error %v", err)
+	}
+	if got != "ghost" {
+		t.Fatalf("selector should still point at ghost, got %q", got)
 	}
 }
 

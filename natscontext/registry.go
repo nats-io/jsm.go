@@ -108,25 +108,17 @@ func WithLocalSelector() RegistryOption {
 
 // Load returns the named context. If name is empty the currently selected
 // context is loaded; if nothing is selected an empty Context with the
-// supplied options applied is returned.
-//
-// When the caller-resolved name comes from the selector (empty input
-// name, a selection exists, the name is valid) and the backend returns
-// ErrNotFound, the selector is best-effort cleared so the Registry
-// fails open rather than wedging on a stale pointer. This matters for
-// the "shared storage, local selection" composition, where another
-// operator may have deleted a context that the local selector still
-// names.
+// supplied options applied is returned. A backend ErrNotFound is
+// propagated to the caller so a stale selection fails fast rather
+// than silently dialing nats.DefaultURL.
 func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Context, error) {
 	c := &Context{config: &settings{}, resolvers: r.resolvers}
 
-	fromSelector := false
 	if name == "" {
 		if r.selector != nil {
 			selected, err := r.selector.Selected(ctx)
 			if err == nil {
 				name = selected
-				fromSelector = true
 			} else if !errors.Is(err, ErrNoneSelected) {
 				return nil, err
 			}
@@ -144,11 +136,6 @@ func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Cont
 
 	data, err := r.backend.Load(ctx, name)
 	if err != nil {
-		if fromSelector && errors.Is(err, ErrNotFound) && r.selector != nil {
-			_, _ = r.selector.SetSelected(ctx, "")
-			c.configureNewContext(opts...)
-			return c, nil
-		}
 		return nil, err
 	}
 

@@ -281,6 +281,35 @@ func TestFileBackendDottedName(t *testing.T) {
 	}
 }
 
+// TestFileBackendNoRootWritePathsError asserts that every write path
+// on a FileBackend with an unresolved root surfaces an error rather
+// than silently succeeding. NewDefaultFileBackend deliberately
+// returns a root="" backend when XDG/HOME cannot be resolved so
+// reads stay quiet, but mutations must not pretend they happened.
+func TestFileBackendNoRootWritePathsError(t *testing.T) {
+	bg := context.Background()
+	b := natscontext.NewFileBackendAt("")
+
+	err := b.Save(bg, "ctx", []byte("{}"))
+	if err == nil {
+		t.Error("Save: expected error on rootless backend, got nil")
+	}
+
+	err = b.Delete(bg, "ctx")
+	if err == nil {
+		t.Error("Delete: expected error on rootless backend, got nil")
+	}
+
+	sel, ok := b.(natscontext.Selector)
+	if !ok {
+		t.Fatal("FileBackend should implement Selector")
+	}
+	_, err = sel.SetSelected(bg, "ctx")
+	if err == nil {
+		t.Error("SetSelected: expected error on rootless backend, got nil")
+	}
+}
+
 func contains(haystack []string, needle string) bool {
 	for _, s := range haystack {
 		if s == needle {

@@ -152,12 +152,13 @@ func (fb *FileBackend) Delete(_ context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	if fb.root == "" {
-		return nil
-	}
 
 	fb.mu.Lock()
 	defer fb.mu.Unlock()
+
+	if fb.root == "" {
+		return fmt.Errorf("file backend has no root directory")
+	}
 
 	err = os.Remove(fb.Path(name))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {

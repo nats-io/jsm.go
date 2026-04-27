@@ -475,6 +475,9 @@ func TestNSCLookupOverrideOnSave(t *testing.T) {
 	if strings.Contains(body, `"nsc": "op/acct/user"`) {
 		t.Errorf("expected NSCLookup field cleared on save, got:\n%s", body)
 	}
+	if !strings.Contains(body, `"url": "nats://legacy:4222"`) {
+		t.Errorf("expected discovered service URL persisted on save so reload does not fall back to nats.DefaultURL, got:\n%s", body)
+	}
 }
 
 // TestNSCLookupOverrideOnSaveWithoutNsc verifies the migrateNSCLookup

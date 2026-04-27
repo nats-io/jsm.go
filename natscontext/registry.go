@@ -205,31 +205,30 @@ func (r *Registry) Save(ctx context.Context, c *Context, name string) error {
 }
 
 // migrateNSCLookup folds a set NSCLookup field into Creds as an
-// nsc://<ref> URI. When both fields are set the explicit Creds wins
-// and NSCLookup is cleared without invoking nsc — the user has opted
-// out of nsc-driven resolution, so Save must not fail in environments
-// where nsc is unavailable (minimal CI/containers). Otherwise, when no
-// URL is configured, the nsc profile's Service URL is captured into
-// settings.URL so reloads do not have to invoke nsc again to know
-// where to connect — pre-refactor behavior where every load
-// re-resolved the Service URL is preserved without forcing nsc onto
-// the load path.
+// nsc://<ref> URI. An already-discovered s.nscUrl (populated by
+// unmarshalAndExpand at load time) is captured into s.URL whenever
+// URL is empty, even if Creds was overridden — otherwise a later
+// reload would silently fall back to nats.DefaultURL and target the
+// wrong server. A fresh runNscProfile call only happens when Creds is
+// also empty (truly legacy, no override): when Creds is overridden
+// the user has opted out of nsc-driven resolution, so Save must not
+// fail in environments where nsc is unavailable.
 func migrateNSCLookup(ctx context.Context, s *settings) error {
 	if s.NSCLookup == "" {
 		return nil
 	}
 
+	if s.URL == "" && s.nscUrl != "" {
+		s.URL = s.nscUrl
+	}
+
 	if s.Creds == "" && s.URL == "" {
-		url := s.nscUrl
-		if url == "" {
-			profile, err := runNscProfile(ctx, s.NSCLookup)
-			if err != nil {
-				return fmt.Errorf("migrate nsc lookup: %w", err)
-			}
-			url = profile.Service
+		profile, err := runNscProfile(ctx, s.NSCLookup)
+		if err != nil {
+			return fmt.Errorf("migrate nsc lookup: %w", err)
 		}
-		if url != "" {
-			s.URL = url
+		if profile.Service != "" {
+			s.URL = profile.Service
 		}
 	}
 

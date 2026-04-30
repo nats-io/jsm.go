@@ -760,7 +760,7 @@ type StreamSource struct {
 	FilterSubject     string                   `json:"filter_subject,omitempty" yaml:"filter_subject"`
 	External          *ExternalStream          `json:"external,omitempty" yaml:"external"`
 	SubjectTransforms []SubjectTransformConfig `json:"subject_transforms,omitempty" yaml:"subject_transforms"`
-	Consumer          *StreamConsumerSource    `json:"consumer,omitempty" yaml:"consumer"`
+	Consumer          *StreamConsumerSource    `json:"consumer,omitempty" yaml:"consumer" api_level:"4"`
 }
 
 // StreamConsumerSource dictates a durable consumer with a specific name is used for sourcing.

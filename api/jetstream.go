@@ -330,8 +330,6 @@ func requiredApiLevel(req any, skip bool) (int, error) {
 			if maxLevel < lvl {
 				maxLevel = lvl
 			}
-
-			continue
 		}
 
 		apiLevel := strings.TrimSpace(typeField.Tag.Get("api_level"))

@@ -126,6 +126,59 @@ func TestRequiredApiLevelPointerFields(t *testing.T) {
 	}
 }
 
+func TestRequiredApiLevelStructFieldTag(t *testing.T) {
+	// api_level tag on a pointer-to-struct field should be honored even when
+	// the nested struct itself carries no api_level tags.
+	type inner struct {
+		Name string `json:"name,omitempty"`
+	}
+	type outer struct {
+		Nested *inner `json:"nested,omitempty" api_level:"5"`
+	}
+
+	v, err := RequiredApiLevel(outer{Nested: &inner{Name: "x"}})
+	checkErr(t, err, "RequiredApiLevel outer ptr struct tag failed")
+	if v != 5 {
+		t.Fatalf("expected level 5 from struct field tag, got %v", v)
+	}
+
+	// same expectation for a value (non-pointer) struct field.
+	type outerVal struct {
+		Nested inner `json:"nested,omitempty" api_level:"5"`
+	}
+	v, err = RequiredApiLevel(outerVal{Nested: inner{Name: "x"}})
+	checkErr(t, err, "RequiredApiLevel outer value struct tag failed")
+	if v != 5 {
+		t.Fatalf("expected level 5 from value struct field tag, got %v", v)
+	}
+
+	// real world: StreamSource.Consumer carries api_level:"4" while
+	// StreamConsumerSource has no tags of its own — setting Consumer alone
+	// must surface level 4.
+	src := StreamSource{
+		Name:     "src",
+		Consumer: &StreamConsumerSource{Name: "dur"},
+	}
+	v, err = RequiredApiLevel(src)
+	checkErr(t, err, "RequiredApiLevel StreamSource.Consumer failed")
+	if v != 4 {
+		t.Fatalf("expected level 4 from StreamSource.Consumer tag, got %v", v)
+	}
+
+	// nested tag must still win when it is higher than the parent field tag.
+	type innerHi struct {
+		Field bool `api_level:"7"`
+	}
+	type outerLo struct {
+		Nested *innerHi `api_level:"2"`
+	}
+	v, err = RequiredApiLevel(outerLo{Nested: &innerHi{Field: true}})
+	checkErr(t, err, "RequiredApiLevel nested-higher failed")
+	if v != 7 {
+		t.Fatalf("expected nested level 7 to win, got %v", v)
+	}
+}
+
 func TestIsNatsErr(t *testing.T) {
 	// value ApiError
 	valErr := ApiError{Code: 400, ErrCode: 10001, Description: "bad request"}

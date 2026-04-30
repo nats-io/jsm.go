@@ -249,7 +249,8 @@
                     "enum": [
                       "none",
                       "all",
-                      "explicit"
+                      "explicit",
+                      "flow_control"
                     ],
                     "default": "none"
                   },

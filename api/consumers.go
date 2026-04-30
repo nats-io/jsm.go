@@ -208,9 +208,14 @@ type JSApiConsumerPauseResponse struct {
 type AckPolicy int
 
 const (
+	// AckNone requires no acks for delivered messages.
 	AckNone AckPolicy = iota
+	// AckAll when acking a sequence number, this implicitly acks all sequences below this one as well.
 	AckAll
+	// AckExplicit requires ack or nack for all messages.
 	AckExplicit
+	// AckFlowControl functions like AckAll, but acks based on responses to flow control.
+	AckFlowControl
 )
 
 func (p AckPolicy) String() string {
@@ -221,6 +226,8 @@ func (p AckPolicy) String() string {
 		return "All"
 	case AckExplicit:
 		return "Explicit"
+	case AckFlowControl:
+		return "Flow Control"
 	default:
 		return "Unknown Acknowledgement Policy"
 	}
@@ -234,6 +241,8 @@ func (p *AckPolicy) UnmarshalYAML(data *yaml.Node) error {
 		*p = AckAll
 	case "explicit":
 		*p = AckExplicit
+	case "flow_control":
+		*p = AckFlowControl
 	default:
 		return fmt.Errorf("can not unmarshal: %v", data.Value)
 	}
@@ -248,8 +257,10 @@ func (p AckPolicy) MarshalYAML() (any, error) {
 		return "all", nil
 	case AckExplicit:
 		return "explicit", nil
+	case AckFlowControl:
+		return "flow_control", nil
 	default:
-		return nil, fmt.Errorf("unknown acknowlegement policy: %v", p)
+		return nil, fmt.Errorf("unknown acknowledgement policy: %v", p)
 	}
 }
 
@@ -261,6 +272,8 @@ func (p *AckPolicy) UnmarshalJSON(data []byte) error {
 		*p = AckAll
 	case jsonString("explicit"):
 		*p = AckExplicit
+	case jsonString("flow_control"):
+		*p = AckFlowControl
 	default:
 		return fmt.Errorf("can not unmarshal %q", data)
 	}
@@ -276,8 +289,10 @@ func (p AckPolicy) MarshalJSON() ([]byte, error) {
 		return json.Marshal("all")
 	case AckExplicit:
 		return json.Marshal("explicit")
+	case AckFlowControl:
+		return json.Marshal("flow_control")
 	default:
-		return nil, fmt.Errorf("unknown acknowlegement policy %v", p)
+		return nil, fmt.Errorf("unknown acknowledgement policy %v", p)
 	}
 }
 

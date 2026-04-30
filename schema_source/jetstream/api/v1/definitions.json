@@ -747,7 +747,7 @@
         "ack_policy": {
           "description": "The requirement of client acknowledgments",
           "type": "string",
-          "enum": ["none", "all", "explicit"],
+          "enum": ["none", "all", "explicit", "flow_control"],
           "default": "none"
         },
         "ack_wait": {

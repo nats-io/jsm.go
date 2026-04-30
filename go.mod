@@ -7,10 +7,10 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.17.8
 	github.com/google/go-cmp v0.7.0
-	github.com/jedib0t/go-pretty/v6 v6.7.9
+	github.com/jedib0t/go-pretty/v6 v6.7.10
 	github.com/klauspost/compress v1.18.5
 	github.com/nats-io/jwt/v2 v2.8.1
-	github.com/nats-io/nats-server/v2 v2.14.0-RC.1.0.20260421090633-ca59909b0953
+	github.com/nats-io/nats-server/v2 v2.14.0
 	github.com/nats-io/nats.go v1.51.0
 	github.com/nats-io/nkeys v0.4.15
 	github.com/nats-io/nuid v1.0.1

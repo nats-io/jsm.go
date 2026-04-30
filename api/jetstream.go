@@ -84,6 +84,12 @@ const (
 	// JSScheduleTarget sets the target subject for the produced message
 	JSScheduleTarget = "Nats-Schedule-Target"
 
+	// JSScheduleTimeZone is the IANA timezone a schedule is in
+	JSScheduleTimeZone = "Nats-Schedule-Time-Zone"
+
+	// JSScheduleSource causes a subject to be read other than the one the schedule is in
+	JSScheduleSource = "Nats-Schedule-Source"
+
 	// JSRequiredApiLevel indicates that a request requires a certain API level
 	JSRequiredApiLevel = "Nats-Required-Api-Level"
 )

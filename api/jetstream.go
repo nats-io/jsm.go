@@ -330,8 +330,38 @@ func requiredApiLevel(req any, skip bool) (int, error) {
 			if maxLevel < lvl {
 				maxLevel = lvl
 			}
+		}
 
-			continue
+		// if its a slice or array of structs (or pointers to structs) we recurse into each element
+		if kind == reflect.Slice || kind == reflect.Array {
+			sliceVal := valueField
+			if sliceVal.Kind() == reflect.Ptr {
+				sliceVal = sliceVal.Elem()
+			}
+
+			elemType := sliceVal.Type().Elem()
+			elemKind := elemType.Kind()
+			if elemKind == reflect.Ptr {
+				elemKind = elemType.Elem().Kind()
+			}
+
+			if elemKind == reflect.Struct {
+				for j := 0; j < sliceVal.Len(); j++ {
+					elem := sliceVal.Index(j)
+					if elem.Kind() == reflect.Ptr && elem.IsNil() {
+						continue
+					}
+
+					lvl, err := requiredApiLevel(elem.Interface(), skip)
+					if err != nil {
+						return 0, err
+					}
+
+					if maxLevel < lvl {
+						maxLevel = lvl
+					}
+				}
+			}
 		}
 
 		apiLevel := strings.TrimSpace(typeField.Tag.Get("api_level"))

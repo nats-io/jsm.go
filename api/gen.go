@@ -266,6 +266,8 @@ func main() {
 		&schema{P: "jetstream/api/v1/consumer_list_response.json", St: "JSApiConsumerListResponse", Res: "JSApiConsumerListPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_names_request.json", St: "JSApiConsumerNamesRequest", Req: "JSApiConsumerNamesPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_names_response.json", St: "JSApiConsumerNamesResponse", Res: "JSApiConsumerNamesPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_reset_request.json", St: "JSApiConsumerResetRequest", Req: "JSApiConsumerResetPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_reset_response.json", St: "JSApiConsumerResetResponse", Res: "JSApiConsumerResetPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_pause_request.json", St: "JSApiConsumerPauseRequest", Req: "JSApiConsumerPausePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_pause_response.json", St: "JSApiConsumerPauseResponse", Res: "JSApiConsumerPausePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_unpin_request.json", St: "JSApiConsumerUnpinRequest", Req: "JSApiConsumerUnpinPrefix"},

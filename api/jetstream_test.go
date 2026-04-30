@@ -126,6 +126,146 @@ func TestRequiredApiLevelPointerFields(t *testing.T) {
 	}
 }
 
+func TestRequiredApiLevelStructFieldTag(t *testing.T) {
+	// api_level tag on a pointer-to-struct field should be honored even when
+	// the nested struct itself carries no api_level tags.
+	type inner struct {
+		Name string `json:"name,omitempty"`
+	}
+	type outer struct {
+		Nested *inner `json:"nested,omitempty" api_level:"5"`
+	}
+
+	v, err := RequiredApiLevel(outer{Nested: &inner{Name: "x"}})
+	checkErr(t, err, "RequiredApiLevel outer ptr struct tag failed")
+	if v != 5 {
+		t.Fatalf("expected level 5 from struct field tag, got %v", v)
+	}
+
+	// same expectation for a value (non-pointer) struct field.
+	type outerVal struct {
+		Nested inner `json:"nested,omitempty" api_level:"5"`
+	}
+	v, err = RequiredApiLevel(outerVal{Nested: inner{Name: "x"}})
+	checkErr(t, err, "RequiredApiLevel outer value struct tag failed")
+	if v != 5 {
+		t.Fatalf("expected level 5 from value struct field tag, got %v", v)
+	}
+
+	// real world: StreamSource.Consumer carries api_level:"4" while
+	// StreamConsumerSource has no tags of its own — setting Consumer alone
+	// must surface level 4.
+	src := StreamSource{
+		Name:     "src",
+		Consumer: &StreamConsumerSource{Name: "dur"},
+	}
+	v, err = RequiredApiLevel(src)
+	checkErr(t, err, "RequiredApiLevel StreamSource.Consumer failed")
+	if v != 4 {
+		t.Fatalf("expected level 4 from StreamSource.Consumer tag, got %v", v)
+	}
+
+	// nested tag must still win when it is higher than the parent field tag.
+	type innerHi struct {
+		Field bool `api_level:"7"`
+	}
+	type outerLo struct {
+		Nested *innerHi `api_level:"2"`
+	}
+	v, err = RequiredApiLevel(outerLo{Nested: &innerHi{Field: true}})
+	checkErr(t, err, "RequiredApiLevel nested-higher failed")
+	if v != 7 {
+		t.Fatalf("expected nested level 7 to win, got %v", v)
+	}
+}
+
+func TestRequiredApiLevelSliceFields(t *testing.T) {
+	// real world: StreamConfig.Sources is []*StreamSource — setting Consumer
+	// on an entry must surface the api_level:"4" tag on StreamSource.Consumer.
+	// without slice descent the level stayed 0 and Nats-Required-Api-Level was
+	// omitted, letting non-strict servers silently ignore the consumer block.
+	req := &JSApiStreamCreateRequest{
+		StreamConfig: StreamConfig{
+			Sources: []*StreamSource{
+				{
+					Name:     "src",
+					Consumer: &StreamConsumerSource{Name: "dur"},
+				},
+			},
+		},
+	}
+	v, err := RequiredApiLevel(req)
+	checkErr(t, err, "RequiredApiLevel Sources slice failed")
+	if v != 4 {
+		t.Fatalf("expected level 4 from Sources[0].Consumer, got %v", v)
+	}
+
+	// nil entries in a slice of pointers must be skipped without panicking.
+	req = &JSApiStreamCreateRequest{
+		StreamConfig: StreamConfig{
+			Sources: []*StreamSource{
+				nil,
+				{Name: "src", Consumer: &StreamConsumerSource{Name: "dur"}},
+			},
+		},
+	}
+	v, err = RequiredApiLevel(req)
+	checkErr(t, err, "RequiredApiLevel Sources with nil entry failed")
+	if v != 4 {
+		t.Fatalf("expected level 4 from non-nil source, got %v", v)
+	}
+
+	// non-pointer slice element type ([]SubjectTransformConfig) recursing
+	// into a struct field with an api_level tag.
+	type taggedInner struct {
+		Field bool `api_level:"6"`
+	}
+	type withSlice struct {
+		Items []taggedInner
+	}
+	v, err = RequiredApiLevel(withSlice{Items: []taggedInner{{Field: true}}})
+	checkErr(t, err, "RequiredApiLevel value-slice failed")
+	if v != 6 {
+		t.Fatalf("expected level 6 from value-slice element, got %v", v)
+	}
+
+	// empty and nil slices must not raise the level above zero.
+	v, err = RequiredApiLevel(withSlice{})
+	checkErr(t, err, "RequiredApiLevel nil slice failed")
+	if v != 0 {
+		t.Fatalf("expected level 0 for nil slice, got %v", v)
+	}
+
+	v, err = RequiredApiLevel(withSlice{Items: []taggedInner{}})
+	checkErr(t, err, "RequiredApiLevel empty slice failed")
+	if v != 0 {
+		t.Fatalf("expected level 0 for empty slice, got %v", v)
+	}
+
+	// slice of non-struct elements (e.g. []string) must be a no-op.
+	type withStringSlice struct {
+		Items []string
+	}
+	v, err = RequiredApiLevel(withStringSlice{Items: []string{"a", "b"}})
+	checkErr(t, err, "RequiredApiLevel string slice failed")
+	if v != 0 {
+		t.Fatalf("expected level 0 for non-struct slice, got %v", v)
+	}
+
+	// the highest level among multiple slice entries wins.
+	type lvlA struct {
+		F bool `api_level:"3"`
+	}
+	type multi struct {
+		Items []*lvlA
+	}
+	v, err = RequiredApiLevel(multi{Items: []*lvlA{{F: true}, {F: true}}})
+	checkErr(t, err, "RequiredApiLevel multi slice failed")
+	if v != 3 {
+		t.Fatalf("expected level 3 from slice elements, got %v", v)
+	}
+}
+
 func TestIsNatsErr(t *testing.T) {
 	// value ApiError
 	valErr := ApiError{Code: 400, ErrCode: 10001, Description: "bad request"}

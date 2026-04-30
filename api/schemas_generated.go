@@ -1,4 +1,4 @@
-// auto generated 2026-02-19 09:16:49.23784 +0100 CET m=+0.013972959
+// auto generated 2026-04-30 13:11:26.122705 +0200 CEST m=+0.011602376
 
 package api
 
@@ -51,6 +51,8 @@ var schemaTypes = map[string]func() any{
 	"io.nats.jetstream.api.v1.consumer_names_response":           func() any { return &JSApiConsumerNamesResponse{} },
 	"io.nats.jetstream.api.v1.consumer_pause_request":            func() any { return &JSApiConsumerPauseRequest{} },
 	"io.nats.jetstream.api.v1.consumer_pause_response":           func() any { return &JSApiConsumerPauseResponse{} },
+	"io.nats.jetstream.api.v1.consumer_reset_request":            func() any { return &JSApiConsumerResetRequest{} },
+	"io.nats.jetstream.api.v1.consumer_reset_response":           func() any { return &JSApiConsumerResetResponse{} },
 	"io.nats.jetstream.api.v1.consumer_unpin_request":            func() any { return &JSApiConsumerUnpinRequest{} },
 	"io.nats.jetstream.api.v1.consumer_unpin_response":           func() any { return &JSApiConsumerUnpinResponse{} },
 	"io.nats.jetstream.api.v1.meta_leader_stepdown_request":      func() any { return &JSApiLeaderStepDownRequest{} },
@@ -104,6 +106,7 @@ var schemaRequestSubjects = map[string]func() any{
 	JSApiConsumerListPrefix:           func() any { return &JSApiConsumerListRequest{} },
 	JSApiConsumerNamesPrefix:          func() any { return &JSApiConsumerNamesRequest{} },
 	JSApiConsumerPausePrefix:          func() any { return &JSApiConsumerPauseRequest{} },
+	JSApiConsumerResetPrefix:          func() any { return &JSApiConsumerResetRequest{} },
 	JSApiConsumerUnpinPrefix:          func() any { return &JSApiConsumerUnpinRequest{} },
 	JSApiLeaderStepDownPrefix:         func() any { return &JSApiLeaderStepDownRequest{} },
 	JSApiServerRemovePrefix:           func() any { return &JSApiMetaServerRemoveRequest{} },
@@ -131,6 +134,7 @@ var schemaResponseSubjects = map[string]func() any{
 	JSApiConsumerListPrefix:           func() any { return &JSApiConsumerListResponse{} },
 	JSApiConsumerNamesPrefix:          func() any { return &JSApiConsumerNamesResponse{} },
 	JSApiConsumerPausePrefix:          func() any { return &JSApiConsumerPauseResponse{} },
+	JSApiConsumerResetPrefix:          func() any { return &JSApiConsumerResetResponse{} },
 	JSApiConsumerUnpinPrefix:          func() any { return &JSApiConsumerUnpinResponse{} },
 	JSApiLeaderStepDownPrefix:         func() any { return &JSApiLeaderStepDownResponse{} },
 	JSApiServerRemovePrefix:           func() any { return &JSApiMetaServerRemoveResponse{} },
@@ -158,6 +162,7 @@ var schemaWildcardSubjects = map[string]func() any{
 	JSApiConsumerList:           func() any { return &JSApiConsumerListRequest{} },
 	JSApiConsumerNames:          func() any { return &JSApiConsumerNamesRequest{} },
 	JSApiConsumerPause:          func() any { return &JSApiConsumerPauseRequest{} },
+	JSApiConsumerReset:          func() any { return &JSApiConsumerResetRequest{} },
 	JSApiConsumerUnpin:          func() any { return &JSApiConsumerUnpinRequest{} },
 	JSApiLeaderStepDown:         func() any { return &JSApiLeaderStepDownRequest{} },
 	JSApiServerRemove:           func() any { return &JSApiMetaServerRemoveRequest{} },
@@ -749,6 +754,77 @@ func (t JSApiConsumerPauseResponse) SchemaID() string {
 
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiConsumerPauseResponse) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerResetRequest) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_reset_request
+func (t JSApiConsumerResetRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_reset_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerResetRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_reset_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerResetRequest) Schema() ([]byte, error) {
+	f, err := SchemaFileForType(t.SchemaType())
+	if err != nil {
+		return nil, err
+	}
+	return scfs.Load(f)
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerResetRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerReset, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerResetRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerResetT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerResetRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerResetPrefix, nil
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerResetResponse) Validate(v ...StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_reset_response
+func (t JSApiConsumerResetResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_reset_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerResetResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_reset_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerResetResponse) Schema() ([]byte, error) {
 	f, err := SchemaFileForType(t.SchemaType())
 	if err != nil {
 		return nil, err

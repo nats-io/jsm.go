@@ -245,6 +245,25 @@
                 }
               }
             },
+            "consumer": {
+              "type": "object",
+              "description": "Consumer information for durable sourcing",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "description": "Consumer name",
+                  "type": "string",
+                  "pattern": "^[^.*>]+$",
+                  "minLength": 1
+                },
+                "deliver_subject": {
+                  "description": "The subject to deliver messages to",
+                  "type": "string"
+                }
+              }
+            },
             "external": {
               "required": [
                 "api"
@@ -320,6 +339,25 @@
                       "type": "string",
                       "description": "The subject transform destination"
                     }
+                  }
+                }
+              },
+              "consumer": {
+                "type": "object",
+                "description": "Consumer information for durable sourcing",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "description": "Consumer name",
+                    "type": "string",
+                    "pattern": "^[^.*>]+$",
+                    "minLength": 1
+                  },
+                  "deliver_subject": {
+                    "description": "The subject to deliver messages to",
+                    "type": "string"
                   }
                 }
               },

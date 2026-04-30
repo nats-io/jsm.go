@@ -49,6 +49,9 @@ const (
 	JSApiConsumerPause                = "$JS.API.CONSUMER.PAUSE.*.*"
 	JSApiConsumerPausePrefix          = "$JS.API.CONSUMER.PAUSE"
 	JSApiConsumerPauseT               = "$JS.API.CONSUMER.PAUSE.%s.%s"
+	JSApiConsumerReset                = "$JS.API.CONSUMER.RESET.*.*"
+	JSApiConsumerResetPrefix          = "$JS.API.CONSUMER.RESET"
+	JSApiConsumerResetT               = "$JS.API.CONSUMER.RESET.%s.%s"
 	JSApiConsumerUnpin                = "$JS.API.CONSUMER.UNPIN.*.*"
 	JSApiConsumerUnpinPrefix          = "$JS.API.CONSUMER.UNPIN"
 	JSApiConsumerUnpinT               = "$JS.API.CONSUMER.UNPIN.%s.%s"
@@ -203,6 +206,18 @@ type JSApiConsumerPauseResponse struct {
 	Paused         bool          `json:"paused"`
 	PauseUntil     time.Time     `json:"pause_until"`
 	PauseRemaining time.Duration `json:"pause_remaining,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.consumer_reset_request
+type JSApiConsumerResetRequest struct {
+	Seq uint64 `json:"seq,omitempty"`
+}
+
+// io.nats.jetstream.api.v1.consumer_reset_response
+type JSApiConsumerResetResponse struct {
+	JSApiResponse
+	*ConsumerInfo
+	ResetSeq uint64 `json:"reset_seq"`
 }
 
 type AckPolicy int

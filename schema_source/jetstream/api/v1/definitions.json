@@ -37,6 +37,21 @@
       "type": "string",
       "format": "date-time"
     },
+    "stream_consumer_source": {
+      "type": "object",
+      "description": "Consumer information for durable sourcing",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "description": "Consumer name",
+          "$ref": "#/definitions/basic_name"
+        },
+        "deliver_subject": {
+          "description": "The subject to deliver messages to",
+          "type": "string"
+        }
+      }
+    },
     "stream_source": {
       "type": "object",
       "description": "Defines a source where streams should be replicated from",
@@ -65,6 +80,9 @@
             "$ref": "#/definitions/subject_transform",
             "minimum": 0
           }
+        },
+        "consumer": {
+          "$ref": "#/definitions/stream_consumer_source"
         },
         "external": {
           "$ref": "#/definitions/external_stream_source"

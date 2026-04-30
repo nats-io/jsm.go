@@ -1,0 +1,651 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/api/v1/consumer_reset_response.json",
+  "description": "A response from the JetStream $JS.API.CONSUMER.RESET API",
+  "title": "io.nats.jetstream.api.v1.consumer_reset_response",
+  "type": "object",
+  "required": [
+    "type"
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": [
+            "code"
+          ],
+          "properties": {
+            "code": {
+              "type": "integer",
+              "description": "HTTP like error code in the 300 to 500 range",
+              "minimum": 300,
+              "maximum": 699
+            },
+            "description": {
+              "type": "string",
+              "description": "A human friendly description of the error"
+            },
+            "err_code": {
+              "type": "integer",
+              "description": "The NATS error code unique to each kind of error",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    {
+      "allOf": [
+        {
+          "required": [
+            "stream_name",
+            "name",
+            "config",
+            "created",
+            "delivered",
+            "ack_floor",
+            "num_ack_pending",
+            "num_redelivered",
+            "num_waiting",
+            "num_pending"
+          ],
+          "type": "object",
+          "properties": {
+            "stream_name": {
+              "type": "string",
+              "description": "The Stream the consumer belongs to"
+            },
+            "name": {
+              "type": "string",
+              "description": "A unique name for the consumer, either machine generated or the durable name"
+            },
+            "ts": {
+              "description": "The server time the consumer info was created",
+              "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+              "type": "string",
+              "format": "date-time"
+            },
+            "config": {
+              "required": [],
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "deliver_policy"
+                      ],
+                      "properties": {
+                        "deliver_policy": {
+                          "type": "string",
+                          "enum": [
+                            "all"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "deliver_policy"
+                      ],
+                      "properties": {
+                        "deliver_policy": {
+                          "type": "string",
+                          "enum": [
+                            "last"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "deliver_policy"
+                      ],
+                      "properties": {
+                        "deliver_policy": {
+                          "type": "string",
+                          "enum": [
+                            "new"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "deliver_policy",
+                        "opt_start_seq"
+                      ],
+                      "properties": {
+                        "deliver_policy": {
+                          "type": "string",
+                          "enum": [
+                            "by_start_sequence"
+                          ]
+                        },
+                        "opt_start_seq": {
+                          "minimum": 0,
+                          "$comment": "unsigned 64 bit integer",
+                          "type": "integer",
+                          "maximum": 18446744073709551615
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "deliver_policy",
+                        "opt_start_time"
+                      ],
+                      "properties": {
+                        "deliver_policy": {
+                          "type": "string",
+                          "enum": [
+                            "by_start_time"
+                          ]
+                        },
+                        "opt_start_time": {
+                          "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "deliver_policy"
+                      ],
+                      "properties": {
+                        "deliver_policy": {
+                          "type": "string",
+                          "enum": [
+                            "last_per_subject"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "durable_name": {
+                  "description": "A unique name for a durable consumer",
+                  "deprecationMessage": "Durable is deprecated. All consumers will have names. picked by clients.",
+                  "type": "string",
+                  "pattern": "^[^.*>]+$",
+                  "minLength": 1
+                },
+                "name": {
+                  "description": "A unique name for a consumer",
+                  "type": "string",
+                  "pattern": "^[^.*>]+$",
+                  "minLength": 1
+                },
+                "description": {
+                  "description": "A short description of the purpose of this consumer",
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "deliver_policy": {
+                  "description": "The point in the stream from which to receive messages",
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "last",
+                    "new",
+                    "by_start_sequence",
+                    "by_start_time",
+                    "last_per_subject"
+                  ],
+                  "default": "all"
+                },
+                "deliver_subject": {
+                  "description": "The subject push consumers delivery messages to",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "deliver_group": {
+                  "description": "The queue group name used to distribute messages among subscribers",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ack_policy": {
+                  "description": "The requirement of client acknowledgments",
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "all",
+                    "explicit",
+                    "flow_control"
+                  ],
+                  "default": "none"
+                },
+                "ack_wait": {
+                  "description": "How long (in nanoseconds) to allow messages to remain un-acknowledged before attempting redelivery",
+                  "minimum": 1,
+                  "default": "30000000000",
+                  "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                  "type": "integer",
+                  "maximum": 9223372036854775807
+                },
+                "max_deliver": {
+                  "description": "The number of times a message will be delivered to consumers if not acknowledged in time",
+                  "default": -1,
+                  "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775807
+                },
+                "filter_subject": {
+                  "description": "Filter the stream by a single subjects",
+                  "type": "string"
+                },
+                "filter_subjects": {
+                  "description": "Filter the stream by multiple subjects",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "replay_policy": {
+                  "description": "The rate at which messages will be pushed to a client",
+                  "type": "string",
+                  "enum": [
+                    "instant",
+                    "original"
+                  ],
+                  "default": "instant"
+                },
+                "sample_freq": {
+                  "description": "Sets the percentage of acknowledgments that should be sampled for observability",
+                  "type": "string"
+                },
+                "rate_limit_bps": {
+                  "description": "The rate at which messages will be delivered to clients, expressed in bit per second",
+                  "minimum": 0,
+                  "$comment": "unsigned 64 bit integer",
+                  "type": "integer",
+                  "maximum": 18446744073709551615
+                },
+                "max_ack_pending": {
+                  "description": "The maximum number of messages without acknowledgement that can be outstanding, once this limit is reached message delivery will be suspended",
+                  "default": 1000,
+                  "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775807
+                },
+                "idle_heartbeat": {
+                  "minimum": 0,
+                  "description": "If the Consumer is idle for more than this many nano seconds a empty message with Status header 100 will be sent indicating the consumer is still alive",
+                  "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                  "type": "integer",
+                  "maximum": 9223372036854775807
+                },
+                "flow_control": {
+                  "type": "boolean",
+                  "description": "For push consumers this will regularly send an empty mess with Status header 100 and a reply subject, consumers must reply to these messages to control the rate of message delivery"
+                },
+                "max_waiting": {
+                  "description": "The number of pulls that can be outstanding on a pull consumer, pulls received after this is reached are ignored",
+                  "minimum": 0,
+                  "default": 512,
+                  "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+                  "type": "integer",
+                  "maximum": 9223372036854775807
+                },
+                "direct": {
+                  "type": "boolean",
+                  "description": "Creates a special consumer that does not touch the Raft layers, not for general use by clients, internal use only",
+                  "default": false
+                },
+                "headers_only": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Delivers only the headers of messages in the stream and not the bodies. Additionally adds Nats-Msg-Size header to indicate the size of the removed payload"
+                },
+                "max_batch": {
+                  "type": "integer",
+                  "description": "The largest batch property that may be specified when doing a pull on a Pull Consumer",
+                  "default": 0,
+                  "minimum": 0
+                },
+                "max_expires": {
+                  "description": "The maximum expires value that may be set when doing a pull on a Pull Consumer",
+                  "default": 0,
+                  "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                  "minimum": 0,
+                  "type": "integer",
+                  "maximum": 9223372036854775807
+                },
+                "max_bytes": {
+                  "description": "The maximum bytes value that maybe set when doing a pull on a Pull Consumer",
+                  "minimum": 0,
+                  "default": 0,
+                  "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+                  "type": "integer",
+                  "maximum": 9223372036854775807
+                },
+                "inactive_threshold": {
+                  "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
+                  "default": 0,
+                  "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                  "minimum": 0,
+                  "type": "integer",
+                  "maximum": 9223372036854775807
+                },
+                "backoff": {
+                  "description": "List of durations in Go format that represents a retry time scale for NaK'd messages",
+                  "type": "array",
+                  "items": {
+                    "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                    "minimum": 0,
+                    "type": "integer",
+                    "maximum": 9223372036854775807
+                  }
+                },
+                "num_replicas": {
+                  "description": "When set do not inherit the replica count from the stream but specifically set it to this amount",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5,
+                  "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit"
+                },
+                "mem_storage": {
+                  "description": "Force the consumer state to be kept in memory rather than inherit the setting from the stream",
+                  "type": "boolean",
+                  "default": false
+                },
+                "metadata": {
+                  "description": "Additional metadata for the Consumer",
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "pause_until": {
+                  "description": "When creating a consumer supplying a time in the future will act as a deadline for when the consumer will be paused till",
+                  "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "priority_groups": {
+                  "description": "List of priority groups this consumer supports",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "priority_policy": {
+                  "description": "The priority policy the consumer is set to",
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "overflow",
+                    "pinned_client",
+                    "prioritized"
+                  ]
+                },
+                "priority_timeout": {
+                  "description": "For pinned_client priority policy how long before the client times out",
+                  "default": 0,
+                  "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                  "minimum": 0,
+                  "type": "integer",
+                  "maximum": 9223372036854775807
+                },
+                "opt_start_seq": {
+                  "description": "Start sequence used with the DeliverByStartSequence deliver policy.",
+                  "minimum": 0,
+                  "$comment": "unsigned 64 bit integer",
+                  "type": "integer",
+                  "maximum": 18446744073709551615
+                },
+                "opt_start_time": {
+                  "description": "Start time used with the DeliverByStartSequence deliver policy",
+                  "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "created": {
+              "description": "The time the Consumer was created",
+              "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+              "type": "string",
+              "format": "date-time"
+            },
+            "delivered": {
+              "description": "The last message delivered from this Consumer",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "consumer_seq",
+                "stream_seq"
+              ],
+              "properties": {
+                "consumer_seq": {
+                  "description": "The sequence number of the Consumer",
+                  "$comment": "unsigned 64 bit integer",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
+                },
+                "stream_seq": {
+                  "description": "The sequence number of the Stream",
+                  "$comment": "unsigned 64 bit integer",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
+                },
+                "last_active": {
+                  "description": "The last time a message was delivered or acknowledged (for ack_floor)",
+                  "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "ack_floor": {
+              "description": "The highest contiguous acknowledged message",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "consumer_seq",
+                "stream_seq"
+              ],
+              "properties": {
+                "consumer_seq": {
+                  "description": "The sequence number of the Consumer",
+                  "$comment": "unsigned 64 bit integer",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
+                },
+                "stream_seq": {
+                  "description": "The sequence number of the Stream",
+                  "$comment": "unsigned 64 bit integer",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
+                },
+                "last_active": {
+                  "description": "The last time a message was delivered or acknowledged (for ack_floor)",
+                  "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "num_ack_pending": {
+              "description": "The number of messages pending acknowledgement",
+              "minimum": 0,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
+            },
+            "num_redelivered": {
+              "description": "The number of redeliveries that have been performed",
+              "minimum": 0,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
+            },
+            "num_waiting": {
+              "description": "The number of pull consumers waiting for messages",
+              "minimum": 0,
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
+            },
+            "num_pending": {
+              "description": "The number of messages left unconsumed in this Consumer",
+              "minimum": 0,
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "maximum": 18446744073709551615
+            },
+            "cluster": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The cluster name"
+                },
+                "leader": {
+                  "type": "string",
+                  "description": "The server name of the RAFT leader"
+                },
+                "replicas": {
+                  "type": "array",
+                  "description": "The members of the RAFT cluster",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "current",
+                      "active"
+                    ],
+                    "properties": {
+                      "name": {
+                        "description": "The server name of the peer",
+                        "type": "string",
+                        "minimum": 1
+                      },
+                      "current": {
+                        "description": "Indicates if the server is up to date and synchronised",
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "active": {
+                        "description": "Nanoseconds since this peer was last seen",
+                        "type": "number"
+                      },
+                      "offline": {
+                        "description": "Indicates the node is considered offline by the group",
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "lag": {
+                        "description": "How many uncommitted operations this peer is behind the leader",
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "peer": {
+                        "description": "The unique ID for the peer",
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "leader_since": {
+                  "type": "string",
+                  "description": "The time that it was elected as leader in RFC3339 format, absent when not the leader",
+                  "format": "date-time"
+                },
+                "raft_group": {
+                  "type": "string",
+                  "description": "In clustered environments the name of the Raft group managing the asset"
+                },
+                "system_account": {
+                  "type": "boolean",
+                  "description": "Indicates if the traffic_account is the system account. When true, replication traffic goes over the system account."
+                },
+                "traffic_account": {
+                  "type": "string",
+                  "description": "The account where the replication traffic goes over."
+                }
+              }
+            },
+            "push_bound": {
+              "description": "Indicates if any client is connected and receiving messages from a push consumer",
+              "type": "boolean"
+            },
+            "paused": {
+              "description": "Indicates if the consumer is currently in a paused state",
+              "type": "boolean"
+            },
+            "pause_remaining": {
+              "description": "When paused the time remaining until unpause",
+              "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+              "minimum": 0,
+              "type": "integer",
+              "maximum": 9223372036854775807
+            },
+            "priority_groups": {
+              "description": "The state of Priority Groups",
+              "type": "array",
+              "items": {
+                "required": [
+                  "group"
+                ],
+                "type": "object",
+                "description": "Status of a specific consumer priority group",
+                "properties": {
+                  "group": {
+                    "type": "string",
+                    "description": "The group this status is for",
+                    "minLength": 1
+                  },
+                  "pinned_client_id": {
+                    "type": "string",
+                    "description": "The generated ID of the pinned client"
+                  },
+                  "pinned_ts": {
+                    "description": "The timestamp when the client was pinned",
+                    "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "reset_seq"
+      ],
+      "properties": {
+        "reset_seq": {
+          "description": "The sequence that the consumer was reset to",
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        }
+      }
+    }
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "io.nats.jetstream.api.v1.consumer_reset_response"
+    }
+  }
+}

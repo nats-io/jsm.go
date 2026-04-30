@@ -410,6 +410,13 @@ func AcknowledgeExplicit() ConsumerOption {
 	}
 }
 
+func AcknowledgeFlowControl() ConsumerOption {
+	return func(o *api.ConsumerConfig) error {
+		o.AckPolicy = api.AckFlowControl
+		return nil
+	}
+}
+
 // AckWait sets the time a delivered message might remain unacknowledged before redelivery is attempted
 func AckWait(t time.Duration) ConsumerOption {
 	return func(o *api.ConsumerConfig) error {

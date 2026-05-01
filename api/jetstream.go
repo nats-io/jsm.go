@@ -35,6 +35,12 @@ const (
 	JSMetaCurrentServerLevel   = "_nats.level"
 	JSMetaCurrentServerVersion = "_nats.ver"
 	JsMetaRequiredServerLevel  = "_nats.req.level"
+	JsMetaMirrorStreamName     = "_nats.mirror.stream"
+	JsMetaMirrorAccountName    = "_nats.mirror.acc"
+	JsMetaMirrorDomainName     = "_nats.mirror.domain"
+	JsMetaSourceStreamName     = "_nats.src.stream"
+	JsMetaSourceAccountName    = "_nats.src.acc"
+	JsMetaSourceDomainName     = "_nats.src.domain"
 )
 
 // Responses to requests sent to a server from a client.

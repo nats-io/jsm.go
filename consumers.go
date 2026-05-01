@@ -721,6 +721,24 @@ func (c *Consumer) Reset() error {
 	return c.mgr.loadConfigForConsumer(c)
 }
 
+// ResetConsumerState rewinds the consumer to a previous state, 0 resets to the ack floor
+func (c *Consumer) ResetConsumerState(seq uint64) (uint64, error) {
+	req := api.JSApiConsumerResetRequest{Seq: seq}
+
+	var resp api.JSApiConsumerResetResponse
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerResetT, c.StreamName(), c.Name()), req, &resp)
+	if err != nil {
+		return 0, err
+	}
+
+	c.Lock()
+	c.cfg = &resp.Config
+	c.lastInfo = resp.ConsumerInfo
+	c.Unlock()
+
+	return resp.ResetSeq, nil
+}
+
 // NextSubject returns the subject used to retrieve the next message for pull-based Consumers, empty when not a pull-base consumer
 func (m *Manager) NextSubject(stream string, consumer string) (string, error) {
 	s, err := NextSubject(stream, consumer)

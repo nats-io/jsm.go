@@ -412,6 +412,12 @@ func FilterServerMetadata(metadata map[string]string) map[string]string {
 		api.JSMetaCurrentServerVersion,
 		api.JSMetaCurrentServerLevel,
 		api.JsMetaRequiredServerLevel,
+		api.JsMetaMirrorStreamName,
+		api.JsMetaMirrorDomainName,
+		api.JsMetaMirrorAccountName,
+		api.JsMetaSourceStreamName,
+		api.JsMetaSourceDomainName,
+		api.JsMetaSourceAccountName,
 	}
 
 	for k, v := range metadata {

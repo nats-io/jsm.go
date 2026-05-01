@@ -766,7 +766,7 @@ type StreamSource struct {
 // StreamConsumerSource dictates a durable consumer with a specific name is used for sourcing.
 type StreamConsumerSource struct {
 	Name           string `json:"name,omitempty" yaml:"name"`
-	DeliverSubject string `json:"deliver_subject,omitempty" yaml:"deliver_subject"`
+	DeliverSubject string `json:"deliver_subject" yaml:"deliver_subject"`
 }
 
 // ExternalStream allows you to qualify access to a stream source in another account.

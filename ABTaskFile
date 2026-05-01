@@ -69,11 +69,11 @@ commands:
           arguments:
             - name: dir
               description: Directory to test
-              default: .
+              default: ./...
           script: |
             set -e
             
-            go test ./...
+            go test ./{{ .Arguments.dir | escape }}/...
 
         - name: lint
           type: exec

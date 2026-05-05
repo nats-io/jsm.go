@@ -1,6 +1,7 @@
 package natscontext
 
 import (
+	"errors"
 	"os"
 	"testing"
 )
@@ -62,11 +63,28 @@ func TestWipeSlice(t *testing.T) {
 	}
 }
 
-func TestValidName(t *testing.T) {
-	valid := []string{"foo", "my-context", "ctx_1", "a"}
+func TestValidateName(t *testing.T) {
+	// ValidateName is deliberately loose: historical user contexts
+	// persisted before a stricter validator existed, and upgrading
+	// must not strand them. The rule is exactly "non-empty, no ".."
+	// substring, no / or \". Anything else is a concern for specific
+	// backends to layer on top (see svcbackend, which rejects
+	// subject-hostile characters before publishing).
+	valid := []string{
+		"foo", "my-context", "ctx_1", "a",
+		"ngs.js",   // the regression-of-record — had to keep working
+		"foo.bar",  // single dot mid-name
+		"foo bar",  // whitespace — legal at the core
+		"foo\tbar", // tab — legal at the core
+		"foo*bar",  // subject wildcard — legal at the core
+		"foo>bar",  // subject wildcard — legal at the core
+		"foo\x00a", // control character — legal at the core
+		"foo\x7fa", // DEL — legal at the core
+	}
 	for _, name := range valid {
-		if !validName(name) {
-			t.Errorf("expected %q to be valid", name)
+		err := ValidateName(name)
+		if err != nil {
+			t.Errorf("expected %q to be valid, got %v", name, err)
 		}
 	}
 
@@ -76,34 +94,45 @@ func TestValidName(t *testing.T) {
 		"foo\\bar", // backslash
 		"../evil",  // parent traversal with forward slash
 		"..\\evil", // parent traversal with backslash
-		"foo..bar", // double dot mid-name
-		"..",       // bare double dot
+		"foo..bar", // contains ".." substring
+		"..",       // bare ".."
+		"a..",      // ".." at the end
+		"..a",      // ".." at the start
 	}
 	for _, name := range invalid {
-		if validName(name) {
+		err := ValidateName(name)
+		if err == nil {
 			t.Errorf("expected %q to be invalid", name)
+			continue
+		}
+		if !errors.Is(err, ErrInvalidName) {
+			t.Errorf("expected %q to wrap ErrInvalidName, got %v", name, err)
 		}
 	}
 }
 
 func TestNumCreds(t *testing.T) {
 	empty := &Context{config: &settings{}}
-	if n := numCreds(empty); n != 0 {
+	n := numCreds(empty)
+	if n != 0 {
 		t.Fatalf("expected 0 creds, got %d", n)
 	}
 
 	jwtOnly := &Context{config: &settings{UserJwt: "somejwt"}}
-	if n := numCreds(jwtOnly); n != 1 {
+	n = numCreds(jwtOnly)
+	if n != 1 {
 		t.Fatalf("expected 1 for jwt-only, got %d", n)
 	}
 
 	jwtAndCreds := &Context{config: &settings{UserJwt: "somejwt", Creds: "/some/path.creds"}}
-	if n := numCreds(jwtAndCreds); n != 2 {
+	n = numCreds(jwtAndCreds)
+	if n != 2 {
 		t.Fatalf("expected 2 for jwt+creds, got %d", n)
 	}
 
 	jwtAndNkey := &Context{config: &settings{UserJwt: "somejwt", NKey: "/some/path.nk"}}
-	if n := numCreds(jwtAndNkey); n != 2 {
+	n = numCreds(jwtAndNkey)
+	if n != 2 {
 		t.Fatalf("expected 2 for jwt+nkey, got %d", n)
 	}
 }

@@ -1,6 +1,7 @@
 package natscontext_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -65,8 +66,8 @@ func TestContext(t *testing.T) {
 	}
 
 	err = natscontext.SelectContext("nonexisting")
-	if err.Error() != "unknown context" {
-		t.Fatalf("expected unknown context error got: %v", err)
+	if !errors.Is(err, natscontext.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound got: %v", err)
 	}
 
 	err = natscontext.SelectContext("gotest")

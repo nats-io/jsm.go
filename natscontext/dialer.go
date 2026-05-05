@@ -44,9 +44,11 @@ func (sd SocksDialer) Dial(network, address string) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	dialer, err := proxy.FromURL(u, proxy.Direct)
 	if err != nil {
 		return nil, err
 	}
+
 	return dialer.Dial(network, address)
 }

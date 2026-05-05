@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nats.io/natscontext/svcbackend/v1",
+  "title": "natscontext svcbackend protocol v1",
+  "description": "Wire envelopes for the natscontext svcbackend request/reply protocol. Each type corresponds one-to-one with a Go struct in wire.go. Sealed payloads (LoadSealed, SaveSealed) never appear on the wire at the top level; they describe the plaintext carried inside the base64-encoded sealed string of their outer envelope. Successful responses always omit the error field; it is never serialized as JSON null. Wire types are published only under $defs and the document carries no top-level $ref; consumers either validate directly against #/$defs/<TypeName> or use the per-endpoint standalone documents synthesized at runtime by EndpointSchemaV1.",
+  "$defs": {
+    "Error": {
+      "type": "object",
+      "description": "Wire-level error carried inside the error field of every response envelope. Successful responses omit error entirely.",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Wire-level error code. stale_key is a rotation retry signal returned when the server fails to Open a sealed request because the client sealed to a prior long-term xkey; conformant clients invalidate, refetch sys.xkey, and retry once.",
+          "enum": [
+            "not_found",
+            "already_exists",
+            "invalid_name",
+            "active_context",
+            "read_only",
+            "conflict",
+            "stale_key",
+            "internal"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable description. MUST NOT contain payload bytes."
+        }
+      }
+    },
+    "SysXKeyRequest": {
+      "type": "object",
+      "description": "Empty request envelope used to fetch the server's long-term xkey public key.",
+      "additionalProperties": false
+    },
+    "SysXKeyResponse": {
+      "type": "object",
+      "description": "Advertises the server's long-term xkey public key; clients cache it for sealing subsequent requests.",
+      "additionalProperties": false,
+      "properties": {
+        "xkey_pub": {
+          "type": "string",
+          "description": "Encoded curve (X) public key of the server's long-term xkey.",
+          "minLength": 56,
+          "maxLength": 56,
+          "pattern": "^X[A-Z2-7]{55}$"
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "LoadRequest": {
+      "type": "object",
+      "description": "Plaintext request to fetch a stored context payload.",
+      "additionalProperties": false,
+      "required": ["reply_pub", "req_id"],
+      "properties": {
+        "reply_pub": {
+          "type": "string",
+          "description": "Client-generated per-request ephemeral xkey public key. The server seals LoadSealed to this key.",
+          "minLength": 56,
+          "maxLength": 56,
+          "pattern": "^X[A-Z2-7]{55}$"
+        },
+        "req_id": {
+          "type": "string",
+          "description": "Correlation token echoed inside LoadSealed.",
+          "minLength": 1
+        }
+      }
+    },
+    "LoadResponse": {
+      "type": "object",
+      "description": "Response carrying a sealed context payload, or an error.",
+      "additionalProperties": false,
+      "properties": {
+        "sealed": {
+          "type": "string",
+          "description": "Base64 encoding of the xkv1 ciphertext whose plaintext is a LoadSealed JSON document.",
+          "contentEncoding": "base64",
+          "minLength": 1
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "LoadSealed": {
+      "type": "object",
+      "description": "Plaintext document carried inside LoadResponse.sealed; never sent in the clear.",
+      "additionalProperties": false,
+      "required": ["data", "req_id"],
+      "properties": {
+        "data": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Raw context payload bytes."
+        },
+        "req_id": {
+          "type": "string",
+          "description": "Echo of the req_id from the matching LoadRequest.",
+          "minLength": 1
+        }
+      }
+    },
+    "SaveRequest": {
+      "type": "object",
+      "description": "Request carrying a sealed context payload to be stored.",
+      "additionalProperties": false,
+      "required": ["sender_pub", "sealed"],
+      "properties": {
+        "sender_pub": {
+          "type": "string",
+          "description": "Client's ephemeral xkey public key. The server uses it to open sealed.",
+          "minLength": 56,
+          "maxLength": 56,
+          "pattern": "^X[A-Z2-7]{55}$"
+        },
+        "sealed": {
+          "type": "string",
+          "description": "Base64 encoding of the xkv1 ciphertext whose plaintext is a SaveSealed JSON document.",
+          "contentEncoding": "base64",
+          "minLength": 1
+        }
+      }
+    },
+    "SaveResponse": {
+      "type": "object",
+      "description": "Acknowledgment of a save attempt; carries an error on failure and is otherwise empty.",
+      "additionalProperties": false,
+      "properties": {
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "SaveSealed": {
+      "type": "object",
+      "description": "Plaintext document carried inside SaveRequest.sealed; never sent in the clear.",
+      "additionalProperties": false,
+      "required": ["data", "req_id"],
+      "properties": {
+        "data": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Raw context payload bytes to store."
+        },
+        "req_id": {
+          "type": "string",
+          "description": "Correlation token; servers MAY use it to dedupe replays.",
+          "minLength": 1
+        }
+      }
+    },
+    "DeleteRequest": {
+      "type": "object",
+      "description": "Request to remove a stored context.",
+      "additionalProperties": false,
+      "required": ["req_id"],
+      "properties": {
+        "req_id": {
+          "type": "string",
+          "description": "Correlation token; servers MAY use it to dedupe replays.",
+          "minLength": 1
+        }
+      }
+    },
+    "DeleteResponse": {
+      "type": "object",
+      "description": "Acknowledgment of a delete attempt. Deleting a missing name succeeds with no error.",
+      "additionalProperties": false,
+      "properties": {
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    },
+    "ListRequest": {
+      "type": "object",
+      "description": "Empty request envelope; returns all stored context names.",
+      "additionalProperties": false
+    },
+    "ListResponse": {
+      "type": "object",
+      "description": "Sorted list of stored context names, or an error.",
+      "additionalProperties": false,
+      "properties": {
+        "names": {
+          "type": "array",
+          "description": "Stored context names in ascending lexicographic byte order.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "error": { "$ref": "#/$defs/Error" }
+      }
+    }
+  }
+}

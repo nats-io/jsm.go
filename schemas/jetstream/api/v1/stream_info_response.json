@@ -264,7 +264,8 @@
                       "type": "object",
                       "description": "Consumer information for durable sourcing",
                       "required": [
-                        "name"
+                        "name",
+                        "deliver_subject"
                       ],
                       "properties": {
                         "name": {
@@ -361,7 +362,8 @@
                         "type": "object",
                         "description": "Consumer information for durable sourcing",
                         "required": [
-                          "name"
+                          "name",
+                          "deliver_subject"
                         ],
                         "properties": {
                           "name": {

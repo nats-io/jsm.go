@@ -40,7 +40,7 @@
     "stream_consumer_source": {
       "type": "object",
       "description": "Consumer information for durable sourcing",
-      "required": ["name"],
+      "required": ["name", "deliver_subject"],
       "properties": {
         "name": {
           "description": "Consumer name",

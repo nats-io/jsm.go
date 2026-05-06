@@ -27,7 +27,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/minio/highwayhash v1.0.4 // indirect
 	github.com/nats-io/jwt/v2 v2.8.1 // indirect
-	github.com/nats-io/nats-server/v2 v2.14.0-RC.1.0.20260421090633-ca59909b0953 // indirect
+	github.com/nats-io/nats-server/v2 v2.14.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.53.0 // indirect

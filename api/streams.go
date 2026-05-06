@@ -765,7 +765,7 @@ type StreamSource struct {
 
 // StreamConsumerSource dictates a durable consumer with a specific name is used for sourcing.
 type StreamConsumerSource struct {
-	Name           string `json:"name,omitempty" yaml:"name"`
+	Name           string `json:"name" yaml:"name"`
 	DeliverSubject string `json:"deliver_subject" yaml:"deliver_subject"`
 }
 

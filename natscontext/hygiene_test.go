@@ -134,6 +134,98 @@ func TestNewFromFileDotfile(t *testing.T) {
 	}
 }
 
+// TestSaveEmbeddedRoundTrip loads a context whose Creds field is a
+// bare path, calls SaveEmbedded(""), and verifies the on-disk JSON
+// has been rewritten to inline the credential file as a data: URI.
+// A subsequent NewFromFile must come back with the same embedded
+// value, so a transport that ships the JSON verbatim to a host
+// without the original creds path can dial successfully.
+func TestSaveEmbeddedRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	credsBytes := []byte("-----BEGIN NATS USER JWT-----\nstub\n------END NATS USER JWT------\n")
+	credsPath := filepath.Join(dir, "user.creds")
+	err := os.WriteFile(credsPath, credsBytes, 0600)
+	if err != nil {
+		t.Fatalf("write creds: %v", err)
+	}
+
+	ctxPath := filepath.Join(dir, "demo.json")
+	body := fmt.Sprintf(`{"url":"nats://a:4222","creds":%q}`, credsPath)
+	err = os.WriteFile(ctxPath, []byte(body), 0600)
+	if err != nil {
+		t.Fatalf("write ctx: %v", err)
+	}
+
+	loaded, err := natscontext.NewFromFile(ctxPath)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if loaded.Creds() != credsPath {
+		t.Fatalf("pre-embed Creds: got %q want %q", loaded.Creds(), credsPath)
+	}
+
+	err = loaded.SaveEmbedded("")
+	if err != nil {
+		t.Fatalf("SaveEmbedded: %v", err)
+	}
+
+	wantURI := natscontext.EncodeDataURI(credsBytes)
+	if loaded.Creds() != wantURI {
+		t.Fatalf("in-memory Creds after SaveEmbedded: got %q want %q", loaded.Creds(), wantURI)
+	}
+
+	persisted, err := os.ReadFile(ctxPath)
+	if err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if !bytes.Contains(persisted, []byte(wantURI)) {
+		t.Fatalf("persisted JSON missing embedded creds URI; body=\n%s", persisted)
+	}
+	if bytes.Contains(persisted, []byte(credsPath)) {
+		t.Fatalf("persisted JSON still references the original path; body=\n%s", persisted)
+	}
+
+	reloaded, err := natscontext.NewFromFile(ctxPath)
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if reloaded.Creds() != wantURI {
+		t.Fatalf("reloaded Creds: got %q want %q", reloaded.Creds(), wantURI)
+	}
+}
+
+// TestSaveEmbeddedMissingFile asserts that SaveEmbedded fails before
+// touching disk when an embedded credential field references a
+// missing file, leaving the original on-disk JSON intact.
+func TestSaveEmbeddedMissingFile(t *testing.T) {
+	dir := t.TempDir()
+	ctxPath := filepath.Join(dir, "demo.json")
+	missing := filepath.Join(dir, "absent.creds")
+	body := fmt.Sprintf(`{"url":"nats://a:4222","creds":%q}`, missing)
+	err := os.WriteFile(ctxPath, []byte(body), 0600)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	loaded, err := natscontext.NewFromFile(ctxPath)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	err = loaded.SaveEmbedded("")
+	if !os.IsNotExist(err) {
+		t.Fatalf("expected ErrNotExist, got %v", err)
+	}
+
+	persisted, err := os.ReadFile(ctxPath)
+	if err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if !bytes.Equal(persisted, []byte(body)) {
+		t.Fatalf("on-disk JSON should be untouched; body=\n%s", persisted)
+	}
+}
+
 // TestSaveAfterNameMutation covers the rename-via-c.Name idiom that
 // pre-Backend-refactor code supported: load a context, mutate the
 // exported Name field, then call Save(""). Save must treat the

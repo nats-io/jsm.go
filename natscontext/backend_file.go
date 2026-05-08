@@ -49,7 +49,7 @@ const (
 // falling back to $HOME/.config, matching the historical natscontext
 // behavior. The backend is returned even if the directory does not yet
 // exist; it will be created on first write.
-func NewDefaultFileBackend() Backend {
+func NewDefaultFileBackend() *FileBackend {
 	root, err := defaultRoot()
 	if err != nil {
 		// Mirror the pre-refactor behavior: reads against a backend with
@@ -63,7 +63,7 @@ func NewDefaultFileBackend() Backend {
 // NewFileBackendAt returns a FileBackend rooted at dir. The backend keeps
 // its context files under dir/nats/context/. The directory is created on
 // first write.
-func NewFileBackendAt(dir string) Backend {
+func NewFileBackendAt(dir string) *FileBackend {
 	return newFileBackend(dir)
 }
 
@@ -256,11 +256,22 @@ type SingleFileBackend struct {
 	mu   sync.Mutex
 }
 
-// NewSingleFileBackend returns a Backend rooted at a single file path.
-// The context's name is derived from the basename (without the .json
-// extension) so Registry.Load(name) and Registry.Save(c, name) both
-// work when the caller passes the same name.
-func NewSingleFileBackend(path string) Backend {
+// NewSingleFileBackend returns a SingleFileBackend rooted at a single
+// file path. The context's logical name is derived from the basename
+// (without the .json extension): NewSingleFileBackend("/etc/nats/demo.json")
+// answers to the name "demo". Registry.Load, Registry.Save, and the
+// other Registry methods all take that derived name, NOT the original
+// path — passing the path will fail ValidateName because it contains
+// "/" or "\". Most callers should use NewFromFile, which derives the
+// name and wires up the Registry in one call; reach for
+// NewSingleFileBackend directly only when a custom Registry (custom
+// resolvers, selector, etc.) is needed, and remember to translate
+// path → name for Registry calls, e.g.
+//
+//	backend := natscontext.NewSingleFileBackend(path)
+//	reg := natscontext.NewRegistry(backend, opts...)
+//	c, err := reg.Load(ctx, backend.Name())
+func NewSingleFileBackend(path string) *SingleFileBackend {
 	base := filepath.Base(path)
 	name := strings.TrimSuffix(base, filepath.Ext(base))
 	// Dotfile basenames like ".ctx" report the whole basename as the

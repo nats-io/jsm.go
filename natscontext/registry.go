@@ -31,6 +31,7 @@ type Registry struct {
 	selector         Selector
 	selectorOverride bool
 	resolvers        map[string]CredentialResolver
+	embedding        bool
 }
 
 // NewRegistry returns a Registry using b for storage. If b also
@@ -183,6 +184,13 @@ func (r *Registry) Save(ctx context.Context, c *Context, name string) error {
 	err = c.Validate()
 	if err != nil {
 		return err
+	}
+
+	if r.embedding {
+		err = embedFileCredentials(c.config)
+		if err != nil {
+			return err
+		}
 	}
 
 	c.config.Name = ""

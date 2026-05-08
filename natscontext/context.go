@@ -208,9 +208,8 @@ func New(name string, load bool, opts ...Option) (*Context, error) {
 // or supply values for an empty context.
 func NewFromFile(filename string, opts ...Option) (*Context, error) {
 	backend := NewSingleFileBackend(filename)
-	name := backend.(*SingleFileBackend).Name()
 
-	return NewRegistry(backend).Load(context.Background(), name, opts...)
+	return NewRegistry(backend).Load(context.Background(), backend.Name(), opts...)
 }
 
 // unmarshalAndExpand decodes data into c.config and expands ~ and
@@ -290,12 +289,7 @@ func ContextPath(name string) (string, error) {
 		return "", err
 	}
 
-	b, ok := NewFileBackendAt(root).(*FileBackend)
-	if !ok {
-		return "", fmt.Errorf("default backend does not expose a path")
-	}
-
-	return b.Path(name), nil
+	return NewFileBackendAt(root).Path(name), nil
 }
 
 // KnownContexts is a list of known context names.
@@ -733,7 +727,7 @@ func (c *Context) Validate() error {
 // Registry.Save directly.
 func (c *Context) Save(name string) error {
 	if c.path != "" {
-		backend := NewSingleFileBackend(c.path).(*SingleFileBackend)
+		backend := NewSingleFileBackend(c.path)
 		effective := name
 		if effective == "" {
 			effective = c.Name
@@ -744,6 +738,30 @@ func (c *Context) Save(name string) error {
 	}
 
 	return defaultRegistry().Save(context.Background(), c, name)
+}
+
+// SaveEmbedded inlines file-backed credential material and then calls
+// Save. Each of Creds, NKey, UserJwt, and UserSeed whose value is a
+// bare path or file:// URI is read from disk and rewritten as a
+// data:;base64,<contents> URI before persistence; values using any
+// other scheme (op://, env://, nsc://, existing data:) are left
+// untouched. Save's normal routing applies: persistence goes back to
+// the originating file when the context was loaded from one, otherwise
+// to the package-level default Registry under XDG.
+//
+// SaveEmbedded is the Context-level shorthand for the registry option
+// WithEmbedding — useful when handing a context off through a
+// transport or backend that does not share the producer's filesystem.
+// Mutation is in-place: after a successful call the in-memory Context
+// holds the embedded data: URIs. A failure to read any embedded
+// field's file aborts before Save runs, leaving the on-disk
+// representation untouched.
+func (c *Context) SaveEmbedded(name string) error {
+	err := embedFileCredentials(c.config)
+	if err != nil {
+		return err
+	}
+	return c.Save(name)
 }
 
 // WithServerURL supplies the url(s) to connect to nats with

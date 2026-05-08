@@ -32,7 +32,7 @@ type MemoryBackend struct {
 }
 
 // NewMemoryBackend returns a ready-to-use MemoryBackend.
-func NewMemoryBackend() Backend {
+func NewMemoryBackend() *MemoryBackend {
 	return &MemoryBackend{contexts: map[string][]byte{}}
 }
 

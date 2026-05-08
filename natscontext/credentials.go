@@ -53,6 +53,29 @@ func WithCredentialResolver(r CredentialResolver) RegistryOption {
 	}
 }
 
+// WithEmbedding makes Registry.Save inline file-backed credential
+// material before persisting. Each of Creds, NKey, UserJwt, and
+// UserSeed whose value is a bare path or a file:// URI is read from
+// disk and rewritten as a data:;base64,<contents> URI; values using
+// any other scheme (op://, nsc://, env://, existing data:) are left
+// untouched. The result is a self-contained context payload that
+// loads on a different machine without access to the producer's
+// filesystem — the intended use case for storing contexts in a
+// remote backend such as svcbackend.
+//
+// Save fails with the underlying os.ReadFile error if any embedded
+// field's file is unreadable; embedding is all-or-nothing per Save
+// call. Mutation is in-place: after a successful Save the supplied
+// *Context holds the embedded data: URIs in its credential fields, so
+// subsequent Saves through any registry round-trip the embedded form.
+// TLS fields (Cert, Key, CA) are not embedded; nats.go currently
+// dials them only as filesystem paths.
+func WithEmbedding() RegistryOption {
+	return func(reg *Registry) {
+		reg.embedding = true
+	}
+}
+
 // WithDefaultResolvers registers the stock resolvers: file:// (and bare
 // paths), op://, and nsc://. It is applied automatically when Open is
 // called with no resolver-related options.

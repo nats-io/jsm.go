@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -35,6 +36,48 @@ import (
 // Cert, Key, and CA are path-only and do not accept data: URIs.
 func EncodeDataURI(payload []byte) string {
 	return "data:;base64," + base64.StdEncoding.EncodeToString(payload)
+}
+
+// EncodeDataURIFromFile reads path and returns its contents wrapped as
+// a data:;base64,<payload> URI. Convenient for inlining a creds or
+// nkey file into a context without a separate read step. Errors from
+// os.ReadFile are returned verbatim.
+func EncodeDataURIFromFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return EncodeDataURI(data), nil
+}
+
+// embedFileCredentials rewrites file-backed values in s.Creds, s.NKey,
+// s.UserJwt, and s.UserSeed into data: URIs. A value's scheme decides
+// the action: bare paths and file:// URIs are read and re-encoded;
+// every other scheme (data:, op://, env://, nsc://, …) is left
+// unchanged so externally-resolved secrets keep their lazy-fetch
+// semantics. Failures are returned verbatim and abort the whole pass
+// so a partial rewrite never reaches disk.
+func embedFileCredentials(s *settings) error {
+	fields := []*string{&s.Creds, &s.NKey, &s.UserJwt, &s.UserSeed}
+	for _, fp := range fields {
+		embedded, err := embedIfFile(*fp)
+		if err != nil {
+			return err
+		}
+		*fp = embedded
+	}
+	return nil
+}
+
+func embedIfFile(ref string) (string, error) {
+	if ref == "" {
+		return ref, nil
+	}
+	scheme := parseScheme(ref)
+	if scheme != "" && scheme != "file" {
+		return ref, nil
+	}
+	return EncodeDataURIFromFile(filePathFromRef(ref))
 }
 
 // dataResolver decodes inline material embedded in a RFC 2397 data:

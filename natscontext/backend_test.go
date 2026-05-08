@@ -300,11 +300,7 @@ func TestFileBackendNoRootWritePathsError(t *testing.T) {
 		t.Error("Delete: expected error on rootless backend, got nil")
 	}
 
-	sel, ok := b.(natscontext.Selector)
-	if !ok {
-		t.Fatal("FileBackend should implement Selector")
-	}
-	_, err = sel.SetSelected(bg, "ctx")
+	_, err = b.SetSelected(bg, "ctx")
 	if err == nil {
 		t.Error("SetSelected: expected error on rootless backend, got nil")
 	}

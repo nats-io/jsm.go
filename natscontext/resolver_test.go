@@ -735,6 +735,194 @@ func TestEncodeDataURIRoundTrip(t *testing.T) {
 	}
 }
 
+// TestEncodeDataURIFromFile asserts that the file-reading variant
+// produces the same URI as feeding the file's bytes through
+// EncodeDataURI, and that read errors propagate.
+func TestEncodeDataURIFromFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "blob.bin")
+	payload := []byte{0x00, 0x01, 0xff, '\n', 'h', 'i'}
+	err := os.WriteFile(path, payload, 0o600)
+	if err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	got, err := natscontext.EncodeDataURIFromFile(path)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	want := natscontext.EncodeDataURI(payload)
+	if got != want {
+		t.Fatalf("uri mismatch: got %q want %q", got, want)
+	}
+
+	_, err = natscontext.EncodeDataURIFromFile(filepath.Join(dir, "missing"))
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected ErrNotExist, got %v", err)
+	}
+}
+
+// TestWithEmbeddingSave verifies that a registry created with
+// WithEmbedding inlines bare-path and file:// values for Creds, NKey,
+// UserJwt, and UserSeed when Save runs. Each field is exercised in
+// isolation because the credential-validation rule allows only one
+// credential type per context. After Save the in-memory Context holds
+// the embedded data: URIs and a Load round-trip returns the same
+// embedded values — a remote consumer reading the payload back never
+// needs the producer's filesystem.
+func TestWithEmbeddingSave(t *testing.T) {
+	dir := t.TempDir()
+	bg := context.Background()
+
+	writeFile := func(name string, data []byte) string {
+		path := filepath.Join(dir, name)
+		err := os.WriteFile(path, data, 0o600)
+		if err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+		return path
+	}
+
+	credsBytes := []byte("-----BEGIN NATS USER JWT-----\ndummy\n------END NATS USER JWT------\n")
+	nkeyBytes := []byte("-----BEGIN USER NKEY SEED-----\nSUDUMMY\n------END USER NKEY SEED------\n")
+	jwtBytes := []byte("eyJtb2NrIjoiand0In0\n")
+	seedBytes := []byte("SUDUMMYSEED\n")
+
+	credsPath := writeFile("user.creds", credsBytes)
+	nkeyPath := writeFile("user.nk", nkeyBytes)
+	jwtPath := writeFile("user.jwt", jwtBytes)
+	seedPath := writeFile("user.seed", seedBytes)
+
+	cases := []struct {
+		name     string
+		ctxName  string
+		opts     []natscontext.Option
+		want     map[string]string
+		getField func(*natscontext.Context) string
+		field    string
+	}{
+		{
+			name:     "Creds bare path",
+			ctxName:  "emb-creds",
+			opts:     []natscontext.Option{natscontext.WithCreds(credsPath)},
+			getField: func(c *natscontext.Context) string { return c.Creds() },
+			field:    "Creds",
+			want:     map[string]string{"Creds": natscontext.EncodeDataURI(credsBytes)},
+		},
+		{
+			name:     "NKey file:// URI",
+			ctxName:  "emb-nkey",
+			opts:     []natscontext.Option{natscontext.WithNKey("file://" + nkeyPath)},
+			getField: func(c *natscontext.Context) string { return c.NKey() },
+			field:    "NKey",
+			want:     map[string]string{"NKey": natscontext.EncodeDataURI(nkeyBytes)},
+		},
+		{
+			name:    "UserJwt + UserSeed pair",
+			ctxName: "emb-jwt",
+			opts: []natscontext.Option{
+				natscontext.WithUserJWT(jwtPath),
+				natscontext.WithUserSeed(seedPath),
+			},
+			getField: func(c *natscontext.Context) string {
+				return c.UserJWT() + "|" + c.UserSeed()
+			},
+			field: "UserJwt+UserSeed",
+			want: map[string]string{
+				"UserJwt+UserSeed": natscontext.EncodeDataURI(jwtBytes) + "|" + natscontext.EncodeDataURI(seedBytes),
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mem := natscontext.NewMemoryBackend()
+			reg := natscontext.NewRegistry(mem,
+				natscontext.WithEmbedding(),
+				natscontext.WithDefaultResolvers(),
+			)
+
+			opts := append([]natscontext.Option{natscontext.WithServerURL("nats://a:4222")}, tc.opts...)
+			c, err := natscontext.New(tc.ctxName, false, opts...)
+			if err != nil {
+				t.Fatalf("new: %v", err)
+			}
+
+			err = reg.Save(bg, c, "")
+			if err != nil {
+				t.Fatalf("save: %v", err)
+			}
+			if got := tc.getField(c); got != tc.want[tc.field] {
+				t.Fatalf("after save in-memory %s: got %q want %q", tc.field, got, tc.want[tc.field])
+			}
+
+			loaded, err := reg.Load(bg, tc.ctxName)
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			if got := tc.getField(loaded); got != tc.want[tc.field] {
+				t.Fatalf("loaded %s: got %q want %q", tc.field, got, tc.want[tc.field])
+			}
+		})
+	}
+}
+
+// TestWithEmbeddingNonFileSchemesPassthrough asserts that values
+// already using a non-file scheme (data:, op://, env://, nsc://) are
+// left untouched by an embedding Save — embedding is for portability
+// across machines, not for forcing eager resolution of externally
+// stored secrets.
+func TestWithEmbeddingNonFileSchemesPassthrough(t *testing.T) {
+	bg := context.Background()
+	reg := natscontext.NewRegistry(natscontext.NewMemoryBackend(),
+		natscontext.WithEmbedding(), natscontext.WithDefaultResolvers())
+
+	const credsRef = "op://vault/user-creds/notesPlain"
+
+	c, err := natscontext.New("ext", false,
+		natscontext.WithServerURL("nats://a:4222"),
+		natscontext.WithCreds(credsRef),
+	)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	err = reg.Save(bg, c, "")
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if c.Creds() != credsRef {
+		t.Fatalf("Creds rewritten: got %q want %q", c.Creds(), credsRef)
+	}
+}
+
+// TestWithEmbeddingMissingFile verifies that an unreadable embedded
+// field aborts Save with the os.ReadFile error rather than persisting
+// a half-embedded payload.
+func TestWithEmbeddingMissingFile(t *testing.T) {
+	bg := context.Background()
+	mem := natscontext.NewMemoryBackend()
+	reg := natscontext.NewRegistry(mem, natscontext.WithEmbedding(), natscontext.WithDefaultResolvers())
+
+	c, err := natscontext.New("missing", false,
+		natscontext.WithServerURL("nats://a:4222"),
+		natscontext.WithCreds(filepath.Join(t.TempDir(), "absent.creds")),
+	)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	err = reg.Save(bg, c, "")
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("save: expected ErrNotExist, got %v", err)
+	}
+	names, err := reg.List(bg)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(names) != 0 {
+		t.Fatalf("expected empty backend after failed save, got %v", names)
+	}
+}
+
 // TestMemoryRegistryBasics exercises the core of the legacy TestContext
 // flow (save, select, load, unselect) through a Registry backed by a
 // MemoryBackend. It documents that the registry contract does not

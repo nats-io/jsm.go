@@ -1,8 +1,12 @@
 package serverdata
 
 import (
+	"archive/zip"
+	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/nats-io/jsm.go/audit/archive"
@@ -25,7 +29,8 @@ import (
 // return ErrUnsupportedOption identifying the unsupported fields rather than
 // silently producing partial or incorrect results.
 type AuditArchive struct {
-	reader *archive.Reader
+	reader      *archive.Reader
+	archivePath string
 }
 
 // NewAuditArchive opens an audit archive file and returns a Source backed by it.
@@ -38,7 +43,7 @@ func NewAuditArchive(archivePath string) (*AuditArchive, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AuditArchive{reader: r}, nil
+	return &AuditArchive{reader: r, archivePath: archivePath}, nil
 }
 
 // Varz builds and filters a Varz response from the archive
@@ -536,6 +541,172 @@ func (a *AuditArchive) Raftz(opts server.RaftzEventOptions) ([]*server.ServerAPI
 		return results, nil
 	}
 	return results, err
+}
+
+// Profilez returns profile artifacts captured by audit gather. opts.Duration,
+// Host, Domain, and Tags are rejected with ErrUnsupportedOption. Errored
+// captures are absent because gather drops them. opts.Debug must match the
+// level audit gather stored exactly.
+func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, error) {
+	var fields []string
+	if opts.Duration != 0 {
+		fields = append(fields, "duration")
+	}
+	if opts.Host != "" {
+		fields = append(fields, "host")
+	}
+	if opts.Domain != "" {
+		fields = append(fields, "domain")
+	}
+	if len(opts.Tags) > 0 {
+		fields = append(fields, "tags")
+	}
+	if len(fields) > 0 {
+		return nil, unsupported("profilez", fields...)
+	}
+
+	// Recover full ServerInfo from Varz when present. Archive tag values
+	// cannot contain "/" (enforced by audit/archive validatePathComponent),
+	// so it is safe as a key separator.
+	fullInfo := map[string]*server.ServerInfo{}
+	if vzs, vErr := a.Varz(server.VarzEventOptions{}); vErr == nil {
+		for _, vz := range vzs {
+			if vz.Server != nil {
+				fullInfo[vz.Server.Cluster+"/"+vz.Server.Name] = vz.Server
+			}
+		}
+	}
+
+	var results []*ProfilezResponse
+	err := forEachProfileArtifact(a.archivePath, func(cluster, srv, rawName string, readBytes func() ([]byte, error)) error {
+		name, debug := splitProfileName(rawName)
+		if opts.ProfilezOptions.Name != "" && opts.ProfilezOptions.Name != name {
+			return nil
+		}
+		if opts.Debug != debug {
+			return nil
+		}
+
+		info := fullInfo[cluster+"/"+srv]
+		if info == nil {
+			info = &server.ServerInfo{Name: srv, Cluster: cluster}
+		}
+		if !matchesFilter(info, &opts.EventFilterOptions) {
+			return nil
+		}
+
+		raw, err := readBytes()
+		if err != nil {
+			return err
+		}
+
+		results = append(results, &ProfilezResponse{
+			Server: info,
+			Data:   &server.ProfilezStatus{Profile: raw},
+		})
+		return nil
+	})
+	return results, err
+}
+
+func forEachProfileArtifact(archivePath string, cb func(cluster, server, name string, readBytes func() ([]byte, error)) error) error {
+	zr, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+
+	var manifestFile *zip.File
+	for _, f := range zr.File {
+		if f.Name == "capture/misc/manifest.json" {
+			manifestFile = f
+			break
+		}
+	}
+	if manifestFile == nil {
+		return fmt.Errorf("archive %s: manifest not found at expected path", archivePath)
+	}
+
+	mrc, err := manifestFile.Open()
+	if err != nil {
+		return fmt.Errorf("open manifest in %s: %w", archivePath, err)
+	}
+	var manifest map[string][]archive.Tag
+	if err := json.NewDecoder(mrc).Decode(&manifest); err != nil {
+		mrc.Close()
+		return fmt.Errorf("decode manifest in %s: %w", archivePath, err)
+	}
+	mrc.Close()
+
+	fileMap := make(map[string]*zip.File, len(zr.File))
+	for _, f := range zr.File {
+		fileMap[f.Name] = f
+	}
+
+	type entry struct{ cluster, server, name, fname string }
+	var entries []entry
+	for fname, tags := range manifest {
+		var cluster, srv, profileName string
+		isProfile := false
+		for _, t := range tags {
+			switch string(t.Name) {
+			case "artifact_type":
+				if t.Value == "profile" {
+					isProfile = true
+				}
+			case "cluster":
+				cluster = t.Value
+			case "server":
+				srv = t.Value
+			case "profile_name":
+				profileName = t.Value
+			}
+		}
+		if !isProfile {
+			continue
+		}
+		if cluster == "unclustered" {
+			cluster = ""
+		}
+		if _, ok := fileMap[fname]; !ok {
+			continue
+		}
+		entries = append(entries, entry{cluster, srv, profileName, fname})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].cluster != entries[j].cluster {
+			return entries[i].cluster < entries[j].cluster
+		}
+		if entries[i].server != entries[j].server {
+			return entries[i].server < entries[j].server
+		}
+		return entries[i].name < entries[j].name
+	})
+
+	for _, e := range entries {
+		readBytes := func() ([]byte, error) {
+			rc, err := fileMap[e.fname].Open()
+			if err != nil {
+				return nil, fmt.Errorf("open %s: %w", e.fname, err)
+			}
+			defer rc.Close()
+			return io.ReadAll(rc)
+		}
+		if err := cb(e.cluster, e.server, e.name, readBytes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// splitProfileName reverses gather's "<name>[_<debug>]" encoding.
+func splitProfileName(tag string) (name string, debug int) {
+	if i := strings.LastIndex(tag, "_"); i > 0 {
+		if n, err := strconv.Atoi(tag[i+1:]); err == nil && n >= 0 {
+			return tag[:i], n
+		}
+	}
+	return tag, 0
 }
 
 func (a *AuditArchive) Close() error {

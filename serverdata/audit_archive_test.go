@@ -1,10 +1,14 @@
 package serverdata
 
 import (
+	"archive/zip"
+	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
@@ -1105,5 +1109,300 @@ func TestArchiveRaftzEmpty(t *testing.T) {
 	}
 	if len(results) != 0 {
 		t.Fatalf("expected 0 results, got %d", len(results))
+	}
+}
+
+func addProfile(t *testing.T, w *archive.Writer, cluster, srv, name string, debug int, body []byte) {
+	t.Helper()
+	tagName := name
+	if debug > 0 {
+		tagName = fmt.Sprintf("%s_%d", name, debug)
+	}
+	tags := []*archive.Tag{
+		archive.TagServer(srv),
+		archive.TagServerProfile(),
+		archive.TagProfileName(tagName),
+	}
+	if cluster == "" {
+		tags = append(tags, archive.TagNoCluster())
+	} else {
+		tags = append(tags, archive.TagCluster(cluster))
+	}
+	if err := w.AddRaw(bytes.NewReader(body), "prof", tags...); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestArchiveProfilezRoundTrip pins forEachProfileArtifact's hardcoded
+// tag-value strings against archive.Writer's output.
+func TestArchiveProfilezRoundTrip(t *testing.T) {
+	wantBytes := []byte("pprof-heap-payload")
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "heap", 0, wantBytes)
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected non-empty results (canary: hardcoded tag-value strings must match audit/archive constants)")
+	}
+	if !bytes.Equal(results[0].Data.Profile, wantBytes) {
+		t.Fatalf("profile bytes mismatch: got %q want %q", results[0].Data.Profile, wantBytes)
+	}
+	if results[0].Server.Name != "srv-1" {
+		t.Errorf("expected Server.Name=srv-1, got %q", results[0].Server.Name)
+	}
+	if results[0].Server.Cluster != "c1" {
+		t.Errorf("expected Server.Cluster=c1, got %q", results[0].Server.Cluster)
+	}
+}
+
+func TestArchiveProfilezAll(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "heap", 0, []byte("heap-1"))
+		addProfile(t, w, "c1", "srv-1", "goroutine", 2, []byte("goroutine_2-1"))
+		addProfile(t, w, "c2", "srv-2", "heap", 0, []byte("heap-2"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Default opts have Name="" Debug=0; goroutine_2 is filtered out.
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results (default opts filter Debug=0), got %d", len(results))
+	}
+}
+
+func TestArchiveProfilezFilterByName(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "heap", 0, []byte("h"))
+		addProfile(t, w, "c1", "srv-1", "cpu", 0, []byte("c"))
+		addProfile(t, w, "c1", "srv-1", "mutex", 0, []byte("m"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{
+		ProfilezOptions: server.ProfilezOptions{Name: "cpu"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if string(results[0].Data.Profile) != "c" {
+		t.Errorf("expected cpu bytes, got %q", results[0].Data.Profile)
+	}
+}
+
+func TestArchiveProfilezFilterByDebug(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "goroutine", 0, []byte("g0"))
+		addProfile(t, w, "c1", "srv-1", "goroutine", 1, []byte("g1"))
+		addProfile(t, w, "c1", "srv-1", "goroutine", 2, []byte("g2"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{
+		ProfilezOptions: server.ProfilezOptions{Name: "goroutine", Debug: 2},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if string(results[0].Data.Profile) != "g2" {
+		t.Errorf("expected g2, got %q", results[0].Data.Profile)
+	}
+}
+
+func TestArchiveProfilezFilterByCluster(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "heap", 0, []byte("h1"))
+		addProfile(t, w, "c2", "srv-2", "heap", 0, []byte("h2"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{
+		EventFilterOptions: server.EventFilterOptions{Cluster: "c2", ExactMatch: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Server.Cluster != "c2" {
+		t.Errorf("expected cluster c2, got %q", results[0].Server.Cluster)
+	}
+}
+
+func TestArchiveProfilezFilterByName_EventFilter(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "heap", 0, []byte("h1"))
+		addProfile(t, w, "c1", "srv-2", "heap", 0, []byte("h2"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{
+		EventFilterOptions: server.EventFilterOptions{Name: "srv-2", ExactMatch: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Server.Name != "srv-2" {
+		t.Errorf("expected srv-2, got %q", results[0].Server.Name)
+	}
+}
+
+func TestArchiveProfilezServerInfoFromVarz(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		vz := &server.ServerAPIVarzResponse{
+			Server: &server.ServerInfo{
+				Name: "srv-1", ID: "id-1", Cluster: "c1", Domain: "d1",
+			},
+			Data: &server.Varz{},
+		}
+		if err := w.Add(vz, archive.TagCluster("c1"), archive.TagServer("srv-1"), archive.TagServerVars()); err != nil {
+			t.Fatal(err)
+		}
+		addProfile(t, w, "c1", "srv-1", "heap", 0, []byte("h"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Server.ID != "id-1" {
+		t.Errorf("expected ID=id-1 (from Varz), got %q", results[0].Server.ID)
+	}
+	if results[0].Server.Domain != "d1" {
+		t.Errorf("expected Domain=d1 (from Varz), got %q", results[0].Server.Domain)
+	}
+}
+
+func TestArchiveProfilezServerInfoWithoutVarz(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "heap", 0, []byte("h"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Server.ID != "" {
+		t.Errorf("expected empty ID without Varz, got %q", results[0].Server.ID)
+	}
+	if results[0].Server.Name != "srv-1" {
+		t.Errorf("expected Name=srv-1 from tag, got %q", results[0].Server.Name)
+	}
+}
+
+func TestArchiveProfilezUnclusteredMapsToEmptyCluster(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "", "srv-x", "heap", 0, []byte("h"))
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Server.Cluster != "" {
+		t.Errorf("expected empty Cluster for unclustered server, got %q", results[0].Server.Cluster)
+	}
+}
+
+func TestArchiveProfilezUnsupportedDuration(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "cpu", 0, []byte("c"))
+	})
+
+	_, err := a.Profilez(server.ProfilezEventOptions{
+		ProfilezOptions: server.ProfilezOptions{Name: "cpu", Duration: time.Second},
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupportedOption, got %v", err)
+	}
+}
+
+func TestArchiveProfilezUnsupportedHost(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+	_, err := a.Profilez(server.ProfilezEventOptions{
+		EventFilterOptions: server.EventFilterOptions{Host: "10.0.0.1"},
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupportedOption, got %v", err)
+	}
+}
+
+func TestArchiveProfilezEmpty(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results, got %d", len(results))
+	}
+}
+
+// TestArchiveProfilezManifestPresent locks the manifest path our code hardcodes.
+func TestArchiveProfilezManifestPresent(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		addProfile(t, w, "c1", "srv-1", "heap", 0, []byte("h"))
+	})
+
+	zr, err := zip.OpenReader(a.archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zr.Close()
+	found := false
+	for _, f := range zr.File {
+		if f.Name == "capture/misc/manifest.json" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("manifest not at expected path capture/misc/manifest.json")
+	}
+}
+
+func TestSplitProfileName(t *testing.T) {
+	cases := []struct {
+		in    string
+		name  string
+		debug int
+	}{
+		{"heap", "heap", 0},
+		{"cpu", "cpu", 0},
+		{"goroutine", "goroutine", 0},
+		{"goroutine_1", "goroutine", 1},
+		{"goroutine_2", "goroutine", 2},
+		{"mutex", "mutex", 0},
+		{"threadcreate", "threadcreate", 0},
+		{"weird_suffix", "weird_suffix", 0},
+		{"trailing_", "trailing_", 0},
+		{"", "", 0},
+	}
+	for _, c := range cases {
+		name, debug := splitProfileName(c.in)
+		if name != c.name || debug != c.debug {
+			t.Errorf("splitProfileName(%q) = (%q,%d), want (%q,%d)", c.in, name, debug, c.name, c.debug)
+		}
 	}
 }

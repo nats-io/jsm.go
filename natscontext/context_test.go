@@ -269,6 +269,36 @@ func TestNewFromBytes(t *testing.T) {
 	}
 }
 
+func TestNewFromBytesRaw(t *testing.T) {
+	t.Setenv("NATSCONTEXT_TEST_VAR", "ignored")
+
+	payload := []byte(`{"url":"","creds":"~/.nats/$NATSCONTEXT_TEST_VAR.creds","nsc":"nsc://operator/account/user"}`)
+
+	c, err := natscontext.NewFromBytesRaw(payload)
+	if err != nil {
+		t.Fatalf("NewFromBytesRaw: %v", err)
+	}
+	if got, want := c.Creds(), "~/.nats/$NATSCONTEXT_TEST_VAR.creds"; got != want {
+		t.Fatalf("Creds = %q want %q (no expansion expected)", got, want)
+	}
+	if got, want := c.NscURL(), "nsc://operator/account/user"; got != want {
+		t.Fatalf("NscURL = %q want %q (no nsc resolution expected)", got, want)
+	}
+
+	c, err = natscontext.NewFromBytesRaw(payload, natscontext.WithServerURL("nats://override:4222"))
+	if err != nil {
+		t.Fatalf("NewFromBytesRaw with opts: %v", err)
+	}
+	if c.ServerURL() != "nats://override:4222" {
+		t.Fatalf("override ServerURL = %q want nats://override:4222", c.ServerURL())
+	}
+
+	_, err = natscontext.NewFromBytesRaw([]byte(`{not json`))
+	if err == nil {
+		t.Fatal("expected error for malformed JSON, got nil")
+	}
+}
+
 func TestDeleteContext(t *testing.T) {
 	setupEnv(t)
 

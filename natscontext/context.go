@@ -233,6 +233,21 @@ func NewFromBytes(data []byte, opts ...Option) (*Context, error) {
 	return c, nil
 }
 
+// NewFromBytesRaw is the WithoutExpansion-equivalent of NewFromBytes:
+// it decodes data into a Context but skips ~/$VAR expansion, eager
+// NSCLookup resolution, and the nats.DefaultURL fallback. Supplied
+// opts still apply. Intended for editing tools that need a faithful
+// roundtrip between a JSON payload and the in-memory Context.
+func NewFromBytesRaw(data []byte, opts ...Option) (*Context, error) {
+	c := &Context{config: &settings{}}
+	err := c.unmarshal(data)
+	if err != nil {
+		return nil, err
+	}
+	c.applyOpts(opts...)
+	return c, nil
+}
+
 // unmarshalAndExpand decodes data into c.config and expands ~ and
 // environment variables in path-bearing fields. It is shared by
 // Registry.Load and NewFromFile so both code paths post-process loaded

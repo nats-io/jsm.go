@@ -32,6 +32,7 @@ type Registry struct {
 	selectorOverride bool
 	resolvers        map[string]CredentialResolver
 	embedding        bool
+	noExpand         bool
 }
 
 // NewRegistry returns a Registry using b for storage. If b also
@@ -147,7 +148,11 @@ func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Cont
 	}
 
 	c.Name = name
-	err = c.unmarshalAndExpand(data)
+	if r.noExpand {
+		err = c.unmarshal(data)
+	} else {
+		err = c.unmarshalAndExpand(data)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +162,11 @@ func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Cont
 		c.path = p.Path(name)
 	}
 
-	c.configureNewContext(opts...)
+	if r.noExpand {
+		c.applyOpts(opts...)
+	} else {
+		c.configureNewContext(opts...)
+	}
 
 	return c, nil
 }

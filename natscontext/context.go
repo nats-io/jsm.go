@@ -240,11 +240,26 @@ func NewFromBytes(data []byte, opts ...Option) (*Context, error) {
 // is resolved eagerly so legacy callers still see ServerURL() populated
 // from the nsc output.
 func (c *Context) unmarshalAndExpand(data []byte) error {
-	err := json.Unmarshal(data, c.config)
+	err := c.unmarshal(data)
 	if err != nil {
 		return err
 	}
+	return c.expand()
+}
 
+// unmarshal decodes data into c.config without any post-processing.
+// Registry.Load uses it directly when WithoutExpansion is set so
+// editing tools can roundtrip a context file without silently
+// rewriting paths or invoking nsc.
+func (c *Context) unmarshal(data []byte) error {
+	return json.Unmarshal(data, c.config)
+}
+
+// expand applies the post-unmarshal pass: ~/$VAR expansion on
+// path-bearing fields and eager NSCLookup resolution against the nsc
+// binary. Split out from unmarshalAndExpand so Registry.Load can skip
+// it when WithoutExpansion is set.
+func (c *Context) expand() error {
 	c.config.Creds = expandHomedir(c.config.Creds)
 	c.config.NKey = expandHomedir(c.config.NKey)
 	c.config.Cert = expandHomedir(c.config.Cert)
@@ -264,13 +279,21 @@ func (c *Context) unmarshalAndExpand(data []byte) error {
 }
 
 func (c *Context) configureNewContext(opts ...Option) {
-	// apply supplied overrides
-	for _, opt := range opts {
-		opt(c.config)
-	}
+	c.applyOpts(opts...)
 
 	if c.config.NSCLookup == "" && c.config.URL == "" && c.config.nscUrl == "" {
 		c.config.URL = nats.DefaultURL
+	}
+}
+
+// applyOpts runs the supplied options against c.config without the
+// nats.DefaultURL fallback configureNewContext layers on top. Used by
+// Registry.Load when WithoutExpansion is set so a raw editing load
+// neither rewrites paths nor invents a URL the on-disk payload did
+// not have.
+func (c *Context) applyOpts(opts ...Option) {
+	for _, opt := range opts {
+		opt(c.config)
 	}
 }
 

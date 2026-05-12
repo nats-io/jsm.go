@@ -53,6 +53,20 @@ func WithCredentialResolver(r CredentialResolver) RegistryOption {
 	}
 }
 
+// WithoutExpansion disables Registry.Load's post-unmarshal pass.
+// Normally Load expands ~ and $VAR in Creds/NKey/Cert/Key/CA,
+// resolves a set NSCLookup against the nsc binary, and falls back to
+// nats.DefaultURL when nothing else supplied a URL. With this option
+// set, the on-disk payload is returned verbatim and the DefaultURL
+// fallback is suppressed — useful for tools that load a context,
+// present its raw fields for editing, and write it back unchanged.
+// Save is unaffected; explicitly supplied Options still apply.
+func WithoutExpansion() RegistryOption {
+	return func(reg *Registry) {
+		reg.noExpand = true
+	}
+}
+
 // WithEmbedding makes Registry.Save inline file-backed credential
 // material before persisting. Each of Creds, NKey, UserJwt, and
 // UserSeed whose value is a bare path or a file:// URI is read from

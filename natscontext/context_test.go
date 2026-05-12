@@ -1,6 +1,8 @@
 package natscontext_test
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -176,6 +178,63 @@ func TestNewFromFileMissing(t *testing.T) {
 	_, err := natscontext.NewFromFile("/nonexistent/path/context.json")
 	if err == nil {
 		t.Fatal("expected error loading nonexistent context file, got nil")
+	}
+}
+
+// TestWithoutExpansion verifies that a registry built with
+// WithoutExpansion returns context fields verbatim: ~/$VAR in
+// path-bearing fields stay literal, NSCLookup is left untouched
+// instead of being eagerly resolved against nsc, and a save back
+// preserves the empty URL rather than persisting the DefaultURL
+// fallback. The load-save roundtrip property is what makes raw
+// editing possible.
+func TestWithoutExpansion(t *testing.T) {
+	t.Setenv("NATSCONTEXT_TEST_VAR", "ignored")
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "edit.json")
+	body := []byte(`{"url":"","creds":"~/.nats/$NATSCONTEXT_TEST_VAR.creds","nsc":"nsc://operator/account/user"}`)
+	err := os.WriteFile(path, body, 0600)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	backend := natscontext.NewSingleFileBackend(path)
+	reg := natscontext.NewRegistry(backend, natscontext.WithoutExpansion())
+	bg := context.Background()
+
+	c, err := reg.Load(bg, backend.Name())
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got, want := c.Creds(), "~/.nats/$NATSCONTEXT_TEST_VAR.creds"; got != want {
+		t.Fatalf("Creds = %q want %q (no expansion expected)", got, want)
+	}
+	if got, want := c.NscURL(), "nsc://operator/account/user"; got != want {
+		t.Fatalf("NscURL = %q want %q (no nsc resolution expected)", got, want)
+	}
+
+	err = reg.Save(bg, c, "")
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	persisted, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	var raw struct {
+		URL   string `json:"url"`
+		Creds string `json:"creds"`
+	}
+	err = json.Unmarshal(persisted, &raw)
+	if err != nil {
+		t.Fatalf("unmarshal persisted: %v", err)
+	}
+	if raw.URL != "" {
+		t.Fatalf("persisted url = %q want empty (no DefaultURL fallback expected)", raw.URL)
+	}
+	if raw.Creds != "~/.nats/$NATSCONTEXT_TEST_VAR.creds" {
+		t.Fatalf("persisted creds = %q want literal", raw.Creds)
 	}
 }
 

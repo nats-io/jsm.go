@@ -11,7 +11,7 @@ require (
 	github.com/choria-io/fisk v0.8.1
 	github.com/jedib0t/go-pretty/v6 v6.7.10
 	github.com/nats-io/jsm.go v0.3.1-0.20260116154816-a772222ebcf0
-	github.com/nats-io/nats.go v1.51.0
+	github.com/nats-io/nats.go v1.52.0
 	github.com/nats-io/natscli v0.3.2
 	github.com/nats-io/nkeys v0.4.15
 	golang.org/x/term v0.42.0

@@ -102,7 +102,11 @@ func TestFileSelector_PreviousTracking(t *testing.T) {
 		t.Fatalf("set bravo: %v", err)
 	}
 
-	if got := sel.Previous(); got != "alpha" {
+	got, err := sel.Previous(bg)
+	if err != nil {
+		t.Fatalf("Previous: %v", err)
+	}
+	if got != "alpha" {
 		t.Fatalf("Previous = %q want alpha", got)
 	}
 }
@@ -170,6 +174,106 @@ func TestRegistry_WithSelectorOverride(t *testing.T) {
 	if strings.TrimSpace(string(data)) != "alpha" {
 		t.Fatalf("selector context.txt = %q want alpha", data)
 	}
+}
+
+// TestRegistry_Previous exercises Registry.Previous across its four
+// branches: no selector at all, a selector with nothing recorded yet,
+// a selector after two SetSelected calls, and a selector whose
+// Previous returns an error that must propagate verbatim.
+func TestRegistry_Previous(t *testing.T) {
+	bg := context.Background()
+
+	t.Run("no selector", func(t *testing.T) {
+		reg := natscontext.NewRegistry(
+			natscontext.NewMemoryBackend(),
+			natscontext.WithoutSelection(),
+		)
+		_, err := reg.Previous(bg)
+		if !errors.Is(err, natscontext.ErrNoneSelected) {
+			t.Fatalf("Previous: expected ErrNoneSelected, got %v", err)
+		}
+	})
+
+	t.Run("no prior selection", func(t *testing.T) {
+		reg := natscontext.NewRegistry(natscontext.NewMemoryBackend())
+		_, err := reg.Previous(bg)
+		if !errors.Is(err, natscontext.ErrNoneSelected) {
+			t.Fatalf("Previous: expected ErrNoneSelected, got %v", err)
+		}
+	})
+
+	t.Run("after two selections", func(t *testing.T) {
+		mem := natscontext.NewMemoryBackend()
+		reg := natscontext.NewRegistry(mem)
+
+		for _, name := range []string{"alpha", "bravo"} {
+			c, err := natscontext.New(name, false, natscontext.WithServerURL("nats://"+name+":4222"))
+			if err != nil {
+				t.Fatalf("new %s: %v", name, err)
+			}
+			err = reg.Save(bg, c, "")
+			if err != nil {
+				t.Fatalf("save %s: %v", name, err)
+			}
+			_, err = reg.Select(bg, name)
+			if err != nil {
+				t.Fatalf("select %s: %v", name, err)
+			}
+		}
+
+		prev, err := reg.Previous(bg)
+		if err != nil {
+			t.Fatalf("Previous: %v", err)
+		}
+		if prev != "alpha" {
+			t.Fatalf("Previous = %q want alpha", prev)
+		}
+	})
+
+	t.Run("selector error propagates", func(t *testing.T) {
+		sel := &ctxPreviousSelector{err: errors.New("remote previous failed")}
+		reg := natscontext.NewRegistry(
+			natscontext.NewMemoryBackend(),
+			natscontext.WithSelector(sel),
+		)
+
+		_, err := reg.Previous(bg)
+		if !errors.Is(err, sel.err) {
+			t.Fatalf("Previous: expected %v, got %v", sel.err, err)
+		}
+	})
+}
+
+// ctxPreviousSelector implements Selector plus the optional
+// Previous(context.Context) (string, error) capability, with a
+// configurable error so the error-propagation path can be exercised.
+type ctxPreviousSelector struct {
+	selected string
+	prev     string
+	err      error
+}
+
+func (s *ctxPreviousSelector) Selected(_ context.Context) (string, error) {
+	if s.selected == "" {
+		return "", natscontext.ErrNoneSelected
+	}
+	return s.selected, nil
+}
+
+func (s *ctxPreviousSelector) SetSelected(_ context.Context, name string) (string, error) {
+	previous := s.selected
+	if previous != "" {
+		s.prev = previous
+	}
+	s.selected = name
+	return previous, nil
+}
+
+func (s *ctxPreviousSelector) Previous(_ context.Context) (string, error) {
+	if s.err != nil {
+		return "", s.err
+	}
+	return s.prev, nil
 }
 
 // TestRegistry_WithoutSelection asserts that selection tracking is

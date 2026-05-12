@@ -134,6 +134,66 @@ func TestNewFromFileDotfile(t *testing.T) {
 	}
 }
 
+// TestEmbed verifies that Context.Embed mutates the in-memory
+// credentials to data: URIs without writing anything to disk, and
+// that the resulting context can then be persisted through a vanilla
+// (non-WithEmbedding) Registry.
+func TestEmbed(t *testing.T) {
+	dir := t.TempDir()
+	credsBytes := []byte("-----BEGIN NATS USER JWT-----\nstub\n------END NATS USER JWT------\n")
+	credsPath := filepath.Join(dir, "user.creds")
+	err := os.WriteFile(credsPath, credsBytes, 0600)
+	if err != nil {
+		t.Fatalf("write creds: %v", err)
+	}
+
+	c, err := natscontext.New("embed-only", false,
+		natscontext.WithServerURL("nats://a:4222"),
+		natscontext.WithCreds(credsPath),
+	)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	if c.Creds() != credsPath {
+		t.Fatalf("pre-embed Creds: got %q want %q", c.Creds(), credsPath)
+	}
+
+	err = c.Embed()
+	if err != nil {
+		t.Fatalf("Embed: %v", err)
+	}
+	want := natscontext.EncodeDataURI(credsBytes)
+	if c.Creds() != want {
+		t.Fatalf("post-embed Creds: got %q want %q", c.Creds(), want)
+	}
+
+	mem := natscontext.NewMemoryBackend()
+	reg := natscontext.NewRegistry(mem)
+	err = reg.Save(context.Background(), c, "embed-only")
+	if err != nil {
+		t.Fatalf("save through plain registry: %v", err)
+	}
+	loaded, err := reg.Load(context.Background(), "embed-only")
+	if err != nil {
+		t.Fatalf("load back: %v", err)
+	}
+	if loaded.Creds() != want {
+		t.Fatalf("reloaded Creds: got %q want %q", loaded.Creds(), want)
+	}
+
+	c, err = natscontext.New("embed-missing", false,
+		natscontext.WithServerURL("nats://a:4222"),
+		natscontext.WithCreds(filepath.Join(t.TempDir(), "absent.creds")),
+	)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	err = c.Embed()
+	if !os.IsNotExist(err) {
+		t.Fatalf("Embed on missing file: expected ErrNotExist, got %v", err)
+	}
+}
+
 // TestSaveEmbeddedRoundTrip loads a context whose Creds field is a
 // bare path, calls SaveEmbedded(""), and verifies the on-disk JSON
 // has been rewritten to inline the credential file as a data: URI.

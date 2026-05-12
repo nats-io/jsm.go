@@ -799,11 +799,32 @@ func (c *Context) Save(name string) error {
 // field's file aborts before Save runs, leaving the on-disk
 // representation untouched.
 func (c *Context) SaveEmbedded(name string) error {
-	err := embedFileCredentials(c.config)
+	err := c.Embed()
 	if err != nil {
 		return err
 	}
 	return c.Save(name)
+}
+
+// Embed inlines file-backed credential material on c without saving.
+// Each of Creds, NKey, UserJwt, and UserSeed whose value is a bare
+// path or file:// URI is read from disk and rewritten as a
+// data:;base64,<contents> URI; values using any other scheme (op://,
+// env://, nsc://, existing data:) are left untouched.
+//
+// Use it to prepare a context for save through a Registry that does
+// not have WithEmbedding enabled — typically when shipping a loaded
+// context to a remote backend whose consumer does not share the
+// producer's filesystem. SaveEmbedded is Embed followed by Save; call
+// Embed directly when you need to hand the result to a different
+// Save path or inspect the embedded form before persistence.
+//
+// Mutation is in-place. On a read failure the field that triggered
+// the error is left unchanged and earlier fields that succeeded stay
+// embedded — discard c or reload if you need to retry from a clean
+// baseline.
+func (c *Context) Embed() error {
+	return embedFileCredentials(c.config)
 }
 
 // WithServerURL supplies the url(s) to connect to nats with

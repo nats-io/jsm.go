@@ -212,6 +212,27 @@ func NewFromFile(filename string, opts ...Option) (*Context, error) {
 	return NewRegistry(backend).Load(context.Background(), backend.Name(), opts...)
 }
 
+// NewFromBytes builds a Context from a raw JSON payload, applying
+// opts on top. Useful when a context is handed to the process through
+// a transport, an embedded asset, or any source that is not a file or
+// backend. The payload is post-processed the same way NewFromFile and
+// Registry.Load post-process: ~ and $VAR are expanded in path-bearing
+// fields, and a set NSCLookup is resolved eagerly.
+//
+// The returned Context has no Name and no on-disk path; callers
+// needing either can set Context.Name afterwards or route the save
+// through a Registry. Resolver dispatch falls back to the package
+// default Registry, matching New(name, false, ...).
+func NewFromBytes(data []byte, opts ...Option) (*Context, error) {
+	c := &Context{config: &settings{}}
+	err := c.unmarshalAndExpand(data)
+	if err != nil {
+		return nil, err
+	}
+	c.configureNewContext(opts...)
+	return c, nil
+}
+
 // unmarshalAndExpand decodes data into c.config and expands ~ and
 // environment variables in path-bearing fields. It is shared by
 // Registry.Load and NewFromFile so both code paths post-process loaded

@@ -179,6 +179,37 @@ func TestNewFromFileMissing(t *testing.T) {
 	}
 }
 
+func TestNewFromBytes(t *testing.T) {
+	payload := []byte(`{"url":"nats://bytes:4222","token":"tok"}`)
+
+	c, err := natscontext.NewFromBytes(payload)
+	if err != nil {
+		t.Fatalf("NewFromBytes: %v", err)
+	}
+	if c.ServerURL() != "nats://bytes:4222" {
+		t.Fatalf("ServerURL = %q want nats://bytes:4222", c.ServerURL())
+	}
+	if c.Token() != "tok" {
+		t.Fatalf("Token = %q want tok", c.Token())
+	}
+	if c.Name != "" {
+		t.Fatalf("Name = %q want empty", c.Name)
+	}
+
+	c, err = natscontext.NewFromBytes(payload, natscontext.WithServerURL("nats://override:4222"))
+	if err != nil {
+		t.Fatalf("NewFromBytes with opts: %v", err)
+	}
+	if c.ServerURL() != "nats://override:4222" {
+		t.Fatalf("override ServerURL = %q want nats://override:4222", c.ServerURL())
+	}
+
+	_, err = natscontext.NewFromBytes([]byte(`{not json`))
+	if err == nil {
+		t.Fatal("expected error for malformed JSON, got nil")
+	}
+}
+
 func TestDeleteContext(t *testing.T) {
 	setupEnv(t)
 

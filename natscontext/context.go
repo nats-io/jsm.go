@@ -314,28 +314,11 @@ func SelectedContext() string {
 
 // PreviousContext returns the name of the previous selected context, empty if it hasn't been selected before.
 func PreviousContext() string {
-	reg := defaultRegistry()
-	type previouser interface {
-		Previous() string
-	}
-
-	// A configured Selector owns "previous"; probe the backend only when
-	// the Registry has no Selector. Falling back across the two would
-	// mix selection state from different sources.
-	if reg.selector != nil {
-		p, ok := reg.selector.(previouser)
-		if !ok {
-			return ""
-		}
-		return p.Previous()
-	}
-
-	p, ok := reg.backend.(previouser)
-	if !ok {
+	name, err := defaultRegistry().Previous(context.Background())
+	if err != nil {
 		return ""
 	}
-
-	return p.Previous()
+	return name
 }
 
 // Connect connects to the configured NATS server

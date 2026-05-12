@@ -131,12 +131,16 @@ func (m *MemoryBackend) SetSelected(_ context.Context, name string) (string, err
 	return previous, nil
 }
 
-// Previous returns the prior selection. Not part of the Selector
-// interface; PreviousContext reaches for it through a type assertion
-// the same way it does for FileBackend.
-func (m *MemoryBackend) Previous() string {
+// Previous returns the prior selection, or ErrNoneSelected when
+// nothing was recorded. Not part of the Selector interface;
+// Registry.Previous discovers the method by type assertion the same
+// way it does for FileBackend.
+func (m *MemoryBackend) Previous(_ context.Context) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.previous
+	if m.previous == "" {
+		return "", ErrNoneSelected
+	}
+	return m.previous, nil
 }

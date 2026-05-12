@@ -142,10 +142,15 @@ func (fs *FileSelector) SetSelected(_ context.Context, name string) (string, err
 	return previous, nil
 }
 
-// Previous returns the previously-selected context, or an empty string
-// if there is none. It is not part of the Selector interface; callers
-// obtain it via the package-level PreviousContext helper, which probes
-// the Registry's selector for this method.
-func (fs *FileSelector) Previous() string {
-	return fs.readSelection(fs.previousPath())
+// Previous returns the previously-selected context, or ErrNoneSelected
+// when nothing was recorded. It is not part of the Selector interface;
+// Registry.Previous discovers the method by type assertion, and the
+// package-level PreviousContext helper exposes it on the default
+// Registry.
+func (fs *FileSelector) Previous(_ context.Context) (string, error) {
+	name := fs.readSelection(fs.previousPath())
+	if name == "" {
+		return "", ErrNoneSelected
+	}
+	return name, nil
 }

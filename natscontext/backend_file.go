@@ -226,11 +226,12 @@ func (fb *FileBackend) Selected(ctx context.Context) (string, error) {
 	return fb.selector.Selected(ctx)
 }
 
-// Previous returns the previously-selected context, or an empty string
-// if there is none. It is not part of the Selector interface; callers
-// obtain it via the package-level PreviousContext helper.
-func (fb *FileBackend) Previous() string {
-	return fb.selector.Previous()
+// Previous returns the previously-selected context, or ErrNoneSelected
+// when nothing was recorded. Delegates to the composed FileSelector.
+// Not part of the Selector interface; Registry.Previous discovers the
+// method by type assertion.
+func (fb *FileBackend) Previous(ctx context.Context) (string, error) {
+	return fb.selector.Previous(ctx)
 }
 
 // SetSelected sets name as the active context, returning whatever was

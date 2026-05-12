@@ -363,6 +363,27 @@ func (r *Registry) Unselect(ctx context.Context) (string, error) {
 	return r.selector.SetSelected(ctx, "")
 }
 
+// Previous returns the name of the most recently replaced or cleared
+// context. ErrNoneSelected is returned when the Registry has no
+// Selector, when the Selector does not implement the optional
+// Previous(context.Context) (string, error) capability, or when no
+// prior selection has been recorded. Errors from the Selector
+// propagate verbatim.
+func (r *Registry) Previous(ctx context.Context) (string, error) {
+	if r.selector == nil {
+		return "", ErrNoneSelected
+	}
+
+	p, ok := r.selector.(interface {
+		Previous(context.Context) (string, error)
+	})
+	if !ok {
+		return "", ErrNoneSelected
+	}
+
+	return p.Previous(ctx)
+}
+
 // defaultRegistry returns a Registry backed by NewDefaultFileBackend. A
 // fresh instance is returned on every call so that changes to
 // XDG_CONFIG_HOME (notably t.Setenv in tests) take effect without a

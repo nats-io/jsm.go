@@ -156,6 +156,60 @@ func TestServerRequestError(t *testing.T) {
 	}
 }
 
+func TestServerProfilez(t *testing.T) {
+	resp := &ProfilezResponse{
+		Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
+		Data:   &server.ProfilezStatus{Profile: []byte("pprof-bytes")},
+	}
+	reqFn, calls := mockReqFn([][]byte{mustMarshal(t, resp)}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+
+	opts := server.ProfilezEventOptions{
+		ProfilezOptions: server.ProfilezOptions{Name: "heap"},
+	}
+	results, err := src.Profilez(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Server.Name != "srv-1" {
+		t.Errorf("expected server name srv-1, got %s", results[0].Server.Name)
+	}
+	if string(results[0].Data.Profile) != "pprof-bytes" {
+		t.Errorf("expected pprof-bytes, got %q", results[0].Data.Profile)
+	}
+	if len(*calls) != 1 {
+		t.Fatalf("expected 1 call, got %d", len(*calls))
+	}
+	if (*calls)[0].subj != "$SYS.REQ.SERVER.PING.PROFILEZ" {
+		t.Errorf("unexpected subject: %s", (*calls)[0].subj)
+	}
+}
+
+func TestServerProfilezError(t *testing.T) {
+	resp := &ProfilezResponse{
+		Server: &server.ServerInfo{Name: "srv-1"},
+		Data:   &server.ProfilezStatus{Error: "Profile \"bogus\" not found"},
+	}
+	reqFn, _ := mockReqFn([][]byte{mustMarshal(t, resp)}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+
+	results, err := src.Profilez(server.ProfilezEventOptions{
+		ProfilezOptions: server.ProfilezOptions{Name: "bogus"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Data.Error == "" {
+		t.Error("expected non-empty Data.Error to round-trip")
+	}
+}
+
 func TestServerUnmarshalError(t *testing.T) {
 	reqFn, _ := mockReqFn([][]byte{[]byte("not json")}, nil)
 	src := newLiveT(t, nil, reqFn, 1)

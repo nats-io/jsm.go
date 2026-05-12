@@ -73,6 +73,10 @@ func (s *Live) Raftz(opts server.RaftzEventOptions) ([]*server.ServerAPIRaftzRes
 	return unmarshalResponses[server.ServerAPIRaftzResponse](s, opts, "$SYS.REQ.SERVER.PING.RAFTZ")
 }
 
+func (s *Live) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, error) {
+	return unmarshalResponses[ProfilezResponse](s, opts, "$SYS.REQ.SERVER.PING.PROFILEZ")
+}
+
 // CollectAccounts gathers account-level JetStream metadata from all servers
 func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 	const pageLimit = 1024

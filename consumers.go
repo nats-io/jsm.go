@@ -801,10 +801,6 @@ func (c *Consumer) MetricSubject() string {
 
 // NextMsg requests the next message from the server with the manager timeout
 func (m *Manager) NextMsg(stream string, consumer string) (*nats.Msg, error) {
-	if !m.nc.Opts.UseOldRequestStyle {
-		return nil, fmt.Errorf("pull mode requires the use of UseOldRequestStyle() option")
-	}
-
 	s, err := m.NextSubject(stream, consumer)
 	if err != nil {
 		return nil, err

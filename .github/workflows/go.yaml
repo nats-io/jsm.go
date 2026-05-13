@@ -7,15 +7,17 @@ permissions:
 jobs:
   lint_and_test:
     runs-on: ubuntu-latest
-
+    # TESTER: required to run in the docker network so that the generated NATS instances are reachable
+    container: golang:alpine
     strategy:
       matrix:
         go: [ "1.25", "1.26" ]
 
     services:
+      # TESTER: the tester server
       nats:
         image: synadia/server-tester:2.14.0
-        options: --name jetstream   # only needed to facilitate debugging with docker logs etc
+        options: --name nats   # only needed to facilitate debugging with docker logs etc
 
     steps:
       - name: Checkout code
@@ -27,7 +29,6 @@ jobs:
           go-version: ${{ matrix.go }}
 
       - name: Install deps
-        shell: bash --noprofile --norc -x -eo pipefail {0}
         run: |
           export GOPATH="$RUNNER_WORKSPACE"
           go version
@@ -35,7 +36,6 @@ jobs:
           go install github.com/client9/misspell/cmd/misspell@latest
 
       - name: Lint
-        shell: bash --noprofile --norc -x -eo pipefail {0}
         run: |
           export GOPATH="$RUNNER_WORKSPACE"
           PATH=$PATH:$GOPATH/bin
@@ -45,7 +45,13 @@ jobs:
           go vet ./...
 
       - name: Run tests
-        shell: bash --noprofile --norc -x -eo pipefail {0}
         run: |
           export GOPATH="$RUNNER_WORKSPACE"
+          export TESTER_NATS_URL="nats://nats:4222"
+          
+          export CGO_ENABLED=1 # needed for -race below
+          
+          # for -race 
+          apk add gcc libc-dev docker
+          
           go test -v -race -p 1 ./...

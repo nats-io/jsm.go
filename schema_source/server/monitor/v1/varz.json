@@ -210,19 +210,35 @@
       },
       "in_msgs": {
         "type": "integer",
-        "description": "The number of messages this server received"
-      },
-      "out_msgs": {
-        "type": "integer",
-        "description": "The number of message this server sent"
+        "description": "The total number of messages this server received. This includes messages from the clients, routers, gateways and leaf nodes"
       },
       "in_bytes": {
         "type": "integer",
-        "description": "The number of bytes this server received"
+        "description": "The total number of bytes this server received. This includes messages from the clients, routers, gateways and leaf nodes"
+      },
+      "in_client_msgs": {
+        "type": "integer",
+        "description": "The number of messages this server received from the clients"
+      },
+      "in_client_bytes": {
+        "type": "integer",
+        "description": "The number of bytes this server received from the clients"
+      },
+      "out_msgs": {
+        "type": "integer",
+        "description": "The total number of message this server sent. This includes messages sent to the clients, routers, gateways and leaf nodes"
       },
       "out_bytes": {
         "type": "integer",
-        "description": "The number of bytes this server sent"
+        "description": "The total number of bytes this server sent. This includes messages sent to the clients, routers, gateways and leaf nodes"
+      },
+      "out_client_msgs": {
+        "type": "integer",
+        "description": "The number of messages this server sent to the clients"
+      },
+      "out_client_bytes": {
+        "type": "integer",
+        "description": "The number of bytes this server sent to the clients"
       },
       "slow_consumers": {
         "type": "integer",
@@ -269,6 +285,13 @@
         },
         "description": "The metadata assigned to the server in configuration"
       },
+      "feature_flags": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "boolean"
+        },
+        "description": "The feature flags enabled/disabled in configuration"
+      },
       "trusted_operators_jwt": {
         "type": "array",
         "items": {
@@ -300,9 +323,13 @@
       "stale_connection_stats": {
         "$ref": "definitions.json#/definitions/stale_connection_stats_v1"
       },
+      "proxies": {
+        "$ref": "definitions.json#/definitions/proxies_opts_varz_v1",
+        "description": "Holds information about network proxy devices"
+      },
       "tls_cert_not_after": {
-      "type": "string",
-      "description": "The expiration date of the TLS certificate"
+        "type": "string",
+        "description": "The expiration date of the TLS certificate of this server"
       }
     }
   }

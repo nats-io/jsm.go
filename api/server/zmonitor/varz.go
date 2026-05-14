@@ -45,7 +45,7 @@ type VarzV1 struct {
 	HTTPHost              string                   `json:"http_host"`                         // HTTPHost is the HTTP host monitoring connections are accepted on
 	HTTPPort              int                      `json:"http_port"`                         // HTTPPort is the port monitoring connections are accepted on
 	HTTPBasePath          string                   `json:"http_base_path"`                    // HTTPBasePath is the path prefix for access to monitor endpoints
-	HTTPSPort             int                      `json:"https_port"`                        // HTTPSPort is the HTTPS host monitoring connections are accepted on`
+	HTTPSPort             int                      `json:"https_port"`                        // HTTPSPort is the HTTPS host monitoring connections are accepted on
 	AuthTimeout           float64                  `json:"auth_timeout"`                      // AuthTimeout is the amount of seconds connections have to complete authentication
 	MaxControlLine        int32                    `json:"max_control_line"`                  // MaxControlLine is the amount of bytes a signal control message may be
 	MaxPayload            int                      `json:"max_payload"`                       // MaxPayload is the maximum amount of bytes a message may have as payload
@@ -72,10 +72,14 @@ type VarzV1 struct {
 	Routes                int                      `json:"routes"`                            // Routes is the number of connected route servers
 	Remotes               int                      `json:"remotes"`                           // Remotes is the configured route remote endpoints
 	Leafs                 int                      `json:"leafnodes"`                         // Leafs is the number connected leafnode clients
-	InMsgs                int64                    `json:"in_msgs"`                           // InMsgs is the number of messages this server received
-	OutMsgs               int64                    `json:"out_msgs"`                          // OutMsgs is the number of message this server sent
-	InBytes               int64                    `json:"in_bytes"`                          // InBytes is the number of bytes this server received
-	OutBytes              int64                    `json:"out_bytes"`                         // OutMsgs is the number of bytes this server sent
+	InMsgs                int64                    `json:"in_msgs"`                           // InMsgs is the total number of messages this server received. This includes messages from the clients, routers, gateways and leaf nodes
+	InBytes               int64                    `json:"in_bytes"`                          // InBytes is the total number of bytes this server received. This includes messages from the clients, routers, gateways and leaf nodes
+	InClientMsgs          int64                    `json:"in_client_msgs"`                    // InClientMsgs is the number of messages this server received from the clients
+	InClientBytes         int64                    `json:"in_client_bytes"`                   // InClientBytes is the number of bytes this server received from the clients
+	OutMsgs               int64                    `json:"out_msgs"`                          // OutMsgs is the total number of message this server sent. This includes messages sent to the clients, routers, gateways and leaf nodes
+	OutBytes              int64                    `json:"out_bytes"`                         // OutBytes is the total number of bytes this server sent. This includes messages sent to the clients, routers, gateways and leaf nodes
+	OutClientMsgs         int64                    `json:"out_client_msgs"`                   // OutClientMsgs is the number of messages this server sent to the clients
+	OutClientBytes        int64                    `json:"out_client_bytes"`                  // OutClientBytes is the number of bytes this server sent to the clients
 	SlowConsumers         int64                    `json:"slow_consumers"`                    // SlowConsumers is the total count of clients that were disconnected since start due to being slow consumers
 	StaleConnections      int64                    `json:"stale_connections"`                 // StaleConnections is the total count of stale connections that were detected
 	StalledClients        int64                    `json:"stalled_clients"`                   // StalledClients is the total number of times that clients have been stalled.
@@ -85,13 +89,14 @@ type VarzV1 struct {
 	ConfigDigest          string                   `json:"config_digest"`                     // ConfigDigest is a calculated hash of the current configuration
 	Tags                  jwt.TagList              `json:"tags,omitempty"`                    // Tags are the tags assigned to the server in configuration
 	Metadata              map[string]string        `json:"metadata,omitempty"`                // Metadata is the metadata assigned to the server in configuration
+	FeatureFlags          map[string]bool          `json:"feature_flags,omitempty"`           // FeatureFlags is the feature flags enabled/disabled in configuration
 	TrustedOperatorsJwt   []string                 `json:"trusted_operators_jwt,omitempty"`   // TrustedOperatorsJwt is the JWTs for all trusted operators
 	TrustedOperatorsClaim []*jwt.OperatorClaims    `json:"trusted_operators_claim,omitempty"` // TrustedOperatorsClaim is the decoded claims for each trusted operator
 	SystemAccount         string                   `json:"system_account,omitempty"`          // SystemAccount is the name of the System account
 	PinnedAccountFail     uint64                   `json:"pinned_account_fails,omitempty"`    // PinnedAccountFail is how often user logon fails due to the issuer account not being pinned.
 	OCSPResponseCache     *OCSPResponseCacheVarzV1 `json:"ocsp_peer_cache,omitempty"`         // OCSPResponseCache is the state of the OCSP cache
-	SlowConsumersStats    *SlowConsumersStatsV1    `json:"slow_consumer_stats"`               // SlowConsumersStats is statistics about all detected Slow Consumer
+	SlowConsumersStats    *SlowConsumersStatsV1    `json:"slow_consumer_stats"`               // SlowConsumersStats are statistics about all detected Slow Consumer
 	StaleConnectionStats  *StaleConnectionStatsV1  `json:"stale_connection_stats,omitempty"`  // StaleConnectionStats are statistics about all detected Stale Connections
 	Proxies               *ProxiesOptsVarzV1       `json:"proxies,omitempty"`                 // Proxies hold information about network proxy devices
-	TLSCertNotAfter       time.Time                `json:"tls_cert_not_after,omitzero"`       // TLSCertNotAfter is the expiration date of the TLS certificate
+	TLSCertNotAfter       time.Time                `json:"tls_cert_not_after,omitzero"`       // TLSCertNotAfter is the expiration date of the TLS certificate of this server
 }

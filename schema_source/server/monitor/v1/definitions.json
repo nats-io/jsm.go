@@ -729,8 +729,11 @@
       "description": "Holds information about known network proxies",
       "properties": {
         "trusted": {
+          "type": "array",
           "description": "List of trusted proxy devices",
-          "$ref": "#/definitions/proxy_opts_varz_v1"
+          "items": {
+            "$ref": "#/definitions/proxy_opts_varz_v1"
+          }
         }
       }
     },

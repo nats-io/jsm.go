@@ -1187,7 +1187,7 @@
         "num_replicas": {
           "description": "How many replicas to keep for each message.",
           "$ref": "#/definitions/golang_int",
-          "minimum": 1,
+          "minimum": 0,
           "default": 1,
           "maximum": 5
         },

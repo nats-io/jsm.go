@@ -469,3 +469,138 @@ func TestMsgTracingGotThemAll(t *testing.T) {
 		}
 	}
 }
+
+func TestMsgTracingDuplicateServerNameWithSvcImport(t *testing.T) {
+	s, nc, sub := setupTest(t)
+	defer s.Shutdown()
+	defer nc.Close()
+
+	nc.Publish("trace.id", []byte(`{"server":{"name":"A","host":"0.0.0.0","id":"ID1","cluster":"local"},"request":{"header":{"Nats-Trace-Dest":["trace.id"]},"msgsize":121},"hops":2,"events":[{"type":"in","kind":0,"cid":23,"name":"cli","acc":"C","subj":"c.1"},{"type":"si","acc":"B","from":"c.1","to":"b.1"},{"type":"si","acc":"A","from":"b.1","to":"a.1"},{"type":"eg","kind":1,"cid":9,"name":"B","hop":"1"},{"type":"eg","kind":1,"cid":9,"name":"B","hop":"2"}]}`))
+	nc.Publish("trace.id", []byte(`{"server":{"name":"B","host":"0.0.0.0","id":"ID2","cluster":"local"},"request":{"header":{"Nats-Request-Info":["{\"acc\":\"C\",\"svc\":\"B\",\"rtt\":551583}"],"Nats-Trace-Dest":["_R_.7lA8cE.nnNF0Q"],"Nats-Trace-Hop":["1"]},"msgsize":174},"hops":2,"events":[{"type":"in","kind":1,"cid":9,"name":"A","acc":"A","subj":"a.1"},{"type":"eg","kind":4,"cid":12,"name":"C","hop":"1.1"},{"type":"eg","kind":4,"cid":14,"name":"D","hop":"1.2"}]}`))
+	nc.Publish("trace.id", []byte(`{"server":{"name":"B","host":"0.0.0.0","id":"ID2","cluster":"local"},"request":{"header":{"Nats-Request-Info":["{\"acc\":\"C\",\"rtt\":551583}"],"Nats-Trace-Dest":["_R_.WJGHEP.2s5D6s"],"Nats-Trace-Hop":["2"]},"msgsize":164},"events":[{"type":"in","kind":1,"cid":9,"name":"A","acc":"B","subj":"b.1"},{"type":"eg","kind":0,"cid":16,"name":"cli","sub":"b.\u003e"}]}`))
+	nc.Publish("trace.id", []byte(`{"server":{"name":"C","host":"0.0.0.0","id":"ID3","cluster":"C"},"request":{"header":{"Nats-Request-Info":["{\"acc\":\"C\",\"svc\":\"B\",\"rtt\":551583}"],"Nats-Trace-Dest":["_R_.7lA8cE.nnNF0Q"],"Nats-Trace-Hop":["1.1"]},"msgsize":176},"events":[{"type":"in","kind":4,"cid":7,"name":"B","acc":"A","subj":"a.1"},{"type":"eg","kind":0,"cid":9,"name":"cli","sub":"a.\u003e"}]}`))
+	nc.Publish("trace.id", []byte(`{"server":{"name":"D","host":"0.0.0.0","id":"ID4","cluster":"D"},"request":{"header":{"Nats-Request-Info":["{\"acc\":\"C\",\"svc\":\"B\",\"rtt\":551583}"],"Nats-Trace-Dest":["_R_.7lA8cE.nnNF0Q"],"Nats-Trace-Hop":["1.2"]},"msgsize":176},"events":[{"type":"in","kind":4,"cid":7,"name":"B","acc":"A","subj":"a.1"},{"type":"eg","kind":0,"cid":9,"name":"cli","sub":"a.\u003e"}]}`))
+
+	e, err := GetMsgTrace(sub, "trace.id", 500*time.Millisecond, nil)
+	if err != nil {
+		t.Fatalf("Error getting trace: %v", err)
+	}
+	if sn := e.Server.Name; sn != "A" {
+		t.Fatalf("Expected server %q, got %q", "A", sn)
+	}
+	sis := e.ServiceImports()
+	if n := len(sis); n != 2 {
+		t.Fatalf("Expected 2 service imports, got %v", n)
+	}
+	for i, si := range sis {
+		switch i {
+		case 0:
+			if si.Account != "B" {
+				t.Fatalf("Expected account %q got %q", "B", si.Account)
+			}
+			if si.From != "c.1" {
+				t.Fatalf("Expected % to be %q, got %q", "from", "c.1", si.From)
+			}
+			if si.To != "b.1" {
+				t.Fatalf("Expected % to be %q, got %q", "to", "b.1", si.To)
+			}
+		case 1:
+			if si.Account != "A" {
+				t.Fatalf("Expected account %q got %q", "A", si.Account)
+			}
+			if si.From != "b.1" {
+				t.Fatalf("Expected % to be %q, got %q", "from", "b.1", si.From)
+			}
+			if si.To != "a.1" {
+				t.Fatalf("Expected % to be %q, got %q", "to", "a.1", si.To)
+			}
+		}
+	}
+	egresses := e.Egresses()
+	if n := len(egresses); n != 2 {
+		t.Fatalf("Expected 2 egresses, got %v", n)
+	}
+	for i, eg := range egresses {
+		if eg.Kind != srv.ROUTER {
+			t.Fatalf("Expected egress to a ROUTER, got %+v", eg)
+		}
+		if eg.Link == nil {
+			t.Fatal("Link is nil!")
+		}
+		if sn := eg.Link.Server.Name; sn != "B" {
+			t.Fatalf("Expected link to %q, got %q", "B", sn)
+		}
+		switch i {
+		case 0:
+			if eg.Hop != "1" {
+				t.Fatalf("Expected Hop to be %q, got %q", "1", eg.Hop)
+			}
+			egs := eg.Link.Egresses()
+			if n := len(egs); n != 2 {
+				t.Fatalf("Expected 2 egresses from B, got %v", n)
+			}
+			for j, e := range egs {
+				if e.Kind != srv.LEAF {
+					t.Fatalf("Expected egress to a LEAF, got %+v", e)
+				}
+				if e.Link == nil {
+					t.Fatal("Link is nil!")
+				}
+				switch j {
+				case 0:
+					if sn := e.Link.Server.Name; sn != "C" {
+						t.Fatalf("Expected link to %q, got %q", "C", sn)
+					}
+					if e.Hop != "1.1" {
+						t.Fatalf("Expected Hop to be %q, got %q", "1.1", e.Hop)
+					}
+					if e.Link == nil {
+						t.Fatal("Link is nil!")
+					}
+					if sn := e.Link.Server.Name; sn != "C" {
+						t.Fatalf("Expected link to %q, got %q", "C", sn)
+					}
+				case 1:
+					if sn := e.Link.Server.Name; sn != "D" {
+						t.Fatalf("Expected link to %q, got %q", "D", sn)
+					}
+					if e.Hop != "1.2" {
+						t.Fatalf("Expected Hop to be %q, got %q", "1.2", e.Hop)
+					}
+					if e.Link == nil {
+						t.Fatal("Link is nil!")
+					}
+					if sn := e.Link.Server.Name; sn != "D" {
+						t.Fatalf("Expected link to %q, got %q", "C", sn)
+					}
+				}
+				finalegs := e.Link.Egresses()
+				if n := len(finalegs); n != 1 {
+					t.Fatalf("Expected 1 egress, got %v", n)
+				}
+				eg := finalegs[0]
+				if eg.Kind != srv.CLIENT {
+					t.Fatalf("Expected egress to a CLIENT, got %+v", eg)
+				}
+				if eg.Subscription != "a.>" {
+					t.Fatalf("Expected subscription on %q, got %q", "a.>", eg.Subscription)
+				}
+			}
+		case 1:
+			if eg.Hop != "2" {
+				t.Fatalf("Expected Hop to be %q, got %q", "2", eg.Hop)
+			}
+			egs := eg.Link.Egresses()
+			if n := len(egs); n != 1 {
+				t.Fatalf("Expected 1 egresses from B, got %v", n)
+			}
+			eg := egs[0]
+			if eg.Kind != srv.CLIENT {
+				t.Fatalf("Expected egress to a CLIENT, got %+v", eg)
+			}
+			if eg.Subscription != "b.>" {
+				t.Fatalf("Expected subscription on %q, got %q", "b.>", eg.Subscription)
+			}
+		}
+	}
+}

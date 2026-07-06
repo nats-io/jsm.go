@@ -105,7 +105,6 @@ func GetMsgTrace(sub *nats.Subscription, traceSubject string, timeout time.Durat
 		origin  *server.MsgTraceEvent
 		traces  = map[string]*server.MsgTraceEvent{}
 		missing = map[string]*server.MsgTraceEvent{}
-		servers = map[string]*server.MsgTraceEvent{}
 	)
 
 	var retErr error
@@ -170,10 +169,8 @@ func GetMsgTrace(sub *nats.Subscription, traceSubject string, timeout time.Durat
 			// Add to servers map.
 			traces[hop] = e
 		}
-		// Add the trace of this server in the map
-		servers[e.Server.Name] = e
 		// Check if we got all the expected traces...
-		if gotAllServers(servers, origin != nil) {
+		if origin != nil && gotAllServers(traces, origin) {
 			break
 		}
 	}
@@ -199,36 +196,20 @@ func GetMsgTrace(sub *nats.Subscription, traceSubject string, timeout time.Durat
 	return origin, retErr
 }
 
-func gotAllServers(all map[string]*server.MsgTraceEvent, hasOrigin bool) bool {
-	if !hasOrigin {
-		return false
+func gotAllServers(hops map[string]*server.MsgTraceEvent, root *server.MsgTraceEvent) bool {
+	if root.Hops == 0 {
+		return true
 	}
-	for _, tr := range all {
-		// We already made sure that we have an ingress, so no need to check
-		// for `nil` here.
-		in := tr.Ingress()
-		// If this is the ingress from the CLIENT, skip this check
-		if in.Kind != server.CLIENT {
-			// Do we have the ingress server in the `all` map? If not, then
-			// clearly we don't have them all.
-			if _, ok := all[in.Name]; !ok {
-				return false
-			}
+	for _, eg := range root.Egresses() {
+		if eg.Hop == "" {
+			continue
 		}
-		// If this trace has "hops" count, then check the egress to see if
-		// we have the trace for those servers.
-		if tr.Hops > 0 {
-			egresses := tr.Egresses()
-			for _, eg := range egresses {
-				if eg.Kind == server.CLIENT {
-					continue
-				}
-				// If we still don't have this egress server, then we don't
-				// have them all.
-				if _, ok := all[eg.Name]; !ok {
-					return false
-				}
-			}
+		nr, ok := hops[eg.Hop]
+		if !ok {
+			return false
+		}
+		if !gotAllServers(hops, nr) {
+			return false
 		}
 	}
 	return true

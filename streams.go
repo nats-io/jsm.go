@@ -1083,7 +1083,7 @@ func (s *Stream) DetectGaps(ctx context.Context, progress func(seq uint64, pendi
 		return nil
 	}
 
-	sub, err := nc.ChanSubscribe(nc.NewRespInbox(), msgs)
+	sub, err := nc.ChanSubscribe(nc.NewInbox(), msgs)
 	if err != nil {
 		return err
 	}

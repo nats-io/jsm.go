@@ -120,7 +120,7 @@ func (p *StreamPager) start(stream *Stream, mgr *Manager, opts ...PagerOption) e
 	p.useDirect = p.stream.Retention() == api.WorkQueuePolicy || p.stream.Retention() == api.InterestPolicy
 
 	p.q = make(chan *nats.Msg, p.pageSize)
-	p.sub, err = mgr.nc.ChanSubscribe(mgr.nc.NewRespInbox(), p.q)
+	p.sub, err = mgr.nc.ChanSubscribe(mgr.nc.NewInbox(), p.q)
 	if err != nil {
 		p.close()
 		return err

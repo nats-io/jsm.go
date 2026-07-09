@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/nats.go"
 )
 
 func TestPager(t *testing.T) {
@@ -74,6 +75,74 @@ func TestPager(t *testing.T) {
 	}
 	if len(known) != 0 {
 		t.Fatalf("expected no consumers got %v", known)
+	}
+}
+
+func TestPagerRequestMuxCrossDelivery(t *testing.T) {
+	srv, snc, _ := startJSServer(t)
+	defer srv.Shutdown()
+	defer snc.Close()
+
+	// startJSServer connects with UseOldRequestStyle which bypasses the
+	// request mux, this test needs a default style connection shared by the
+	// pager and the reads
+	nc, err := nats.Connect(srv.ClientURL())
+	checkErr(t, err, "connect failed")
+	defer nc.Close()
+
+	mgr, err := jsm.New(nc, jsm.WithTimeout(5*time.Second))
+	checkErr(t, err, "manager creation failed")
+
+	source, err := mgr.NewStream("SOURCE", jsm.Subjects("js.in.source"))
+	checkErr(t, err, "stream create failed")
+
+	_, err = nc.Request("js.in.source", []byte("source message"), time.Second)
+	checkErr(t, err, "publish failed")
+
+	paged, err := mgr.NewStream("PAGED", jsm.Subjects("js.in.paged"))
+	checkErr(t, err, "stream create failed")
+
+	const pagedMessages = 8
+	for range pagedMessages {
+		_, err = nc.Request("js.in.paged", []byte(`{"stream":"SOURCE","stream_seq":1}`), time.Second)
+		checkErr(t, err, "publish failed")
+	}
+
+	// the cross delivery needs the mux to process a stale copy of a paged
+	// message while a request is in flight, so repeat until the deadline to
+	// let the timing line up, with the pager inbox under the mux wildcard
+	// this fails within a few iterations under -race
+	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); {
+		pgr, err := paged.PageContents()
+		checkErr(t, err, "pager creation failed")
+
+		drained := 0
+		for {
+			_, last, err := pgr.NextMsg(context.Background())
+			if err != nil {
+				if !last {
+					t.Fatalf("pager read failed: %s", err)
+				}
+				break
+			}
+			drained++
+		}
+		if drained != pagedMessages {
+			t.Fatalf("drained %d messages, expected %d", drained, pagedMessages)
+		}
+
+		for i := 0; i < drained; i++ {
+			msg, err := source.ReadMessage(1)
+			checkErr(t, err, "read failed")
+			if msg == nil {
+				t.Fatal("ReadMessage returned no message and no error: a paged message was cross-delivered as a request reply")
+			}
+			if string(msg.Data) != "source message" {
+				t.Fatalf("ReadMessage returned cross-delivered payload %q", msg.Data)
+			}
+		}
+
+		checkErr(t, pgr.Close(), "pager close failed")
 	}
 }
 

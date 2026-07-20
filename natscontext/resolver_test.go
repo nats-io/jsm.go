@@ -109,6 +109,45 @@ func writeShellShim(t *testing.T, dir, name, payload string) {
 	}
 }
 
+// writeNscShim writes a fake `nsc` into dir that prints payload only
+// when its ref argument carries the nsc:// scheme, mimicking the real
+// CLI: `nsc generate profile op/acct/user` exits non-zero with
+// "invalid nsc url: expecting 'nsc://'". Every nsc-backed test uses
+// this rather than writeShellShim so a caller that strips the scheme
+// fails the same way it would against a real nsc install. When
+// argLog is non-empty each invocation's ref is appended to that file,
+// one per line, so a test can assert the exact form received.
+func writeNscShim(t *testing.T, dir, payload, argLog string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-shim dispatch not portable on Windows")
+	}
+
+	log := ""
+	if argLog != "" {
+		log = fmt.Sprintf("printf '%%s\\n' \"$3\" >> %q\n", argLog)
+	}
+
+	// $3 is the ref: the shim is invoked as `nsc generate profile <ref>`.
+	script := fmt.Sprintf(`#!/bin/sh
+%scase "$3" in
+nsc://*) ;;
+*)
+	echo "Error: error parsing \"$3\": invalid nsc url: expecting 'nsc://'" >&2
+	exit 1
+	;;
+esac
+cat <<'__NATS_SHIM_EOF__'
+%s
+__NATS_SHIM_EOF__
+`, log, payload)
+
+	err := os.WriteFile(filepath.Join(dir, "nsc"), []byte(script), 0755)
+	if err != nil {
+		t.Fatalf("write shim: %v", err)
+	}
+}
+
 // TestFileResolver verifies that bare paths and file:// URIs resolve
 // identically, and that a $VAR-expanded bare path produces the same
 // option set as the literal path. ~-expansion is covered by
@@ -229,7 +268,7 @@ func TestNscResolver(t *testing.T) {
 	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
 
 	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://example:4222"]}}`, credsPath)
-	writeShellShim(t, binDir, "nsc", nscJSON)
+	writeNscShim(t, binDir, nscJSON, "")
 	prependToPATH(t, binDir)
 
 	for _, ref := range []string{"nsc://op/acct/user", "NSC://op/acct/user", "Nsc://op/acct/user"} {
@@ -259,7 +298,7 @@ func TestNSCLookupDeprecation(t *testing.T) {
 	credsDir := t.TempDir()
 	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
 	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://legacy:4222"]}}`, credsPath)
-	writeShellShim(t, binDir, "nsc", nscJSON)
+	writeNscShim(t, binDir, nscJSON, "")
 	prependToPATH(t, binDir)
 
 	dir := t.TempDir()
@@ -315,10 +354,13 @@ func TestNSCLookupDeprecation(t *testing.T) {
 }
 
 // TestRunNscProfileNormalizesPrefix asserts that every code path that
-// invokes the nsc CLI hands it the bare op/acct/user form even when
-// the caller supplied the nsc:// URI form. The shim records its
-// argument so the test can verify the prefix was stripped exactly
-// once regardless of which entry point dispatched the call.
+// invokes the nsc CLI hands it the nsc://op/acct/user URI form, since
+// the real CLI rejects a bare ref with "invalid nsc url: expecting
+// 'nsc://'". Both stored shapes are exercised: a legacy NSCLookup
+// holding the URI form, a legacy NSCLookup holding the bare form, and
+// a Creds value carrying the URI. The shim logs each ref it receives
+// so the test can check the scheme is present exactly once regardless
+// of which entry point dispatched the call.
 func TestRunNscProfileNormalizesPrefix(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell-shim dispatch not portable on Windows")
@@ -329,28 +371,33 @@ func TestRunNscProfileNormalizesPrefix(t *testing.T) {
 	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
 	argLog := filepath.Join(t.TempDir(), "nsc-arg.txt")
 	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://prefixed:4222"]}}`, credsPath)
-	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s' \"$3\" >> %q\ncat <<'__NATS_SHIM_EOF__'\n%s\n__NATS_SHIM_EOF__\n", argLog, nscJSON)
-	err := os.WriteFile(filepath.Join(binDir, "nsc"), []byte(script), 0755)
-	if err != nil {
-		t.Fatalf("write shim: %v", err)
-	}
+	writeNscShim(t, binDir, nscJSON, argLog)
 	prependToPATH(t, binDir)
 
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	ctxDir := filepath.Join(dir, "nats", "context")
-	err = os.MkdirAll(ctxDir, 0700)
+	err := os.MkdirAll(ctxDir, 0700)
 	if err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 	err = os.WriteFile(filepath.Join(ctxDir, "loadprefixed.json"), []byte(`{"nsc":"nsc://op/acct/user"}`), 0600)
 	if err != nil {
-		t.Fatalf("seed: %v", err)
+		t.Fatalf("seed prefixed: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(ctxDir, "loadbare.json"), []byte(`{"nsc":"op/acct/user"}`), 0600)
+	if err != nil {
+		t.Fatalf("seed bare: %v", err)
 	}
 
 	_, err = natscontext.New("loadprefixed", true)
 	if err != nil {
-		t.Fatalf("load: %v", err)
+		t.Fatalf("load prefixed: %v", err)
+	}
+
+	_, err = natscontext.New("loadbare", true)
+	if err != nil {
+		t.Fatalf("load bare: %v", err)
 	}
 
 	c, err := natscontext.New("creds-resolve", false, natscontext.WithCreds("nsc://op/acct/user"))
@@ -366,11 +413,15 @@ func TestRunNscProfileNormalizesPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read arg log: %v", err)
 	}
-	if strings.Contains(string(logged), "nsc://") {
-		t.Fatalf("nsc CLI received URI form somewhere; argLog=%q", string(logged))
+
+	refs := strings.Fields(string(logged))
+	if len(refs) != 3 {
+		t.Fatalf("expected 3 nsc invocations, got %d: %q", len(refs), string(logged))
 	}
-	if !strings.Contains(string(logged), "op/acct/user") {
-		t.Fatalf("expected nsc CLI to receive bare ref; argLog=%q", string(logged))
+	for _, ref := range refs {
+		if ref != "nsc://op/acct/user" {
+			t.Errorf("nsc CLI received %q, want nsc://op/acct/user", ref)
+		}
 	}
 }
 
@@ -388,7 +439,7 @@ func TestNSCLookupAlreadyPrefixedOnSave(t *testing.T) {
 	credsDir := t.TempDir()
 	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
 	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://prefixed:4222"]}}`, credsPath)
-	writeShellShim(t, binDir, "nsc", nscJSON)
+	writeNscShim(t, binDir, nscJSON, "")
 	prependToPATH(t, binDir)
 
 	dir := t.TempDir()
@@ -437,7 +488,7 @@ func TestNSCLookupOverrideOnSave(t *testing.T) {
 	credsPath := writeCredsFile(t, credsDir, "nsc.creds")
 	overridePath := writeCredsFile(t, credsDir, "override.creds")
 	nscJSON := fmt.Sprintf(`{"user_creds":%q,"operator":{"service":["nats://legacy:4222"]}}`, credsPath)
-	writeShellShim(t, binDir, "nsc", nscJSON)
+	writeNscShim(t, binDir, nscJSON, "")
 	prependToPATH(t, binDir)
 
 	dir := t.TempDir()

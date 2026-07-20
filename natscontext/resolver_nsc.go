@@ -64,16 +64,20 @@ type nscProfileRaw struct {
 // JSON output. It is shared between the nsc:// resolver, the
 // load-time NSCLookup field handling, and the save-time migration so
 // every path produces identical results. ref may be the URI form
-// (nsc://op/acct/user) or bare form (op/acct/user); a leading
-// nsc:// is stripped before invoking the CLI. Stdout is never
-// included in returned errors because it can carry decorated JWTs.
+// (nsc://op/acct/user) or the bare form (op/acct/user) and is
+// normalized to the URI form before invoking the CLI: nsc rejects a
+// bare ref with `invalid nsc url: expecting 'nsc://'`. Trimming
+// before prepending keeps the operation idempotent and normalizes
+// the scheme's case, which nsc's own parser matches literally.
+// Stdout is never included in returned errors because it can carry
+// decorated JWTs.
 func runNscProfile(ctx context.Context, ref string) (*nscProfile, error) {
 	path, err := exec.LookPath("nsc")
 	if err != nil {
 		return nil, fmt.Errorf("cannot find 'nsc' in user path")
 	}
 
-	ref = trimSchemePrefix(ref, "nsc://")
+	ref = "nsc://" + trimSchemePrefix(ref, "nsc://")
 	cmd := exec.CommandContext(ctx, path, "generate", "profile", ref)
 
 	var stderr bytes.Buffer

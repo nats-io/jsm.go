@@ -7,7 +7,7 @@
   "properties": {
     "filter": {
       "type": "string",
-      "description": "Restrict purging to messages that match this subject",
+      "description": "Restrict purging to messages that match this subject"
     },
     "seq": {
       "description": "Purge all messages up to but not including the message with this sequence. Can be combined with subject filter but not the keep option",

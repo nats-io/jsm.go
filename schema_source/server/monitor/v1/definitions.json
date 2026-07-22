@@ -724,6 +724,28 @@
         }
       }
     },
+    "disk_io_wait_stats_v1": {
+      "type": "object",
+      "description": "Information about disk I/O semaphore contention",
+      "properties": {
+        "waiters": {
+          "type": "integer",
+          "description": "The number of goroutines waiting on the dios"
+        },
+        "waits": {
+          "type": "integer",
+          "description": "The number of dios acquires that had to wait"
+        },
+        "wait_time": {
+          "type": "integer",
+          "description": "The cumulative time spent waiting for dios"
+        },
+        "max_wait_time": {
+          "type": "integer",
+          "description": "The longest observed wait"
+        }
+      }
+    },
     "proxies_opts_varz_v1": {
       "type": "object",
       "description": "Holds information about known network proxies",

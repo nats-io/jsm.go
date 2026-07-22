@@ -97,6 +97,7 @@ type VarzV1 struct {
 	OCSPResponseCache     *OCSPResponseCacheVarzV1 `json:"ocsp_peer_cache,omitempty"`         // OCSPResponseCache is the state of the OCSP cache
 	SlowConsumersStats    *SlowConsumersStatsV1    `json:"slow_consumer_stats"`               // SlowConsumersStats are statistics about all detected Slow Consumer
 	StaleConnectionStats  *StaleConnectionStatsV1  `json:"stale_connection_stats,omitempty"`  // StaleConnectionStats are statistics about all detected Stale Connections
+	DiskIOWaitStats       *DiskIOWaitStatsV1       `json:"disk_io_wait_stats"`                // DiskIOWaitStats are statistics about disk I/O semaphore contention
 	Proxies               *ProxiesOptsVarzV1       `json:"proxies,omitempty"`                 // Proxies hold information about network proxy devices
 	TLSCertNotAfter       time.Time                `json:"tls_cert_not_after,omitzero"`       // TLSCertNotAfter is the expiration date of the TLS certificate of this server
 }

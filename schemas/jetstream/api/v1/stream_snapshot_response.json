@@ -172,8 +172,8 @@
             },
             "first_seq": {
               "description": "A custom sequence to use for the first message in the stream",
-              "type": "integer",
               "$comment": "unsigned 64 bit integer",
+              "type": "integer",
               "minimum": 0,
               "maximum": 18446744073709551615
             },
@@ -471,7 +471,6 @@
               "type": "object",
               "description": "Rules for republishing messages from a stream with subject mapping onto new subjects for partitioning and more",
               "required": [
-                "src",
                 "dest"
               ],
               "properties": {
@@ -584,8 +583,10 @@
               "maximum": 18446744073709551615
             },
             "first_ts": {
+              "description": "The timestamp of the first message in the Stream",
+              "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
               "type": "string",
-              "description": "The timestamp of the first message in the Stream"
+              "format": "date-time"
             },
             "last_seq": {
               "description": "Sequence number of the last message in the Stream",
@@ -595,8 +596,10 @@
               "maximum": 18446744073709551615
             },
             "last_ts": {
+              "description": "The timestamp of the last message in the Stream",
+              "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
               "type": "string",
-              "description": "The timestamp of the last message in the Stream"
+              "format": "date-time"
             },
             "deleted": {
               "description": "IDs of messages that were deleted using the Message Delete API or Interest based streams removing messages out of order",

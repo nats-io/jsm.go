@@ -76,7 +76,7 @@
       "$comment": "signed 64 bit integer",
       "type": "integer",
       "maximum": 9223372036854775807,
-      "minimum": -9223372036854775807
+      "minimum": -9223372036854775808
     },
     "max_subscriptions": {
       "type": "integer",
@@ -170,7 +170,7 @@
           "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
           "type": "integer",
           "maximum": 9223372036854775807,
-          "minimum": -9223372036854775807
+          "minimum": -9223372036854775808
         },
         "write_timeout": {
           "description": "The policy to apply to sockets being closed due to write_deadline",
@@ -263,7 +263,7 @@
           "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
           "type": "integer",
           "maximum": 9223372036854775807,
-          "minimum": -9223372036854775807
+          "minimum": -9223372036854775808
         },
         "write_timeout": {
           "description": "The policy to apply to sockets being closed due to write_deadline",
@@ -365,7 +365,7 @@
           "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
           "type": "integer",
           "maximum": 9223372036854775807,
-          "minimum": -9223372036854775807
+          "minimum": -9223372036854775808
         },
         "write_timeout": {
           "description": "The policy to apply to sockets being closed due to write_deadline",
@@ -425,7 +425,7 @@
           "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
           "type": "integer",
           "maximum": 9223372036854775807,
-          "minimum": -9223372036854775807
+          "minimum": -9223372036854775808
         },
         "max_ack_pending": {
           "type": "integer",
@@ -470,7 +470,7 @@
           "description": "How long the connection has to complete the websocket setup",
           "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
           "maximum": 9223372036854775807,
-          "minimum": -9223372036854775807
+          "minimum": -9223372036854775808
         },
         "auth_timeout": {
           "type": "number",
@@ -541,7 +541,7 @@
               "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
               "type": "integer",
               "maximum": 9223372036854775807,
-              "minimum": -9223372036854775807
+              "minimum": -9223372036854775808
             },
             "sync_always": {
               "type": "boolean",
@@ -666,7 +666,7 @@
                     "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
                     "type": "integer",
                     "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775807
+                    "minimum": -9223372036854775808
                   },
                   "lag": {
                     "type": "integer",
@@ -705,14 +705,14 @@
                   "description": "The count of pending entries in the meta layer",
                   "$comment": "signed 64 bit integer",
                   "maximum": 9223372036854775807,
-                  "minimum": -9223372036854775807
+                  "minimum": -9223372036854775808
                 },
                 "pending_size": {
                   "type": "integer",
                   "description": "The size of pending entries in the meta layer in bytes",
                   "$comment": "signed 64 bit integer",
                   "maximum": 9223372036854775807,
-                  "minimum": -9223372036854775807
+                  "minimum": -9223372036854775808
                 },
                 "last_time": {
                   "type": "string",
@@ -724,7 +724,7 @@
                   "description": "The duration of the last snapshot in nanoseconds",
                   "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
                   "maximum": 9223372036854775807,
-                  "minimum": -9223372036854775807
+                  "minimum": -9223372036854775808
                 }
               }
             }
@@ -751,7 +751,7 @@
               "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
               "type": "integer",
               "maximum": 9223372036854775807,
-              "minimum": -9223372036854775807
+              "minimum": -9223372036854775808
             },
             "max_batch_inflight_per_stream": {
               "type": "integer",
@@ -770,7 +770,7 @@
               "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
               "type": "integer",
               "maximum": 9223372036854775807,
-              "minimum": -9223372036854775807
+              "minimum": -9223372036854775808
             }
           }
         }
@@ -785,7 +785,7 @@
       "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
       "type": "integer",
       "maximum": 9223372036854775807,
-      "minimum": -9223372036854775807
+      "minimum": -9223372036854775808
     },
     "write_timeout": {
       "description": "The policy to apply to sockets being closed due to write_deadline",

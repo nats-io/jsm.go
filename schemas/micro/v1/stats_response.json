@@ -86,14 +86,14 @@
             "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
             "type": "integer",
             "maximum": 9223372036854775807,
-            "minimum": -9223372036854775807
+            "minimum": -9223372036854775808
           },
           "num_errors": {
             "description": "The number of errors this endpoint encountered",
             "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
             "type": "integer",
             "maximum": 9223372036854775807,
-            "minimum": -9223372036854775807
+            "minimum": -9223372036854775808
           },
           "last_error": {
             "description": "The last error the service encountered",
@@ -104,14 +104,14 @@
             "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
             "type": "integer",
             "maximum": 9223372036854775807,
-            "minimum": -9223372036854775807
+            "minimum": -9223372036854775808
           },
           "average_processing_time": {
             "description": "The average time spent processing requests",
             "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
             "type": "integer",
             "maximum": 9223372036854775807,
-            "minimum": -9223372036854775807
+            "minimum": -9223372036854775808
           },
           "queue_group": {
             "description": "The queue group this endpoint listens on for requests",

@@ -130,8 +130,8 @@
     },
     "first_seq": {
       "description": "A custom sequence to use for the first message in the stream",
-      "type": "integer",
       "$comment": "unsigned 64 bit integer",
+      "type": "integer",
       "minimum": 0,
       "maximum": 18446744073709551615
     },
@@ -429,7 +429,6 @@
       "type": "object",
       "description": "Rules for republishing messages from a stream with subject mapping onto new subjects for partitioning and more",
       "required": [
-        "src",
         "dest"
       ],
       "properties": {

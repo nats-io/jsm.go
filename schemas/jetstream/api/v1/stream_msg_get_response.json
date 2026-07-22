@@ -73,8 +73,10 @@
               "minLength": 0
             },
             "time": {
+              "description": "The time the message was received",
+              "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
               "type": "string",
-              "description": "The time the message was received"
+              "format": "date-time"
             },
             "hdrs": {
               "type": "string",

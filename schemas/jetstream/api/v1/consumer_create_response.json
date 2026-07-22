@@ -12,7 +12,6 @@
       "required": [
         "stream_name",
         "name",
-        "config",
         "created",
         "delivered",
         "ack_floor",
@@ -269,6 +268,11 @@
               "description": "Creates a special consumer that does not touch the Raft layers, not for general use by clients, internal use only",
               "default": false
             },
+            "sourcing": {
+              "type": "boolean",
+              "description": "Marks the consumer as one used by a stream to source data from another stream, not for general use by clients, internal use only",
+              "default": false
+            },
             "headers_only": {
               "type": "boolean",
               "default": false,
@@ -316,10 +320,10 @@
             },
             "num_replicas": {
               "description": "When set do not inherit the replica count from the stream but specifically set it to this amount",
-              "type": "integer",
               "minimum": 0,
               "maximum": 5,
-              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit"
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer"
             },
             "mem_storage": {
               "description": "Force the consumer state to be kept in memory rather than inherit the setting from the stream",
@@ -501,7 +505,7 @@
                   "name": {
                     "description": "The server name of the peer",
                     "type": "string",
-                    "minimum": 1
+                    "minLength": 1
                   },
                   "current": {
                     "description": "Indicates if the server is up to date and synchronised",
@@ -510,7 +514,10 @@
                   },
                   "active": {
                     "description": "Nanoseconds since this peer was last seen",
-                    "type": "number"
+                    "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+                    "minimum": 0,
+                    "type": "integer",
+                    "maximum": 9223372036854775807
                   },
                   "offline": {
                     "description": "Indicates the node is considered offline by the group",
@@ -519,8 +526,10 @@
                   },
                   "lag": {
                     "description": "How many uncommitted operations this peer is behind the leader",
+                    "$comment": "unsigned 64 bit integer",
                     "type": "integer",
-                    "minimum": 0
+                    "minimum": 0,
+                    "maximum": 18446744073709551615
                   },
                   "peer": {
                     "description": "The unique ID for the peer",

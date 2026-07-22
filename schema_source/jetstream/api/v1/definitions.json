@@ -209,7 +209,7 @@
         "name": {
           "description": "The server name of the peer",
           "type": "string",
-          "minimum": 1
+          "minLength": 1
         },
         "current": {
           "description": "Indicates if the server is up to date and synchronised",
@@ -218,7 +218,7 @@
         },
         "active": {
           "description": "Nanoseconds since this peer was last seen",
-          "type": "number"
+          "$ref": "#/definitions/golang_duration_nanos"
         },
         "offline": {
           "description": "Indicates the node is considered offline by the group",
@@ -227,8 +227,7 @@
         },
         "lag": {
           "description": "How many uncommitted operations this peer is behind the leader",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "peer": {
           "description": "The unique ID for the peer",
@@ -279,23 +278,20 @@
       "properties": {
         "level": {
           "description": "The JetStream API Level",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/golang_int",
+          "minimum": 0
         },
         "total": {
           "description": "Total number of API requests received for this account",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/golang_uint64"
         },
         "errors": {
           "description": "API requests that resulted in an error response",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/golang_uint64"
         },
         "inflight": {
           "description": "The number of inflight API requests waiting to be processed",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/definitions/golang_uint64"
         }
       }
     },
@@ -311,32 +307,28 @@
       "properties": {
         "memory": {
           "description": "Memory Storage being used for Stream Message storage",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "storage": {
           "description": "File Storage being used for Stream Message storage",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "reserved_memory": {
           "description": "Bytes that is reserved for memory usage by this account on the server",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "reserved_storage": {
           "description": "Bytes that is reserved for disk usage by this account on the server",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "streams": {
           "description": "Number of active Streams",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "consumers": {
           "description": "Number of active Consumers",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "limits": {
@@ -350,22 +342,28 @@
       "properties": {
         "memory": {
           "description": "Memory Storage being used for Stream Message storage",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
         },
         "storage": {
           "description": "File Storage being used for Stream Message storage",
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/golang_uint64"
+        },
+        "reserved_memory": {
+          "description": "Bytes that is reserved for memory usage by this account on the server",
+          "$ref": "#/definitions/golang_uint64"
+        },
+        "reserved_storage": {
+          "description": "Bytes that is reserved for disk usage by this account on the server",
+          "$ref": "#/definitions/golang_uint64"
         },
         "streams": {
           "description": "Number of active Streams",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "consumers": {
           "description": "Number of active Consumers",
-          "type": "integer",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0
         },
         "domain": {
@@ -457,8 +455,8 @@
           "minLength": 0
         },
         "time": {
-          "type": "string",
-          "description": "The time the message was received"
+          "description": "The time the message was received",
+          "$ref": "#/definitions/golang_time"
         },
         "hdrs": {
           "type": "string",
@@ -654,7 +652,7 @@
       }
     },
     "consumer_info": {
-      "required": ["stream_name", "name", "config", "created", "delivered", "ack_floor", "num_ack_pending", "num_redelivered", "num_waiting", "num_pending"],
+      "required": ["stream_name", "name", "created", "delivered", "ack_floor", "num_ack_pending", "num_redelivered", "num_waiting", "num_pending"],
       "type": "object",
       "properties": {
         "stream_name": {
@@ -831,6 +829,11 @@
           "description": "Creates a special consumer that does not touch the Raft layers, not for general use by clients, internal use only",
           "default": false
         },
+        "sourcing": {
+          "type": "boolean",
+          "description": "Marks the consumer as one used by a stream to source data from another stream, not for general use by clients, internal use only",
+          "default": false
+        },
         "headers_only": {
           "type": "boolean",
           "default": false,
@@ -845,18 +848,18 @@
         "max_expires": {
           "description": "The maximum expires value that may be set when doing a pull on a Pull Consumer",
           "$ref": "#/definitions/golang_duration_nanos",
-          "default": 0,
+          "default": 0
         },
         "max_bytes": {
           "description": "The maximum bytes value that maybe set when doing a pull on a Pull Consumer",
-          "$ref": "definitions.json#/definitions/golang_int",
+          "$ref": "#/definitions/golang_int",
           "minimum": 0,
           "default": 0
         },
         "inactive_threshold": {
           "description": "Duration that instructs the server to cleanup ephemeral consumers that are inactive for that long",
           "$ref": "#/definitions/golang_duration_nanos",
-          "default": 0,
+          "default": 0
         },
         "backoff": {
           "description": "List of durations in Go format that represents a retry time scale for NaK'd messages",
@@ -867,7 +870,6 @@
         },
         "num_replicas": {
           "description": "When set do not inherit the replica count from the stream but specifically set it to this amount",
-          "type": "integer",
           "$ref": "#/definitions/golang_int",
           "minimum": 0,
           "maximum": 5
@@ -1006,8 +1008,8 @@
           "minimum": 0
         },
         "first_ts": {
-          "type": "string",
-          "description": "The timestamp of the first message in the Stream"
+          "description": "The timestamp of the first message in the Stream",
+          "$ref": "#/definitions/golang_time"
         },
         "last_seq": {
           "$ref": "#/definitions/golang_uint64",
@@ -1015,8 +1017,8 @@
           "minimum": 0
         },
         "last_ts": {
-          "type": "string",
-          "description": "The timestamp of the last message in the Stream"
+          "description": "The timestamp of the last message in the Stream",
+          "$ref": "#/definitions/golang_time"
         },
         "deleted": {
           "description": "IDs of messages that were deleted using the Message Delete API or Interest based streams removing messages out of order",
@@ -1072,7 +1074,7 @@
     "republish": {
       "type": "object",
       "description": "Rules for republishing messages from a stream with subject mapping onto new subjects for partitioning and more",
-      "required": ["src","dest"],
+      "required": ["dest"],
       "properties": {
         "src": {
           "type": "string",
@@ -1181,7 +1183,6 @@
         },
         "first_seq": {
           "description": "A custom sequence to use for the first message in the stream",
-          "type": "integer",
           "$ref": "#/definitions/golang_uint64"
         },
         "num_replicas": {
@@ -1307,6 +1308,6 @@
           "default": false
         }
       }
-    },
+    }
   }
 }

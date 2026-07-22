@@ -203,6 +203,14 @@ type StaleConnectionStatsV1 struct {
 	Leafs    uint64 `json:"leafs"`    // Leafs is how many Leafnodes were slow consumers
 }
 
+// DiskIOWaitStatsV1 contains information about disk I/O semaphore contention.
+type DiskIOWaitStatsV1 struct {
+	Waiters     int64  `json:"waiters"`       // Waiters is the number of goroutines waiting on the dios
+	Waits       uint64 `json:"waits"`         // Waits is the number of dios acquires that had to wait
+	WaitTime    uint64 `json:"wait_time"`     // WaitTime is the cumulative time spent waiting for dios
+	MaxWaitTime uint64 `json:"max_wait_time"` // MaxWaitTime is the longest observed wait
+}
+
 // ProxiesOptsVarzV1 contains network proxies information
 type ProxiesOptsVarzV1 struct {
 	Trusted []*ProxyOptsVarzV1 `json:"trusted,omitempty"` // Trusted holds a list of trusted proxies

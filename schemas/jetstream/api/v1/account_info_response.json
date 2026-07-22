@@ -21,23 +21,45 @@
       "properties": {
         "memory": {
           "description": "Memory Storage being used for Stream Message storage",
+          "$comment": "unsigned 64 bit integer",
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 18446744073709551615
         },
         "storage": {
           "description": "File Storage being used for Stream Message storage",
+          "$comment": "unsigned 64 bit integer",
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "reserved_memory": {
+          "description": "Bytes that is reserved for memory usage by this account on the server",
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "reserved_storage": {
+          "description": "Bytes that is reserved for disk usage by this account on the server",
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
         },
         "streams": {
           "description": "Number of active Streams",
+          "minimum": 0,
+          "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
           "type": "integer",
-          "minimum": 0
+          "maximum": 9223372036854775807
         },
         "consumers": {
           "description": "Number of active Consumers",
+          "minimum": 0,
+          "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
           "type": "integer",
-          "minimum": 0
+          "maximum": 9223372036854775807
         },
         "domain": {
           "description": "The JetStream domain this account is in",
@@ -112,33 +134,45 @@
               "properties": {
                 "memory": {
                   "description": "Memory Storage being used for Stream Message storage",
+                  "$comment": "unsigned 64 bit integer",
                   "type": "integer",
-                  "minimum": 0
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
                 },
                 "storage": {
                   "description": "File Storage being used for Stream Message storage",
+                  "$comment": "unsigned 64 bit integer",
                   "type": "integer",
-                  "minimum": 0
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
                 },
                 "reserved_memory": {
                   "description": "Bytes that is reserved for memory usage by this account on the server",
+                  "$comment": "unsigned 64 bit integer",
                   "type": "integer",
-                  "minimum": 0
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
                 },
                 "reserved_storage": {
                   "description": "Bytes that is reserved for disk usage by this account on the server",
+                  "$comment": "unsigned 64 bit integer",
                   "type": "integer",
-                  "minimum": 0
+                  "minimum": 0,
+                  "maximum": 18446744073709551615
                 },
                 "streams": {
                   "description": "Number of active Streams",
+                  "minimum": 0,
+                  "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
                   "type": "integer",
-                  "minimum": 0
+                  "maximum": 9223372036854775807
                 },
                 "consumers": {
                   "description": "Number of active Consumers",
+                  "minimum": 0,
+                  "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
                   "type": "integer",
-                  "minimum": 0
+                  "maximum": 9223372036854775807
                 },
                 "limits": {
                   "type": "object",
@@ -208,22 +242,30 @@
             "level": {
               "description": "The JetStream API Level",
               "minimum": 0,
-              "type": "integer"
+              "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+              "type": "integer",
+              "maximum": 9223372036854775807
             },
             "total": {
               "description": "Total number of API requests received for this account",
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
               "minimum": 0,
-              "type": "integer"
+              "maximum": 18446744073709551615
             },
             "errors": {
               "description": "API requests that resulted in an error response",
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
               "minimum": 0,
-              "type": "integer"
+              "maximum": 18446744073709551615
             },
             "inflight": {
               "description": "The number of inflight API requests waiting to be processed",
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
               "minimum": 0,
-              "type": "integer"
+              "maximum": 18446744073709551615
             }
           }
         }

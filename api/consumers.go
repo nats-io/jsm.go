@@ -623,7 +623,8 @@ type ConsumerConfig struct {
 	PinnedTTL      time.Duration  `json:"priority_timeout,omitempty" yaml:"priority_timeout"`
 
 	// Don't add to general clients.
-	Direct bool `json:"direct,omitempty" yaml:"direct"`
+	Direct   bool `json:"direct,omitempty" yaml:"direct"`
+	Sourcing bool `json:"sourcing,omitempty" yaml:"sourcing"`
 }
 
 func (c ConsumerConfig) RequiredApiLevel() (int, error) {

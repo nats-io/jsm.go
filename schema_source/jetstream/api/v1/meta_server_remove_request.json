@@ -7,7 +7,7 @@
   "properties": {
     "peer": {
       "type": "string",
-      "description": "The Name of the server to remove from the meta group",
+      "description": "The Name of the server to remove from the meta group"
 
     },
     "peer_id": {

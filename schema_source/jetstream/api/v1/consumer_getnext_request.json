@@ -30,7 +30,7 @@
     },
     "group": {
       "type": "string",
-      "description": "The consumer group to pull from",
+      "description": "The consumer group to pull from"
     },
     "min_pending": {
       "$ref": "definitions.json#/definitions/golang_int64",

@@ -35,7 +35,8 @@
     },
     "count": {
       "type": "integer",
-      "description": "When doing Atomic Batch Publishes how many messages was in the batch"
+      "description": "When doing Atomic Batch Publishes how many messages was in the batch",
+      "$ref": "definitions.json#/definitions/golang_uint64"
     },
     "val": {
       "type": "string",

@@ -17,6 +17,7 @@ type JSSnapshotCompleteAdvisoryV1 struct {
 	Start  time.Time             `json:"start"`
 	End    time.Time             `json:"end"`
 	Client advisory.ClientInfoV1 `json:"client"`
+	Domain string                `json:"domain,omitempty"`
 }
 
 func init() {

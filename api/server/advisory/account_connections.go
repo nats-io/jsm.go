@@ -19,6 +19,8 @@ type AccountConnectionsV1 struct {
 	Sent          DataStatsV1  `json:"sent"`
 	Received      DataStatsV1  `json:"received"`
 	SlowConsumers int64        `json:"slow_consumers"`
+	Name          string       `json:"name"`
+	NumSubs       uint32       `json:"num_subscriptions"`
 }
 
 func init() {

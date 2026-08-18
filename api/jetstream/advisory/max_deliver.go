@@ -15,6 +15,7 @@ type ConsumerDeliveryExceededAdvisoryV1 struct {
 	Consumer   string `json:"consumer"`
 	StreamSeq  uint64 `json:"stream_seq"`
 	Deliveries uint64 `json:"deliveries"`
+	Domain     string `json:"domain,omitempty"`
 }
 
 func init() {

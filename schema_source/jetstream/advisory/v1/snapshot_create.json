@@ -43,6 +43,14 @@
     },
     "client": {
       "$ref": "../../../definitions.json#/definitions/client_info_v1"
+    },
+    "state": {
+      "description": "The state of the Stream at the time the snapshot was started",
+      "$ref": "../../../jetstream/api/v1/definitions.json#/definitions/stream_state"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

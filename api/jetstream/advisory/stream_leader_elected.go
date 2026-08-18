@@ -11,6 +11,9 @@ type PeerInfoV1 struct {
 	Name    string        `json:"name"`
 	Current bool          `json:"current"`
 	Active  time.Duration `json:"active"`
+	Offline bool          `json:"offline,omitempty"`
+	Lag     uint64        `json:"lag,omitempty"`
+	Peer    string        `json:"peer"`
 }
 
 // JSStreamLeaderElectedV1 is a advisory published when a stream elects a new leader
@@ -22,6 +25,8 @@ type JSStreamLeaderElectedV1 struct {
 	Stream   string        `json:"stream"`
 	Leader   string        `json:"leader"`
 	Replicas []*PeerInfoV1 `json:"replicas"`
+	Account  string        `json:"account,omitempty"`
+	Domain   string        `json:"domain,omitempty"`
 }
 
 func init() {

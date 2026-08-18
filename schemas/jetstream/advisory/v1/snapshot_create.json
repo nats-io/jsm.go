@@ -142,8 +142,138 @@
         "nonce": {
           "description": "The NONCE that was presented to the client during initial INFO",
           "type": "string"
+        },
+        "reply": {
+          "description": "Original reply subject after a service import, only set when needed",
+          "type": "string"
         }
       }
+    },
+    "state": {
+      "description": "The state of the Stream at the time the snapshot was started",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messages",
+        "bytes",
+        "first_seq",
+        "last_seq",
+        "consumer_count"
+      ],
+      "properties": {
+        "messages": {
+          "description": "Number of messages stored in the Stream",
+          "minimum": 0,
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "maximum": 18446744073709551615
+        },
+        "bytes": {
+          "description": "Combined size of all messages in the Stream",
+          "minimum": 0,
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "maximum": 18446744073709551615
+        },
+        "first_seq": {
+          "description": "Sequence number of the first message in the Stream",
+          "minimum": 0,
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "maximum": 18446744073709551615
+        },
+        "first_ts": {
+          "description": "The timestamp of the first message in the Stream",
+          "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seq": {
+          "description": "Sequence number of the last message in the Stream",
+          "minimum": 0,
+          "$comment": "unsigned 64 bit integer",
+          "type": "integer",
+          "maximum": 18446744073709551615
+        },
+        "last_ts": {
+          "description": "The timestamp of the last message in the Stream",
+          "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+          "type": "string",
+          "format": "date-time"
+        },
+        "deleted": {
+          "description": "IDs of messages that were deleted using the Message Delete API or Interest based streams removing messages out of order",
+          "type": "array",
+          "minLength": 0,
+          "items": {
+            "minimum": 0,
+            "$comment": "unsigned 64 bit integer",
+            "type": "integer",
+            "maximum": 18446744073709551615
+          }
+        },
+        "subjects": {
+          "description": "Subjects and their message counts when a subjects_filter was set",
+          "type": "object",
+          "additionalProperties": {
+            "$comment": "unsigned 64 bit integer",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 18446744073709551615
+          }
+        },
+        "num_subjects": {
+          "description": "The number of unique subjects held in the stream",
+          "minimum": 0,
+          "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "num_deleted": {
+          "description": "The number of deleted messages",
+          "minimum": 0,
+          "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "lost": {
+          "type": "object",
+          "description": "Records messages that were damaged and unrecoverable",
+          "properties": {
+            "msgs": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "description": "The messages that were lost",
+              "items": {
+                "minimum": 0,
+                "$comment": "unsigned 64 bit integer",
+                "type": "integer",
+                "maximum": 18446744073709551615
+              }
+            },
+            "bytes": {
+              "description": "The number of bytes that were lost",
+              "$comment": "unsigned 64 bit integer",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 18446744073709551615
+            }
+          }
+        },
+        "consumer_count": {
+          "description": "Number of Consumers attached to the Stream",
+          "minimum": 0,
+          "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+          "type": "integer",
+          "maximum": 9223372036854775807
+        }
+      }
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

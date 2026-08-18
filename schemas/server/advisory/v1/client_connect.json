@@ -75,6 +75,13 @@
           "type": "object",
           "description": "The metadata assigned to the server"
         },
+        "feature_flags": {
+          "type": "object",
+          "description": "Feature flags the server has enabled",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
         "seq": {
           "type": "integer",
           "description": "Internal server sequence ID"
@@ -193,6 +200,10 @@
         },
         "nonce": {
           "description": "The NONCE that was presented to the client during initial INFO",
+          "type": "string"
+        },
+        "reply": {
+          "description": "Original reply subject after a service import, only set when needed",
           "type": "string"
         }
       }

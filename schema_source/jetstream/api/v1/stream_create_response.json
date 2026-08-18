@@ -17,6 +17,10 @@
     "type": {
       "type": "string",
       "const": "io.nats.jetstream.api.v1.stream_create_response"
+    },
+    "did_create": {
+      "type": "boolean",
+      "description": "Indicates if the stream was actually created rather than an existing matching stream found"
     }
   }
 }

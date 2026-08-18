@@ -99,7 +99,7 @@ type PubAck struct {
 	Duplicate bool   `json:"duplicate,omitempty"`
 	Value     string `json:"val,omitempty"`
 	BatchId   string `json:"batch,omitempty"`
-	BatchSize int    `json:"count,omitempty"`
+	BatchSize uint64 `json:"count,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_info_request
@@ -171,6 +171,8 @@ type JSApiMsgDeleteResponse struct {
 type JSApiStreamCreateResponse struct {
 	JSApiResponse
 	*StreamInfo
+	// DidCreate indicates if the stream was actually created rather than an existing matching stream found
+	DidCreate bool `json:"did_create,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.stream_info_response

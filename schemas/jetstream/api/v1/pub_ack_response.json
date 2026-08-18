@@ -60,7 +60,10 @@
     },
     "count": {
       "type": "integer",
-      "description": "When doing Atomic Batch Publishes how many messages was in the batch"
+      "description": "When doing Atomic Batch Publishes how many messages was in the batch",
+      "$comment": "unsigned 64 bit integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
     },
     "val": {
       "type": "string",

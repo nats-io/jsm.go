@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/nats-io/jsm.go/api/jstypes"
 )
 
 // also update wellKnownSubjectSchemas
@@ -747,12 +749,7 @@ type StreamSourceInfo struct {
 }
 
 // LostStreamData indicates msgs that have been lost during file checks and recover due to corruption
-type LostStreamData struct {
-	// Message IDs of lost messages
-	Msgs []uint64 `json:"msgs" yaml:"msgs"`
-	// How many bytes were lost
-	Bytes uint64 `json:"bytes" yaml:"bytes"`
-}
+type LostStreamData = jstypes.LostStreamData
 
 // StreamSource dictates how streams can source from other streams.
 type StreamSource struct {
@@ -795,20 +792,7 @@ type StreamAlternate struct {
 	Cluster string `json:"cluster" yaml:"cluster"`
 }
 
-type StreamState struct {
-	Msgs        uint64            `json:"messages" yaml:"messages"`
-	Bytes       uint64            `json:"bytes" yaml:"bytes"`
-	FirstSeq    uint64            `json:"first_seq" yaml:"first_seq"`
-	FirstTime   time.Time         `json:"first_ts" yaml:"first_ts"`
-	LastSeq     uint64            `json:"last_seq" yaml:"last_seq"`
-	LastTime    time.Time         `json:"last_ts" yaml:"last_ts"`
-	NumDeleted  int               `json:"num_deleted,omitempty" yaml:"num_deleted"`
-	Deleted     []uint64          `json:"deleted,omitempty" yaml:"deleted"`
-	NumSubjects int               `json:"num_subjects,omitempty" yaml:"num_subjects"`
-	Subjects    map[string]uint64 `json:"subjects,omitempty" yaml:"subjects"`
-	Lost        *LostStreamData   `json:"lost,omitempty" yaml:"lost"`
-	Consumers   int               `json:"consumer_count" yaml:"consumer_count"`
-}
+type StreamState = jstypes.StreamState
 
 // SubjectTransformConfig is for applying a subject transform (to matching messages) before doing anything else
 // when a new message is received

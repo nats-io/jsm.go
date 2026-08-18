@@ -1,20 +1,12 @@
 package advisory
 
 import (
-	"time"
-
 	"github.com/nats-io/jsm.go/api/event"
+	"github.com/nats-io/jsm.go/api/jstypes"
 )
 
 // PeerInfoV1 is information about a specific peer in a cluster
-type PeerInfoV1 struct {
-	Name    string        `json:"name"`
-	Current bool          `json:"current"`
-	Active  time.Duration `json:"active"`
-	Offline bool          `json:"offline,omitempty"`
-	Lag     uint64        `json:"lag,omitempty"`
-	Peer    string        `json:"peer"`
-}
+type PeerInfoV1 = jstypes.PeerInfo
 
 // JSStreamLeaderElectedV1 is a advisory published when a stream elects a new leader
 //

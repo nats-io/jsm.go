@@ -15,6 +15,8 @@ package api
 
 import (
 	"time"
+
+	"github.com/nats-io/jsm.go/api/jstypes"
 )
 
 const (
@@ -73,11 +75,4 @@ type ClusterInfo struct {
 
 // PeerInfo shows information about all the peers in the cluster that
 // are supporting the stream or consumer.
-type PeerInfo struct {
-	Name    string        `json:"name" yaml:"name"`
-	Current bool          `json:"current" yaml:"current"`
-	Offline bool          `json:"offline,omitempty" yaml:"offline"`
-	Active  time.Duration `json:"active" yaml:"active"`
-	Lag     uint64        `json:"lag,omitempty" yaml:"lag"`
-	Peer    string        `json:"peer" yaml:"peer"`
-}
+type PeerInfo = jstypes.PeerInfo

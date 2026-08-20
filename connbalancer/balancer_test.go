@@ -16,7 +16,6 @@ package connbalancer
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/url"
 	"os"
 	"testing"
@@ -131,7 +130,11 @@ func TestServerNameLimit(t *testing.T) {
 
 func TestSuccessiveBalanceRuns(t *testing.T) {
 	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
-		for i := range 10 {
+		const clients = 10
+
+		monitorConns := clusterConnections(srv)
+
+		for i := range clients {
 			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
 			if err != nil {
 				t.Fatalf("could not create client %d: %v", i, err)
@@ -139,11 +142,33 @@ func TestSuccessiveBalanceRuns(t *testing.T) {
 			defer client.Close()
 		}
 
+		totalConns := monitorConns + clients
+		waitForConnections(t, srv, totalConns)
+
 		checkBalancedInRange(t, nc, 5, 7, ConnectionSelector{})
 
-		time.Sleep(500 * time.Millisecond)
+		balancer, err := New(nc, 0, api.NewDiscardLogger(), ConnectionSelector{})
+		if err != nil {
+			t.Fatalf("create failed: %v", err)
+		}
 
-		checkBalancedInRange(t, nc, 0, 1, ConnectionSelector{})
+		deadline := time.Now().Add(10 * time.Second)
+
+		for {
+			waitForConnections(t, srv, totalConns)
+
+			balanced, err := balancer.Balance(context.Background())
+			if err != nil {
+				t.Fatalf("balance failed: %v", err)
+			}
+			if balanced == 0 {
+				return
+			}
+
+			if time.Now().After(deadline) {
+				t.Fatalf("successive balance runs did not converge, last run balanced %d connections", balanced)
+			}
+		}
 	})
 }
 
@@ -204,17 +229,33 @@ func checkBalancedInRange(t *testing.T, nc *nats.Conn, min, max int, s Connectio
 	}
 }
 
-func getFreePort(t *testing.T) int {
+func clusterConnections(srv []*server.Server) int {
+	var total int
+
+	for _, s := range srv {
+		total += s.NumClients()
+	}
+
+	return total
+}
+
+func waitForConnections(t *testing.T, srv []*server.Server, expect int) {
 	t.Helper()
 
-	l, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("could not allocate free port: %v", err)
-	}
-	port := l.Addr().(*net.TCPAddr).Port
-	l.Close()
+	deadline := time.Now().Add(10 * time.Second)
 
-	return port
+	for {
+		total := clusterConnections(srv)
+		if total == expect {
+			return
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("expected %d connections in the cluster but found %d", expect, total)
+		}
+
+		time.Sleep(25 * time.Millisecond)
+	}
 }
 
 func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, nc *nats.Conn)) {
@@ -226,15 +267,8 @@ func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, n
 	}
 	defer os.RemoveAll(d)
 
-	clusterPorts := []int{getFreePort(t), getFreePort(t), getFreePort(t)}
-
-	routes := []*url.URL{
-		{Host: fmt.Sprintf("localhost:%d", clusterPorts[0])},
-		{Host: fmt.Sprintf("localhost:%d", clusterPorts[1])},
-		{Host: fmt.Sprintf("localhost:%d", clusterPorts[2])},
-	}
-
 	var servers []*server.Server
+	var routes []*url.URL
 
 	for i := 1; i <= 3; i++ {
 		sa := server.NewAccount("SYSTEM")
@@ -247,7 +281,7 @@ func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, n
 			LogFile:    "/dev/null",
 			Cluster: server.ClusterOpts{
 				Name: "TEST",
-				Port: clusterPorts[i-1],
+				Port: -1,
 			},
 			Routes:        routes,
 			Accounts:      []*server.Account{sa, ua},
@@ -272,6 +306,7 @@ func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, n
 			s.Shutdown()
 		}()
 
+		routes = append(routes, &url.URL{Host: fmt.Sprintf("localhost:%d", s.ClusterAddr().Port)})
 		servers = append(servers, s)
 	}
 
@@ -285,5 +320,27 @@ func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, n
 	}
 	defer nc.Close()
 
+	waitForClusterReady(t, servers, nc)
+
 	cb(t, servers, nc)
+}
+
+func waitForClusterReady(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+	t.Helper()
+
+	pinger := &balancer{nc: nc, log: api.NewDiscardLogger()}
+	deadline := time.Now().Add(10 * time.Second)
+
+	for {
+		res, err := pinger.reqMany(context.Background(), "$SYS.REQ.SERVER.PING", nil, len(srv))
+		if err == nil && len(res) == len(srv) {
+			return
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("cluster did not form, only %d of %d servers answered system pings", len(res), len(srv))
+		}
+
+		time.Sleep(25 * time.Millisecond)
+	}
 }

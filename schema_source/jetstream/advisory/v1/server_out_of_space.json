@@ -40,6 +40,10 @@
     "cluster": {
       "type": "string",
       "description": "The cluster the server is in"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

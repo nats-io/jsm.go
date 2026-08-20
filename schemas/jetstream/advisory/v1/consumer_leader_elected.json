@@ -81,6 +81,14 @@
           "type": "string"
         }
       }
+    },
+    "account": {
+      "type": "string",
+      "description": "The account the event is for"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

@@ -2,8 +2,15 @@ package advisory
 
 import (
 	"github.com/nats-io/jsm.go/api/event"
+	"github.com/nats-io/jsm.go/api/jstypes"
 	"github.com/nats-io/jsm.go/api/server/advisory"
 )
+
+// LostStreamDataV1 indicates msgs that have been lost
+type LostStreamDataV1 = jstypes.LostStreamData
+
+// StreamStateV1 is the state of a Stream
+type StreamStateV1 = jstypes.StreamState
 
 // JSSnapshotCreateAdvisoryV1 is an advisory sent after a snapshot is successfully started
 //
@@ -14,6 +21,8 @@ type JSSnapshotCreateAdvisoryV1 struct {
 	NumBlks int64                 `json:"blocks"`
 	BlkSize int64                 `json:"block_size"`
 	Client  advisory.ClientInfoV1 `json:"client"`
+	State   StreamStateV1         `json:"state"`
+	Domain  string                `json:"domain,omitempty"`
 }
 
 func init() {

@@ -57,6 +57,10 @@
       "type": "integer",
       "minimum": 1,
       "description": "The number of deliveries that were attempted before being acknowledged"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

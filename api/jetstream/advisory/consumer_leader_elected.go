@@ -14,6 +14,8 @@ type JSConsumerLeaderElectedV1 struct {
 	Consumer string        `json:"consumer"`
 	Leader   string        `json:"leader"`
 	Replicas []*PeerInfoV1 `json:"replicas"`
+	Account  string        `json:"account,omitempty"`
+	Domain   string        `json:"domain,omitempty"`
 }
 
 func init() {

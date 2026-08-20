@@ -146,8 +146,16 @@
         "nonce": {
           "description": "The NONCE that was presented to the client during initial INFO",
           "type": "string"
+        },
+        "reply": {
+          "description": "Original reply subject after a service import, only set when needed",
+          "type": "string"
         }
       }
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

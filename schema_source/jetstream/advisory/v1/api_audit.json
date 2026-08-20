@@ -47,6 +47,10 @@
     },
     "client": {
       "$ref": "../../../definitions.json#/definitions/client_info_v1"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

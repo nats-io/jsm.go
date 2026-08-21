@@ -625,8 +625,9 @@ func (g *gather) hasNextPage(endpoint string, decoded map[string]any, pageLimit 
 		return false, nil
 	}
 
+	segments := strings.Split(jsonPath, ".")
 	currentNode := any(decoded)
-	for _, segment := range strings.Split(jsonPath, ".") {
+	for i, segment := range segments {
 		objectNode, isObject := currentNode.(map[string]any)
 		if !isObject {
 			return false, fmt.Errorf("expected object at path segment %q in %s, but got %T", segment, endpoint, currentNode)
@@ -634,9 +635,22 @@ func (g *gather) hasNextPage(endpoint string, decoded map[string]any, pageLimit 
 
 		nextNode, exists := objectNode[segment]
 		if !exists {
+			// A server omits an empty collection entirely (`omitempty`), and an exhausted page
+			// is exactly that. Absent at the final segment is end-of-data, not a malformed
+			// response. Intermediate segments are still a genuine schema mismatch.
+			if i == len(segments)-1 {
+				g.log.Debugf("paging check for %s: %q absent, treating as end of data", endpoint, segment)
+				return false, nil
+			}
 			return false, fmt.Errorf("missing key %q in path for endpoint %s", segment, endpoint)
 		}
 		currentNode = nextNode
+	}
+
+	// An explicit JSON null carries the same end-of-data meaning as an omitted key.
+	if currentNode == nil {
+		g.log.Debugf("paging check for %s: null at end of path, treating as end of data", endpoint)
+		return false, nil
 	}
 
 	arrayNode, isArray := currentNode.([]any)

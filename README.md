@@ -73,17 +73,17 @@ Here the type of the message is `io.nats.jetstream.api.v1.stream_info_response`,
 Given a message kind one can retrieve the full JSON Schema as bytes:
 
 ```go
-schema, _ := api.Schema("io.nats.jetstream.api.v1.stream_info_response")
+schema, _ := registry.Schema("io.nats.jetstream.api.v1.stream_info_response")
 ```
 
 Once can also retrieve it based on a specific message content:
 
 ```go
-schemaType, _ := api.SchemaTypeForMessage(m.Data)
-schema, _ := api.Schema(schemaType)
+schemaType, _ := registry.SchemaTypeForMessage(m.Data)
+schema, _ := registry.Schema(schemaType)
 ```
 
-Several other Schema related helpers exist to search Schemas, fine URLs and more.  See the `api` [![Reference](https://pkg.go.dev/badge/github.com/nats.io/jsm.go/api)](https://pkg.go.dev/github.com/nats-io/jsm.go/api).
+Several other Schema related helpers exist to search Schemas, fine URLs and more.  See the `registry` [![Reference](https://pkg.go.dev/badge/github.com/nats.io/jsm.go/registry)](https://pkg.go.dev/github.com/nats-io/jsm.go/registry).
 
 ### Parsing Message Content
 
@@ -91,7 +91,7 @@ JetStream will produce metrics about message Acknowledgments, API audits and mor
 
 ```go
 nc.Subscribe("$JS.EVENT.ADVISORY.>", func(m *nats.Msg){
-    kind, msg, _ := api.ParseMessage(m.Data)
+    kind, msg, _ := registry.ParseMessage(m.Data)
     log.Printf("Received message of type %s", kind) // io.nats.jetstream.advisory.v1.api_audit
 
     switch e := event.(type){

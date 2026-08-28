@@ -179,7 +179,7 @@ func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
 
 	t, ok := newMessageLocked(schemaType)
 	if !ok {
-		return nil, errors.New("unknown response subject")
+		return nil, errors.New("unknown request subject")
 	}
 
 	return t, nil
@@ -292,7 +292,7 @@ func ParseAndValidateMessage(m []byte, validator validator.StructValidator) (sch
 
 	schemaType, msg, err = ParseMessage(m)
 	if err != nil {
-		return "", nil, err
+		return schemaType, nil, err
 	}
 
 	ok, errs := validator.ValidateStruct(msg, schemaType)

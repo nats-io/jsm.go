@@ -21,7 +21,11 @@ func RegisterTypeFactory(kind string, factory func() any) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	schemaTypes = append(schemaTypes, kind)
+	_, known := factoryRegistry[kind]
+	if !known {
+		schemaTypes = append(schemaTypes, kind)
+	}
+
 	factoryRegistry[kind] = factory
 }
 
@@ -44,6 +48,7 @@ func RegisterWildcardType(subj string, schemaType string) {
 	defer mu.Unlock()
 
 	wildcardSubjectTypeRegistry[subj] = schemaType
+	isWildcardSorted = false
 }
 
 // lock must be held

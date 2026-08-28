@@ -1,14 +1,28 @@
-package api
+package registry_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/nats-io/jsm.go/api"
 	jsadvisory "github.com/nats-io/jsm.go/api/jetstream/advisory"
+	"github.com/nats-io/jsm.go/registry"
 	scfs "github.com/nats-io/jsm.go/schemas"
 )
+
+type cloudEvent struct {
+	Type        string          `json:"type"`
+	Time        time.Time       `json:"time"`
+	ID          string          `json:"id"`
+	Source      string          `json:"source"`
+	DataSchema  string          `json:"dataschema"`
+	SpecVersion string          `json:"specversion"`
+	Subject     string          `json:"subject"`
+	Data        json.RawMessage `json:"data"`
+}
 
 const jetStreamAPIAuditEvent = `{
   "type": "io.nats.jetstream.advisory.v1.api_audit",
@@ -37,9 +51,9 @@ func checkErr(t *testing.T, err error, m string) {
 }
 
 func TestTypeForJetStreamRequestSubjectPrefix(t *testing.T) {
-	v, err := TypeForJetStreamRequestSubjectPrefix("$JS.API.STREAM.CREATE")
+	v, err := registry.TypeForJetStreamRequestSubjectPrefix("$JS.API.STREAM.CREATE")
 	checkErr(t, err, "failed")
-	instance, ok := v.(SchemaManagedApiRequestType)
+	instance, ok := v.(registry.SchemaManagedApiRequestType)
 	if !ok {
 		t.Fatalf("expected SchemaManagedApiRequestType got %T", v)
 	}
@@ -49,9 +63,9 @@ func TestTypeForJetStreamRequestSubjectPrefix(t *testing.T) {
 }
 
 func TestTypeForJetStreamResponseSubjectPrefix(t *testing.T) {
-	v, err := TypeForJetStreamResponseSubjectPrefix("$JS.API.STREAM.CREATE")
+	v, err := registry.TypeForJetStreamResponseSubjectPrefix("$JS.API.STREAM.CREATE")
 	checkErr(t, err, "failed")
-	instance, ok := v.(SchemaManagedType)
+	instance, ok := v.(registry.SchemaManagedType)
 	if !ok {
 		t.Fatalf("expected SchemaManagedType got %T", v)
 	}
@@ -61,15 +75,15 @@ func TestTypeForJetStreamResponseSubjectPrefix(t *testing.T) {
 }
 
 func TestTypesForJetStreamSubjectPrefix(t *testing.T) {
-	reqv, replyv, err := TypesForJetStreamSubjectPrefix("$JS.API.STREAM.CREATE")
+	reqv, replyv, err := registry.TypesForJetStreamSubjectPrefix("$JS.API.STREAM.CREATE")
 	checkErr(t, err, "failed")
 
-	req, ok := reqv.(SchemaManagedApiRequestType)
+	req, ok := reqv.(registry.SchemaManagedApiRequestType)
 	if !ok {
 		t.Fatalf("expected SchemaManagedApiRequestType got %T", reqv)
 	}
 
-	reply, ok := replyv.(SchemaManagedType)
+	reply, ok := replyv.(registry.SchemaManagedType)
 	if !ok {
 		t.Fatalf("expected SchemaManagedType got %T", reqv)
 	}
@@ -81,7 +95,7 @@ func TestTypesForJetStreamSubjectPrefix(t *testing.T) {
 		t.Fatalf("expected io.nats.jetstream.api.v1.stream_create_response got %s", reply.SchemaType())
 	}
 
-	cr, ok := req.(*JSApiStreamCreateRequest)
+	cr, ok := req.(*api.JSApiStreamCreateRequest)
 	if !ok {
 		t.Fatalf("Invalid type received %T", req)
 	}
@@ -103,10 +117,10 @@ func TestTypesForJetStreamSubjectPrefix(t *testing.T) {
 }
 
 func TestSchemaForRequestSubject(t *testing.T) {
-	v, err := TypeForRequestSubject("$JS.API.CONSUMER.CREATE.foo.bar")
+	v, err := registry.TypeForRequestSubject("$JS.API.CONSUMER.CREATE.foo.bar")
 	checkErr(t, err, "failed")
 
-	req, ok := v.(SchemaManagedApiRequestType)
+	req, ok := v.(registry.SchemaManagedApiRequestType)
 	if !ok {
 		t.Fatalf("expected SchemaManagedApiRequestType got %T", v)
 	}
@@ -115,7 +129,7 @@ func TestSchemaForRequestSubject(t *testing.T) {
 		t.Fatalf("expected io.nats.jetstream.api.v1.consumer_create_request got %s", req.SchemaType())
 	}
 
-	cr, ok := req.(*JSApiConsumerCreateRequest)
+	cr, ok := req.(*api.JSApiConsumerCreateRequest)
 	if !ok {
 		t.Fatalf("Invalid type received %T", req)
 	}
@@ -137,7 +151,7 @@ func TestSchemaForRequestSubject(t *testing.T) {
 }
 
 func TestToCloudEvent(t *testing.T) {
-	SchemasRepo = "https://nats.io/schemas"
+	registry.SchemasRepo = "https://nats.io/schemas"
 
 	ja := jsadvisory.JetStreamAPIAuditV1{}
 	err := json.Unmarshal([]byte(jetStreamAPIAuditEvent), &ja)
@@ -145,7 +159,7 @@ func TestToCloudEvent(t *testing.T) {
 		t.Fatalf("could not unmarshal event: %s", err)
 	}
 
-	ce, err := ToCloudEventV1(&ja)
+	ce, err := registry.ToCloudEventV1(&ja)
 	if err != nil {
 		t.Fatalf("could not create cloud event: %s", err)
 	}
@@ -192,14 +206,14 @@ func TestToCloudEvent(t *testing.T) {
 }
 
 func TestSchemaForEvent(t *testing.T) {
-	s, err := SchemaTypeForMessage([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	s, err := registry.SchemaTypeForMessage([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
 	checkErr(t, err, "schema extract failed")
 
 	if s != "io.nats.jetstream.metric.v1.consumer_ack" {
 		t.Fatalf("expected io.nats.jetstream.metric.v1.consumer_ack got %s", s)
 	}
 
-	s, err = SchemaTypeForMessage([]byte(`{}`))
+	s, err = registry.SchemaTypeForMessage([]byte(`{}`))
 	checkErr(t, err, "schema extract failed")
 
 	if s != "io.nats.unknown_message" {
@@ -208,9 +222,9 @@ func TestSchemaForEvent(t *testing.T) {
 }
 
 func TestSchemaURLForToken(t *testing.T) {
-	SchemasRepo = "https://nats.io/schemas"
+	registry.SchemasRepo = "https://nats.io/schemas"
 
-	a, u, err := SchemaURLForType("io.nats.jetstream.metric.v1.consumer_ack")
+	a, u, err := registry.SchemaURLForType("io.nats.jetstream.metric.v1.consumer_ack")
 	checkErr(t, err, "parse failed")
 
 	if a != "https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json" {
@@ -221,16 +235,16 @@ func TestSchemaURLForToken(t *testing.T) {
 		t.Fatalf("invalid url: %v", u.String())
 	}
 
-	_, _, err = SchemaURLForType("jetstream.metric.v1.consumer_ack")
+	_, _, err = registry.SchemaURLForType("jetstream.metric.v1.consumer_ack")
 	if err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestSchemaURLForEvent(t *testing.T) {
-	SchemasRepo = "https://nats.io/schemas"
+	registry.SchemasRepo = "https://nats.io/schemas"
 
-	a, u, err := SchemaURL([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
+	a, u, err := registry.SchemaURL([]byte(`{"schema":"io.nats.jetstream.metric.v1.consumer_ack"}`))
 	checkErr(t, err, "parse failed")
 
 	if a != "https://nats.io/schemas/jetstream/metric/v1/consumer_ack.json" {
@@ -243,13 +257,13 @@ func TestSchemaURLForEvent(t *testing.T) {
 }
 
 func TestSchemaSearch(t *testing.T) {
-	found, err := SchemaSearch("")
+	found, err := registry.SchemaSearch("")
 	checkErr(t, err, "search failed")
-	if len(found) != len(schemaTypes) {
-		t.Fatalf("Expected %d matched got %d", len(schemaTypes), len(found))
+	if len(found) <= 20 {
+		t.Fatalf("Did not find enough schemas, got %d", len(found))
 	}
 
-	found, err = SchemaSearch("consumer_create")
+	found, err = registry.SchemaSearch("consumer_create")
 	checkErr(t, err, "search failed")
 	if len(found) != 2 {
 		t.Fatalf("Expected [io.nats.jetstream.api.v1.consumer_create_request io.nats.jetstream.api.v1.consumer_create_response] got %v", found)
@@ -261,7 +275,7 @@ func TestSchemaSearch(t *testing.T) {
 }
 
 func TestSchema(t *testing.T) {
-	schema, err := Schema("io.nats.jetstream.api.v1.stream_names_request")
+	schema, err := registry.Schema("io.nats.jetstream.api.v1.stream_names_request")
 	checkErr(t, err, "failed")
 
 	dat, err := scfs.Load("jetstream/api/v1/stream_names_request.json")
@@ -273,7 +287,7 @@ func TestSchema(t *testing.T) {
 }
 
 func TestSchemaFileForType(t *testing.T) {
-	p, err := SchemaFileForType("io.nats.jetstream.metric.v1.consumer_ack")
+	p, err := registry.SchemaFileForType("io.nats.jetstream.metric.v1.consumer_ack")
 	checkErr(t, err, "parse failed")
 
 	if p != "jetstream/metric/v1/consumer_ack.json" {

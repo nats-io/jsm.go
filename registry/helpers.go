@@ -1,4 +1,4 @@
-package api
+package registry
 
 import (
 	"encoding/json"
@@ -12,9 +12,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/nats-io/nats-server/v2/server"
-
+	"github.com/nats-io/jsm.go/registry/validator"
 	scfs "github.com/nats-io/jsm.go/schemas"
+	"github.com/nats-io/nats-server/v2/server"
 )
 
 // SchemasRepo is the repository holding NATS Schemas
@@ -31,11 +31,6 @@ type Event interface {
 	EventSource() string
 	EventSubject() string
 	EventTemplate(kind string) (*template.Template, error)
-}
-
-// StructValidator is used to validate API structures
-type StructValidator interface {
-	ValidateStruct(data any, schemaType string) (ok bool, errs []string)
 }
 
 // RenderFormat indicates the format to render templates in
@@ -65,10 +60,10 @@ type SchemaManagedType interface {
 	SchemaType() string
 	SchemaID() string
 	Schema() ([]byte, error)
-	Validate(v ...StructValidator) (valid bool, errors []string)
+	Validate(v ...validator.StructValidator) (valid bool, errors []string)
 }
 
-// we dont export this since it's not official, but what this produce will be loadable by the official CE
+// we don't export this since it's not official, but what this produce will be loadable by the official CE
 type cloudEvent struct {
 	Type        string          `json:"type"`
 	Time        time.Time       `json:"time"`
@@ -85,28 +80,11 @@ type schemaDetector struct {
 	Type   string `json:"type"`
 }
 
-var ErrUnknownApiSubject = errors.New("unknown api subject")
-
-// schemaWildcardSubjectsSorted holds schemaWildcardSubjects keys in a stable order so
-// TypeForRequestSubject produces deterministic results when subjects are looked up.
-var schemaWildcardSubjectsSorted []string
-
-func init() {
-	schemaWildcardSubjectsSorted = make([]string, 0, len(schemaWildcardSubjects))
-	for k := range schemaWildcardSubjects {
-		schemaWildcardSubjectsSorted = append(schemaWildcardSubjectsSorted, k)
-	}
-	sort.Strings(schemaWildcardSubjectsSorted)
-}
-
-// IsNatsSchemaType determines if a schema type is a valid NATS type.
-// The logic here is currently quite naive while we learn what works best
-func IsNatsSchemaType(schemaType string) bool {
-	return strings.HasPrefix(schemaType, "io.nats.")
-}
-
 // SchemaSearch searches all known schemas using a regular expression f
 func SchemaSearch(f string) ([]string, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if f == "" {
 		f = "."
 	}
@@ -117,7 +95,7 @@ func SchemaSearch(f string) ([]string, error) {
 	}
 
 	var found []string
-	for s := range schemaTypes {
+	for _, s := range schemaTypes {
 		if r.MatchString(s) {
 			found = append(found, s)
 		}
@@ -128,27 +106,10 @@ func SchemaSearch(f string) ([]string, error) {
 	return found, nil
 }
 
-// SchemaURL parses a typed message m and determines a http address for the JSON schema describing it rooted in SchemasRepo
-func SchemaURL(m []byte) (address string, url *url.URL, err error) {
-	schema, err := SchemaTypeForMessage(m)
-	if err != nil {
-		return "", nil, err
-	}
-
-	return SchemaURLForType(schema)
-}
-
-// SchemaURLForType determines the path to the JSON Schema document describing a typed message given a token like io.nats.jetstream.metric.v1.consumer_ack
-func SchemaURLForType(schemaType string) (address string, u *url.URL, err error) {
-	if !IsNatsSchemaType(schemaType) {
-		return "", nil, fmt.Errorf("unsupported schema type %q", schemaType)
-	}
-
-	token := strings.TrimPrefix(schemaType, "io.nats.")
-	address = fmt.Sprintf("%s/%s.json", SchemasRepo, strings.ReplaceAll(token, ".", "/"))
-	u, err = url.Parse(address)
-
-	return address, u, err
+// IsNatsSchemaType determines if a schema type is a valid NATS type.
+// The logic here is currently quite naive while we learn what works best
+func IsNatsSchemaType(schemaType string) bool {
+	return strings.HasPrefix(schemaType, "io.nats.")
 }
 
 // SchemaTypeForMessage retrieves the schema token from a typed message byte stream
@@ -173,6 +134,110 @@ func SchemaTypeForMessage(e []byte) (schemaType string, err error) {
 	return sd.Type, nil
 }
 
+// SchemaURLForType determines the path to the JSON Schema document describing a typed message given a token like io.nats.jetstream.metric.v1.consumer_ack
+func SchemaURLForType(schemaType string) (address string, u *url.URL, err error) {
+	if !IsNatsSchemaType(schemaType) {
+		return "", nil, fmt.Errorf("unsupported schema type %q", schemaType)
+	}
+
+	token := strings.TrimPrefix(schemaType, "io.nats.")
+	address = fmt.Sprintf("%s/%s.json", SchemasRepo, strings.ReplaceAll(token, ".", "/"))
+	u, err = url.Parse(address)
+
+	return address, u, err
+}
+
+// SchemaURL parses a typed message m and determines an http address for the JSON schema describing it rooted in SchemasRepo
+func SchemaURL(m []byte) (address string, url *url.URL, err error) {
+	schema, err := SchemaTypeForMessage(m)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return SchemaURLForType(schema)
+}
+
+// SchemaFileForType determines what file on the file system to load for a particular schema type
+func SchemaFileForType(schemaType string) (path string, err error) {
+	if !IsNatsSchemaType(schemaType) {
+		return "", fmt.Errorf("unsupported schema type %q", schemaType)
+	}
+
+	token := strings.TrimPrefix(schemaType, "io.nats.")
+	return fmt.Sprintf("%s.json", strings.ReplaceAll(token, ".", "/")), nil
+}
+
+// TypeForJetStreamRequestSubjectPrefix returns an empty instance for a certain JetStream request subject prefix
+func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	schemaType, ok := requestSubjectTypeRegistry[p]
+	if !ok {
+		return nil, errors.New("unknown request subject")
+	}
+
+	t, ok := newMessageLocked(schemaType)
+	if !ok {
+		return nil, errors.New("unknown response subject")
+	}
+
+	return t, nil
+}
+
+// TypeForJetStreamResponseSubjectPrefix returns an empty instance for a certain JetStream response subject prefix
+func TypeForJetStreamResponseSubjectPrefix(p string) (any, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	schemaType, ok := responseSubjectTypeRegistry[p]
+	if !ok {
+		return nil, errors.New("unknown response subject")
+	}
+
+	t, ok := newMessageLocked(schemaType)
+	if !ok {
+		return nil, errors.New("unknown response subject")
+	}
+
+	return t, nil
+}
+
+// TypesForJetStreamSubjectPrefix returns an empty instance for a certain JetStream subject prefix
+func TypesForJetStreamSubjectPrefix(p string) (request any, response any, err error) {
+	req, err := TypeForJetStreamRequestSubjectPrefix(p)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	res, err := TypeForJetStreamResponseSubjectPrefix(p)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return req, res, nil
+}
+
+// TypeForRequestSubject matches a type for a request that might include details like $JS.API.CONSUMER.CREATE.foo.bar
+func TypeForRequestSubject(subject string) (any, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	sortWildcardIfNotSorted()
+
+	for _, k := range wildcardSubjectsSorted {
+		if server.SubjectsCollide(subject, k) {
+			msg, ok := newMessageLocked(wildcardSubjectTypeRegistry[k])
+			if ok {
+				return msg, nil
+			}
+			break
+		}
+	}
+
+	return nil, fmt.Errorf("unknown request subject: %q", subject)
+}
+
 // Schema returns the JSON schema for a NATS specific Schema type like io.nats.jetstream.advisory.v1.api_audit
 func Schema(schemaType string) (schema []byte, err error) {
 	path, err := SchemaFileForType(schemaType)
@@ -190,9 +255,16 @@ func Schema(schemaType string) (schema []byte, err error) {
 
 // NewMessage creates a new instance of the structure matching schema. When unknown creates a UnknownMessage
 func NewMessage(schemaType string) (any, bool) {
-	gf, ok := schemaTypes[schemaType]
+	mu.Lock()
+	defer mu.Unlock()
+
+	return newMessageLocked(schemaType)
+}
+
+func newMessageLocked(schemaType string) (any, bool) {
+	gf, ok := factoryRegistry[schemaType]
 	if !ok {
-		gf = schemaTypes["io.nats.unknown_message"]
+		gf = factoryRegistry["io.nats.unknown_message"]
 	}
 
 	return gf(), ok
@@ -213,7 +285,7 @@ func ParseMessage(m []byte) (schemaType string, msg any, err error) {
 }
 
 // ParseAndValidateMessage parses the data using ParseMessage() and validates it against the detected schema.
-func ParseAndValidateMessage(m []byte, validator StructValidator) (schemaType string, msg any, err error) {
+func ParseAndValidateMessage(m []byte, validator validator.StructValidator) (schemaType string, msg any, err error) {
 	if validator == nil {
 		return "", nil, errors.New("validator must not be nil")
 	}
@@ -288,60 +360,4 @@ func RenderEvent(wr io.Writer, e Event, format RenderFormat) error {
 	default:
 		return fmt.Errorf("unsupported format %q", format)
 	}
-}
-
-// SchemaFileForType determines what file on the file system to load for a particular schema type
-func SchemaFileForType(schemaType string) (path string, err error) {
-	if !IsNatsSchemaType(schemaType) {
-		return "", fmt.Errorf("unsupported schema type %q", schemaType)
-	}
-
-	token := strings.TrimPrefix(schemaType, "io.nats.")
-	return fmt.Sprintf("%s.json", strings.ReplaceAll(token, ".", "/")), nil
-}
-
-// TypeForJetStreamRequestSubjectPrefix returns an empty instance for a certain JetStream request subject prefix
-func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
-	generator, ok := schemaRequestSubjects[p]
-	if !ok {
-		return nil, errors.New("unknown request subject")
-	}
-
-	return generator(), nil
-}
-
-// TypeForRequestSubject matches a type for a request that might include details like $JS.API.CONSUMER.CREATE.foo.bar
-func TypeForRequestSubject(subject string) (any, error) {
-	for _, k := range schemaWildcardSubjectsSorted {
-		if server.SubjectsCollide(subject, k) {
-			return schemaWildcardSubjects[k](), nil
-		}
-	}
-
-	return nil, fmt.Errorf("unknown request subject: %q", subject)
-}
-
-// TypeForJetStreamResponseSubjectPrefix returns an empty instance for a certain JetStream response subject prefix
-func TypeForJetStreamResponseSubjectPrefix(p string) (any, error) {
-	generator, ok := schemaResponseSubjects[p]
-	if !ok {
-		return nil, errors.New("unknown response subject")
-	}
-
-	return generator(), nil
-}
-
-// TypesForJetStreamSubjectPrefix returns an empty instance for a certain JetStream subject prefix
-func TypesForJetStreamSubjectPrefix(p string) (request any, response any, err error) {
-	req, err := TypeForJetStreamRequestSubjectPrefix(p)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	res, err := TypeForJetStreamResponseSubjectPrefix(p)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return req, res, nil
 }

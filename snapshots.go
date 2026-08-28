@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/nats-io/jsm.go/registry"
 
 	"github.com/klauspost/compress/s2"
 	"github.com/nats-io/nats.go"
@@ -679,7 +680,7 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 		return nil, nil, err
 	}
 
-	kind, finalr, err := api.ParseMessage(cresp.Data)
+	kind, finalr, err := registry.ParseMessage(cresp.Data)
 	if err != nil {
 		return nil, nil, err
 	}

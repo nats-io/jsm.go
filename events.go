@@ -3,14 +3,14 @@ package jsm
 import (
 	"fmt"
 
-	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/jsm.go/registry"
 	"github.com/nats-io/nats-server/v2/server"
 )
 
 // ParseEvent parses event e and returns event as for example *api.ConsumerAckMetric, all unknown
 // event schemas will be of type *UnknownMessage
 func ParseEvent(e []byte) (schema string, event any, err error) {
-	return api.ParseMessage(e)
+	return registry.ParseMessage(e)
 }
 
 // ServerKindString takes a kind like server.CLIENT and returns a string describing it

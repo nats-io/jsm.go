@@ -18,6 +18,14 @@ import (
 	"testing"
 )
 
+func checkErr(t *testing.T, err error, m string) {
+	t.Helper()
+	if err == nil {
+		return
+	}
+	t.Fatal(m + ": " + err.Error())
+}
+
 func TestRequiredApiLevel(t *testing.T) {
 	// a nested struct has a setting that requires a level 2 api
 	req := &JSApiStreamCreateRequest{

@@ -15,7 +15,7 @@
 package jsm
 
 //go:generate go run api/gen_dereference.go
-//go:generate go run api/gen.go
+//go:generate go run registry/gen.go
 
 import (
 	"encoding/json"
@@ -28,9 +28,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nats-io/nats.go"
-
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/jsm.go/registry/validator"
+	"github.com/nats-io/nats.go"
 )
 
 // ErrNoExprLangBuild warns that expression matching is disabled when compiling
@@ -59,7 +59,7 @@ type apiIterableRequest interface {
 // the jetstream api types.  Validate() will force validator all
 // of these on every jsonRequest
 type apiValidatable interface {
-	Validate(...api.StructValidator) (valid bool, errors []string)
+	Validate(...validator.StructValidator) (valid bool, errors []string)
 	SchemaType() string
 }
 

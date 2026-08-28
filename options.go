@@ -16,14 +16,14 @@ package jsm
 import (
 	"time"
 
-	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/jsm.go/registry/validator"
 )
 
 // Option is a option to configure the JetStream Manager
 type Option func(o *Manager)
 
 // WithAPIValidation validates responses sent from the NATS server using a validator
-func WithAPIValidation(v api.StructValidator) Option {
+func WithAPIValidation(v validator.StructValidator) Option {
 	return func(o *Manager) {
 		o.validator = v
 	}

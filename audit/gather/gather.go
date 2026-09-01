@@ -634,7 +634,9 @@ func (g *gather) hasNextPage(endpoint string, decoded map[string]any, pageLimit 
 
 		nextNode, exists := objectNode[segment]
 		if !exists {
-			return false, fmt.Errorf("missing key %q in path for endpoint %s", segment, endpoint)
+			// The server omits empty lists, so an absent key is an empty page
+			g.log.Debugf("paging check for %s: key %q absent, treating as empty page", endpoint, segment)
+			return false, nil
 		}
 		currentNode = nextNode
 	}
@@ -785,7 +787,8 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				g.log.Debugf("Checking paging for endpoint %s", endpoint.ApiSuffix)
 				hasMore, err := g.hasNextPage(endpoint.ApiSuffix, decoded, pageLimit)
 				if err != nil {
-					return fmt.Errorf("failed to check pagination for endpoint %s: %w", subject, err)
+					g.log.Errorf("Failed to check pagination for %s from server %s: %s", endpoint.ApiSuffix, serverName, err)
+					break
 				}
 				if !hasMore {
 					break

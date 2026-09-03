@@ -37,7 +37,6 @@ func snapshotRegistry(t *testing.T) {
 	requests := maps.Clone(requestSubjectTypeRegistry)
 	types := slices.Clone(schemaTypes)
 	sorted := slices.Clone(wildcardSubjectsSorted)
-	wasSorted := isWildcardSorted
 
 	t.Cleanup(func() {
 		mu.Lock()
@@ -49,7 +48,6 @@ func snapshotRegistry(t *testing.T) {
 		requestSubjectTypeRegistry = requests
 		schemaTypes = types
 		wildcardSubjectsSorted = sorted
-		isWildcardSorted = wasSorted
 	})
 }
 
@@ -387,14 +385,9 @@ func TestTypeForJetStreamResponseSubjectPrefixWithoutFactory(t *testing.T) {
 func TestTypeForRequestSubjectWithoutFactory(t *testing.T) {
 	snapshotRegistry(t)
 
-	_, err := TypeForRequestSubject("$JS.API.STREAM.CREATE.ORDERS")
-	if err != nil {
-		t.Fatalf("could not warm the wildcard cache: %s", err)
-	}
-
 	RegisterWildcardType("TEST.NOFACTORY.*", "io.nats.test.v1.no_factory")
 
-	_, err = TypeForRequestSubject("TEST.NOFACTORY.thing")
+	_, err := TypeForRequestSubject("TEST.NOFACTORY.thing")
 	if err == nil {
 		t.Fatal("expected an error")
 	}

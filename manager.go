@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nats-io/jsm.go/registry/validator"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 
@@ -35,7 +36,7 @@ type Manager struct {
 	nc          *nats.Conn
 	timeout     time.Duration
 	trace       bool
-	validator   api.StructValidator
+	validator   validator.StructValidator
 	apiPrefix   string
 	eventPrefix string
 	domain      string

@@ -1,27 +1,33 @@
-package api
+package registry
 
 import (
 	"fmt"
 	"reflect"
 )
 
+// import (
+//
+//	"fmt"
+//	"reflect"
+//
+// )
 const receivedEvent = `
 {
-  "type": "io.nats.jetstream.advisory.v1.api_audit",
-  "id": "uafvZ1UEDIW5FZV6kvLgWA",
-  "timestamp": "2020-04-23T16:51:18.516363Z",
-  "server": "NDJWE4SOUJOJT2TY5Y2YQEOAHGAK5VIGXTGKWJSFHVCII4ITI3LBHBUV",
-  "client": {
-    "host": "::1",
-    "port": 57924,
-    "id": 17,
-    "acc": "$G",
-    "name": "NATS CLI",
-    "lang": "go",
-    "version": "1.9.2"
-  },
-  "subject": "$JS.STREAM.LIST",
-  "response": "[\n  \"ORDERS\"\n]"
+ "type": "io.nats.jetstream.advisory.v1.api_audit",
+ "id": "uafvZ1UEDIW5FZV6kvLgWA",
+ "timestamp": "2020-04-23T16:51:18.516363Z",
+ "server": "NDJWE4SOUJOJT2TY5Y2YQEOAHGAK5VIGXTGKWJSFHVCII4ITI3LBHBUV",
+ "client": {
+   "host": "::1",
+   "port": 57924,
+   "id": 17,
+   "acc": "$G",
+   "name": "NATS CLI",
+   "lang": "go",
+   "version": "1.9.2"
+ },
+ "subject": "$JS.STREAM.LIST",
+ "response": "[\n  \"ORDERS\"\n]"
 }
 `
 

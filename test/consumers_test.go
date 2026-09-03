@@ -768,7 +768,7 @@ func TestMaxDeliveryAttempts(t *testing.T) {
 	cfg := testConsumerConfig()
 	jsm.MaxDeliveryAttempts(10)(cfg)
 	if cfg.MaxDeliver != 10 {
-		t.Fatalf("expected 10 got %q", cfg.MaxDeliver)
+		t.Fatalf("expected 10 got %v", cfg.MaxDeliver)
 	}
 
 	err := jsm.MaxDeliveryAttempts(0)

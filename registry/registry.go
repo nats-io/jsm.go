@@ -1,7 +1,7 @@
 package registry
 
 import (
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -14,8 +14,7 @@ var requestSubjectTypeRegistry = map[string]string{}
 
 var schemaTypes = []string{}
 var wildcardSubjectsSorted []string
-var isWildcardSorted bool
-var mu sync.Mutex
+var mu sync.RWMutex
 
 func RegisterTypeFactory(kind string, factory func() any) {
 	mu.Lock()
@@ -47,21 +46,11 @@ func RegisterWildcardType(subj string, schemaType string) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	_, known := wildcardSubjectTypeRegistry[subj]
 	wildcardSubjectTypeRegistry[subj] = schemaType
-	isWildcardSorted = false
-}
 
-// lock must be held
-func sortWildcardIfNotSorted() {
-	if isWildcardSorted {
-		return
+	if !known {
+		i, _ := slices.BinarySearch(wildcardSubjectsSorted, subj)
+		wildcardSubjectsSorted = slices.Insert(wildcardSubjectsSorted, i, subj)
 	}
-
-	wildcardSubjectsSorted = make([]string, 0, len(wildcardSubjectTypeRegistry))
-	for k := range wildcardSubjectTypeRegistry {
-		wildcardSubjectsSorted = append(wildcardSubjectsSorted, k)
-	}
-	sort.Strings(wildcardSubjectsSorted)
-
-	isWildcardSorted = true
 }

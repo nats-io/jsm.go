@@ -82,9 +82,6 @@ type schemaDetector struct {
 
 // SchemaSearch searches all known schemas using a regular expression f
 func SchemaSearch(f string) ([]string, error) {
-	mu.Lock()
-	defer mu.Unlock()
-
 	if f == "" {
 		f = "."
 	}
@@ -93,6 +90,9 @@ func SchemaSearch(f string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	mu.RLock()
+	defer mu.RUnlock()
 
 	var found []string
 	for _, s := range schemaTypes {
@@ -169,8 +169,8 @@ func SchemaFileForType(schemaType string) (path string, err error) {
 
 // TypeForJetStreamRequestSubjectPrefix returns an empty instance for a certain JetStream request subject prefix
 func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	schemaType, ok := requestSubjectTypeRegistry[p]
 	if !ok {
@@ -187,8 +187,8 @@ func TypeForJetStreamRequestSubjectPrefix(p string) (any, error) {
 
 // TypeForJetStreamResponseSubjectPrefix returns an empty instance for a certain JetStream response subject prefix
 func TypeForJetStreamResponseSubjectPrefix(p string) (any, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	schemaType, ok := responseSubjectTypeRegistry[p]
 	if !ok {
@@ -220,10 +220,8 @@ func TypesForJetStreamSubjectPrefix(p string) (request any, response any, err er
 
 // TypeForRequestSubject matches a type for a request that might include details like $JS.API.CONSUMER.CREATE.foo.bar
 func TypeForRequestSubject(subject string) (any, error) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	sortWildcardIfNotSorted()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	for _, k := range wildcardSubjectsSorted {
 		if server.SubjectsCollide(subject, k) {
@@ -255,12 +253,13 @@ func Schema(schemaType string) (schema []byte, err error) {
 
 // NewMessage creates a new instance of the structure matching schema. When unknown creates a UnknownMessage
 func NewMessage(schemaType string) (any, bool) {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	return newMessageLocked(schemaType)
 }
 
+// read lock must be held
 func newMessageLocked(schemaType string) (any, bool) {
 	gf, ok := factoryRegistry[schemaType]
 	if !ok {

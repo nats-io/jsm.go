@@ -1,6 +1,6 @@
 module github.com/nats-io/jsm.go
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/choria-io/fisk v0.9.1

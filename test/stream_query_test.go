@@ -19,11 +19,10 @@ import (
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
-	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
 
-func checkStreamQueryMatched(t *testing.T, mgr *jsm.Manager, expect int, opts ...jsm.StreamQueryOpt) {
+func checkStreamQueryMatched(t testing.TB, mgr *jsm.Manager, expect int, opts ...jsm.StreamQueryOpt) {
 	t.Helper()
 
 	matched, err := mgr.QueryStreams(opts...)
@@ -34,7 +33,7 @@ func checkStreamQueryMatched(t *testing.T, mgr *jsm.Manager, expect int, opts ..
 }
 
 func TestStreamQueryExpression(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
@@ -57,7 +56,7 @@ func TestStreamQueryExpression(t *testing.T) {
 }
 
 func TestStreamQueryCreatePeriod(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
@@ -72,7 +71,7 @@ func TestStreamQueryCreatePeriod(t *testing.T) {
 }
 
 func TestStreamQueryReplicas(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 		_, err = mgr.NewStream("q2", jsm.Subjects("in.q2"), jsm.MemoryStorage(), jsm.Replicas(1))
@@ -89,7 +88,7 @@ func TestStreamQueryReplicas(t *testing.T) {
 }
 
 func TestStreamQueryIsMirror(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.MemoryStorage(), jsm.Mirror(&api.StreamSource{Name: "OTHER"}))
 		checkErr(t, err, "create failed")
 
@@ -99,7 +98,7 @@ func TestStreamQueryIsMirror(t *testing.T) {
 }
 
 func TestStreamQueryIsSourced(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.MemoryStorage(), jsm.Sources(&api.StreamSource{Name: "OTHER"}))
 		checkErr(t, err, "create failed")
 
@@ -109,11 +108,11 @@ func TestStreamQueryIsSourced(t *testing.T) {
 }
 
 func TestStreamQueryIdlePeriod(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
-		t.Run("Without consumers", func(t *testing.T) {
+		t.(*testing.T).Run("Without consumers", func(t *testing.T) {
 			_, err = nc.Request("in.q1", []byte("hello"), time.Second)
 			checkErr(t, err, "req failed")
 
@@ -128,7 +127,7 @@ func TestStreamQueryIdlePeriod(t *testing.T) {
 			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryIdleLongerThan(10*time.Second), jsm.StreamQueryInvert())
 		})
 
-		t.Run("With consumers", func(t *testing.T) {
+		t.(*testing.T).Run("With consumers", func(t *testing.T) {
 			_, err = nc.Request("in.q1", []byte("hello"), time.Second)
 			checkErr(t, err, "req failed")
 
@@ -151,7 +150,7 @@ func TestStreamQueryIdlePeriod(t *testing.T) {
 }
 
 func TestStreamQueryEmpty(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, nc *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
@@ -167,11 +166,11 @@ func TestStreamQueryEmpty(t *testing.T) {
 }
 
 func TestStreamQueryConsumersLimit(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, _ *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
-		t.Run("Less than n consumers", func(t *testing.T) {
+		t.(*testing.T).Run("Less than n consumers", func(t *testing.T) {
 			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryFewerConsumersThan(10))
 			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryFewerConsumersThan(10), jsm.StreamQueryInvert())
 		})
@@ -179,21 +178,21 @@ func TestStreamQueryConsumersLimit(t *testing.T) {
 }
 
 func TestStreamQueryCluster(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, _ *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(3))
 		checkErr(t, err, "create failed")
 
-		t.Run("does not match the cluster", func(t *testing.T) {
+		t.(*testing.T).Run("does not match the cluster", func(t *testing.T) {
 			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryClusterName("foo"))
 			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryClusterName("foo"), jsm.StreamQueryInvert())
 		})
 
-		t.Run("Regex match the clusteR", func(t *testing.T) {
-			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryClusterName("T.+T"))
-			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryClusterName("T.+T"), jsm.StreamQueryInvert())
+		t.(*testing.T).Run("Regex match the clusteR", func(t *testing.T) {
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryClusterName("C_.+"))
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryClusterName("C_.+"), jsm.StreamQueryInvert())
 		})
 
-		t.Run("Combining matchers, 1 excluding all results", func(t *testing.T) {
+		t.(*testing.T).Run("Combining matchers, 1 excluding all results", func(t *testing.T) {
 			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryServerName("s1"), jsm.StreamQueryClusterName("OTHER"))
 			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryInvert(), jsm.StreamQueryServerName("o1"), jsm.StreamQueryClusterName("OTHER"))
 		})
@@ -201,7 +200,7 @@ func TestStreamQueryCluster(t *testing.T) {
 }
 
 func TestStreamQueryServer(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, _ *nats.Conn, mgr *jsm.Manager) {
 		stream, err := mgr.NewStream("q1", jsm.Subjects("in.q1", "in.q1.other"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
@@ -217,7 +216,7 @@ func TestStreamQueryServer(t *testing.T) {
 }
 
 func TestStreamSubjectWildcardMatch(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, _ *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1", "in.q1.other"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
@@ -239,7 +238,7 @@ func TestStreamSubjectWildcardMatch(t *testing.T) {
 }
 
 func TestStreamApiLevelMatch(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, _ *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1", "in.q1.other"), jsm.MemoryStorage())
 		checkErr(t, err, "create failed")
 
@@ -252,18 +251,18 @@ func TestStreamApiLevelMatch(t *testing.T) {
 }
 
 func TestStreamQueryExpressionErrors(t *testing.T) {
-	withJSCluster(t, func(t *testing.T, _ []*natsd.Server, _ *nats.Conn, mgr *jsm.Manager) {
+	withJSCluster(t, func(t testing.TB, _ *nats.Conn, mgr *jsm.Manager) {
 		_, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage())
 		checkErr(t, err, "create failed")
 
-		t.Run("invalid expression returns error", func(t *testing.T) {
+		t.(*testing.T).Run("invalid expression returns error", func(t *testing.T) {
 			_, err := mgr.QueryStreams(jsm.StreamQueryExpression("!!!invalid!!!"))
 			if err == nil {
 				t.Fatal("expected error for invalid expression, got nil")
 			}
 		})
 
-		t.Run("non-boolean expression returns error", func(t *testing.T) {
+		t.(*testing.T).Run("non-boolean expression returns error", func(t *testing.T) {
 			_, err := mgr.QueryStreams(jsm.StreamQueryExpression("config"))
 			if err == nil {
 				t.Fatal("expected error for non-boolean expression, got nil")

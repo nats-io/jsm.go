@@ -26,13 +26,25 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(td)
 
-	ntfSvc, err = ntf.New(context.Background(), ntf.Options{Dir: td})
-	if err != nil {
-		log.Fatal(err)
+	if os.Getenv("TESTER_NATS_URL") == "" {
+		ntfSvc, err = ntf.New(context.Background(), ntf.Options{Dir: td})
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer ntfSvc.Close()
 	}
-	defer ntfSvc.Close()
 
 	m.Run()
+}
+
+func ntfServerUrl() string {
+	ntfURL := os.Getenv("TESTER_NATS_URL")
+
+	if ntfURL == "" {
+		return ntfSvc.ClientURL()
+	}
+
+	return ntfURL
 }
 
 func withJSCluster(t testing.TB, cb func(testing.TB, *nats.Conn, *jsm.Manager)) {
@@ -40,7 +52,7 @@ func withJSCluster(t testing.TB, cb func(testing.TB, *nats.Conn, *jsm.Manager)) 
 
 	var err error
 
-	ntfc := ntfclient.New(t, ntfSvc.ClientURL())
+	ntfc := ntfclient.New(t, ntfServerUrl())
 	ntfc.WithJetStreamCluster(t, 3, func(t testing.TB, nc *nats.Conn, instance *ntfclient.Instance) {
 		if !nc.Opts.UseOldRequestStyle {
 			nc.Close()
@@ -79,7 +91,7 @@ func withJSServer(t testing.TB, cb func(testing.TB, *nats.Conn, *jsm.Manager, *n
 
 	var err error
 
-	ntfc := ntfclient.New(t, ntfSvc.ClientURL())
+	ntfc := ntfclient.New(t, ntfServerUrl())
 	ntfc.WithJetStreamServer(t, func(t testing.TB, nc *nats.Conn, instance *ntfclient.Instance) {
 		if !nc.Opts.UseOldRequestStyle {
 			nc.Close()

@@ -334,7 +334,9 @@
       "properties": {
         "replicas": {
           "description": "Original replicas before it was updated",
-          "$ref": "#/definitions/golang_int"
+          "$ref": "#/definitions/golang_int",
+          "minimum": 0,
+          "maximum": 5
         },
         "placement": {
           "description": "Original placement before it was updated",

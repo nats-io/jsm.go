@@ -643,10 +643,10 @@
                       "properties": {
                         "replicas": {
                           "description": "Original replicas before it was updated",
+                          "minimum": 0,
+                          "maximum": 5,
                           "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
-                          "type": "integer",
-                          "maximum": 9223372036854775807,
-                          "minimum": -9223372036854775808
+                          "type": "integer"
                         },
                         "placement": {
                           "description": "Original placement before it was updated",

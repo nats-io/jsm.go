@@ -170,6 +170,8 @@ type MetaClusterInfoV1 struct {
 	Peer            string               `json:"peer,omitempty"`     // Peer is unique ID of the leader
 	Replicas        []*PeerInfoV1        `json:"replicas,omitempty"` // Replicas is a list of known peers
 	Size            int                  `json:"cluster_size"`       // Size is the known size of the cluster
+	QuorumNeeded    int                  `json:"quorum_needed"`      // QuorumNeeded is this server's current effective quorum size
+	Rescue          bool                 `json:"rescue,omitempty"`   // Rescue indicates the quorum is unsafely lowered by an active rescue
 	Pending         int                  `json:"pending"`            // Pending is how many RAFT messages are not yet processed
 	PendingRequests int                  `json:"pending_requests"`   // PendingRequests is how many CRUD operations are queued for processing
 	PendingInfos    int                  `json:"pending_infos"`      // PendingInfos is how many info operations are queued for processing

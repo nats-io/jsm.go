@@ -550,6 +550,15 @@
           "type": "integer",
           "description": "The known size of the cluster"
         },
+        "quorum_needed": {
+          "type": "integer",
+          "description": "This server's current effective quorum size"
+        },
+        "rescue": {
+          "type": "boolean",
+          "description": "Indicates the quorum is unsafely lowered by an active rescue",
+          "default": false
+        },
         "pending": {
           "type": "integer",
           "description": "How many RAFT messages are not yet processed"

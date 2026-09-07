@@ -293,7 +293,7 @@
           "type": "array",
           "description": "The peers chosen to be the final peer set, where the cluster replicas hold the peers that currently host the stream or consumer. Absent while scaling down until the final peer set is selected.",
           "items": {
-            "$ref": "#/definitions/peer_info"
+            "$ref": "#/definitions/desired_peer_info"
           }
         },
         "origin": {
@@ -303,6 +303,27 @@
         "status": {
           "description": "What the group leader is currently doing to reach the desired state, or what it is waiting on",
           "$ref": "#/definitions/desired_cluster_info_status"
+        }
+      }
+    },
+    "desired_peer_info": {
+      "type": "object",
+      "description": "A minimal version of peer_info describing a peer in the desired peer set",
+      "required": ["name", "peer"],
+      "properties": {
+        "name": {
+          "description": "The unique name for the peer",
+          "type": "string",
+          "minLength": 1
+        },
+        "offline": {
+          "description": "Indicates the peer has not been seen recently",
+          "type": "boolean",
+          "default": false
+        },
+        "peer": {
+          "description": "The unique ID for the peer",
+          "type": "string"
         }
       }
     },

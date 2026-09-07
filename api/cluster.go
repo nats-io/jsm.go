@@ -112,13 +112,20 @@ type DesiredClusterInfo struct {
 	// Replicas are the peers chosen to be the final peer set, where
 	// ClusterInfo.Replicas holds the peers that currently host the stream or
 	// consumer. Omitted while scaling down until the final peer set is selected.
-	Replicas []*PeerInfo `json:"replicas,omitempty"`
+	Replicas []*DesiredPeerInfo `json:"replicas,omitempty"`
 	// Origin is the configuration the reconfiguration can be rolled back to if
 	// it is canceled.
 	Origin *DesiredClusterInfoOrigin `json:"origin,omitempty"`
 	// Status describes what the group leader is currently doing to reach the
 	// desired state, or what it is waiting on.
 	Status *DesiredClusterInfoStatus `json:"status,omitempty"`
+}
+
+// DesiredPeerInfo is a minimal version of PeerInfo that shows information about the desired peer set.
+type DesiredPeerInfo struct {
+	Name    string `json:"name"`              // Name is the unique name for the peer
+	Offline bool   `json:"offline,omitempty"` // Offline indicates if it has not been seen recently
+	Peer    string `json:"peer"`              // Peer is the unique ID for the peer
 }
 
 type DesiredClusterInfoOrigin struct {

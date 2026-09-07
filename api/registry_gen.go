@@ -733,17 +733,17 @@ func (t JSApiMetaRescueRequest) Schema() ([]byte, error) {
 
 // ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
 func (t JSApiMetaRescueRequest) ApiSubjectPattern() (string, error) {
-	return JSApiRescueRescue, nil
+	return JSApiRescueRequest, nil
 }
 
 // ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
 func (t JSApiMetaRescueRequest) ApiSubjectFormat() (string, error) {
-	return JSApiRescueRescueT, nil
+	return JSApiRescueRequestT, nil
 }
 
 // ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
 func (t JSApiMetaRescueRequest) ApiSubjectPrefix() (string, error) {
-	return JSApiRescueRescuePrefix, nil
+	return JSApiRescueRequestPrefix, nil
 }
 
 // Validate performs a JSON Schema validation of the configuration

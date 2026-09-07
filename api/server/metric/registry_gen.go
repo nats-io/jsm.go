@@ -1,4 +1,3 @@
-// auto generated 2026-08-28 10:23:33.211532 +0200 CEST m=+0.913278459
 package metric
 
 import (

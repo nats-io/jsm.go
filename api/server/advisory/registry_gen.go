@@ -1,4 +1,3 @@
-// auto generated 2026-08-28 10:23:33.186638 +0200 CEST m=+0.888385418
 package advisory
 
 import (

@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/api/v1/meta_rescue_request.json",
+  "description": "A request to the JetStream $JS.API.META.RESCUE API",
+  "title": "io.nats.jetstream.api.v1.meta_rescue_request",
+  "type": "object",
+  "required": ["quorum_needed"],
+  "properties": {
+    "quorum_needed": {
+      "type": "integer",
+      "description": "The number of servers that will now be required to form a quorum"
+    }
+  }
+}

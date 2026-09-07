@@ -1,4 +1,3 @@
-// auto generated 2026-08-28 10:23:33.102827 +0200 CEST m=+0.804575418
 package api
 
 import (
@@ -706,6 +705,69 @@ func (t JSApiLeaderStepDownResponse) SchemaID() string {
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiLeaderStepDownResponse) Schema() ([]byte, error) {
 	return scfs.Load("jetstream/api/v1/meta_leader_stepdown_response.json")
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMetaRescueRequest) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_rescue_request
+func (t JSApiMetaRescueRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_rescue_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMetaRescueRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_rescue_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMetaRescueRequest) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/meta_rescue_request.json")
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiMetaRescueRequest) ApiSubjectPattern() (string, error) {
+	return JSApiRescueRescue, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiMetaRescueRequest) ApiSubjectFormat() (string, error) {
+	return JSApiRescueRescueT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiMetaRescueRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiRescueRescuePrefix, nil
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMetaRescueResponse) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_rescue_response
+func (t JSApiMetaRescueResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_rescue_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMetaRescueResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_rescue_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMetaRescueResponse) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/meta_rescue_response.json")
 }
 
 // Validate performs a JSON Schema validation of the configuration

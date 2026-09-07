@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nats.io/schemas/jetstream/api/v1/meta_rescue_response.json",
+  "description": "A response from the JetStream $JS.API.META.RESCUE API",
+  "title": "io.nats.jetstream.api.v1.meta_rescue_response",
+  "type": "object",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": [
+            "code"
+          ],
+          "properties": {
+            "code": {
+              "type": "integer",
+              "description": "HTTP like error code in the 300 to 500 range",
+              "minimum": 300,
+              "maximum": 699
+            },
+            "description": {
+              "type": "string",
+              "description": "A human friendly description of the error"
+            },
+            "err_code": {
+              "type": "integer",
+              "description": "The NATS error code unique to each kind of error",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    {
+      "required": [
+        "server",
+        "server_id"
+      ],
+      "type": "object",
+      "not": {
+        "required": [
+          "error"
+        ]
+      },
+      "properties": {
+        "server": {
+          "type": "string",
+          "description": "The server name of the responding server"
+        },
+        "server_id": {
+          "type": "string",
+          "description": "The server ID of the responding server"
+        },
+        "prev_quorum": {
+          "type": "integer",
+          "description": "The effective quorum before the rescue was applied"
+        },
+        "new_quorum": {
+          "type": "integer",
+          "description": "The effective quorum after the rescue was applied"
+        }
+      }
+    }
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "io.nats.jetstream.api.v1.meta_rescue_response"
+    }
+  }
+}

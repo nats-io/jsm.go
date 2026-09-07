@@ -1,4 +1,3 @@
-// auto generated 2026-08-28 10:23:33.236583 +0200 CEST m=+0.938329293
 package zmonitor
 
 import (

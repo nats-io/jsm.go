@@ -70,8 +70,7 @@ func main() {
 	renderSchema("api/server/zmonitor/registry_gen.go", "zmonitor", validatorFunctionsTemplate, populateSchemas(zMonitorSchemas()))
 }
 
-var validatorFunctionsTemplate = `// auto generated {{Now}}
-package {{.Package}}
+var validatorFunctionsTemplate = `package {{.Package}}
 
 import (
 	"github.com/nats-io/jsm.go/registry/validator"
@@ -122,8 +121,7 @@ func (t {{ .St | StripPackage }}) ApiSubjectPrefix() (string, error) {
 {{- end }}
 `
 
-var registerFileTemplate = `// auto generated {{Now}}
-{{ $pkg := .Package }}
+var registerFileTemplate = `{{ $pkg := .Package }}
 package {{.Package}}
 
 import (
@@ -323,6 +321,8 @@ func jsApiSchemas() schemas {
 		&schema{P: "jetstream/api/v1/consumer_unpin_response.json", St: "api.JSApiConsumerUnpinResponse", Res: "api.JSApiConsumerUnpinPrefix"},
 		&schema{P: "jetstream/api/v1/meta_leader_stepdown_request.json", St: "api.JSApiLeaderStepDownRequest", Req: "api.JSApiLeaderStepDownPrefix"},
 		&schema{P: "jetstream/api/v1/meta_leader_stepdown_response.json", St: "api.JSApiLeaderStepDownResponse", Res: "api.JSApiLeaderStepDownPrefix"},
+		&schema{P: "jetstream/api/v1/meta_rescue_request.json", St: "api.JSApiMetaRescueRequest", Req: "api.JSApiRescueRescuePrefix"},
+		&schema{P: "jetstream/api/v1/meta_rescue_response.json", St: "api.JSApiMetaRescueResponse", Res: "api.JSApiRescueRescuePrefix"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "api.JSApiMetaServerRemoveRequest", Req: "api.JSApiServerRemovePrefix"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "api.JSApiMetaServerRemoveResponse", Res: "api.JSApiServerRemovePrefix"},
 		&schema{P: "jetstream/api/v1/pub_ack_response.json", St: "api.JSPubAckResponse", Res: "api.JSAckPrefix"},

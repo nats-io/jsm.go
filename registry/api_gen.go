@@ -1,5 +1,3 @@
-// auto generated 2026-08-28 10:23:32.360917 +0200 CEST m=+0.062676376
-
 package registry
 
 import "github.com/nats-io/jsm.go/api"
@@ -60,6 +58,11 @@ func init() {
 	RegisterWildcardType(api.JSApiLeaderStepDown, "io.nats.jetstream.api.v1.meta_leader_stepdown_request")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_leader_stepdown_response", func() any { return &api.JSApiLeaderStepDownResponse{} })
 	RegisterResponseSubjectType(api.JSApiLeaderStepDownPrefix, "io.nats.jetstream.api.v1.meta_leader_stepdown_response")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_rescue_request", func() any { return &api.JSApiMetaRescueRequest{} })
+	RegisterRequestSubjectType(api.JSApiRescueRescuePrefix, "io.nats.jetstream.api.v1.meta_rescue_request")
+	RegisterWildcardType(api.JSApiRescueRescue, "io.nats.jetstream.api.v1.meta_rescue_request")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_rescue_response", func() any { return &api.JSApiMetaRescueResponse{} })
+	RegisterResponseSubjectType(api.JSApiRescueRescuePrefix, "io.nats.jetstream.api.v1.meta_rescue_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_server_remove_request", func() any { return &api.JSApiMetaServerRemoveRequest{} })
 	RegisterRequestSubjectType(api.JSApiServerRemovePrefix, "io.nats.jetstream.api.v1.meta_server_remove_request")
 	RegisterWildcardType(api.JSApiServerRemove, "io.nats.jetstream.api.v1.meta_server_remove_request")

@@ -1,5 +1,3 @@
-// auto generated 2026-08-28 10:23:32.979313 +0200 CEST m=+0.681063209
-
 package registry
 
 import (

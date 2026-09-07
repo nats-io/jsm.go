@@ -21,6 +21,9 @@ const (
 	JSApiLeaderStepDown       = "$JS.API.META.LEADER.STEPDOWN"
 	JSApiLeaderStepDownPrefix = "$JS.API.META.LEADER.STEPDOWN"
 	JSApiLeaderStepDownT      = "$JS.API.META.LEADER.STEPDOWN"
+	JSApiRescueRescue         = "$JS.API.META.RESCUE"
+	JSApiRescueRescuePrefix   = "$JS.API.META.RESCUE"
+	JSApiRescueRescueT        = "$JS.API.META.RESCUE"
 	JSApiRemoveServer         = "$JS.API.SERVER.REMOVE"
 	JSApiRemoveServerPrefix   = "$JS.API.SERVER.REMOVE"
 	JSApiPurgeAccountT        = "$JS.API.ACCOUNT.PURGE.%s"
@@ -57,6 +60,33 @@ type JSApiMetaServerRemoveResponse struct {
 type JSApiAccountPurgeResponse struct {
 	JSApiResponse
 	Initiated bool `json:"initiated,omitempty"`
+}
+
+// JSApiMetaRescueRequest will unsafely lower the meta group's quorum requirement
+// on the receiving server for disaster recovery.
+//
+// io.nats.jetstream.api.v1.meta_rescue_request
+type JSApiMetaRescueRequest struct {
+	// The new, temporarily lowered, quorum size the receiving servers should
+	// apply to the meta group. Must be at least 1 and no larger than the
+	// receiving server's current effective quorum.
+	QuorumNeeded int `json:"quorum_needed"`
+}
+
+// JSApiMetaRescueResponse is the response to a meta rescue request. Since the
+// request is a broadcast, each online server responds independently.
+//
+// io.nats.jetstream.api.v1.meta_rescue_response
+type JSApiMetaRescueResponse struct {
+	JSApiResponse
+	// Server name of the responding server.
+	Server string `json:"server"`
+	// Server ID of the responding server.
+	ServerID string `json:"server_id"`
+	// The effective quorum before the rescue was applied.
+	PrevQuorum int `json:"prev_quorum,omitempty"`
+	// The effective quorum after the rescue was applied.
+	NewQuorum int `json:"new_quorum,omitempty"`
 }
 
 // ClusterInfo shows information about the underlying set of servers

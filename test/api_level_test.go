@@ -19,6 +19,8 @@ import (
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go"
+	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
 )
 
 func TestApiLevelDetection(t *testing.T) {
@@ -42,47 +44,48 @@ func TestApiLevelDetection(t *testing.T) {
 		t.Fatalf("expected api level 2 but got %d", lvl)
 	}
 
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Close()
+	ntfc := ntfclient.New(t, ntfSvc.ClientURL())
+	ntfc.WithJetStreamServer(t, func(tb testing.TB, nc *nats.Conn, instance *ntfclient.Instance) {
+		mgr, err := jsm.New(nc)
+		checkErr(t, err, "manager failed")
 
-	s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
-	checkErr(t, err, "create failed")
+		s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
+		checkErr(t, err, "create failed")
 
-	sub, err := nc.SubscribeSync("$JS.API.CONSUMER.CREATE.>")
-	checkErr(t, err, "create failed")
+		sub, err := nc.SubscribeSync("$JS.API.CONSUMER.CREATE.>")
+		checkErr(t, err, "create failed")
 
-	_, err = s.NewConsumer(jsm.PrioritizedPriorityGroups("foo"))
-	checkErr(t, err, "create failed")
+		_, err = s.NewConsumer(jsm.PrioritizedPriorityGroups("foo"))
+		checkErr(t, err, "create failed")
 
-	msg, err := sub.NextMsg(time.Second)
-	checkErr(t, err, "next failed")
+		msg, err := sub.NextMsg(time.Second)
+		checkErr(t, err, "next failed")
 
-	v := msg.Header.Get(api.JSRequiredApiLevel)
-	if v != "2" {
-		t.Fatalf("expected api level 2 but got %s", v)
-	}
+		v := msg.Header.Get(api.JSRequiredApiLevel)
+		if v != "2" {
+			t.Fatalf("expected api level 2 but got %s", v)
+		}
 
-	_, err = s.NewConsumer(jsm.PinnedClientPriorityGroups(time.Minute, "foo"))
-	checkErr(t, err, "create failed")
+		_, err = s.NewConsumer(jsm.PinnedClientPriorityGroups(time.Minute, "foo"))
+		checkErr(t, err, "create failed")
 
-	msg, err = sub.NextMsg(time.Second)
-	checkErr(t, err, "next failed")
+		msg, err = sub.NextMsg(time.Second)
+		checkErr(t, err, "next failed")
 
-	v = msg.Header.Get(api.JSRequiredApiLevel)
-	if v != "1" {
-		t.Fatalf("expected api level 1 but got %s", v)
-	}
+		v = msg.Header.Get(api.JSRequiredApiLevel)
+		if v != "1" {
+			t.Fatalf("expected api level 1 but got %s", v)
+		}
 
-	_, err = s.NewConsumer()
-	checkErr(t, err, "create failed")
+		_, err = s.NewConsumer()
+		checkErr(t, err, "create failed")
 
-	msg, err = sub.NextMsg(time.Second)
-	checkErr(t, err, "next failed")
+		msg, err = sub.NextMsg(time.Second)
+		checkErr(t, err, "next failed")
 
-	v = msg.Header.Get(api.JSRequiredApiLevel)
-	if v != "" {
-		t.Fatalf("expected no api level but got %s", v)
-	}
-
+		v = msg.Header.Get(api.JSRequiredApiLevel)
+		if v != "" {
+			t.Fatalf("expected no api level but got %s", v)
+		}
+	})
 }

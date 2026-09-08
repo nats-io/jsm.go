@@ -22,136 +22,173 @@ import (
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/nats.go"
+	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
 )
 
 func TestPager(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
 
-	str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
-	if err != nil {
-		t.Fatalf("stream create failed: %s", err)
-	}
-
-	for i := 1; i <= 200; i++ {
-		_, err = nc.Request("js.in.pager", []byte(fmt.Sprintf("message %d", i)), time.Second)
+		str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
 		if err != nil {
-			t.Fatalf("publish failed: %s", err)
-		}
-	}
-
-	pgr, err := str.PageContents(jsm.PagerSize(25))
-	if err != nil {
-		t.Fatalf("pager creation failed: %s", err)
-	}
-
-	seen := 0
-	pages := 0
-	for {
-		_, last, err := pgr.NextMsg(context.Background())
-		if err != nil && last && seen == 200 && pages == 8 {
-			break
+			t.Fatalf("stream create failed: %s", err)
 		}
 
+		for i := 1; i <= 200; i++ {
+			_, err = nc.Request("js.in.pager", []byte(fmt.Sprintf("message %d", i)), time.Second)
+			if err != nil {
+				t.Fatalf("publish failed: %s", err)
+			}
+		}
+
+		pgr, err := str.PageContents(jsm.PagerSize(25))
 		if err != nil {
-			t.Fatalf("next failed seen %d pages %d: %s", seen, pages, err)
+			t.Fatalf("pager creation failed: %s", err)
 		}
 
-		seen++
-		if last {
-			pages++
+		seen := 0
+		pages := 0
+		for {
+			_, last, err := pgr.NextMsg(context.Background())
+			if err != nil && last && seen == 200 && pages == 8 {
+				break
+			}
+
+			if err != nil {
+				t.Fatalf("next failed seen %d pages %d: %s", seen, pages, err)
+			}
+
+			seen++
+			if last {
+				pages++
+			}
 		}
-	}
 
-	err = pgr.Close()
-	if err != nil {
-		t.Fatalf("close failed")
-	}
+		err = pgr.Close()
+		if err != nil {
+			t.Fatalf("close failed")
+		}
 
-	known, err := str.ConsumerNames()
-	if err != nil {
-		t.Fatalf("consumer named failed: %s", err)
-	}
-	if len(known) != 0 {
-		t.Fatalf("expected no consumers got %v", known)
-	}
+		known, err := str.ConsumerNames()
+		if err != nil {
+			t.Fatalf("consumer named failed: %s", err)
+		}
+		if len(known) != 0 {
+			t.Fatalf("expected no consumers got %v", known)
+		}
+	})
 }
 
 func TestPagerRequestMuxCrossDelivery(t *testing.T) {
-	srv, snc, _ := startJSServer(t)
-	defer srv.Shutdown()
-	defer snc.Close()
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, _ *jsm.Manager, _ *ntfclient.Instance) {
+		// startJSServer connects with UseOldRequestStyle which bypasses the
+		// request mux, this test needs a default style connection shared by the
+		// pager and the reads
+		nc, err := nats.Connect(nc.ConnectedUrl())
+		checkErr(t, err, "connect failed")
+		defer nc.Close()
 
-	// startJSServer connects with UseOldRequestStyle which bypasses the
-	// request mux, this test needs a default style connection shared by the
-	// pager and the reads
-	nc, err := nats.Connect(srv.ClientURL())
-	checkErr(t, err, "connect failed")
-	defer nc.Close()
+		mgr, err := jsm.New(nc, jsm.WithTimeout(5*time.Second))
+		checkErr(t, err, "manager creation failed")
 
-	mgr, err := jsm.New(nc, jsm.WithTimeout(5*time.Second))
-	checkErr(t, err, "manager creation failed")
+		source, err := mgr.NewStream("SOURCE", jsm.Subjects("js.in.source"))
+		checkErr(t, err, "stream create failed")
 
-	source, err := mgr.NewStream("SOURCE", jsm.Subjects("js.in.source"))
-	checkErr(t, err, "stream create failed")
-
-	_, err = nc.Request("js.in.source", []byte("source message"), time.Second)
-	checkErr(t, err, "publish failed")
-
-	paged, err := mgr.NewStream("PAGED", jsm.Subjects("js.in.paged"))
-	checkErr(t, err, "stream create failed")
-
-	const pagedMessages = 8
-	for range pagedMessages {
-		_, err = nc.Request("js.in.paged", []byte(`{"stream":"SOURCE","stream_seq":1}`), time.Second)
+		_, err = nc.Request("js.in.source", []byte("source message"), time.Second)
 		checkErr(t, err, "publish failed")
-	}
 
-	// the cross delivery needs the mux to process a stale copy of a paged
-	// message while a request is in flight, so repeat until the deadline to
-	// let the timing line up, with the pager inbox under the mux wildcard
-	// this fails within a few iterations under -race
-	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); {
-		pgr, err := paged.PageContents()
-		checkErr(t, err, "pager creation failed")
+		paged, err := mgr.NewStream("PAGED", jsm.Subjects("js.in.paged"))
+		checkErr(t, err, "stream create failed")
 
-		drained := 0
-		for {
-			_, last, err := pgr.NextMsg(context.Background())
-			if err != nil {
-				if !last {
-					t.Fatalf("pager read failed: %s", err)
+		const pagedMessages = 8
+		for range pagedMessages {
+			_, err = nc.Request("js.in.paged", []byte(`{"stream":"SOURCE","stream_seq":1}`), time.Second)
+			checkErr(t, err, "publish failed")
+		}
+
+		// the cross delivery needs the mux to process a stale copy of a paged
+		// message while a request is in flight, so repeat until the deadline to
+		// let the timing line up, with the pager inbox under the mux wildcard
+		// this fails within a few iterations under -race
+		for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); {
+			pgr, err := paged.PageContents()
+			checkErr(t, err, "pager creation failed")
+
+			drained := 0
+			for {
+				_, last, err := pgr.NextMsg(context.Background())
+				if err != nil {
+					if !last {
+						t.Fatalf("pager read failed: %s", err)
+					}
+					break
 				}
-				break
+				drained++
 			}
-			drained++
-		}
-		if drained != pagedMessages {
-			t.Fatalf("drained %d messages, expected %d", drained, pagedMessages)
-		}
+			if drained != pagedMessages {
+				t.Fatalf("drained %d messages, expected %d", drained, pagedMessages)
+			}
 
-		for i := 0; i < drained; i++ {
-			msg, err := source.ReadMessage(1)
-			checkErr(t, err, "read failed")
-			if msg == nil {
-				t.Fatal("ReadMessage returned no message and no error: a paged message was cross-delivered as a request reply")
+			for i := 0; i < drained; i++ {
+				msg, err := source.ReadMessage(1)
+				checkErr(t, err, "read failed")
+				if msg == nil {
+					t.Fatal("ReadMessage returned no message and no error: a paged message was cross-delivered as a request reply")
+				}
+				if string(msg.Data) != "source message" {
+					t.Fatalf("ReadMessage returned cross-delivered payload %q", msg.Data)
+				}
 			}
-			if string(msg.Data) != "source message" {
-				t.Fatalf("ReadMessage returned cross-delivered payload %q", msg.Data)
-			}
-		}
 
-		checkErr(t, pgr.Close(), "pager close failed")
-	}
+			checkErr(t, pgr.Close(), "pager close failed")
+		}
+	})
 }
 
 func TestPagerDoubleClose(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
+		t.(*testing.T).Run("consumer-based", func(t *testing.T) {
+			str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
+			checkErr(t, err, "stream create failed")
 
-	t.Run("consumer-based", func(t *testing.T) {
+			_, err = nc.Request("js.in.pager", []byte("msg"), time.Second)
+			checkErr(t, err, "publish failed")
+
+			pgr, err := str.PageContents(jsm.PagerSize(25))
+			checkErr(t, err, "pager creation failed")
+
+			err = pgr.Close()
+			checkErr(t, err, "first close failed")
+
+			// second close must not panic and should be a no-op
+			err = pgr.Close()
+			if err != nil {
+				t.Fatalf("second close returned unexpected error: %s", err)
+			}
+		})
+
+		t.(*testing.T).Run("direct-wq", func(t *testing.T) {
+			str, err := mgr.NewStream("PAGERTEST_WQ", jsm.Subjects("js.in.pagerwq"), jsm.WorkQueueRetention(), jsm.AllowDirect())
+			checkErr(t, err, "stream create failed")
+
+			_, err = nc.Request("js.in.pagerwq", []byte("msg"), time.Second)
+			checkErr(t, err, "publish failed")
+
+			pgr, err := str.PageContents(jsm.PagerSize(25))
+			checkErr(t, err, "pager creation failed")
+
+			err = pgr.Close()
+			checkErr(t, err, "first close failed")
+
+			err = pgr.Close()
+			if err != nil {
+				t.Fatalf("second close returned unexpected error: %s", err)
+			}
+		})
+	})
+}
+
+func TestPagerCloseAfterConsumerDeleted(t *testing.T) {
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
 		str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
 		checkErr(t, err, "stream create failed")
 
@@ -161,153 +198,106 @@ func TestPagerDoubleClose(t *testing.T) {
 		pgr, err := str.PageContents(jsm.PagerSize(25))
 		checkErr(t, err, "pager creation failed")
 
-		err = pgr.Close()
-		checkErr(t, err, "first close failed")
+		// delete the underlying consumer out-of-band to force Delete() to fail in Close()
+		names, err := str.ConsumerNames()
+		checkErr(t, err, "consumer names failed")
 
-		// second close must not panic and should be a no-op
+		for _, name := range names {
+			if strings.HasPrefix(name, "stream_pager_") {
+				c, err := str.LoadConsumer(name)
+				checkErr(t, err, "load consumer failed")
+				err = c.Delete()
+				checkErr(t, err, "pre-delete failed")
+			}
+		}
+
+		// Close() should return an error (consumer already gone) but must not panic
+		// and must complete the rest of cleanup
+		err = pgr.Close()
+		if err == nil {
+			t.Fatal("expected error closing pager with pre-deleted consumer, got nil")
+		}
+
+		// second Close() must not panic — proves p.q and p.sub were nilled despite the error
 		err = pgr.Close()
 		if err != nil {
 			t.Fatalf("second close returned unexpected error: %s", err)
 		}
 	})
-
-	t.Run("direct-wq", func(t *testing.T) {
-		str, err := mgr.NewStream("PAGERTEST_WQ", jsm.Subjects("js.in.pagerwq"), jsm.WorkQueueRetention(), jsm.AllowDirect())
-		checkErr(t, err, "stream create failed")
-
-		_, err = nc.Request("js.in.pagerwq", []byte("msg"), time.Second)
-		checkErr(t, err, "publish failed")
-
-		pgr, err := str.PageContents(jsm.PagerSize(25))
-		checkErr(t, err, "pager creation failed")
-
-		err = pgr.Close()
-		checkErr(t, err, "first close failed")
-
-		err = pgr.Close()
-		if err != nil {
-			t.Fatalf("second close returned unexpected error: %s", err)
-		}
-	})
-}
-
-func TestPagerCloseAfterConsumerDeleted(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
-
-	str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
-	checkErr(t, err, "stream create failed")
-
-	_, err = nc.Request("js.in.pager", []byte("msg"), time.Second)
-	checkErr(t, err, "publish failed")
-
-	pgr, err := str.PageContents(jsm.PagerSize(25))
-	checkErr(t, err, "pager creation failed")
-
-	// delete the underlying consumer out-of-band to force Delete() to fail in Close()
-	names, err := str.ConsumerNames()
-	checkErr(t, err, "consumer names failed")
-
-	for _, name := range names {
-		if strings.HasPrefix(name, "stream_pager_") {
-			c, err := str.LoadConsumer(name)
-			checkErr(t, err, "load consumer failed")
-			err = c.Delete()
-			checkErr(t, err, "pre-delete failed")
-		}
-	}
-
-	// Close() should return an error (consumer already gone) but must not panic
-	// and must complete the rest of cleanup
-	err = pgr.Close()
-	if err == nil {
-		t.Fatal("expected error closing pager with pre-deleted consumer, got nil")
-	}
-
-	// second Close() must not panic — proves p.q and p.sub were nilled despite the error
-	err = pgr.Close()
-	if err != nil {
-		t.Fatalf("second close returned unexpected error: %s", err)
-	}
 }
 
 func TestPagerStartIdValidation(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
+		str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
+		checkErr(t, err, "stream create failed")
 
-	str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"))
-	checkErr(t, err, "stream create failed")
+		_, err = nc.Request("js.in.pager", []byte("msg"), time.Second)
+		checkErr(t, err, "publish failed")
 
-	_, err = nc.Request("js.in.pager", []byte("msg"), time.Second)
-	checkErr(t, err, "publish failed")
-
-	for _, id := range []int{0, -2, -100} {
-		_, err = str.PageContents(jsm.PagerStartId(id))
-		if err == nil {
-			t.Fatalf("PagerStartId(%d) should have returned an error", id)
+		for _, id := range []int{0, -2, -100} {
+			_, err = str.PageContents(jsm.PagerStartId(id))
+			if err == nil {
+				t.Fatalf("PagerStartId(%d) should have returned an error", id)
+			}
 		}
-	}
 
-	// valid sequence should succeed
-	pgr, err := str.PageContents(jsm.PagerStartId(1))
-	checkErr(t, err, "PagerStartId(1) should succeed")
-	pgr.Close()
+		// valid sequence should succeed
+		pgr, err := str.PageContents(jsm.PagerStartId(1))
+		checkErr(t, err, "PagerStartId(1) should succeed")
+		pgr.Close()
+	})
 }
 
 func TestPagerWQ(t *testing.T) {
-	srv, nc, mgr := startJSServer(t)
-	defer srv.Shutdown()
-	defer nc.Flush()
-
-	str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"), jsm.WorkQueueRetention(), jsm.AllowDirect())
-	if err != nil {
-		t.Fatalf("stream create failed: %s", err)
-	}
-
-	_, err = str.NewConsumer(jsm.ConsumerName("PULL"))
-	if err != nil {
-		t.Fatalf("consumer create failed: %s", err)
-	}
-
-	for i := 1; i <= 200; i++ {
-		_, err = nc.Request("js.in.pager", []byte(fmt.Sprintf("message %d", i)), time.Second)
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
+		str, err := mgr.NewStream("PAGERTEST", jsm.Subjects("js.in.pager"), jsm.WorkQueueRetention(), jsm.AllowDirect())
 		if err != nil {
-			t.Fatalf("publish failed: %s", err)
-		}
-	}
-
-	_, err = str.PageContents(jsm.PagerSize(25), jsm.PagerStartDelta(time.Hour))
-	if err == nil || err.Error() != "workqueue paging does not support time delta starting positions" {
-		t.Fatalf("pager creation did not fail for time delta: %v", err)
-	}
-
-	pgr, err := str.PageContents(jsm.PagerSize(25))
-	if err != nil {
-		t.Fatalf("pager creation failed: %s", err)
-	}
-
-	seen := 0
-	pages := 0
-	for {
-		_, last, err := pgr.NextMsg(context.Background())
-		if err != nil && last && seen == 200 && pages == 8 {
-			break
+			t.Fatalf("stream create failed: %s", err)
 		}
 
+		_, err = str.NewConsumer(jsm.ConsumerName("PULL"))
 		if err != nil {
-			t.Fatalf("next failed seen %d pages %d: %s", seen, pages, err)
+			t.Fatalf("consumer create failed: %s", err)
 		}
 
-		seen++
-		if last {
-			pages++
+		for i := 1; i <= 200; i++ {
+			_, err = nc.Request("js.in.pager", []byte(fmt.Sprintf("message %d", i)), time.Second)
+			if err != nil {
+				t.Fatalf("publish failed: %s", err)
+			}
 		}
-	}
 
-	err = pgr.Close()
-	if err != nil {
-		t.Fatalf("close failed")
-	}
+		_, err = str.PageContents(jsm.PagerSize(25), jsm.PagerStartDelta(time.Hour))
+		if err == nil || err.Error() != "workqueue paging does not support time delta starting positions" {
+			t.Fatalf("pager creation did not fail for time delta: %v", err)
+		}
+
+		pgr, err := str.PageContents(jsm.PagerSize(25))
+		if err != nil {
+			t.Fatalf("pager creation failed: %s", err)
+		}
+
+		seen := 0
+		pages := 0
+		for {
+			_, last, err := pgr.NextMsg(context.Background())
+			if err != nil && last && seen == 200 && pages == 8 {
+				break
+			}
+
+			if err != nil {
+				t.Fatalf("next failed seen %d pages %d: %s", seen, pages, err)
+			}
+
+			seen++
+			if last {
+				pages++
+			}
+		}
+
+		err = pgr.Close()
+		if err != nil {
+			t.Fatalf("close failed")
+		}
+	})
 }

@@ -44,11 +44,7 @@ func TestApiLevelDetection(t *testing.T) {
 		t.Fatalf("expected api level 2 but got %d", lvl)
 	}
 
-	ntfc := ntfclient.New(t, ntfSvc.ClientURL())
-	ntfc.WithJetStreamServer(t, func(tb testing.TB, nc *nats.Conn, instance *ntfclient.Instance) {
-		mgr, err := jsm.New(nc)
-		checkErr(t, err, "manager failed")
-
+	withJSServer(t, func(tb testing.TB, nc *nats.Conn, mgr *jsm.Manager, instance *ntfclient.Instance) {
 		s, err := mgr.NewStreamFromDefault("TEST", api.StreamConfig{}, jsm.Subjects("test.*"))
 		checkErr(t, err, "create failed")
 

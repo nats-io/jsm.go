@@ -619,6 +619,131 @@
                   "traffic_account": {
                     "type": "string",
                     "description": "The account where the replication traffic goes over."
+                  },
+                  "desired": {
+                    "description": "The desired set of servers that should make up the stream or consumer",
+                    "type": "object",
+                    "required": [
+                      "created"
+                    ],
+                    "properties": {
+                      "created": {
+                        "description": "When the desired state was recorded on the assignment",
+                        "$comment": "A point in time in RFC3339 format including timezone, though typically in UTC",
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Name of the target cluster the group should end up in"
+                      },
+                      "replicas": {
+                        "type": "array",
+                        "description": "The peers chosen to be the final peer set, where the cluster replicas hold the peers that currently host the stream or consumer. Absent while scaling down until the final peer set is selected.",
+                        "items": {
+                          "type": "object",
+                          "description": "A minimal version of peer_info describing a peer in the desired peer set",
+                          "required": [
+                            "name",
+                            "peer"
+                          ],
+                          "properties": {
+                            "name": {
+                              "description": "The unique name for the peer",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "offline": {
+                              "description": "Indicates the peer has not been seen recently",
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "peer": {
+                              "description": "The unique ID for the peer",
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "origin": {
+                        "description": "The configuration the reconfiguration can be rolled back to if it is canceled",
+                        "type": "object",
+                        "required": [
+                          "replicas"
+                        ],
+                        "properties": {
+                          "replicas": {
+                            "description": "Original replicas before it was updated",
+                            "minimum": 0,
+                            "maximum": 5,
+                            "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+                            "type": "integer"
+                          },
+                          "placement": {
+                            "description": "Original placement before it was updated",
+                            "type": "object",
+                            "properties": {
+                              "cluster": {
+                                "type": "string",
+                                "description": "The desired cluster name"
+                              },
+                              "tags": {
+                                "description": "Tags required on servers hosting this stream or leader",
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "preferred": {
+                                "description": "A preferred server name to move the leader to",
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "retention": {
+                            "description": "When changing between retention policies, this retention remains active until unset",
+                            "type": "string",
+                            "enum": [
+                              "limits",
+                              "interest",
+                              "workqueue"
+                            ]
+                          }
+                        }
+                      },
+                      "status": {
+                        "description": "What the group leader is currently doing to reach the desired state, or what it is waiting on",
+                        "type": "object",
+                        "required": [
+                          "description",
+                          "type"
+                        ],
+                        "properties": {
+                          "description": {
+                            "type": "string",
+                            "description": "A short status line describing what the group leader is currently doing to move this group toward its desired state, or what it is waiting on"
+                          },
+                          "type": {
+                            "description": "Classifies the description by what has to change for the migration to advance, so it can be matched on without parsing the status line",
+                            "$comment": "meta: the meta leader must record or advance desired state. membership: a proposed membership change must commit. snapshot: a snapshot must be installed. catchup: peers must become store-current. quorum: more peers must come online before we can act without losing quorum. blocked: another asset must move first. unavailable: nothing to do, the server is shutting down or the assignment is gone.",
+                            "type": "string",
+                            "enum": [
+                              "meta",
+                              "membership",
+                              "snapshot",
+                              "catchup",
+                              "quorum",
+                              "blocked",
+                              "unavailable"
+                            ]
+                          },
+                          "err": {
+                            "type": "string",
+                            "description": "The underlying failure behind this status, if it had one. Only set for faults that persist across cycles, never for races that resolve themselves."
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               },

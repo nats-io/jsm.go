@@ -110,6 +110,5 @@ func atomicityChecks() []Check {
 				return StatusWarn, fmt.Sprintf("no torn reads observed in %d observations over %d writes (probabilistic)", reads.Load(), h.Iterations), nil
 			},
 		},
-
 	}
 }

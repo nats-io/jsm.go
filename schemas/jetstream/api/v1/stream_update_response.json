@@ -721,6 +721,11 @@
                   "peer": {
                     "description": "The unique ID for the peer",
                     "type": "string"
+                  },
+                  "pending": {
+                    "description": "Indicates the peer is part of the assignment, but is not a peer of the Raft group yet or is being removed",
+                    "type": "boolean",
+                    "default": false
                   }
                 }
               }

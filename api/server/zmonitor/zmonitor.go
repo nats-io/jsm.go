@@ -182,9 +182,10 @@ type PeerInfoV1 struct {
 	Name    string        `json:"name"`              // Name is the unique name for the peer
 	Current bool          `json:"current"`           // Current indicates if it was seen recently and fully caught up
 	Offline bool          `json:"offline,omitempty"` // Offline indicates if it has not been seen recently
-	Active  time.Duration `json:"active"`            // Active is the timestamp it was last active
+	Active  time.Duration `json:"active"`            // Active is the nanoseconds since this peer was last seen
 	Lag     uint64        `json:"lag,omitempty"`     // Lag is how many operations behind it is
 	Peer    string        `json:"peer"`              // Peer is the unique ID for the peer
+	Pending bool          `json:"pending,omitempty"` // Pending indicates the peer is part of the assignment, but is not a peer of the Raft group yet or is being removed
 }
 
 // SlowConsumersStatsV1 contains information about the slow consumers from different type of connections.

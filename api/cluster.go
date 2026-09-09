@@ -104,10 +104,11 @@ type ClusterInfo struct {
 // PeerInfo shows information about all the peers in the cluster that
 // are supporting the stream or consumer.
 type PeerInfo struct {
-	Name    string        `json:"name" yaml:"name"`
-	Current bool          `json:"current" yaml:"current"`
-	Offline bool          `json:"offline,omitempty" yaml:"offline"`
-	Active  time.Duration `json:"active" yaml:"active"`
-	Lag     uint64        `json:"lag,omitempty" yaml:"lag"`
-	Peer    string        `json:"peer" yaml:"peer"`
+	Name    string        `json:"name" yaml:"name"`                 // Name is the unique name for the peer
+	Current bool          `json:"current" yaml:"current"`           // Current indicates if it was seen recently and fully caught up
+	Offline bool          `json:"offline,omitempty" yaml:"offline"` // Offline indicates if it has not been seen recently
+	Active  time.Duration `json:"active" yaml:"active"`             // Active is the nanoseconds since this peer was last seen
+	Lag     uint64        `json:"lag,omitempty" yaml:"lag"`         // Lag is how many operations behind it is
+	Peer    string        `json:"peer" yaml:"peer"`                 // Peer is the unique ID for the peer
+	Pending bool          `json:"pending,omitempty" yaml:"pending"` // Pending indicates the peer is part of the assignment, but is not a peer of the Raft group yet or is being removed
 }

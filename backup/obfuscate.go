@@ -353,7 +353,8 @@ func (o *obfuscator) consumer(name string, data []byte) (string, []byte, error) 
 // message rewrites a message's subject and headers; control headers stay
 // verbatim, subject-valued headers are token hashed and every other value
 // is hashed whole. Headers are written in key order so the output is
-// deterministic. The body is dropped by the caller
+// deterministic. The caller drops the body, except on counter streams
+// where the body is the running total the restored counter needs
 func (o *obfuscator) message(subject string, h nats.Header) (string, []byte, error) {
 	subj, err := o.subject(subject)
 	if err != nil {
@@ -381,7 +382,7 @@ func (o *obfuscator) message(subject string, h nats.Header) (string, []byte, err
 func (o *obfuscator) headerValue(key, val string) (string, error) {
 	switch {
 	case equalsAny(key, server.KVOperation, server.JSMarkerReason, server.JSMessageTTL, server.JSMsgRollup, server.JSExpectedLastSubjSeq,
-		server.JSSchedulePattern, server.JSScheduleTTL, server.JSScheduleTimeZone):
+		server.JSSchedulePattern, server.JSScheduleTTL, server.JSScheduleTimeZone, server.JSMessageIncr):
 		return val, nil
 	case equalsAny(key, server.JSExpectedLastSubjSeqSubj, server.JSScheduleTarget, server.JSScheduleSource):
 		return o.subject(val)
@@ -412,9 +413,12 @@ func keyFilePath(target string) string {
 	return filepath.Clean(target) + keyFileSuffix
 }
 
-// writeKeyFile refuses to clobber a key file it did not read this run and
-// replaces the file atomically, so the input key file is never left
-// truncated. It reports whether the file is new
+// writeKeyFile stages the mappings in a synced temp file and links it to
+// the final path, which claims the name atomically and never exposes a
+// partial file, so a crash leaves no key file to block a retry and
+// concurrent edits cannot delete each other's mappings. The input key
+// file is instead replaced through a rename and is never left truncated.
+// It reports whether the file is new
 func (o *obfuscator) writeKeyFile(path string, inputKeyFile string) (created bool, err error) {
 	same := false
 	if inputKeyFile != "" {
@@ -422,18 +426,12 @@ func (o *obfuscator) writeKeyFile(path string, inputKeyFile string) (created boo
 		b, errB := filepath.Abs(path)
 		same = errA == nil && errB == nil && a == b
 	}
-	if !same {
-		if _, err := os.Stat(path); err == nil {
-			return false, fmt.Errorf("key file %s already exists", path)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return false, err
-		}
-	}
 
 	data, err := o.keyFileBytes()
 	if err != nil {
 		return false, err
 	}
+
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
 	if err != nil {
 		return false, err
@@ -450,8 +448,18 @@ func (o *obfuscator) writeKeyFile(path string, inputKeyFile string) (created boo
 	if err := tmp.Close(); err != nil {
 		return false, err
 	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
+
+	if same {
+		if err := os.Rename(tmp.Name(), path); err != nil {
+			return false, err
+		}
+		return false, nil
+	}
+	if err := os.Link(tmp.Name(), path); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return false, fmt.Errorf("key file %s already exists", path)
+		}
 		return false, err
 	}
-	return !same, nil
+	return true, nil
 }

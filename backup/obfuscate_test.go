@@ -141,7 +141,7 @@ func TestObfuscatorKeyFile(t *testing.T) {
 
 func TestObfuscatorMessageHeaders(t *testing.T) {
 	o, _ := newObfuscator("")
-	hdr, err := nats.DecodeHeadersMsg([]byte("NATS/1.0\r\nKV-Operation: DEL\r\nNats-Marker-Reason: MaxAge\r\nNats-TTL: 5s\r\nNats-Rollup: sub\r\nNats-Expected-Last-Subject-Sequence: 12\r\nNats-Expected-Last-Subject-Sequence-Subject: orders.new\r\nNats-Schedule: @every 1h\r\nNats-Schedule-Source: inbox.orders\r\nNats-Schedule-TTL: 5m\r\nNats-Schedule-Target: jobs.run\r\nNats-Schedule-Time-Zone: Europe/London\r\nX-Batch: seven\r\nX-Batch: eight\r\n\r\n"))
+	hdr, err := nats.DecodeHeadersMsg([]byte("NATS/1.0\r\nKV-Operation: DEL\r\nNats-Incr: +5\r\nNats-Marker-Reason: MaxAge\r\nNats-TTL: 5s\r\nNats-Rollup: sub\r\nNats-Expected-Last-Subject-Sequence: 12\r\nNats-Expected-Last-Subject-Sequence-Subject: orders.new\r\nNats-Schedule: @every 1h\r\nNats-Schedule-Source: inbox.orders\r\nNats-Schedule-TTL: 5m\r\nNats-Schedule-Target: jobs.run\r\nNats-Schedule-Time-Zone: Europe/London\r\nX-Batch: seven\r\nX-Batch: eight\r\n\r\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestObfuscatorMessageHeaders(t *testing.T) {
 	inbox, _ := o.subject("inbox.orders")
 	seven, _ := o.token("seven")
 	eight, _ := o.token("eight")
-	want := "NATS/1.0\r\nKV-Operation: DEL\r\nNats-Expected-Last-Subject-Sequence: 12\r\nNats-Expected-Last-Subject-Sequence-Subject: " + newSubj + "\r\nNats-Marker-Reason: MaxAge\r\nNats-Rollup: sub\r\nNats-Schedule: @every 1h\r\nNats-Schedule-Source: " + inbox + "\r\nNats-Schedule-TTL: 5m\r\nNats-Schedule-Target: " + jobs + "\r\nNats-Schedule-Time-Zone: Europe/London\r\nNats-TTL: 5s\r\nX-Batch: " + seven + "\r\nX-Batch: " + eight + "\r\n\r\n"
+	want := "NATS/1.0\r\nKV-Operation: DEL\r\nNats-Expected-Last-Subject-Sequence: 12\r\nNats-Expected-Last-Subject-Sequence-Subject: " + newSubj + "\r\nNats-Incr: +5\r\nNats-Marker-Reason: MaxAge\r\nNats-Rollup: sub\r\nNats-Schedule: @every 1h\r\nNats-Schedule-Source: " + inbox + "\r\nNats-Schedule-TTL: 5m\r\nNats-Schedule-Target: " + jobs + "\r\nNats-Schedule-Time-Zone: Europe/London\r\nNats-TTL: 5s\r\nX-Batch: " + seven + "\r\nX-Batch: " + eight + "\r\n\r\n"
 	if subj != newSubj || string(out) != want {
 		t.Fatalf("got\n%q\nwant\n%q", out, want)
 	}
@@ -352,6 +352,37 @@ func TestEditObfuscate(t *testing.T) {
 	body, _ = io.ReadAll(seq3.Body)
 	if !strings.Contains(string(body), "X-Batch: "+originals["batch-seven"]) {
 		t.Fatalf("header value not hashed through the table: %q", body)
+	}
+}
+
+func TestEditObfuscateCounterStream(t *testing.T) {
+	cfg := fixtureConfig()
+	cfg.AllowMsgCounter = true
+	msgs := []testMsg{
+		{"orders.count", 2, 1_000, "NATS/1.0\r\nNats-Incr: +5\r\n\r\n", `{"val":"5"}`},
+		{"orders.count", 3, 2_000, "NATS/1.0\r\nNats-Incr: +2\r\n\r\n", `{"val":"7"}`},
+	}
+	src := fixtureDirWithState(t, cfg, api.StreamState{Msgs: 2, FirstSeq: 2, LastSeq: 3, Consumers: 2}, msgs)
+
+	dst, res := edit(t, src, Obfuscate())
+	if _, err := Verify(dst); err != nil {
+		t.Fatalf("output does not verify: %v", err)
+	}
+	if res.Report.Obfuscation.BodiesDropped != 0 {
+		t.Fatalf("counter bodies must be kept: %+v", res.Report.Obfuscation)
+	}
+
+	for i, m := range messagesOf(readItems(t, dst)) {
+		body, _ := io.ReadAll(m.Body)
+		if !strings.HasSuffix(string(body), msgs[i].body) {
+			t.Fatalf("counter value lost: %q", body)
+		}
+		if !strings.Contains(string(body), "Nats-Incr: +") {
+			t.Fatalf("increment header not preserved: %q", body)
+		}
+		if strings.Contains(m.Subject, "orders") || m.PayloadSize != int64(len(msgs[i].body)) {
+			t.Fatalf("subject not hashed or payload size wrong: %+v", m)
+		}
 	}
 }
 

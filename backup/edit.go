@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -510,10 +511,18 @@ func (e *editor) writeMessage(body *msgBody) error {
 		if err != nil {
 			return err
 		}
-		if m.PayloadSize > 0 {
-			e.obf.bodies++
+		if e.cfg.AllowMsgCounter {
+			payload, err := body.payload()
+			if err != nil {
+				return err
+			}
+			out.Subject, out.HdrSize, out.Body = subject, int64(len(block)), io.MultiReader(bytes.NewReader(block), bytes.NewReader(payload))
+		} else {
+			if m.PayloadSize > 0 {
+				e.obf.bodies++
+			}
+			out.Subject, out.HdrSize, out.PayloadSize, out.Body = subject, int64(len(block)), 0, bytes.NewReader(block)
 		}
-		out.Subject, out.HdrSize, out.PayloadSize, out.Body = subject, int64(len(block)), 0, bytes.NewReader(block)
 	} else {
 		out.Body = body.reader()
 	}

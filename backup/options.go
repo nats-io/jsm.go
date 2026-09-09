@@ -134,7 +134,9 @@ func Renumber() EditOption {
 }
 
 // Obfuscate replaces identifying names and subjects with keyed hashes and
-// drops message bodies, writing the reverse mapping to a key file beside the target
+// drops message bodies, writing the reverse mapping to a key file beside
+// the target. On a counter stream the bodies are the running totals a
+// restored counter needs, so they are kept and the values stay readable
 func Obfuscate() EditOption {
 	return func(o *editOptions) { o.obfuscate = true }
 }

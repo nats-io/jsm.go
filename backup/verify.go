@@ -57,7 +57,8 @@ type InfoReport struct {
 	// FirstSeq and LastSeq bound the message sequences in the archive, 0 when empty
 	FirstSeq uint64 `json:"first_seq"`
 	LastSeq  uint64 `json:"last_seq"`
-	// FirstTime and LastTime bound the message timestamps, zero when empty
+	// FirstTime and LastTime are the timestamps of the first and last message
+	// by sequence, as the server reports stream state. Zero when empty
 	FirstTime time.Time `json:"first_time"`
 	LastTime  time.Time `json:"last_time"`
 }

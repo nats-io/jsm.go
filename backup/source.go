@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/nats-io/jsm.go"
@@ -176,15 +177,19 @@ func (t *target) writeFile(name string, data []byte) error {
 // existing empty directory is atomic where the platform allows it, otherwise
 // the target is removed first
 func (t *target) commit() error {
-	d, err := os.Open(t.staging)
-	if err != nil {
-		return err
-	}
-	if err := d.Sync(); err != nil {
+	// Windows refuses to sync a directory handle and NTFS journals the
+	// entries anyway, so the directory sync only runs elsewhere
+	if runtime.GOOS != "windows" {
+		d, err := os.Open(t.staging)
+		if err != nil {
+			return err
+		}
+		if err := d.Sync(); err != nil {
+			d.Close()
+			return err
+		}
 		d.Close()
-		return err
 	}
-	d.Close()
 
 	if err := os.Rename(t.staging, t.final); err == nil || !t.existed {
 		return err

@@ -28,6 +28,12 @@ const (
 	JSApiRemoveServerPrefix   = "$JS.API.SERVER.REMOVE"
 	JSApiPurgeAccountT        = "$JS.API.ACCOUNT.PURGE.%s"
 	JSApiPurgeAccountPrefix   = "$JS.API.ACCOUNT.PURGE"
+	// JSApiEvacuateServer is the endpoint to evacuate a peer server from the cluster.
+	// Only works from system account.
+	// Will return JSON response.
+	JSApiEvacuateServer       = "$JS.API.SERVER.EVACUATE"
+	JSApiEvacuateServerPrefix = "$JS.API.SERVER.EVACUATE"
+	JSApiEvacuateServerT      = "$JS.API.SERVER.EVACUATE"
 )
 
 // io.nats.jetstream.api.v1.meta_leader_stepdown_request
@@ -60,6 +66,23 @@ type JSApiMetaServerRemoveResponse struct {
 type JSApiAccountPurgeResponse struct {
 	JSApiResponse
 	Initiated bool `json:"initiated,omitempty"`
+}
+
+// JSApiMetaServerEvacuateRequest will evacuate a peer from the meta group.
+// io.nats.jetstream.api.v1.meta_server_evacuate_request
+type JSApiMetaServerEvacuateRequest struct {
+	// Server name of the peer to be evacuated.
+	Server string `json:"peer,omitempty"`
+	// Peer ID of the peer to be evacuated. If specified this is used
+	// instead of the server name.
+	Peer string `json:"peer_id,omitempty"`
+}
+
+// JSApiMetaServerEvacuateResponse is the response to a peer evacuation request in the meta group.
+// io.nats.jetstream.api.v1.meta_server_evacuate_response
+type JSApiMetaServerEvacuateResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
 }
 
 // JSApiMetaRescueRequest will unsafely lower the meta group's quorum requirement

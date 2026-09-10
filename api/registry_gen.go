@@ -165,6 +165,69 @@ func (t JSApiConsumerDeleteResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerEvacuatePeerRequest) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_evacuate_peer_request
+func (t JSApiConsumerEvacuatePeerRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_evacuate_peer_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerEvacuatePeerRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_evacuate_peer_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerEvacuatePeerRequest) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/consumer_evacuate_peer_request.json")
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiConsumerEvacuatePeerRequest) ApiSubjectPattern() (string, error) {
+	return JSApiConsumerEvacuatePeer, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiConsumerEvacuatePeerRequest) ApiSubjectFormat() (string, error) {
+	return JSApiConsumerEvacuatePeerT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiConsumerEvacuatePeerRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiConsumerEvacuatePeerPrefix, nil
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiConsumerEvacuatePeerResponse) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.consumer_evacuate_peer_response
+func (t JSApiConsumerEvacuatePeerResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.consumer_evacuate_peer_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiConsumerEvacuatePeerResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/consumer_evacuate_peer_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiConsumerEvacuatePeerResponse) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/consumer_evacuate_peer_response.json")
+}
+
+// Validate performs a JSON Schema validation of the configuration
 func (t JSApiConsumerGetNextRequest) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
@@ -771,6 +834,69 @@ func (t JSApiMetaRescueResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
+func (t JSApiMetaServerEvacuateRequest) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_server_evacuate_request
+func (t JSApiMetaServerEvacuateRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_server_evacuate_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMetaServerEvacuateRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_server_evacuate_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMetaServerEvacuateRequest) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/meta_server_evacuate_request.json")
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiMetaServerEvacuateRequest) ApiSubjectPattern() (string, error) {
+	return JSApiEvacuateServer, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiMetaServerEvacuateRequest) ApiSubjectFormat() (string, error) {
+	return JSApiEvacuateServerT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiMetaServerEvacuateRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiEvacuateServerPrefix, nil
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiMetaServerEvacuateResponse) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.meta_server_evacuate_response
+func (t JSApiMetaServerEvacuateResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.meta_server_evacuate_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiMetaServerEvacuateResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/meta_server_evacuate_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiMetaServerEvacuateResponse) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/meta_server_evacuate_response.json")
+}
+
+// Validate performs a JSON Schema validation of the configuration
 func (t JSApiMetaServerRemoveRequest) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil
@@ -966,6 +1092,69 @@ func (t JSApiStreamDeleteResponse) SchemaID() string {
 // Schema is a JSON Schema document for the JetStream Consumer Configuration
 func (t JSApiStreamDeleteResponse) Schema() ([]byte, error) {
 	return scfs.Load("jetstream/api/v1/stream_delete_response.json")
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamEvacuatePeerRequest) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_evacuate_peer_request
+func (t JSApiStreamEvacuatePeerRequest) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_evacuate_peer_request"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamEvacuatePeerRequest) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_evacuate_peer_request.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamEvacuatePeerRequest) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/stream_evacuate_peer_request.json")
+}
+
+// ApiSubjectPattern returns the NATS subject for the API request subject, may include NATS Subject wildcards
+func (t JSApiStreamEvacuatePeerRequest) ApiSubjectPattern() (string, error) {
+	return JSApiStreamEvacuatePeer, nil
+}
+
+// ApiSubjectFormat returns the NATS subject for the API request subject usable with Sprintf()
+func (t JSApiStreamEvacuatePeerRequest) ApiSubjectFormat() (string, error) {
+	return JSApiStreamEvacuatePeerT, nil
+}
+
+// ApiSubjectPrefix returns the NATS subject for the API request subject that prefixes any patterns or stream/consumer specific names
+func (t JSApiStreamEvacuatePeerRequest) ApiSubjectPrefix() (string, error) {
+	return JSApiStreamEvacuatePeerPrefix, nil
+}
+
+// Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamEvacuatePeerResponse) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_evacuate_peer_response
+func (t JSApiStreamEvacuatePeerResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_evacuate_peer_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamEvacuatePeerResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_evacuate_peer_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamEvacuatePeerResponse) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/stream_evacuate_peer_response.json")
 }
 
 // Validate performs a JSON Schema validation of the configuration

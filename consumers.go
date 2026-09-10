@@ -855,6 +855,21 @@ func (m *Manager) NextMsgContext(ctx context.Context, stream string, consumer st
 	return m.requestWithContext(ctx, s, []byte(strconv.Itoa(1)), nil)
 }
 
+// EvacuatePeer removes this stream from the mentioned server, another will be selected if possible
+func (c *Consumer) EvacuatePeer(peer string) error {
+	var resp api.JSApiConsumerEvacuatePeerResponse
+	err := c.mgr.jsonRequest(fmt.Sprintf(api.JSApiConsumerEvacuatePeerT, c.stream, c.name), api.JSApiConsumerEvacuatePeerRequest{Peer: peer}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while removing peer %q", peer)
+	}
+
+	return nil
+}
+
 // NextMsgRequest creates a request for a batch of messages, data or control flow messages will be sent to inbox
 func (c *Consumer) NextMsgRequest(inbox string, req *api.JSApiConsumerGetNextRequest) error {
 	return c.mgr.NextMsgRequest(c.stream, c.name, inbox, req)

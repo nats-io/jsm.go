@@ -891,6 +891,21 @@ func (s *Stream) RemoveRAFTPeer(peer string) error {
 	return nil
 }
 
+// EvacuatePeer removes this stream from the mentioned server, another will be selected if possible
+func (s *Stream) EvacuatePeer(peer string) error {
+	var resp api.JSApiStreamEvacuatePeerResponse
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamEvacuatePeerT, s.Name()), api.JSApiStreamEvacuatePeerRequest{Peer: peer}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while removing peer %q", peer)
+	}
+
+	return nil
+}
+
 // LeaderStepDown requests the current RAFT group leader in a clustered JetStream to stand down forcing a new election, the election of the next leader can be influenced by placement
 func (s *Stream) LeaderStepDown(placement ...*api.Placement) error {
 	var p *api.Placement

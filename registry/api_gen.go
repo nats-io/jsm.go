@@ -1,6 +1,8 @@
 package registry
 
-import "github.com/nats-io/jsm.go/api"
+import (
+	"github.com/nats-io/jsm.go/api"
+)
 
 func init() {
 	RegisterTypeFactory("io.nats.jetstream.api.v1.account_info_response", func() any { return &api.JSApiAccountInfoResponse{} })
@@ -15,6 +17,11 @@ func init() {
 	RegisterResponseSubjectType(api.JSApiConsumerCreatePrefix, "io.nats.jetstream.api.v1.consumer_create_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.consumer_delete_response", func() any { return &api.JSApiConsumerDeleteResponse{} })
 	RegisterResponseSubjectType(api.JSApiConsumerDeletePrefix, "io.nats.jetstream.api.v1.consumer_delete_response")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.consumer_evacuate_peer_request", func() any { return &api.JSApiConsumerEvacuatePeerRequest{} })
+	RegisterRequestSubjectType(api.JSApiConsumerEvacuatePeerPrefix, "io.nats.jetstream.api.v1.consumer_evacuate_peer_request")
+	RegisterWildcardType(api.JSApiConsumerEvacuatePeer, "io.nats.jetstream.api.v1.consumer_evacuate_peer_request")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.consumer_evacuate_peer_response", func() any { return &api.JSApiConsumerEvacuatePeerResponse{} })
+	RegisterResponseSubjectType(api.JSApiConsumerEvacuatePeerPrefix, "io.nats.jetstream.api.v1.consumer_evacuate_peer_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.consumer_getnext_request", func() any { return &api.JSApiConsumerGetNextRequest{} })
 	RegisterRequestSubjectType(api.JSApiRequestNextPrefix, "io.nats.jetstream.api.v1.consumer_getnext_request")
 	RegisterWildcardType(api.JSApiRequestNext, "io.nats.jetstream.api.v1.consumer_getnext_request")
@@ -63,6 +70,11 @@ func init() {
 	RegisterWildcardType(api.JSApiRescueRequest, "io.nats.jetstream.api.v1.meta_rescue_request")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_rescue_response", func() any { return &api.JSApiMetaRescueResponse{} })
 	RegisterResponseSubjectType(api.JSApiRescueRequestPrefix, "io.nats.jetstream.api.v1.meta_rescue_response")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_server_evacuate_request", func() any { return &api.JSApiMetaServerEvacuateRequest{} })
+	RegisterRequestSubjectType(api.JSApiEvacuateServerPrefix, "io.nats.jetstream.api.v1.meta_server_evacuate_request")
+	RegisterWildcardType(api.JSApiEvacuateServer, "io.nats.jetstream.api.v1.meta_server_evacuate_request")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_server_evacuate_response", func() any { return &api.JSApiMetaServerEvacuateResponse{} })
+	RegisterResponseSubjectType(api.JSApiEvacuateServerPrefix, "io.nats.jetstream.api.v1.meta_server_evacuate_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.meta_server_remove_request", func() any { return &api.JSApiMetaServerRemoveRequest{} })
 	RegisterRequestSubjectType(api.JSApiServerRemovePrefix, "io.nats.jetstream.api.v1.meta_server_remove_request")
 	RegisterWildcardType(api.JSApiServerRemove, "io.nats.jetstream.api.v1.meta_server_remove_request")
@@ -78,6 +90,11 @@ func init() {
 	RegisterResponseSubjectType(api.JSApiStreamCreatePrefix, "io.nats.jetstream.api.v1.stream_create_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.stream_delete_response", func() any { return &api.JSApiStreamDeleteResponse{} })
 	RegisterResponseSubjectType(api.JSApiStreamDeletePrefix, "io.nats.jetstream.api.v1.stream_delete_response")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.stream_evacuate_peer_request", func() any { return &api.JSApiStreamEvacuatePeerRequest{} })
+	RegisterRequestSubjectType(api.JSApiStreamEvacuatePeerPrefix, "io.nats.jetstream.api.v1.stream_evacuate_peer_request")
+	RegisterWildcardType(api.JSApiStreamEvacuatePeer, "io.nats.jetstream.api.v1.stream_evacuate_peer_request")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.stream_evacuate_peer_response", func() any { return &api.JSApiStreamEvacuatePeerResponse{} })
+	RegisterResponseSubjectType(api.JSApiStreamEvacuatePeerPrefix, "io.nats.jetstream.api.v1.stream_evacuate_peer_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.stream_info_request", func() any { return &api.JSApiStreamInfoRequest{} })
 	RegisterRequestSubjectType(api.JSApiStreamInfoPrefix, "io.nats.jetstream.api.v1.stream_info_request")
 	RegisterWildcardType(api.JSApiStreamInfo, "io.nats.jetstream.api.v1.stream_info_request")

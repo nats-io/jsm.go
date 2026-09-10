@@ -1527,3 +1527,50 @@ func TestNoMirrorDirect(t *testing.T) {
 		t.Fatalf("expected MirrorDirect to be false")
 	}
 }
+
+func TestStreamEvacuatePeer(t *testing.T) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+		stream, err := mgr.NewStream("TEST", jsm.Subjects("TEST.*"), jsm.MemoryStorage(), jsm.Replicas(2))
+		checkErr(t, err, "create failed")
+
+		nfo, err := stream.Information()
+		checkErr(t, err, "get state failed")
+
+		if nfo.Cluster == nil {
+			t.Fatalf("stream is not clustered")
+		}
+
+		peers := clusterPeers(nfo.Cluster)
+		if len(peers) != 2 {
+			t.Fatalf("expected 2 peers got %v", peers)
+		}
+
+		evacuated := peers[0]
+
+		err = stream.EvacuatePeer(evacuated)
+		checkErr(t, err, "evacuate peer failed")
+
+		to := time.NewTimer(20 * time.Second)
+		defer to.Stop()
+		ticker := time.NewTicker(250 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				stream.Reset()
+				nfo, err = stream.Information()
+				if err != nil {
+					continue
+				}
+
+				if settledWithoutPeer(nfo.Cluster, evacuated, 2) {
+					return
+				}
+
+			case <-to.C:
+				t.Fatalf("timeout waiting for peer %q to be evacuated", evacuated)
+			}
+		}
+	})
+}

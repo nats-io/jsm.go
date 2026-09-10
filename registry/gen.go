@@ -54,7 +54,7 @@ type schemas []*schema
 func main() {
 	// register all types, response subjects, request subjects and factories
 	renderSchema("registry/micro_gen.go", "registry", registerFileTemplate, populateSchemas(microSchemas()), "github.com/nats-io/nats.go/micro")
-	renderSchema("registry/api_gen.go", "registry", registerFileTemplate, populateSchemas(jsApiSchemas()))
+	renderSchema("registry/api_gen.go", "registry", registerFileTemplate, populateSchemas(jsApiSchemas()), "github.com/nats-io/jsm.go/api")
 	renderSchema("registry/js_metric_gen.go", "registry", registerFileTemplate, populateSchemas(jsMetricSchemas()), "github.com/nats-io/jsm.go/api/jetstream/metric")
 	renderSchema("registry/js_advisory_gen.go", "registry", registerFileTemplate, populateSchemas(jsAdvisorySchemas()), "github.com/nats-io/jsm.go/api/jetstream/advisory")
 	renderSchema("registry/server_metric_gen.go", "registry", registerFileTemplate, populateSchemas(serverMetricSchemas()), "github.com/nats-io/jsm.go/api/server/metric")
@@ -304,6 +304,8 @@ func jsApiSchemas() schemas {
 		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "api.JSApiConsumerCreateRequest", Req: "api.JSApiConsumerCreateWithNamePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_create_response.json", St: "api.JSApiConsumerCreateResponse", Res: "api.JSApiConsumerCreatePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_delete_response.json", St: "api.JSApiConsumerDeleteResponse", Res: "api.JSApiConsumerDeletePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_evacuate_peer_request.json", St: "api.JSApiConsumerEvacuatePeerRequest", Req: "api.JSApiConsumerEvacuatePeerPrefix"},
+		&schema{P: "jetstream/api/v1/consumer_evacuate_peer_response.json", St: "api.JSApiConsumerEvacuatePeerResponse", Res: "api.JSApiConsumerEvacuatePeerPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_getnext_request.json", St: "api.JSApiConsumerGetNextRequest", Req: "api.JSApiRequestNextPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_info_request.json", St: "api.JSApiConsumerInfoRequest", Req: "api.JSApiConsumerInfoPrefix"},
 		&schema{P: "jetstream/api/v1/consumer_info_response.json", St: "api.JSApiConsumerInfoResponse", Res: "api.JSApiConsumerInfoPrefix"},
@@ -323,6 +325,8 @@ func jsApiSchemas() schemas {
 		&schema{P: "jetstream/api/v1/meta_leader_stepdown_response.json", St: "api.JSApiLeaderStepDownResponse", Res: "api.JSApiLeaderStepDownPrefix"},
 		&schema{P: "jetstream/api/v1/meta_rescue_request.json", St: "api.JSApiMetaRescueRequest", Req: "api.JSApiRescueRequestPrefix"},
 		&schema{P: "jetstream/api/v1/meta_rescue_response.json", St: "api.JSApiMetaRescueResponse", Res: "api.JSApiRescueRequestPrefix"},
+		&schema{P: "jetstream/api/v1/meta_server_evacuate_request.json", St: "api.JSApiMetaServerEvacuateRequest", Req: "api.JSApiEvacuateServerPrefix"},
+		&schema{P: "jetstream/api/v1/meta_server_evacuate_response.json", St: "api.JSApiMetaServerEvacuateResponse", Res: "api.JSApiEvacuateServerPrefix"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "api.JSApiMetaServerRemoveRequest", Req: "api.JSApiServerRemovePrefix"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "api.JSApiMetaServerRemoveResponse", Res: "api.JSApiServerRemovePrefix"},
 		&schema{P: "jetstream/api/v1/pub_ack_response.json", St: "api.JSPubAckResponse", Res: "api.JSAckPrefix"},
@@ -330,6 +334,8 @@ func jsApiSchemas() schemas {
 		&schema{P: "jetstream/api/v1/stream_create_request.json", St: "api.JSApiStreamCreateRequest", Req: "api.JSApiStreamCreatePrefix"},
 		&schema{P: "jetstream/api/v1/stream_create_response.json", St: "api.JSApiStreamCreateResponse", Res: "api.JSApiStreamCreatePrefix"},
 		&schema{P: "jetstream/api/v1/stream_delete_response.json", St: "api.JSApiStreamDeleteResponse", Res: "api.JSApiStreamDeletePrefix"},
+		&schema{P: "jetstream/api/v1/stream_evacuate_peer_request.json", St: "api.JSApiStreamEvacuatePeerRequest", Req: "api.JSApiStreamEvacuatePeerPrefix"},
+		&schema{P: "jetstream/api/v1/stream_evacuate_peer_response.json", St: "api.JSApiStreamEvacuatePeerResponse", Res: "api.JSApiStreamEvacuatePeerPrefix"},
 		&schema{P: "jetstream/api/v1/stream_info_request.json", St: "api.JSApiStreamInfoRequest", Req: "api.JSApiStreamInfoPrefix"},
 		&schema{P: "jetstream/api/v1/stream_info_response.json", St: "api.JSApiStreamInfoResponse", Res: "api.JSApiStreamInfoPrefix"},
 		&schema{P: "jetstream/api/v1/stream_leader_stepdown_request.json", St: "api.JSApiStreamLeaderStepDownRequest", Req: "api.JSApiStreamLeaderStepDownPrefix"},

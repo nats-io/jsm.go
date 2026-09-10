@@ -72,6 +72,10 @@ const (
 	JSDirectMsgGet                  = "$JS.API.DIRECT.GET.*"
 	JSDirectMsgGetPrefix            = "$JS.API.DIRECT.GET"
 	JSDirectMsgGetT                 = "$JS.API.DIRECT.GET.%s"
+	// JSApiStreamEvacuatePeer is the endpoint to evacuate a peer from a clustered stream and its consumers.
+	JSApiStreamEvacuatePeer       = "$JS.API.STREAM.PEER.EVACUATE.*"
+	JSApiStreamEvacuatePeerT      = "$JS.API.STREAM.PEER.EVACUATE.%s"
+	JSApiStreamEvacuatePeerPrefix = "$JS.API.STREAM.PEER.EVACUATE"
 
 	StreamDefaultReplicas = 1
 	StreamMaxReplicas     = 5
@@ -199,6 +203,19 @@ type JSApiStreamPurgeResponse struct {
 	JSApiResponse
 	Success bool   `json:"success,omitempty"`
 	Purged  uint64 `json:"purged"`
+}
+
+// JSApiStreamEvacuatePeerRequest is the required evacuate peer request.
+type JSApiStreamEvacuatePeerRequest struct {
+	// Server name or peer ID of the peer to be evacuated.
+	Peer string `json:"peer"`
+}
+
+// JSApiStreamEvacuatePeerResponse is the response to an evacuate peer request.
+// io.nats.jetstream.api.v1.stream_evacuate_peer_response
+type JSApiStreamEvacuatePeerResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
 }
 
 // JSApiStreamPurgeRequest is optional request information to the purge API.

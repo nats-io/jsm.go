@@ -681,6 +681,62 @@ func (m *Manager) MetaPeerRemove(name string, id string) error {
 	return nil
 }
 
+// MetaEvacuatePeer moves all JetStream assets from the server to other servers
+func (m *Manager) MetaEvacuatePeer(name string, id string) error {
+	var resp api.JSApiMetaServerEvacuateResponse
+	err := m.jsonRequest(api.JSApiEvacuateServer, api.JSApiMetaServerEvacuateRequest{Server: name, Peer: id}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while evacuating the peer")
+	}
+
+	return nil
+}
+
+// EvacuateStream moves a stream and its consumers off the peer, another peer will be selected if possible
+func (m *Manager) EvacuateStream(stream string, peer string) error {
+	if !IsValidName(stream) {
+		return fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
+	var resp api.JSApiStreamEvacuatePeerResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiStreamEvacuatePeerT, stream), api.JSApiStreamEvacuatePeerRequest{Peer: peer}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while evacuating peer %q", peer)
+	}
+
+	return nil
+}
+
+// EvacuateConsumer moves a consumer off the peer, another peer the stream is already on will be selected if possible
+func (m *Manager) EvacuateConsumer(stream string, consumer string, peer string) error {
+	if !IsValidName(stream) {
+		return fmt.Errorf("%q is not a valid stream name", stream)
+	}
+	if !IsValidName(consumer) {
+		return fmt.Errorf("%q is not a valid consumer name", consumer)
+	}
+
+	var resp api.JSApiConsumerEvacuatePeerResponse
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiConsumerEvacuatePeerT, stream, consumer), api.JSApiConsumerEvacuatePeerRequest{Peer: peer}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("unknown error while evacuating peer %q", peer)
+	}
+
+	return nil
+}
+
 // MetaPurgeAccount removes all data from an account, must be run in the system account
 func (m *Manager) MetaPurgeAccount(account string) error {
 	if account == "" {

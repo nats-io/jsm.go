@@ -197,7 +197,7 @@ func TestEditIdentity(t *testing.T) {
 	}
 
 	rep := res.Report
-	if rep.SourceMessages != 7 || rep.Kept != 7 || rep.Dropped.Total() != 0 || rep.ConsumersKept != 2 || rep.ConsumersDropped != 0 || rep.TombstonesRemovedByContentFilters != 0 {
+	if rep.SourceMessages != 7 || rep.Kept != 7 || rep.SourceSubjects != 4 || rep.KeptSubjects != 4 || rep.Dropped.Total() != 0 || rep.ConsumersKept != 2 || rep.ConsumersDropped != 0 || rep.TombstonesRemovedByContentFilters != 0 {
 		t.Fatalf("unexpected report: %+v", rep)
 	}
 }
@@ -440,6 +440,9 @@ func TestEditEmptyResult(t *testing.T) {
 	}
 	if res.State.Msgs != 0 || res.State.Bytes != 0 || res.State.FirstSeq != 15 || res.State.LastSeq != 14 {
 		t.Fatalf("meta file must describe the restored empty stream at last+1/last: %+v", res.State)
+	}
+	if res.Report.SourceSubjects != 4 || res.Report.KeptSubjects != 0 {
+		t.Fatalf("unexpected subject counts %+v", res.Report)
 	}
 
 	dst, res = edit(t, src, Subjects("nothing.matches"), Renumber())

@@ -476,7 +476,7 @@ func TestVerifyAndInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("verify failed: %v", err)
 	}
-	if !rep.Complete || rep.Entries != 6 || rep.Consumers != 1 || rep.Messages != 3 || rep.FirstSeq != 2 || rep.LastSeq != 9 {
+	if !rep.Complete || rep.Entries != 6 || rep.Consumers != 1 || rep.Messages != 3 || rep.NumSubjects != 3 || rep.FirstSeq != 2 || rep.LastSeq != 9 {
 		t.Fatalf("unexpected report: %+v", rep)
 	}
 	if rep.LastGood.Kind != "end" || rep.LastGood.Ordinal != 6 {
@@ -491,8 +491,15 @@ func TestVerifyAndInfo(t *testing.T) {
 	for _, m := range msgs {
 		wantBytes += storedMsgSize(len(m.subject), int64(len(m.hdr)), int64(len(m.body)))
 	}
-	if info.Config.Name != "ORDERS" || info.Messages != 3 || info.Bytes != wantBytes || info.FirstSeq != 2 || info.LastSeq != 9 {
+	if info.Config.Name != "ORDERS" || info.Messages != 3 || info.NumSubjects != 3 || info.Subjects != nil || info.Bytes != wantBytes || info.FirstSeq != 2 || info.LastSeq != 9 {
 		t.Fatalf("unexpected info: %+v", info)
+	}
+	listed, err := Info(dir, WithSubjects())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(listed.Subjects, map[string]uint64{"orders.new": 1, "orders.paid": 1, "orders.shipped": 1}) {
+		t.Fatalf("unexpected subjects: %+v", listed.Subjects)
 	}
 	if info.FirstTime.UnixNano() != 10 || info.LastTime.UnixNano() != 30 {
 		t.Fatalf("unexpected times: %+v", info)

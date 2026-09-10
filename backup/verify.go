@@ -24,9 +24,10 @@ import (
 // VerifyReport summarizes a scan of a backup directory
 type VerifyReport struct {
 	// Entries is the number of archive entries that decoded cleanly
-	Entries   int
-	Consumers int
-	Messages  uint64
+	Entries     int
+	Consumers   int
+	Messages    uint64
+	NumSubjects int
 	// FirstSeq and LastSeq are the first and last message sequences found, 0 when empty
 	FirstSeq uint64
 	LastSeq  uint64
@@ -52,6 +53,11 @@ type InfoReport struct {
 	Consumers []string `json:"consumers"`
 	// Messages is the number of messages in the archive
 	Messages uint64 `json:"messages"`
+	// NumSubjects is the number of distinct subjects in the archive
+	NumSubjects int `json:"num_subjects"`
+	// Subjects maps every subject in the archive to its message count, only
+	// when Info was called with WithSubjects
+	Subjects map[string]uint64 `json:"subjects,omitempty"`
 	// Bytes is the storage the messages will occupy on restore, per the file store's accounting
 	Bytes uint64 `json:"bytes"`
 	// FirstSeq and LastSeq bound the message sequences in the archive, 0 when empty
@@ -69,17 +75,34 @@ type InfoReport struct {
 // valid; when the archive fails part way the report and the error name the
 // last good entry
 func Verify(dir string) (*VerifyReport, error) {
-	_, report, err := scan(dir)
+	_, report, err := scan(dir, false)
 	return report, err
 }
 
+// InfoOption configures Info
+type InfoOption func(*infoOptions)
+
+type infoOptions struct {
+	subjects bool
+}
+
+// WithSubjects collects every subject in the archive with its message
+// count, which holds each subject in memory once
+func WithSubjects() InfoOption {
+	return func(o *infoOptions) { o.subjects = true }
+}
+
 // Info scans a backup directory to the sentinel and reports what it holds
-func Info(dir string) (*InfoReport, error) {
-	info, _, err := scan(dir)
+func Info(dir string, opts ...InfoOption) (*InfoReport, error) {
+	o := &infoOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+	info, _, err := scan(dir, o.subjects)
 	return info, err
 }
 
-func scan(dir string) (*InfoReport, *VerifyReport, error) {
+func scan(dir string, withSubjects bool) (*InfoReport, *VerifyReport, error) {
 	data, meta, err := backupPaths(dir)
 	if err != nil {
 		return nil, nil, err
@@ -97,7 +120,11 @@ func scan(dir string) (*InfoReport, *VerifyReport, error) {
 	defer f.Close()
 
 	info := &InfoReport{Config: mf.Config, Edit: mf.Edit}
+	if withSubjects {
+		info.Subjects = map[string]uint64{}
+	}
 	report := &VerifyReport{}
+	subjects := newSubjectCounter()
 	dec := NewDecoder(f)
 	for {
 		item, err := dec.Next()
@@ -105,6 +132,7 @@ func scan(dir string) (*InfoReport, *VerifyReport, error) {
 			report.LastGood = dec.LastGood()
 			report.FirstSeq = info.FirstSeq
 			report.LastSeq = info.LastSeq
+			report.NumSubjects = subjects.count()
 			return nil, report, fmt.Errorf("%s: %w (last good entry: %s)", data, err, report.LastGood)
 		}
 
@@ -118,6 +146,10 @@ func scan(dir string) (*InfoReport, *VerifyReport, error) {
 		case *Message:
 			info.Messages++
 			report.Messages++
+			subjects.add(it.Subject)
+			if info.Subjects != nil {
+				info.Subjects[it.Subject]++
+			}
 			info.Bytes += storedMsgSize(len(it.Subject), it.HdrSize, it.PayloadSize)
 			if info.FirstSeq == 0 {
 				info.FirstSeq = it.Seq
@@ -130,6 +162,8 @@ func scan(dir string) (*InfoReport, *VerifyReport, error) {
 			report.LastGood = dec.LastGood()
 			report.FirstSeq = info.FirstSeq
 			report.LastSeq = info.LastSeq
+			report.NumSubjects = subjects.count()
+			info.NumSubjects = report.NumSubjects
 			info.DeclaredCountsAdvisory = info.Messages > 0 && (info.Declared.Msgs == 0 || info.Declared.Bytes == 0)
 			return info, report, nil
 		}

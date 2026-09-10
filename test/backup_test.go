@@ -87,7 +87,7 @@ func TestBackupVerifyAndInfoOnServerSnapshot(t *testing.T) {
 
 		rep, err := backup.Verify(dir)
 		checkErr(t, err, "verify failed")
-		if !rep.Complete || rep.Entries != 22 || rep.Consumers != 2 || rep.Messages != state.Msgs || rep.FirstSeq != state.FirstSeq || rep.LastSeq != state.LastSeq {
+		if !rep.Complete || rep.Entries != 22 || rep.Consumers != 2 || rep.Messages != state.Msgs || rep.NumSubjects != state.NumSubjects || rep.FirstSeq != state.FirstSeq || rep.LastSeq != state.LastSeq {
 			t.Fatalf("unexpected report: %+v vs state %+v", rep, state)
 		}
 
@@ -96,7 +96,7 @@ func TestBackupVerifyAndInfoOnServerSnapshot(t *testing.T) {
 		if info.Config.Name != "ORDERS" || !reflect.DeepEqual(info.Config.Subjects, []string{"orders.>"}) {
 			t.Fatalf("unexpected config: %+v", info.Config)
 		}
-		if info.Messages != state.Msgs || info.FirstSeq != state.FirstSeq || info.LastSeq != state.LastSeq {
+		if info.Messages != state.Msgs || info.NumSubjects != state.NumSubjects || info.FirstSeq != state.FirstSeq || info.LastSeq != state.LastSeq {
 			t.Fatalf("unexpected counts: %+v vs %+v", info, state)
 		}
 		if info.Bytes != state.Bytes {
@@ -542,7 +542,7 @@ func TestBackupEditObfuscateRestores(t *testing.T) {
 
 		msg, err := stream.ReadMessage(2)
 		checkErr(t, err, "read failed")
-		if len(msg.Data) != 0 || msg.Subject != originals["orders"]+"."+originals["paid"] {
+		if string(msg.Data) != "000000" || msg.Subject != originals["orders"]+"."+originals["paid"] {
 			t.Fatalf("message not obfuscated: %+v", msg)
 		}
 		hdr, err := nats.DecodeHeadersMsg(msg.Header)
@@ -575,8 +575,8 @@ func TestBackupEditObfuscateKVRestores(t *testing.T) {
 		for _, key := range []string{"a", "d", "f"} {
 			entry, err := kv.Get(ctx, originals[key])
 			checkErr(t, err, "get "+key+" failed")
-			if len(entry.Value()) != 0 {
-				t.Fatalf("value of %s survived obfuscation: %q", key, entry.Value())
+			if string(entry.Value()) != "00" {
+				t.Fatalf("value of %s not zero padded to its length: %q", key, entry.Value())
 			}
 		}
 		keys, err := kv.Keys(ctx)

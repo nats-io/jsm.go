@@ -82,6 +82,13 @@ func TestObfuscatorTokens(t *testing.T) {
 	if must(o.token("")) != "" || must(o.subject("")) != "" {
 		t.Fatal("empty values pass through")
 	}
+	tokenChars := regexp.MustCompile(`^[0-9a-v]+$`)
+	for _, long := range []string{"ORDERS_15 29515852 > > js.in.orders_15 WVoib1Oo", strings.Repeat("k", 100)} {
+		h := must(o.token(long))
+		if len(h) != len(long) || !tokenChars.MatchString(h) || h != must(o.token(long)) {
+			t.Fatalf("long tokens must keep their length: %d chars -> %q", len(long), h)
+		}
+	}
 
 	other, _ := newObfuscator("")
 	if b, _ := other.token("orders"); a == b {
@@ -93,6 +100,7 @@ func TestObfuscatorKeyFile(t *testing.T) {
 	o, _ := newObfuscator("")
 	o.token("orders")
 	o.token("new")
+	o.token(strings.Repeat("k", 70))
 	path := filepath.Join(t.TempDir(), "k.json")
 	if created, err := o.writeKeyFile(path, ""); err != nil || !created {
 		t.Fatalf("first write: created %v err %v", created, err)
@@ -136,6 +144,40 @@ func TestObfuscatorKeyFile(t *testing.T) {
 	os.WriteFile(path, []byte(`{"version":2,"secret":"AA==","map":{}}`), 0o600)
 	if _, err := newObfuscator(path); err == nil || !strings.Contains(err.Error(), "unsupported key file version") {
 		t.Fatalf("expected a version error, got %v", err)
+	}
+}
+
+func TestLoadKeyFile(t *testing.T) {
+	src := obfuscationFixture(t)
+	dst, res := edit(t, src, Obfuscate())
+	kf, err := LoadKeyFile(res.Report.Obfuscation.KeyFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := loadMetaFile(t, dst).Config
+	if kf.Reveal(cfg.Name) != "ORDERS" || kf.Reveal(cfg.Subjects[0]) != "orders.>" || kf.Reveal(cfg.Subjects[1]) != "audit.*" {
+		t.Fatalf("config not revealed: %q %q", kf.Reveal(cfg.Name), kf.Reveal(cfg.Subjects[0]))
+	}
+	if kf.Reveal("unknown.token") != "unknown.token" {
+		t.Fatal("unknown tokens must pass through")
+	}
+
+	o, _ := newObfuscator("")
+	bucket, _ := o.streamName("KV_bucket")
+	path := filepath.Join(t.TempDir(), "kv.keys.json")
+	if _, err := o.writeKeyFile(path, ""); err != nil {
+		t.Fatal(err)
+	}
+	kf, err = LoadKeyFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kf.Reveal(bucket) != "KV_bucket" {
+		t.Fatalf("bucket name not revealed behind its prefix: %q", kf.Reveal(bucket))
+	}
+
+	if _, err := LoadKeyFile(""); err == nil {
+		t.Fatal("an empty path must not load a fresh secret")
 	}
 }
 
@@ -275,12 +317,15 @@ func TestEditObfuscate(t *testing.T) {
 	}
 	var bytesWritten uint64
 	for _, m := range msgs {
-		if m.PayloadSize != 0 || !tokenRE.MatchString(strings.Split(m.Subject, ".")[0]) {
-			t.Fatalf("body kept or subject not hashed: %+v", m)
+		body, _ := io.ReadAll(m.Body)
+		m.Body = bytes.NewReader(body)
+		payload := body[m.HdrSize:]
+		if int64(len(payload)) != m.PayloadSize || strings.Trim(string(payload), "0") != "" || !tokenRE.MatchString(strings.Split(m.Subject, ".")[0]) {
+			t.Fatalf("body not zero padded to its length or subject not hashed: %+v", m)
 		}
 		bytesWritten += storedMsgSize(len(m.Subject), m.HdrSize, m.PayloadSize)
 	}
-	if res.Report.Obfuscation.BodiesDropped != 4 || res.State.Bytes != bytesWritten || res.State.Msgs != 6 {
+	if res.Report.Obfuscation.BodiesPadded != 4 || res.State.Bytes != bytesWritten || res.State.Msgs != 6 {
 		t.Fatalf("unexpected accounting: report %+v state %+v written %d", res.Report.Obfuscation, res.State, bytesWritten)
 	}
 	if st := items[0].(*State).State; st.Bytes != 0 || st.Consumers != 2 {
@@ -368,7 +413,7 @@ func TestEditObfuscateCounterStream(t *testing.T) {
 	if _, err := Verify(dst); err != nil {
 		t.Fatalf("output does not verify: %v", err)
 	}
-	if res.Report.Obfuscation.BodiesDropped != 0 {
+	if res.Report.Obfuscation.BodiesPadded != 0 {
 		t.Fatalf("counter bodies must be kept: %+v", res.Report.Obfuscation)
 	}
 
@@ -420,7 +465,7 @@ func TestEditObfuscateDryRunAndRefusals(t *testing.T) {
 	if entries, _ := os.ReadDir(parent); len(entries) != 0 {
 		t.Fatalf("dry run wrote files: %v", entries)
 	}
-	if dry.Report.Obfuscation == nil || dry.Report.Obfuscation.KeyFile != "" || dry.Report.Obfuscation.BodiesDropped != 4 || dry.State.Bytes == 0 {
+	if dry.Report.Obfuscation == nil || dry.Report.Obfuscation.KeyFile != "" || dry.Report.Obfuscation.BodiesPadded != 4 || dry.State.Bytes == 0 {
 		t.Fatalf("unexpected dry run result %+v %+v", dry.Report.Obfuscation, dry.State)
 	}
 

@@ -10,7 +10,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/klauspost/compress v1.20.0
 	github.com/nats-io/jwt/v2 v2.8.2
-	github.com/nats-io/nats-server/v2 v2.15.0-preview.1
+	github.com/nats-io/nats-server/v2 v2.15.0-RC.1.0.20260909093633-3ad37644ae68
 	github.com/nats-io/nats.go v1.53.1
 	github.com/nats-io/nkeys v0.4.16
 	github.com/nats-io/nuid v1.0.1

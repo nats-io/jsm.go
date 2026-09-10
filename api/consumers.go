@@ -61,6 +61,10 @@ const (
 	JSApiRequestNext                  = "$JS.API.CONSUMER.MSG.NEXT.*.*"
 	JSApiRequestNextPrefix            = "$JS.API.CONSUMER.MSG.NEXT"
 	JSApiRequestNextT                 = "$JS.API.CONSUMER.MSG.NEXT.%s.%s"
+	// JSApiConsumerEvacuatePeer is the endpoint to evacuate a peer from a single clustered consumer.
+	JSApiConsumerEvacuatePeer       = "$JS.API.CONSUMER.PEER.EVACUATE.*.*"
+	JSApiConsumerEvacuatePeerT      = "$JS.API.CONSUMER.PEER.EVACUATE.%s.%s"
+	JSApiConsumerEvacuatePeerPrefix = "$JS.API.CONSUMER.PEER.EVACUATE"
 
 	JSAdvisoryConsumerMaxDeliveryExceedPre = JSAdvisoryPrefix + ".CONSUMER.MAX_DELIVERIES"
 	JSMetricConsumerAckPre                 = JSMetricPrefix + ".CONSUMER.ACK"
@@ -116,6 +120,20 @@ func (a *ConsumerAction) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unknown consumer action: %v", string(data))
 	}
 	return nil
+}
+
+// JSApiConsumerEvacuatePeerRequest is the required evacuate peer request for a single consumer.
+// io.nats.jetstream.api.v1.consumer_evacuate_peer_request
+type JSApiConsumerEvacuatePeerRequest struct {
+	// Server name or peer ID of the peer to be evacuated.
+	Peer string `json:"peer"`
+}
+
+// JSApiConsumerEvacuatePeerResponse is the response to a consumer evacuate peer request.
+// io.nats.jetstream.api.v1.consumer_evacuate_peer_response
+type JSApiConsumerEvacuatePeerResponse struct {
+	JSApiResponse
+	Success bool `json:"success,omitempty"`
 }
 
 // io.nats.jetstream.api.v1.consumer_unpin_request

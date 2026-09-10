@@ -1103,3 +1103,54 @@ func TestBackoffPolicy(t *testing.T) {
 		t.Fatalf("expected policy %v got %v", policy, cfg.BackOff)
 	}
 }
+
+func TestConsumerEvacuatePeer(t *testing.T) {
+	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+		// the consumer has to be narrower than the stream, the replacement peer is
+		// picked from the stream peers the consumer is not on yet
+		stream, err := mgr.NewStream("TEST", jsm.Subjects("TEST.*"), jsm.MemoryStorage(), jsm.Replicas(3))
+		checkErr(t, err, "create failed")
+
+		consumer, err := stream.NewConsumer(jsm.DurableName("C1"), jsm.AcknowledgeExplicit(), jsm.ConsumerOverrideReplicas(2))
+		checkErr(t, err, "create consumer failed")
+
+		nfo, err := consumer.State()
+		checkErr(t, err, "get state failed")
+
+		if nfo.Cluster == nil {
+			t.Fatalf("consumer is not clustered")
+		}
+
+		peers := clusterPeers(nfo.Cluster)
+		if len(peers) != 2 {
+			t.Fatalf("expected 2 peers got %v", peers)
+		}
+
+		evacuated := peers[0]
+
+		err = consumer.EvacuatePeer(evacuated)
+		checkErr(t, err, "evacuate peer failed")
+
+		to := time.NewTimer(20 * time.Second)
+		defer to.Stop()
+		ticker := time.NewTicker(250 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				nfo, err = consumer.State()
+				if err != nil {
+					continue
+				}
+
+				if settledWithoutPeer(nfo.Cluster, evacuated, 2) {
+					return
+				}
+
+			case <-to.C:
+				t.Fatalf("timeout waiting for peer %q to be evacuated", evacuated)
+			}
+		}
+	})
+}

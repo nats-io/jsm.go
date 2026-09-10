@@ -41,6 +41,14 @@
     },
     "client": {
       "$ref": "../../../definitions.json#/definitions/client_info_v1"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
+    },
+    "error": {
+      "type": "string",
+      "description": "The error that caused the snapshot to fail, when set the snapshot did not complete"
     }
   }
 }

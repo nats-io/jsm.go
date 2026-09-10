@@ -88,6 +88,13 @@
           "type": "object",
           "description": "The metadata assigned to the server"
         },
+        "feature_flags": {
+          "type": "object",
+          "description": "Feature flags the server has enabled",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
         "seq": {
           "type": "integer",
           "description": "Internal server sequence ID"

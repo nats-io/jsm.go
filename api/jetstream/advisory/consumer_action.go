@@ -13,6 +13,7 @@ type JSConsumerActionAdvisoryV1 struct {
 	Stream   string               `json:"stream"`
 	Consumer string               `json:"consumer"`
 	Action   ActionAdvisoryTypeV1 `json:"action"`
+	Domain   string               `json:"domain,omitempty"`
 }
 
 func init() {

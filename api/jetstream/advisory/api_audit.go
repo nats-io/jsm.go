@@ -16,6 +16,7 @@ type JetStreamAPIAuditV1 struct {
 	Subject  string                `json:"subject"`
 	Request  string                `json:"request,omitempty"`
 	Response string                `json:"response"`
+	Domain   string                `json:"domain,omitempty"`
 }
 
 func init() {

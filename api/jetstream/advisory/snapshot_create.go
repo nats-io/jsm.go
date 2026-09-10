@@ -1,6 +1,7 @@
 package advisory
 
 import (
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/api/event"
 	"github.com/nats-io/jsm.go/api/server/advisory"
 )
@@ -14,6 +15,8 @@ type JSSnapshotCreateAdvisoryV1 struct {
 	NumBlks int64                 `json:"blocks"`
 	BlkSize int64                 `json:"block_size"`
 	Client  advisory.ClientInfoV1 `json:"client"`
+	State   api.StreamState       `json:"state"`
+	Domain  string                `json:"domain,omitempty"`
 }
 
 func init() {

@@ -62,6 +62,15 @@
       "type": "integer",
       "description": "The number of slow consumer errors this account encountered",
       "minimum": 0
+    },
+    "name": {
+      "type": "string",
+      "description": "The name of the account"
+    },
+    "num_subscriptions": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The number of subscriptions the account has"
     }
   }
 }

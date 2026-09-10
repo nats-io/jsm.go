@@ -4,18 +4,19 @@ import "time"
 
 // ServerInfoV1 identifies remote servers.
 type ServerInfoV1 struct {
-	Name      string            `json:"name"`
-	Host      string            `json:"host"`
-	ID        string            `json:"id"`
-	Cluster   string            `json:"cluster,omitempty"`
-	Domain    string            `json:"domain,omitempty"`
-	Version   string            `json:"ver"`
-	Tags      []string          `json:"tags,omitempty"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
-	JetStream bool              `json:"jetstream"` // Whether JetStream is enabled (deprecated in favor of the `ServerCapability`).
-	Flags     uint64            `json:"flags"`     // Generic capability flags
-	Seq       uint64            `json:"seq"`       // Sequence and Time from the remote server for this message.
-	Time      time.Time         `json:"time"`
+	Name         string            `json:"name"`
+	Host         string            `json:"host"`
+	ID           string            `json:"id"`
+	Cluster      string            `json:"cluster,omitempty"`
+	Domain       string            `json:"domain,omitempty"`
+	Version      string            `json:"ver"`
+	Tags         []string          `json:"tags,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
+	JetStream    bool              `json:"jetstream"` // Whether JetStream is enabled (deprecated in favor of the `ServerCapability`).
+	Flags        uint64            `json:"flags"`     // Generic capability flags
+	Seq          uint64            `json:"seq"`       // Sequence and Time from the remote server for this message.
+	Time         time.Time         `json:"time"`
+	FeatureFlags map[string]bool   `json:"feature_flags,omitempty"`
 }
 
 // ClientInfoV1 is detailed information about the client forming a connection.
@@ -42,6 +43,7 @@ type ClientInfoV1 struct {
 	ClientType string        `json:"client_type,omitempty"`
 	MQTTClient string        `json:"client_id,omitempty"` // This is the MQTT client ID
 	Nonce      string        `json:"nonce,omitempty"`
+	Reply      string        `json:"reply,omitempty"`
 }
 
 // DataStatsV1 reports how may msg and bytes. Applicable for both sent and received.

@@ -26,6 +26,7 @@ type JSStreamActionAdvisoryV1 struct {
 	Stream   string               `json:"stream"`
 	Action   ActionAdvisoryTypeV1 `json:"action"`
 	Template string               `json:"template,omitempty"`
+	Domain   string               `json:"domain,omitempty"`
 }
 
 func init() {

@@ -18,6 +18,7 @@ type JSRestoreCompleteAdvisoryV1 struct {
 	End    time.Time             `json:"end"`
 	Bytes  int64                 `json:"bytes"`
 	Client advisory.ClientInfoV1 `json:"client"`
+	Domain string                `json:"domain,omitempty"`
 }
 
 func init() {

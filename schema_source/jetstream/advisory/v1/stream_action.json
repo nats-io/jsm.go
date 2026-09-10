@@ -37,6 +37,10 @@
     "template": {
       "type": "string",
       "description": "The Stream Template that manages the Stream"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

@@ -14,6 +14,7 @@ type JSServerOutOfSpaceAdvisoryV1 struct {
 	ServerID string `json:"server_id"`
 	Stream   string `json:"stream,omitempty"`
 	Cluster  string `json:"cluster"`
+	Domain   string `json:"domain,omitempty"`
 }
 
 func init() {

@@ -13,6 +13,7 @@ type JSRestoreCreateAdvisoryV1 struct {
 
 	Stream string                `json:"stream"`
 	Client advisory.ClientInfoV1 `json:"client"`
+	Domain string                `json:"domain,omitempty"`
 }
 
 func init() {

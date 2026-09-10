@@ -37,6 +37,10 @@
     "consumer": {
       "type": "string",
       "description": "The name of the Consumer that's acted on"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

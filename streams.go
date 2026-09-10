@@ -900,7 +900,7 @@ func (s *Stream) EvacuatePeer(peer string) error {
 	}
 
 	if !resp.Success {
-		return fmt.Errorf("unknown error while removing peer %q", peer)
+		return fmt.Errorf("unknown error while evacuating peer %q", peer)
 	}
 
 	return nil

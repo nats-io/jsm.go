@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 	"strconv"
 	"strings"
@@ -138,16 +139,18 @@ type stringer interface {
 
 func compileTemplate(schema string, body string) (*template.Template, error) {
 	return template.New(schema).Funcs(map[string]any{
-		"ShortTime":   func(v time.Time) string { return v.Format("15:04:05") },
-		"NanoTime":    func(v time.Time) string { return v.Format("15:04:05.000") },
-		"IBytes":      func(v int64) string { return humanize.IBytes(uint64(v)) },
-		"IntCommas":   func(v int) string { return humanize.Comma(int64(v)) },
-		"Int64Commas": func(v int64) string { return humanize.Comma(v) },
-		"HostPort":    func(h string, p int) string { return net.JoinHostPort(h, strconv.Itoa(p)) },
-		"LeftPad":     func(indent int, v string) string { return leftPad(v, indent) },
-		"ToString":    func(v stringer) string { return v.String() },
-		"TitleString": func(v string) string { return cases.Title(language.AmericanEnglish).String(v) },
-		"JoinStrings": func(v []string) string { return strings.Join(v, ",") },
+		"ShortTime":    func(v time.Time) string { return v.Format("15:04:05") },
+		"NanoTime":     func(v time.Time) string { return v.Format("15:04:05.000") },
+		"IBytes":       func(v int64) string { return humanize.IBytes(uint64(v)) },
+		"IntCommas":    func(v int) string { return humanize.Comma(int64(v)) },
+		"Int64Commas":  func(v int64) string { return humanize.Comma(v) },
+		"Uint64Commas": func(v uint64) string { return humanize.BigComma(new(big.Int).SetUint64(v)) },
+		"Uint64IBytes": func(v uint64) string { return humanize.IBytes(v) },
+		"HostPort":     func(h string, p int) string { return net.JoinHostPort(h, strconv.Itoa(p)) },
+		"LeftPad":      func(indent int, v string) string { return leftPad(v, indent) },
+		"ToString":     func(v stringer) string { return v.String() },
+		"TitleString":  func(v string) string { return cases.Title(language.AmericanEnglish).String(v) },
+		"JoinStrings":  func(v []string) string { return strings.Join(v, ",") },
 	}).Parse(body)
 }
 

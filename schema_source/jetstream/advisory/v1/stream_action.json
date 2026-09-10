@@ -34,10 +34,6 @@
       "type": "string",
       "description": "The name of the Stream that's acted on"
     },
-    "template": {
-      "type": "string",
-      "description": "The Stream Template that manages the Stream"
-    },
     "domain": {
       "type": "string",
       "description": "The domain of the JetStream server the event is from"

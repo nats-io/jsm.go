@@ -11,16 +11,14 @@ import (
 // NATS Schema io.nats.jetstream.advisory.v1.snapshot_create
 type JSSnapshotCreateAdvisoryV1 struct {
 	event.NATSEvent
-	Stream  string                `json:"stream"`
-	NumBlks int64                 `json:"blocks"`
-	BlkSize int64                 `json:"block_size"`
-	Client  advisory.ClientInfoV1 `json:"client"`
-	State   api.StreamState       `json:"state"`
-	Domain  string                `json:"domain,omitempty"`
+	Stream string                `json:"stream"`
+	Client advisory.ClientInfoV1 `json:"client"`
+	State  api.StreamState       `json:"state"`
+	Domain string                `json:"domain,omitempty"`
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_create", `{{ .Time | ShortTime }} [Snapshot Create] {{ .Stream }} {{ .NumBlks | Int64Commas }} blocks of {{ .BlkSize | IBytes }}`)
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_create", `{{ .Time | ShortTime }} [Snapshot Create] {{ .Stream }} {{ .State.Msgs | Uint64Commas }} messages {{ .State.Bytes | Uint64IBytes }}`)
 	if err != nil {
 		panic(err)
 	}
@@ -29,8 +27,9 @@ func init() {
 [{{ .Time | ShortTime }}] [{{ .ID }}] Stream Snapshot Created
 
         Stream: {{ .Stream }}
-        Blocks: {{ .NumBlks | Int64Commas }}
-    Block Size: {{ .BlkSize | IBytes }}
+      Messages: {{ .State.Msgs | Uint64Commas }}
+         Bytes: {{ .State.Bytes | Uint64IBytes }}
+     Sequences: {{ .State.FirstSeq | Uint64Commas }} - {{ .State.LastSeq | Uint64Commas }}
         Client:
 {{- if .Client.User }}
                       User: {{ .Client.User }} Account: {{ .Client.Account }}

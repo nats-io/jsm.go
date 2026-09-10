@@ -92,18 +92,19 @@ func TestEditLastPerSubject(t *testing.T) {
 		return total
 	}
 	cases := map[string]struct {
-		opts    []EditOption
-		seqs    []uint64
-		dropped DropCounts
-		state   api.StreamState
+		opts     []EditOption
+		seqs     []uint64
+		dropped  DropCounts
+		subjects int
+		state    api.StreamState
 	}{
-		"last 1": {[]EditOption{LastPerSubject(1)}, []uint64{6, 9, 10, 12}, DropCounts{LastPerSubject: 3},
+		"last 1": {[]EditOption{LastPerSubject(1)}, []uint64{6, 9, 10, 12}, DropCounts{LastPerSubject: 3}, 4,
 			api.StreamState{Msgs: 4, Bytes: sizeOf(6, 9, 10, 12), FirstSeq: 2, LastSeq: 14, Consumers: 2}},
-		"last 2": {[]EditOption{LastPerSubject(2)}, []uint64{3, 5, 6, 9, 10, 12}, DropCounts{LastPerSubject: 1},
+		"last 2": {[]EditOption{LastPerSubject(2)}, []uint64{3, 5, 6, 9, 10, 12}, DropCounts{LastPerSubject: 1}, 4,
 			api.StreamState{Msgs: 6, Bytes: sizeOf(3, 5, 6, 9, 10, 12), FirstSeq: 2, LastSeq: 14, Consumers: 2}},
-		"last 1 with filters": {[]EditOption{LastPerSubject(1), Subjects("orders.>"), NoHeader("Nats-TTL")}, []uint64{5, 6, 12}, DropCounts{Subject: 1, Header: 1, LastPerSubject: 2},
+		"last 1 with filters": {[]EditOption{LastPerSubject(1), Subjects("orders.>"), NoHeader("Nats-TTL")}, []uint64{5, 6, 12}, DropCounts{Subject: 1, Header: 1, LastPerSubject: 2}, 3,
 			api.StreamState{Msgs: 3, Bytes: sizeOf(5, 6, 12), FirstSeq: 2, LastSeq: 14, Consumers: 2}},
-		"last 1 renumber": {[]EditOption{LastPerSubject(1), Renumber()}, []uint64{1, 2, 3, 4}, DropCounts{LastPerSubject: 3},
+		"last 1 renumber": {[]EditOption{LastPerSubject(1), Renumber()}, []uint64{1, 2, 3, 4}, DropCounts{LastPerSubject: 3}, 4,
 			api.StreamState{Msgs: 4, Bytes: sizeOf(6, 9, 10, 12), FirstSeq: 1, LastSeq: 4}},
 	}
 
@@ -121,8 +122,8 @@ func TestEditLastPerSubject(t *testing.T) {
 			if st := items[0].(*State).State; !reflect.DeepEqual(st, tc.state) {
 				t.Fatalf("archive state %+v, want exact %+v", st, tc.state)
 			}
-			if res.Report.Dropped != tc.dropped || res.Report.Kept != uint64(len(tc.seqs)) {
-				t.Fatalf("report %+v, want dropped %+v", res.Report, tc.dropped)
+			if res.Report.Dropped != tc.dropped || res.Report.Kept != uint64(len(tc.seqs)) || res.Report.SourceSubjects != 4 || res.Report.KeptSubjects != tc.subjects {
+				t.Fatalf("report %+v, want dropped %+v and %d subjects", res.Report, tc.dropped, tc.subjects)
 			}
 			if res.Report.SubjectStateKeys == 0 || res.Report.SubjectStateBytes == 0 {
 				t.Fatalf("subject state not reported: %+v", res.Report)
@@ -157,17 +158,18 @@ func kvDir(t *testing.T, cfg api.StreamConfig) string {
 
 func TestEditKVCompact(t *testing.T) {
 	cases := map[string]struct {
-		opts    []EditOption
-		seqs    []uint64
-		dropped DropCounts
-		tombs   uint64
-		keys    uint64
+		opts     []EditOption
+		seqs     []uint64
+		dropped  DropCounts
+		tombs    uint64
+		keys     uint64
+		subjects int
 	}{
-		"compact":               {[]EditOption{KVCompact()}, []uint64{3, 8}, DropCounts{KVCompact: 7}, 0, 5},
-		"compact renumber":      {[]EditOption{KVCompact(), Renumber()}, []uint64{1, 2}, DropCounts{KVCompact: 7}, 0, 5},
-		"content filter first":  {[]EditOption{KVCompact(), NoHeader("KV-Operation")}, []uint64{2, 3, 7}, DropCounts{Header: 3, KVCompact: 3}, 2, 4},
-		"sequence filter first": {[]EditOption{KVCompact(), LastSeq(5)}, []uint64{3, 5}, DropCounts{Sequence: 4, KVCompact: 3}, 0, 3},
-		"subject filter first":  {[]EditOption{KVCompact(), Subjects("$KV.orders.b", "$KV.orders.d")}, []uint64{8}, DropCounts{Subject: 5, KVCompact: 3}, 0, 2},
+		"compact":               {[]EditOption{KVCompact()}, []uint64{3, 8}, DropCounts{KVCompact: 7}, 0, 5, 2},
+		"compact renumber":      {[]EditOption{KVCompact(), Renumber()}, []uint64{1, 2}, DropCounts{KVCompact: 7}, 0, 5, 2},
+		"content filter first":  {[]EditOption{KVCompact(), NoHeader("KV-Operation")}, []uint64{2, 3, 7}, DropCounts{Header: 3, KVCompact: 3}, 2, 4, 3},
+		"sequence filter first": {[]EditOption{KVCompact(), LastSeq(5)}, []uint64{3, 5}, DropCounts{Sequence: 4, KVCompact: 3}, 0, 3, 2},
+		"subject filter first":  {[]EditOption{KVCompact(), Subjects("$KV.orders.b", "$KV.orders.d")}, []uint64{8}, DropCounts{Subject: 5, KVCompact: 3}, 0, 2, 1},
 	}
 
 	for name, tc := range cases {
@@ -180,8 +182,8 @@ func TestEditKVCompact(t *testing.T) {
 			if got := seqsOf(messagesOf(readItems(t, dst))); !reflect.DeepEqual(got, tc.seqs) {
 				t.Fatalf("kept %v, want %v", got, tc.seqs)
 			}
-			if res.Report.Dropped != tc.dropped || res.Report.TombstonesRemovedByContentFilters != tc.tombs || res.Report.SubjectStateKeys != tc.keys {
-				t.Fatalf("report %+v", res.Report)
+			if res.Report.Dropped != tc.dropped || res.Report.TombstonesRemovedByContentFilters != tc.tombs || res.Report.SubjectStateKeys != tc.keys || res.Report.SourceSubjects != 5 || res.Report.KeptSubjects != tc.subjects {
+				t.Fatalf("report %+v, want %d kept subjects", res.Report, tc.subjects)
 			}
 		})
 	}

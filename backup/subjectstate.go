@@ -13,7 +13,29 @@
 
 package backup
 
-import "unsafe"
+import (
+	"hash/maphash"
+	"unsafe"
+)
+
+// subjectCounter counts distinct subjects through 64-bit hashes, so the
+// count costs a few bytes per subject rather than the subject itself
+type subjectCounter struct {
+	seed maphash.Seed
+	seen map[uint64]struct{}
+}
+
+func newSubjectCounter() *subjectCounter {
+	return &subjectCounter{seed: maphash.MakeSeed(), seen: map[uint64]struct{}{}}
+}
+
+func (c *subjectCounter) add(subject string) {
+	c.seen[maphash.String(c.seed, subject)] = struct{}{}
+}
+
+func (c *subjectCounter) count() int {
+	return len(c.seen)
+}
 
 // subjectState decides which messages of the filtered result survive a
 // per-subject edit. Messages are observed in ascending sequence order; after
@@ -26,11 +48,12 @@ type subjectState interface {
 	Stats() (keys uint64, bytes uint64)
 }
 
-// resolved is what a per-subject edit will write: exact message and byte
-// totals and the lowest surviving sequence
+// resolved is what a per-subject edit will write: exact message, byte and
+// subject totals and the lowest surviving sequence
 type resolved struct {
 	msgs     uint64
 	bytes    uint64
+	subjects uint64
 	firstSeq uint64
 }
 
@@ -74,6 +97,7 @@ func (s *kvCompactState) Resolve() resolved {
 	for _, slot := range s.slots {
 		if !slot.tomb {
 			res.add(slot.seq, slot.size)
+			res.subjects++
 		}
 	}
 	return res
@@ -131,6 +155,7 @@ func (s *lastPerSubjectState) Resolve() resolved {
 			res.add(e.seq, e.size)
 		}
 	}
+	res.subjects = uint64(len(s.rings))
 	return res
 }
 

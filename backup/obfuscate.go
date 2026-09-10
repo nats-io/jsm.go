@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,7 +40,7 @@ const (
 	keyFileSuffix  = ".keys.json"
 	keyFileVersion = 1
 	secretBytes    = 32
-	tokenBytes     = 10
+	minTokenChars  = 16
 	objStorePrefix = "OBJ_"
 	kvSubjectRoot  = "$KV"
 	objSubjectRoot = "$O"
@@ -53,6 +54,45 @@ type obfuscationKeyFile struct {
 	Version int               `json:"version"`
 	Secret  string            `json:"secret"`
 	Map     map[string]string `json:"map"`
+}
+
+// KeyFile is a loaded obfuscation key file, every mapping verified against
+// its secret
+type KeyFile struct {
+	reverse map[string]string
+}
+
+// LoadKeyFile reads the key file an obfuscated edit wrote beside its target
+func LoadKeyFile(path string) (*KeyFile, error) {
+	if path == "" {
+		return nil, errors.New("key file path required")
+	}
+	o, err := newObfuscator(path)
+	if err != nil {
+		return nil, err
+	}
+	return &KeyFile{reverse: o.reverse}, nil
+}
+
+// Reveal maps an obfuscated value back to its original: a subject token by
+// token, a KV or object store stream name behind its prefix, anything else
+// whole. Tokens the key file does not hold stay as they are
+func (k *KeyFile) Reveal(value string) string {
+	toks := strings.Split(value, ".")
+	for i, tok := range toks {
+		if orig, ok := k.reverse[tok]; ok {
+			toks[i] = orig
+			continue
+		}
+		for _, prefix := range []string{kvStreamPrefix, objStorePrefix} {
+			if rest, ok := strings.CutPrefix(tok, prefix); ok {
+				if orig, ok := k.reverse[rest]; ok {
+					toks[i] = prefix + orig
+				}
+			}
+		}
+	}
+	return strings.Join(toks, ".")
 }
 
 // obfuscator replaces identifying tokens with keyed hashes. The same secret
@@ -70,15 +110,22 @@ type obfuscationKeyFile struct {
 // every mapping against the secret, so a tampered or mismatched file is
 // rejected instead of producing conflicting tokens.
 //
-// Truncating to 10 bytes and encoding lowercase base32-hex gives a
-// 16-character token that is legal everywhere an original can appear: a
+// A token is as long as its original, with a floor of 16 characters, so the
+// obfuscated backup keeps the size profile of the source for anything at
+// least that long. Shorter originals grow to 16 rather than shrink because
+// 80 bits is where collisions stop being plausible, and token() fails on
+// one anyway instead of silently merging two originals. Past the 52
+// characters one HMAC yields, the hash is extended block by block over the
+// previous block, the token and a counter, so any length stays a pure
+// function of the secret and the original, which is what key file
+// verification recomputes.
+//
+// Lowercase base32-hex is legal everywhere an original can appear: a
 // subject token, a KV key segment, a stream or consumer name. Stream names
 // become directories in the file store, so mixed case would collide on
-// case-insensitive filesystems, and base64 uses '/' and '+'. Hex needs 20
-// characters for the same bytes, and the subject is rewritten in every
-// message record, so token length inflates the archive. A collision within
-// 80 bits needs around a trillion distinct tokens, and token() fails on one
-// anyway instead of silently merging two originals
+// case-insensitive filesystems, and base64 uses '/' and '+'. Hex would need
+// a quarter more characters for the same bits, and the subject is rewritten
+// in every message record
 type obfuscator struct {
 	secret  []byte
 	forward map[string]string
@@ -123,9 +170,21 @@ func newObfuscator(keyFile string) (*obfuscator, error) {
 }
 
 func (o *obfuscator) hash(tok string) string {
+	chars := max(minTokenChars, len(tok))
+	need := (chars*5 + 7) / 8
 	mac := hmac.New(sha256.New, o.secret)
 	mac.Write([]byte(tok))
-	return strings.ToLower(tokenEncoding.EncodeToString(mac.Sum(nil)[:tokenBytes]))
+	out := mac.Sum(nil)
+	for block := uint32(1); len(out) < need; block++ {
+		var ctr [4]byte
+		binary.BigEndian.PutUint32(ctr[:], block)
+		mac.Reset()
+		mac.Write(out[len(out)-sha256.Size:])
+		mac.Write([]byte(tok))
+		mac.Write(ctr[:])
+		out = mac.Sum(out)
+	}
+	return strings.ToLower(tokenEncoding.EncodeToString(out[:need]))[:chars]
 }
 
 func (o *obfuscator) token(tok string) (string, error) {
@@ -350,11 +409,23 @@ func (o *obfuscator) consumer(name string, data []byte) (string, []byte, error) 
 	return hashedName, out, nil
 }
 
+// zeroPadding stands in for a message body: the caller limits it to the
+// original length, so sizes survive obfuscation while the content does not
+type zeroPadding struct{}
+
+func (zeroPadding) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = '0'
+	}
+	return len(p), nil
+}
+
 // message rewrites a message's subject and headers; control headers stay
 // verbatim, subject-valued headers are token hashed and every other value
 // is hashed whole. Headers are written in key order so the output is
-// deterministic. The caller drops the body, except on counter streams
-// where the body is the running total the restored counter needs
+// deterministic. The caller replaces the body with zeroPadding, except on
+// counter streams where the body is the running total the restored counter
+// needs
 func (o *obfuscator) message(subject string, h nats.Header) (string, []byte, error) {
 	subj, err := o.subject(subject)
 	if err != nil {

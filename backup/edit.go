@@ -74,6 +74,8 @@ func (d *DropCounts) add(kind dropKind) {
 type Report struct {
 	SourceMessages   uint64
 	Kept             uint64
+	SourceSubjects   int
+	KeptSubjects     int
 	Dropped          DropCounts
 	ConsumersKept    int
 	ConsumersDropped int
@@ -93,9 +95,9 @@ type Report struct {
 
 // ObfuscationReport describes an obfuscated edit
 type ObfuscationReport struct {
-	TokensMapped  int
-	BodiesDropped uint64
-	KeyFile       string
+	TokensMapped int
+	BodiesPadded uint64
+	KeyFile      string
 }
 
 // Edit reads the backup in srcDir, applies the options and writes a new
@@ -120,7 +122,10 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 		return nil, fmt.Errorf("KVCompact requires a KV bucket backup: stream %q with subjects %v is not one", src.metaFile.Config.Name, src.metaFile.Config.Subjects)
 	}
 
-	ed := &editor{ctx: ctx, o: o, src: src, cfg: src.metaFile.Config, now: time.Now()}
+	ed := &editor{ctx: ctx, o: o, src: src, cfg: src.metaFile.Config, now: time.Now(), srcSubjects: newSubjectCounter()}
+	if !o.perSubject() {
+		ed.keptSubjects = newSubjectCounter()
+	}
 	if o.obfuscate {
 		if ed.obf, err = newObfuscator(o.keyFile); err != nil {
 			return nil, err
@@ -205,6 +210,13 @@ type editor struct {
 	overAge  uint64
 	digest   string
 	report   Report
+
+	// srcSubjects sees every source message; keptSubjects sees every written
+	// one on the single pass, a per-subject edit takes its kept count from
+	// Resolve instead so a dry run that stops there still reports it
+	srcSubjects      *subjectCounter
+	keptSubjects     *subjectCounter
+	keptSubjectCount int
 }
 
 func (e *editor) run(tgt *target) error {
@@ -383,6 +395,7 @@ func (e *editor) twoPass() error {
 	}
 
 	res := state.Resolve()
+	e.keptSubjectCount = int(res.subjects)
 	if e.o.kvCompact {
 		e.report.Dropped.KVCompact = passed - res.msgs
 	} else {
@@ -455,6 +468,7 @@ func (e *editor) filterMessage(m *Message) error {
 // evaluate applies the stateless filters; a rejected message is counted and reported as not ok
 func (e *editor) evaluate(m *Message) (bool, *msgBody, error) {
 	e.report.SourceMessages++
+	e.srcSubjects.add(m.Subject)
 	body := &msgBody{m: m}
 
 	kind := e.o.evalMeta(m)
@@ -521,13 +535,16 @@ func (e *editor) writeMessage(body *msgBody) error {
 			if m.PayloadSize > 0 {
 				e.obf.bodies++
 			}
-			out.Subject, out.HdrSize, out.PayloadSize, out.Body = subject, int64(len(block)), 0, bytes.NewReader(block)
+			out.Subject, out.HdrSize, out.Body = subject, int64(len(block)), io.MultiReader(bytes.NewReader(block), io.LimitReader(zeroPadding{}, m.PayloadSize))
 		}
 	} else {
 		out.Body = body.reader()
 	}
 
 	e.report.Kept++
+	if e.keptSubjects != nil {
+		e.keptSubjects.add(m.Subject)
+	}
 	if e.o.renumber {
 		out.Seq = e.report.Kept
 	}
@@ -559,6 +576,12 @@ func (e *editor) resultRange() (first uint64, last uint64) {
 }
 
 func (e *editor) result() (*Result, error) {
+	e.report.SourceSubjects = e.srcSubjects.count()
+	e.report.KeptSubjects = e.keptSubjectCount
+	if e.keptSubjects != nil {
+		e.report.KeptSubjects = e.keptSubjects.count()
+	}
+
 	cfg := e.cfg
 	if e.o.renumber {
 		cfg.FirstSeq = 0
@@ -568,7 +591,7 @@ func (e *editor) result() (*Result, error) {
 		if cfg, err = e.obf.config(cfg); err != nil {
 			return nil, err
 		}
-		e.report.Obfuscation = &ObfuscationReport{TokensMapped: len(e.obf.reverse), BodiesDropped: e.obf.bodies}
+		e.report.Obfuscation = &ObfuscationReport{TokensMapped: len(e.obf.reverse), BodiesPadded: e.obf.bodies}
 	}
 
 	st := api.StreamState{

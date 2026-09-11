@@ -17,6 +17,7 @@ type ConsumerAckMetricV1 struct {
 	StreamSeq   uint64 `json:"stream_seq"`
 	Delay       int64  `json:"ack_time"`
 	Deliveries  uint64 `json:"deliveries"`
+	Domain      string `json:"domain,omitempty"`
 }
 
 func init() {

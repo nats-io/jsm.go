@@ -4,7 +4,7 @@ import (
 	"github.com/nats-io/jsm.go/api/event"
 )
 
-// ActionAdvisoryTypeV1 indicates which action against a stream, consumer or template triggered an advisory
+// ActionAdvisoryTypeV1 indicates which action against a stream or consumer triggered an advisory
 type ActionAdvisoryTypeV1 string
 
 func (a ActionAdvisoryTypeV1) String() string {
@@ -23,9 +23,9 @@ const (
 type JSStreamActionAdvisoryV1 struct {
 	event.NATSEvent
 
-	Stream   string               `json:"stream"`
-	Action   ActionAdvisoryTypeV1 `json:"action"`
-	Template string               `json:"template,omitempty"`
+	Stream string               `json:"stream"`
+	Action ActionAdvisoryTypeV1 `json:"action"`
+	Domain string               `json:"domain,omitempty"`
 }
 
 func init() {
@@ -37,10 +37,7 @@ func init() {
 	err = event.RegisterTextExtendedTemplate("io.nats.jetstream.advisory.v1.stream_action", `
 [{{ .Time | ShortTime }}] [{{ .ID }}] Stream {{ .Action | ToString | TitleString }} Action
 
-        Stream: {{ .Stream }}
-{{- if .Template }}
-      Template: {{ .Template }}
-{{- end }}`)
+        Stream: {{ .Stream }}`)
 	if err != nil {
 		panic(err)
 	}

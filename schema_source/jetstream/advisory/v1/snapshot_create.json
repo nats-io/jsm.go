@@ -9,9 +9,8 @@
     "id",
     "timestamp",
     "stream",
-    "blocks",
-    "block_size",
-    "client"
+    "client",
+    "state"
   ],
   "additionalProperties": false,
   "properties": {
@@ -31,18 +30,16 @@
       "type": "string",
       "description": "The name of the Stream being snapshotted"
     },
-    "blocks": {
-      "type": "integer",
-      "description": "Approximate number of blocks in the snapshot",
-      "minimum": 0
-    },
-    "block_size": {
-      "type": "integer",
-      "description": "The size, in bytes, of every block",
-      "minimum": 1
-    },
     "client": {
       "$ref": "../../../definitions.json#/definitions/client_info_v1"
+    },
+    "state": {
+      "description": "The state of the Stream at the time the snapshot was started",
+      "$ref": "../../../jetstream/api/v1/definitions.json#/definitions/stream_state"
+    },
+    "domain": {
+      "type": "string",
+      "description": "The domain of the JetStream server the event is from"
     }
   }
 }

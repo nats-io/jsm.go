@@ -17,20 +17,25 @@ type JSSnapshotCompleteAdvisoryV1 struct {
 	Start  time.Time             `json:"start"`
 	End    time.Time             `json:"end"`
 	Client advisory.ClientInfoV1 `json:"client"`
+	Domain string                `json:"domain,omitempty"`
+	Error  string                `json:"error,omitempty"`
 }
 
 func init() {
-	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_complete", `{{ .Time | ShortTime }} [Snapshot Complete] {{ .Stream }} started {{ .Start | ShortTime }} ended {{ .End | ShortTime }}`)
+	err := event.RegisterTextCompactTemplate("io.nats.jetstream.advisory.v1.snapshot_complete", `{{ .Time | ShortTime }} [Snapshot {{ if .Error }}Failed{{ else }}Complete{{ end }}] {{ .Stream }} started {{ .Start | ShortTime }} ended {{ .End | ShortTime }}{{ if .Error }}: {{ .Error }}{{ end }}`)
 	if err != nil {
 		panic(err)
 	}
 
 	err = event.RegisterTextExtendedTemplate("io.nats.jetstream.advisory.v1.snapshot_complete", `
-[{{ .Time | ShortTime }}] [{{ .ID }}] Stream Snapshot Completed
+[{{ .Time | ShortTime }}] [{{ .ID }}] Stream Snapshot {{ if .Error }}Failed{{ else }}Completed{{ end }}
 
         Stream: {{ .Stream }}
-		Start: {{ .Start | NanoTime }}
-          End: {{ .End | NanoTime }}
+{{- if .Error }}
+         Error: {{ .Error }}
+{{- end }}
+         Start: {{ .Start | NanoTime }}
+           End: {{ .End | NanoTime }}
         Client:
 {{- if .Client.User }}
                      User: {{ .Client.User }} Account: {{ .Client.Account }}

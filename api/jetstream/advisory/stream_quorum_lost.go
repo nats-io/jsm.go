@@ -12,6 +12,8 @@ type JSStreamQuorumLostV1 struct {
 
 	Stream   string        `json:"stream"`
 	Replicas []*PeerInfoV1 `json:"replicas"`
+	Account  string        `json:"account,omitempty"`
+	Domain   string        `json:"domain,omitempty"`
 }
 
 func init() {

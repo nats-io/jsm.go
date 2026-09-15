@@ -74,35 +74,47 @@ type InfoReport struct {
 // server's restore enforces, terminated by the sentinel. A nil error means
 // valid; when the archive fails part way the report and the error name the
 // last good entry
-func Verify(dir string) (*VerifyReport, error) {
-	_, report, err := scan(dir, false)
+func Verify(dir string, opts ...ScanOption) (*VerifyReport, error) {
+	o := scanOpts(opts)
+	o.subjects = false
+	_, report, err := scan(dir, o)
 	return report, err
 }
 
-// InfoOption configures Info
-type InfoOption func(*infoOptions)
+// ScanOption configures Info and Verify
+type ScanOption func(*scanOptions)
 
-type infoOptions struct {
+type scanOptions struct {
 	subjects bool
+	notify   func(Progress)
 }
 
-// WithSubjects collects every subject in the archive with its message
-// count, which holds each subject in memory once
-func WithSubjects() InfoOption {
-	return func(o *infoOptions) { o.subjects = true }
-}
-
-// Info scans a backup directory to the sentinel and reports what it holds
-func Info(dir string, opts ...InfoOption) (*InfoReport, error) {
-	o := &infoOptions{}
+func scanOpts(opts []ScanOption) *scanOptions {
+	o := &scanOptions{}
 	for _, opt := range opts {
 		opt(o)
 	}
-	info, _, err := scan(dir, o.subjects)
+	return o
+}
+
+// WithSubjects makes Info collect every subject in the archive with its
+// message count, which holds each subject in memory once. Verify ignores it
+func WithSubjects() ScanOption {
+	return func(o *scanOptions) { o.subjects = true }
+}
+
+// ScanNotify reports progress to cb while the archive is read
+func ScanNotify(cb func(Progress)) ScanOption {
+	return func(o *scanOptions) { o.notify = cb }
+}
+
+// Info scans a backup directory to the sentinel and reports what it holds
+func Info(dir string, opts ...ScanOption) (*InfoReport, error) {
+	info, _, err := scan(dir, scanOpts(opts))
 	return info, err
 }
 
-func scan(dir string, withSubjects bool) (*InfoReport, *VerifyReport, error) {
+func scan(dir string, o *scanOptions) (*InfoReport, *VerifyReport, error) {
 	data, meta, err := backupPaths(dir)
 	if err != nil {
 		return nil, nil, err
@@ -118,14 +130,20 @@ func scan(dir string, withSubjects bool) (*InfoReport, *VerifyReport, error) {
 		return nil, nil, err
 	}
 	defer f.Close()
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+	prog := newProgress(o.notify, 1)
+	prog.total = uint64(stat.Size())
 
 	info := &InfoReport{Config: mf.Config, Edit: mf.Edit}
-	if withSubjects {
+	if o.subjects {
 		info.Subjects = map[string]uint64{}
 	}
 	report := &VerifyReport{}
 	subjects := newSubjectCounter()
-	dec := NewDecoder(f)
+	dec := NewDecoder(prog.reader(f))
 	for {
 		item, err := dec.Next()
 		if err != nil {
@@ -137,6 +155,7 @@ func scan(dir string, withSubjects bool) (*InfoReport, *VerifyReport, error) {
 		}
 
 		report.Entries++
+		prog.entries++
 		switch it := item.(type) {
 		case *State:
 			info.Declared = it.State
@@ -165,6 +184,7 @@ func scan(dir string, withSubjects bool) (*InfoReport, *VerifyReport, error) {
 			report.NumSubjects = subjects.count()
 			info.NumSubjects = report.NumSubjects
 			info.DeclaredCountsAdvisory = info.Messages > 0 && (info.Declared.Msgs == 0 || info.Declared.Bytes == 0)
+			prog.finish()
 			return info, report, nil
 		}
 	}

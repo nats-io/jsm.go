@@ -217,9 +217,13 @@ func TestEditTwoPassDryRun(t *testing.T) {
 	if _, err := os.Stat(dst); err == nil {
 		t.Fatal("dry run wrote the target")
 	}
-	_, real := edit(t, src, KVCompact())
+	var last Progress
+	_, real := edit(t, src, KVCompact(), EditNotify(func(p Progress) { last = p }))
 	if !reflect.DeepEqual(dry, real) {
 		t.Fatalf("dry run result differs:\n%+v\n%+v", dry, real)
+	}
+	if last == nil || !last.Finished() || last.Passes() != 2 || last.Pass() != 2 || last.BytesRead() != last.BytesTotal() || last.BytesTotal() == 0 {
+		t.Fatalf("unexpected two-pass progress: %+v", last)
 	}
 }
 

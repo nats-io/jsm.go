@@ -112,7 +112,12 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 	if err := o.validate(); err != nil {
 		return nil, err
 	}
-	src, err := openSource(srcDir)
+	passes := 1
+	if o.perSubject() && (!o.dryRun || o.obfuscate) {
+		passes = 2
+	}
+	prog := newProgress(o.notify, passes)
+	src, err := openSource(srcDir, prog)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +153,7 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 	if err := ed.run(tgt); err != nil {
 		return nil, err
 	}
+	prog.finish()
 
 	result, err := ed.result()
 	if err != nil {
@@ -260,6 +266,7 @@ func (e *editor) singlePass() error {
 		if err != nil {
 			return err
 		}
+		e.src.prog.entries++
 
 		switch it := item.(type) {
 		case *State:
@@ -358,6 +365,7 @@ func (e *editor) twoPass() error {
 		if err != nil {
 			return err
 		}
+		e.src.prog.entries++
 
 		switch it := item.(type) {
 		case *State:
@@ -425,6 +433,7 @@ func (e *editor) twoPass() error {
 		if err != nil {
 			return err
 		}
+		e.src.prog.entries++
 
 		switch it := item.(type) {
 		case *State:

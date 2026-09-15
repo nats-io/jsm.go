@@ -58,6 +58,7 @@ type editOptions struct {
 	keyFile             string
 	dryRun              bool
 	toolVersion         string
+	notify              func(Progress)
 	betweenPasses       func()
 }
 
@@ -163,6 +164,11 @@ func DryRun() EditOption {
 // block; without it the edit block carries no version
 func ToolVersion(v string) EditOption {
 	return func(o *editOptions) { o.toolVersion = v }
+}
+
+// EditNotify reports progress to cb while the source archive is read
+func EditNotify(cb func(Progress)) EditOption {
+	return func(o *editOptions) { o.notify = cb }
 }
 
 func (o *editOptions) validate() error {

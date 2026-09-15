@@ -483,6 +483,15 @@ func TestVerifyAndInfo(t *testing.T) {
 		t.Fatalf("unexpected last good: %+v", rep.LastGood)
 	}
 
+	var last Progress
+	if _, err := Verify(dir, ScanNotify(func(p Progress) { last = p })); err != nil {
+		t.Fatal(err)
+	}
+	size, _ := os.Stat(filepath.Join(dir, DataFile))
+	if last == nil || !last.Finished() || last.BytesRead() != uint64(size.Size()) || last.BytesTotal() != uint64(size.Size()) || last.Entries() != 6 || last.Pass() != 1 || last.Passes() != 1 {
+		t.Fatalf("unexpected progress: %+v", last)
+	}
+
 	info, err := Info(dir)
 	if err != nil {
 		t.Fatal(err)

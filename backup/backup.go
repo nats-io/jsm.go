@@ -15,10 +15,10 @@
 // on disk without a server connection.
 //
 // Only the NATS Server 2.15 backup format is supported: an s2 compressed
-// NATSARC1 archive named stream.tar.s2 next to a backup.json meta file, the
+// NATSARC1 archive named stream.arc.s2 next to a backup.json meta file, the
 // layout written by jsm.Stream.SnapshotToDirectory and read by
-// jsm.Manager.RestoreSnapshotFromDirectory. Older tar based backups are
-// refused.
+// jsm.Manager.RestoreSnapshotFromDirectory. Older tar based backups, named
+// stream.tar.s2, are refused.
 package backup
 
 import (
@@ -28,14 +28,15 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
 )
 
 const (
-	// DataFile is the archive file name inside a backup directory
-	DataFile = "stream.tar.s2"
+	// DataFile is the archive Edit writes, the name a 2.15 server backup carries
+	DataFile = jsm.SnapshotDataFile
 	// MetaFile is the meta file name inside a backup directory
-	MetaFile = "backup.json"
+	MetaFile = jsm.SnapshotMetaFile
 
 	stateEntry     = "state.json"
 	consumerPrefix = "consumers/"
@@ -109,12 +110,13 @@ func storedMsgSize(slen int, hlen, mlen int64) uint64 {
 }
 
 func backupPaths(dir string) (data string, meta string, err error) {
-	data = filepath.Join(dir, DataFile)
+	data, err = jsm.SnapshotDataPath(dir)
+	if err != nil {
+		return "", "", err
+	}
 	meta = filepath.Join(dir, MetaFile)
-	for _, p := range []string{data, meta} {
-		if _, err := os.Stat(p); err != nil {
-			return "", "", err
-		}
+	if _, err := os.Stat(meta); err != nil {
+		return "", "", err
 	}
 	return data, meta, nil
 }

@@ -174,3 +174,25 @@ func TestManagerNewValidDotPrefix(t *testing.T) {
 		t.Errorf("valid dot-separated prefix was incorrectly rejected: %v", err)
 	}
 }
+
+func TestVersionIsAtLeast(t *testing.T) {
+	cases := map[string]bool{
+		"2.15.0-preview.1": true,
+		"2.15.0-RC.1":      true,
+		"2.15.0":           true,
+		"2.16.3":           true,
+		"3.0.0":            true,
+		"v2.15.0":          true,
+		"2.14.9":           false,
+		"2.10.26":          false,
+		"1.99.0":           false,
+		"":                 false,
+		"dev":              false,
+	}
+
+	for version, want := range cases {
+		if got := versionIsAtLeast(version, 2, 15, 0); got != want {
+			t.Errorf("versionIsAtLeast(%q, 2, 15, 0) = %v, want %v", version, got, want)
+		}
+	}
+}

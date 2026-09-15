@@ -14,6 +14,7 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -84,6 +85,9 @@ func TestBackupVerifyAndInfoOnServerSnapshot(t *testing.T) {
 		checkErr(t, err, "state failed")
 
 		dir := snapshotFixture(t, mgr, stream)
+		if _, err := os.Stat(filepath.Join(dir, jsm.SnapshotDataFile)); err != nil {
+			t.Fatalf("a 2.15 snapshot must be written as %s: %v", jsm.SnapshotDataFile, err)
+		}
 
 		rep, err := backup.Verify(dir)
 		checkErr(t, err, "verify failed")
@@ -117,6 +121,61 @@ func TestBackupVerifyAndInfoOnServerSnapshot(t *testing.T) {
 		checkErr(t, err, "info failed")
 		if info.LastSeq != 19 || info.Declared.LastSeq != 20 || state.LastSeq != 20 || info.Messages != state.Msgs {
 			t.Fatalf("trailing delete not reflected: archive last %d, declared last %d, state %+v", info.LastSeq, info.Declared.LastSeq, state)
+		}
+	})
+}
+
+func TestBackupSnapshotRefusesExistingBackup(t *testing.T) {
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
+		stream, err := mgr.NewStream("ORDERS", jsm.FileStorage(), jsm.Subjects("orders.>"))
+		checkErr(t, err, "create failed")
+		publishMsg(t, nc, "orders.new", "order 1")
+
+		dir := filepath.Join(t.TempDir(), "src")
+		memory, err := mgr.NewStream("MEMORY", jsm.MemoryStorage(), jsm.Subjects("memory.>"))
+		checkErr(t, err, "create failed")
+		if _, err = memory.SnapshotToDirectory(context.Background(), dir); !errors.Is(err, jsm.ErrMemoryStreamNotSupported) {
+			t.Fatalf("expected memory stream snapshot to fail, got %v", err)
+		}
+		entries, err := os.ReadDir(dir)
+		checkErr(t, err, "readdir failed")
+		if len(entries) != 0 {
+			t.Fatalf("failed snapshot left files behind: %v", entries)
+		}
+
+		canceled, cancel := context.WithCancel(context.Background())
+		cancel()
+		if _, err = stream.SnapshotToDirectory(canceled, dir); !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected a canceled snapshot to fail, got %v", err)
+		}
+		entries, err = os.ReadDir(dir)
+		checkErr(t, err, "readdir failed")
+		if len(entries) != 0 {
+			t.Fatalf("canceled snapshot left files behind: %v", entries)
+		}
+
+		checkErr(t, os.WriteFile(filepath.Join(dir, jsm.SnapshotMetaFile), nil, 0o600), "write failed")
+		checkErr(t, os.WriteFile(filepath.Join(dir, jsm.SnapshotLegacyDataFile), []byte("partial"), 0o600), "write failed")
+		_, err = stream.SnapshotToDirectory(context.Background(), dir)
+		checkErr(t, err, "snapshot failed")
+		if _, err := os.Stat(filepath.Join(dir, jsm.SnapshotLegacyDataFile)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("partial %s left beside the new archive: %v", jsm.SnapshotLegacyDataFile, err)
+		}
+		before, err := os.ReadFile(filepath.Join(dir, jsm.SnapshotDataFile))
+		checkErr(t, err, "read failed")
+
+		publishMsg(t, nc, "orders.new", "order 2")
+		_, err = stream.SnapshotToDirectory(context.Background(), dir)
+		if err == nil || !strings.Contains(err.Error(), "already exists") {
+			t.Fatalf("expected an already exists error, got %v", err)
+		}
+		after, err := os.ReadFile(filepath.Join(dir, jsm.SnapshotDataFile))
+		checkErr(t, err, "read failed")
+		if !bytes.Equal(before, after) {
+			t.Fatal("refused snapshot changed the existing archive")
+		}
+		if _, err := backup.Verify(dir); err != nil {
+			t.Fatalf("existing backup does not verify: %v", err)
 		}
 	})
 }

@@ -484,6 +484,10 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 
 		return progress, err
 	case <-sctx.Done():
+		if err := ctx.Err(); err != nil {
+			return progress, err
+		}
+
 		meta := map[string]any{
 			"config": resp.Config,
 			"state":  resp.State,
@@ -510,11 +514,51 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 }
 
 // SnapshotToDirectory creates a backup into s2 compressed tar file
+const (
+	// SnapshotDataFile is the archive SnapshotToDirectory writes for NATS Server 2.15 and newer
+	SnapshotDataFile = "stream.arc.s2"
+	// SnapshotLegacyDataFile is the archive older servers produce
+	SnapshotLegacyDataFile = "stream.tar.s2"
+	// SnapshotMetaFile is the meta file written beside the archive
+	SnapshotMetaFile = "backup.json"
+)
+
+// SnapshotDataPath finds the archive in a backup directory, stream.arc.s2
+// from a 2.15 server or stream.tar.s2 from an older one, and refuses a
+// directory holding both
+func SnapshotDataPath(dir string) (string, error) {
+	arc := filepath.Join(dir, SnapshotDataFile)
+	legacy := filepath.Join(dir, SnapshotLegacyDataFile)
+	_, arcErr := os.Stat(arc)
+	_, legacyErr := os.Stat(legacy)
+
+	switch {
+	case arcErr == nil && legacyErr == nil:
+		return "", fmt.Errorf("%s holds both %s and %s", dir, SnapshotDataFile, SnapshotLegacyDataFile)
+	case arcErr == nil:
+		return arc, nil
+	case legacyErr == nil:
+		return legacy, nil
+	case !errors.Is(legacyErr, os.ErrNotExist):
+		return "", legacyErr
+	default:
+		return "", arcErr
+	}
+}
+
+// snapshotDataFile picks the archive name from the connected server version,
+// servers from 2.15 send the NATSARC1 format and older ones the tar format
+func (s *Stream) snapshotDataFile(dir string) string {
+	if versionIsAtLeast(s.mgr.nc.ConnectedServerVersion(), 2, 15, 0) {
+		return filepath.Join(dir, SnapshotDataFile)
+	}
+	return filepath.Join(dir, SnapshotLegacyDataFile)
+}
+
 func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...SnapshotOption) (SnapshotProgress, error) {
 	sopts := &snapshotOptions{
 		dir:       dir,
-		dataFile:  filepath.Join(dir, "stream.tar.s2"),
-		metaFile:  filepath.Join(dir, "backup.json"),
+		metaFile:  filepath.Join(dir, SnapshotMetaFile),
 		jsck:      false,
 		consumers: false,
 		progress:  true,
@@ -524,10 +568,27 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 		opt(sopts)
 	}
 
+	// the meta file is only written once every chunk has arrived, an empty
+	// one is left by a backup that did not finish
+	if st, err := os.Stat(sopts.metaFile); err == nil && st.Size() > 0 {
+		return nil, fmt.Errorf("backup already exists in %s", sopts.dir)
+	}
+
 	err := os.MkdirAll(sopts.dir, 0700)
 	if err != nil {
 		return nil, err
 	}
+
+	// a backup that did not finish can leave the archive under either name
+	// when the server was upgraded in between
+	for _, f := range []string{sopts.metaFile, filepath.Join(sopts.dir, SnapshotDataFile), filepath.Join(sopts.dir, SnapshotLegacyDataFile)} {
+		err = os.Remove(f)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+	}
+
+	sopts.dataFile = s.snapshotDataFile(sopts.dir)
 
 	mf, err := os.Create(sopts.metaFile)
 	if err != nil {
@@ -536,10 +597,19 @@ func (s *Stream) SnapshotToDirectory(ctx context.Context, dir string, opts ...Sn
 
 	df, err := os.Create(sopts.dataFile)
 	if err != nil {
+		mf.Close()
+		os.Remove(sopts.metaFile)
 		return nil, err
 	}
 
-	return s.createSnapshot(ctx, df, mf, sopts)
+	progress, err := s.createSnapshot(ctx, df, mf, sopts)
+	if err != nil {
+		os.Remove(sopts.metaFile)
+		os.Remove(sopts.dataFile)
+		return progress, err
+	}
+
+	return progress, nil
 }
 
 // SnapshotToBuffer creates a compressed s2 backup and writes to an io.Writer
@@ -701,10 +771,15 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 }
 
 func (m *Manager) RestoreSnapshotFromDirectory(ctx context.Context, stream string, dir string, opts ...SnapshotOption) (RestoreProgress, *api.StreamState, error) {
+	dataFile, err := SnapshotDataPath(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	sopts := &snapshotOptions{
 		dir:      dir,
-		dataFile: filepath.Join(dir, "stream.tar.s2"),
-		metaFile: filepath.Join(dir, "backup.json"),
+		dataFile: dataFile,
+		metaFile: filepath.Join(dir, SnapshotMetaFile),
 		chunkSz:  64 * 1024,
 		progress: true,
 	}

@@ -24,7 +24,7 @@ import (
 
 // EditInfo is the "edit" block an edited backup carries in its meta file.
 // An edited backup is a derived artifact and this block is its provenance:
-// SourceDigest is sha256 of the source stream.tar.s2, hashed while pass 1
+// SourceDigest is sha256 of the source archive, hashed while pass 1
 // streams it, so with the recorded options and tool version anyone holding
 // the source can re-run the edit, expect byte-identical output, and settle
 // which archive a shared backup was derived from. The digest is deliberate

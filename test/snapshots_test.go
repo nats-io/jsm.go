@@ -45,7 +45,7 @@ func TestStream_Snapshot(t *testing.T) {
 		stream, err := mgr.NewStream("m1", jsm.MemoryStorage(), jsm.Subjects("memtest"))
 		checkErr(t, err, "create failed")
 
-		_, err = stream.SnapshotToDirectory(context.Background(), "/tmp")
+		_, err = stream.SnapshotToDirectory(context.Background(), t.TempDir())
 		if !errors.Is(err, jsm.ErrMemoryStreamNotSupported) {
 			t.Fatalf("expected memory error, got %v", err)
 		}

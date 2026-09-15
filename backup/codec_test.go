@@ -550,6 +550,14 @@ func TestVerifyAndInfo(t *testing.T) {
 	if _, err := Verify(dir); !errors.Is(err, jsm.ErrMemoryStreamNotSupported) {
 		t.Fatalf("expected a memory storage error, got %v", err)
 	}
+
+	writeBackupDir(t, dir, cfg, st, data)
+	if err := os.WriteFile(filepath.Join(dir, jsm.SnapshotLegacyDataFile), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Verify(dir); err == nil || !strings.Contains(err.Error(), "holds both") {
+		t.Fatalf("expected a refusal for two archives, got %v", err)
+	}
 }
 
 func TestVerifyRejectsV1Layout(t *testing.T) {

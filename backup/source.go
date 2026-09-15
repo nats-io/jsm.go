@@ -42,9 +42,10 @@ type source struct {
 	stat     os.FileInfo
 	digest   hash.Hash
 	tee      io.Reader
+	prog     *progress
 }
 
-func openSource(dir string) (*source, error) {
+func openSource(dir string, prog *progress) (*source, error) {
 	data, meta, err := backupPaths(dir)
 	if err != nil {
 		return nil, err
@@ -65,8 +66,9 @@ func openSource(dir string) (*source, error) {
 		return nil, err
 	}
 
-	src := &source{dataPath: data, metaFile: mf, f: f, stat: stat, digest: sha256.New()}
-	src.tee = io.TeeReader(f, src.digest)
+	prog.total = uint64(stat.Size())
+	src := &source{dataPath: data, metaFile: mf, f: f, stat: stat, digest: sha256.New(), prog: prog}
+	src.tee = io.TeeReader(prog.reader(f), src.digest)
 
 	return src, nil
 }
@@ -96,7 +98,8 @@ func (s *source) rewind() (io.Reader, error) {
 	if _, err := s.f.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
-	return s.f, nil
+	s.prog.nextPass()
+	return s.prog.reader(s.f), nil
 }
 
 func (s *source) isKVBucket() bool {

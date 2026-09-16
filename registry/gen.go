@@ -330,6 +330,7 @@ func jsApiSchemas() schemas {
 		&schema{P: "jetstream/api/v1/meta_server_remove_request.json", St: "api.JSApiMetaServerRemoveRequest", Req: "api.JSApiServerRemovePrefix"},
 		&schema{P: "jetstream/api/v1/meta_server_remove_response.json", St: "api.JSApiMetaServerRemoveResponse", Res: "api.JSApiServerRemovePrefix"},
 		&schema{P: "jetstream/api/v1/pub_ack_response.json", St: "api.JSPubAckResponse", Res: "api.JSAckPrefix"},
+		&schema{P: "jetstream/api/v1/stream_cancel_move_response.json", St: "api.JSApiStreamCancelMoveResponse", Res: "api.JSApiStreamCancelMovePrefix"},
 		&schema{P: "jetstream/api/v1/stream_configuration.json", St: "api.StreamConfig"},
 		&schema{P: "jetstream/api/v1/stream_create_request.json", St: "api.JSApiStreamCreateRequest", Req: "api.JSApiStreamCreatePrefix"},
 		&schema{P: "jetstream/api/v1/stream_create_response.json", St: "api.JSApiStreamCreateResponse", Res: "api.JSApiStreamCreatePrefix"},

@@ -984,6 +984,30 @@ func (t JSPubAckResponse) Schema() ([]byte, error) {
 }
 
 // Validate performs a JSON Schema validation of the configuration
+func (t JSApiStreamCancelMoveResponse) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
+	if len(v) == 0 || v[0] == nil {
+		return true, nil
+	}
+
+	return v[0].ValidateStruct(t, t.SchemaType())
+}
+
+// SchemaType is the NATS schema type io.nats.jetstream.api.v1.stream_cancel_move_response
+func (t JSApiStreamCancelMoveResponse) SchemaType() string {
+	return "io.nats.jetstream.api.v1.stream_cancel_move_response"
+}
+
+// SchemaID is the url to the JSON Schema for JetStream Consumer Configuration
+func (t JSApiStreamCancelMoveResponse) SchemaID() string {
+	return "https://raw.githubusercontent.com/nats-io/jsm.go/master/schemas/jetstream/api/v1/stream_cancel_move_response.json"
+}
+
+// Schema is a JSON Schema document for the JetStream Consumer Configuration
+func (t JSApiStreamCancelMoveResponse) Schema() ([]byte, error) {
+	return scfs.Load("jetstream/api/v1/stream_cancel_move_response.json")
+}
+
+// Validate performs a JSON Schema validation of the configuration
 func (t StreamConfig) Validate(v ...validator.StructValidator) (valid bool, errors []string) {
 	if len(v) == 0 || v[0] == nil {
 		return true, nil

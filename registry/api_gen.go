@@ -82,6 +82,8 @@ func init() {
 	RegisterResponseSubjectType(api.JSApiServerRemovePrefix, "io.nats.jetstream.api.v1.meta_server_remove_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.pub_ack_response", func() any { return &api.JSPubAckResponse{} })
 	RegisterResponseSubjectType(api.JSAckPrefix, "io.nats.jetstream.api.v1.pub_ack_response")
+	RegisterTypeFactory("io.nats.jetstream.api.v1.stream_cancel_move_response", func() any { return &api.JSApiStreamCancelMoveResponse{} })
+	RegisterResponseSubjectType(api.JSApiStreamCancelMovePrefix, "io.nats.jetstream.api.v1.stream_cancel_move_response")
 	RegisterTypeFactory("io.nats.jetstream.api.v1.stream_configuration", func() any { return &api.StreamConfig{} })
 	RegisterTypeFactory("io.nats.jetstream.api.v1.stream_create_request", func() any { return &api.JSApiStreamCreateRequest{} })
 	RegisterRequestSubjectType(api.JSApiStreamCreatePrefix, "io.nats.jetstream.api.v1.stream_create_request")

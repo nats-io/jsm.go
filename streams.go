@@ -786,6 +786,10 @@ func (s *Stream) CancelMove() (*api.JSApiStreamCancelMoveResponse, error) {
 		return nil, err
 	}
 
+	if resp.IsError() {
+		return nil, resp.Error
+	}
+
 	s.Lock()
 	s.cfg = &resp.Config
 	s.lastInfo = resp.StreamInfo

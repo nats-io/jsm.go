@@ -778,6 +778,22 @@ func (s *Stream) Delete() error {
 	return nil
 }
 
+// CancelMove cancels an in-progress move
+func (s *Stream) CancelMove() (*api.JSApiStreamCancelMoveResponse, error) {
+	var resp api.JSApiStreamCancelMoveResponse
+	err := s.mgr.jsonRequest(fmt.Sprintf(api.JSApiStreamCancelMoveT, s.Name()), nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	s.Lock()
+	s.cfg = &resp.Config
+	s.lastInfo = resp.StreamInfo
+	s.Unlock()
+
+	return &resp, nil
+}
+
 // Seal updates a stream so that messages can not be added or removed using the API and limits will not be processed - messages will never age out.
 // A sealed stream can not be unsealed.
 func (s *Stream) Seal() error {

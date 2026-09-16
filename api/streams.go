@@ -76,6 +76,9 @@ const (
 	JSApiStreamEvacuatePeer       = "$JS.API.STREAM.PEER.EVACUATE.*"
 	JSApiStreamEvacuatePeerT      = "$JS.API.STREAM.PEER.EVACUATE.%s"
 	JSApiStreamEvacuatePeerPrefix = "$JS.API.STREAM.PEER.EVACUATE"
+	JSApiStreamCancelMove         = "$JS.API.STREAM.CANCEL_MOVE.*"
+	JSApiStreamCancelMoveT        = "$JS.API.STREAM.CANCEL_MOVE.%s"
+	JSApiStreamCancelMovePrefix   = "$JS.API.STREAM.CANCEL_MOVE"
 
 	StreamDefaultReplicas = 1
 	StreamMaxReplicas     = 5
@@ -104,6 +107,13 @@ type PubAck struct {
 	Value     string `json:"val,omitempty"`
 	BatchId   string `json:"batch,omitempty"`
 	BatchSize uint64 `json:"count,omitempty"`
+}
+
+// JSApiStreamCancelMoveResponse is the response to a cancel move request.
+// io.nats.jetstream.api.v1.stream_cancel_move_response
+type JSApiStreamCancelMoveResponse struct {
+	JSApiResponse
+	*StreamInfo
 }
 
 // io.nats.jetstream.api.v1.stream_info_request

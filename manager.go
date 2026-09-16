@@ -263,6 +263,26 @@ func (m *Manager) StreamNames(filter *StreamNamesFilter) (names []string, err er
 	return names, nil
 }
 
+// CancelStreamMove cancels an in-progress stream move
+func (m *Manager) CancelStreamMove(stream string) (*api.JSApiStreamCancelMoveResponse, error) {
+	if !IsValidName(stream) {
+		return nil, fmt.Errorf("%q is not a valid stream name", stream)
+	}
+
+	var resp api.JSApiStreamCancelMoveResponse
+
+	err := m.jsonRequest(fmt.Sprintf(api.JSApiStreamCancelMoveT, stream), nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.IsError() {
+		return nil, resp.Error
+	}
+
+	return &resp, nil
+}
+
 // DeleteStreamMessage deletes a specific message from the Stream without erasing the data, see DeleteMessage() for a safe delete
 func (m *Manager) DeleteStreamMessage(stream string, seq uint64, noErase bool) error {
 	if !IsValidName(stream) {

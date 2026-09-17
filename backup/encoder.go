@@ -26,8 +26,9 @@ import (
 )
 
 // Encoder writes a compressed NATSARC1 stream backup with the same framing
-// as the server: one archive entry per item, flushed individually so every
-// entry starts its own s2 block
+// as the server: one archive entry per item. Entries are not flushed
+// individually, s2 closes a block when its buffer fills, so the output is
+// large blocks rather than one block and one write per message
 type Encoder struct {
 	s2w *s2.Writer
 	aw  *archive.Writer
@@ -78,7 +79,7 @@ func (e *Encoder) WriteMessage(m *Message) error {
 		}
 	}
 
-	return e.aw.Flush()
+	return nil
 }
 
 // WriteEnd writes the end-of-backup sentinel
@@ -103,8 +104,6 @@ func (e *Encoder) writeEntry(name string, ts int64, data []byte) error {
 	if err := e.aw.WriteHeader(hdr); err != nil {
 		return err
 	}
-	if _, err := e.aw.Write(data); err != nil {
-		return err
-	}
-	return e.aw.Flush()
+	_, err := e.aw.Write(data)
+	return err
 }

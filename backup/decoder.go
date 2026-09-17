@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -51,9 +52,11 @@ type Decoder struct {
 	err           error
 }
 
-// NewDecoder reads the s2 compressed archive from r
+// NewDecoder reads the s2 compressed archive from r. Reads are buffered
+// here since s2 fetches each block with a small header read followed by the
+// body, which against a raw file is several syscalls per block
 func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{r: archive.NewReader(s2.NewReader(r))}
+	return &Decoder{r: archive.NewReader(s2.NewReader(bufio.NewReaderSize(r, 1<<20)))}
 }
 
 // LastGood identifies the last entry that decoded cleanly

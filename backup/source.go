@@ -16,13 +16,10 @@ package backup
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"hash"
 	"io"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/nats-io/jsm.go"
@@ -109,100 +106,4 @@ func (s *source) isKVBucket() bool {
 	}
 	bucket := strings.TrimPrefix(cfg.Name, kvStreamPrefix)
 	return bucket != "" && len(cfg.Subjects) == 1 && cfg.Subjects[0] == kvSubjectPrefix+bucket+".>"
-}
-
-// target is the output directory, built in a sibling staging directory and
-// moved into place with one rename once the sentinel and meta file are on disk
-type target struct {
-	final   string
-	staging string
-	existed bool
-}
-
-func prepareTarget(dir string) (*target, error) {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	t := &target{final: abs}
-	st, err := os.Stat(abs)
-	switch {
-	case err == nil:
-		if !st.IsDir() {
-			return nil, fmt.Errorf("target %s exists and is not a directory", abs)
-		}
-		entries, err := os.ReadDir(abs)
-		if err != nil {
-			return nil, err
-		}
-		if len(entries) > 0 {
-			return nil, fmt.Errorf("target directory %s is not empty", abs)
-		}
-		t.existed = true
-	case errors.Is(err, os.ErrNotExist):
-		if err := os.MkdirAll(filepath.Dir(abs), 0o700); err != nil {
-			return nil, err
-		}
-	default:
-		return nil, err
-	}
-
-	t.staging, err = os.MkdirTemp(filepath.Dir(abs), "."+filepath.Base(abs)+".editing-")
-	if err != nil {
-		return nil, err
-	}
-
-	return t, nil
-}
-
-func (t *target) path(name string) string {
-	return filepath.Join(t.staging, name)
-}
-
-func (t *target) writeFile(name string, data []byte) error {
-	f, err := os.OpenFile(t.path(name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	return f.Close()
-}
-
-// commit renames the staging directory onto the target; renaming over an
-// existing empty directory is atomic where the platform allows it, otherwise
-// the target is removed first
-func (t *target) commit() error {
-	// Windows refuses to sync a directory handle and NTFS journals the
-	// entries anyway, so the directory sync only runs elsewhere
-	if runtime.GOOS != "windows" {
-		d, err := os.Open(t.staging)
-		if err != nil {
-			return err
-		}
-		if err := d.Sync(); err != nil {
-			d.Close()
-			return err
-		}
-		d.Close()
-	}
-
-	if err := os.Rename(t.staging, t.final); err == nil || !t.existed {
-		return err
-	}
-	if err := os.Remove(t.final); err != nil {
-		return err
-	}
-	return os.Rename(t.staging, t.final)
-}
-
-func (t *target) discard() {
-	os.RemoveAll(t.staging)
 }

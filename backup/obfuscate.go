@@ -14,7 +14,6 @@
 package backup
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -24,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -435,19 +433,17 @@ func (o *obfuscator) message(subject string, h nats.Header) (string, []byte, err
 		return subj, nil, nil
 	}
 
-	var out bytes.Buffer
-	out.WriteString("NATS/1.0\r\n")
-	for _, key := range slices.Sorted(maps.Keys(h)) {
-		for _, val := range h[key] {
+	mapped := make(nats.Header, len(h))
+	for key, vals := range h {
+		for _, val := range vals {
 			v, err := o.headerValue(key, val)
 			if err != nil {
 				return "", nil, err
 			}
-			out.WriteString(key + ": " + v + "\r\n")
+			mapped[key] = append(mapped[key], v)
 		}
 	}
-	out.WriteString("\r\n")
-	return subj, out.Bytes(), nil
+	return subj, encodeHeaders(mapped), nil
 }
 
 func (o *obfuscator) headerValue(key, val string) (string, error) {

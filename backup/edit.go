@@ -139,7 +139,7 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 
 	var tgt *target
 	if !o.dryRun {
-		tgt, err = prepareTarget(dstDir)
+		tgt, err = newTarget(dstDir)
 		if err != nil {
 			return nil, err
 		}
@@ -163,6 +163,10 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 		return result, nil
 	}
 
+	source, err := ed.sourceInfo()
+	if err != nil {
+		return nil, err
+	}
 	mf := &metaFile{
 		Config: result.Config,
 		State:  result.State,
@@ -172,12 +176,9 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 			SourceDigest: ed.digest,
 			Obfuscated:   o.obfuscate,
 		},
+		Source: source,
 	}
-	data, err := mf.marshal()
-	if err != nil {
-		return nil, err
-	}
-	if err := tgt.writeFile(MetaFile, data); err != nil {
+	if err := tgt.writeMeta(mf); err != nil {
 		return nil, err
 	}
 
@@ -234,21 +235,18 @@ func (e *editor) run(tgt *target) error {
 		return pass()
 	}
 
-	out, err := os.OpenFile(tgt.path(DataFile), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	out, err := tgt.archive()
 	if err != nil {
 		return err
 	}
 	e.enc = NewEncoder(out)
 
 	if err := pass(); err != nil {
+		e.enc.Close()
 		out.Close()
 		return err
 	}
 	if err := e.enc.Close(); err != nil {
-		out.Close()
-		return err
-	}
-	if err := out.Sync(); err != nil {
 		out.Close()
 		return err
 	}
@@ -299,7 +297,7 @@ func (e *editor) singlePass() error {
 func (e *editor) writeState(ts int64, exact *api.StreamState) error {
 	st := api.StreamState{
 		FirstSeq:  e.srcState.FirstSeq,
-		LastSeq:   e.srcState.LastSeq,
+		LastSeq:   e.srcLastSeq(),
 		Consumers: e.srcState.Consumers,
 	}
 	if e.o.renumber {
@@ -568,6 +566,34 @@ func (e *editor) writeMessage(body *msgBody) error {
 	return e.enc.WriteMessage(&out)
 }
 
+// sourceInfo copies a capture's source block into the edited backup, with
+// the stream and subjects mapped under obfuscation
+func (e *editor) sourceInfo() (*SourceInfo, error) {
+	src := e.src.metaFile.Source
+	if src == nil || e.obf == nil {
+		return src, nil
+	}
+
+	out := *src
+	var err error
+	if out.Stream != "" {
+		if out.Stream, err = e.obf.streamName(src.Stream); err != nil {
+			return nil, err
+		}
+	}
+	if out.Subjects, err = e.obf.subjects(src.Subjects); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// srcLastSeq is the source's last sequence. A capture or a single-pass
+// renumbered edit has a placeholder last_seq in its archive and the real
+// value only in its meta file
+func (e *editor) srcLastSeq() uint64 {
+	return max(e.srcState.LastSeq, e.src.metaFile.State.LastSeq)
+}
+
 // resultRange is the sequence range the restored stream will report: the
 // first kept sequence through the source's last (preserve) or K (renumber);
 // an edit that kept nothing restores as an empty stream at last+1/last
@@ -576,11 +602,11 @@ func (e *editor) resultRange() (first uint64, last uint64) {
 	case e.o.renumber:
 		return 1, e.report.Kept
 	case e.report.Kept > 0:
-		return e.firstOut, e.srcState.LastSeq
+		return e.firstOut, e.srcLastSeq()
 	case e.report.SourceMessages == 0:
 		return e.srcState.FirstSeq, e.srcState.LastSeq
 	default:
-		return e.srcState.LastSeq + 1, e.srcState.LastSeq
+		return e.srcLastSeq() + 1, e.srcLastSeq()
 	}
 }
 

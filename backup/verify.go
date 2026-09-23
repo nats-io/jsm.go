@@ -49,6 +49,9 @@ type InfoReport struct {
 	DeclaredCountsAdvisory bool `json:"declared_counts_advisory"`
 	// Edit is the meta file's edit block when the backup was produced by Edit
 	Edit *EditInfo `json:"edit,omitempty"`
+	// Source is the meta file's source block when the backup was captured
+	// from a subscription rather than snapshotted from a stream
+	Source *SourceInfo `json:"source,omitempty"`
 	// Consumers are the consumer names in archive order
 	Consumers []string `json:"consumers"`
 	// Messages is the number of messages in the archive
@@ -137,7 +140,7 @@ func scan(dir string, o *scanOptions) (*InfoReport, *VerifyReport, error) {
 	prog := newProgress(o.notify, 1)
 	prog.total = uint64(stat.Size())
 
-	info := &InfoReport{Config: mf.Config, Edit: mf.Edit}
+	info := &InfoReport{Config: mf.Config, Edit: mf.Edit, Source: mf.Source}
 	if o.subjects {
 		info.Subjects = map[string]uint64{}
 	}

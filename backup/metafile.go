@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
@@ -37,10 +38,23 @@ type EditInfo struct {
 	Obfuscated   bool     `json:"obfuscated,omitempty"`
 }
 
+// SourceInfo is the "source" block of a captured backup. Dropped counts the
+// messages the subscription lost to its pending limits
+type SourceInfo struct {
+	Subjects []string  `json:"subjects"`
+	Stream   string    `json:"stream,omitempty"`
+	Started  time.Time `json:"started"`
+	Ended    time.Time `json:"ended"`
+	Dropped  uint64    `json:"dropped,omitempty"`
+}
+
+// metaFile is the backup.json file beside the archive: the config and state
+// restore uses, plus the provenance block of an edited or captured backup
 type metaFile struct {
 	Config api.StreamConfig `json:"config"`
 	State  api.StreamState  `json:"state"`
 	Edit   *EditInfo        `json:"edit,omitempty"`
+	Source *SourceInfo      `json:"source,omitempty"`
 }
 
 func readMetaFile(path string) (*metaFile, error) {

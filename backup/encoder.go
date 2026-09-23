@@ -14,13 +14,17 @@
 package backup
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"path"
+	"slices"
 
 	"github.com/klauspost/compress/s2"
 	"github.com/nats-io/nats-server/v2/server/archive"
+	"github.com/nats-io/nats.go"
 
 	"github.com/nats-io/jsm.go/api"
 )
@@ -82,17 +86,45 @@ func (e *Encoder) WriteMessage(m *Message) error {
 	return nil
 }
 
+// writeMessageBytes is WriteMessage for a header block and body already in memory
+func (e *Encoder) writeMessageBytes(subject string, seq uint64, ts int64, hdr, body []byte) error {
+	h := &archive.Header{
+		Name:        subject,
+		Timestamp:   ts,
+		Sequence:    seq,
+		HeaderSize:  int64(len(hdr)),
+		PayloadSize: int64(len(body)),
+	}
+	if err := e.aw.WriteHeader(h); err != nil {
+		return err
+	}
+	if len(hdr) > 0 {
+		if _, err := e.aw.Write(hdr); err != nil {
+			return err
+		}
+	}
+	if len(body) > 0 {
+		if _, err := e.aw.Write(body); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // WriteEnd writes the end-of-backup sentinel
 func (e *Encoder) WriteEnd() error {
 	return e.writeEntry("", 0, nil)
 }
 
-// Close finishes the archive and the compressed stream
+// Close finishes the archive and the compressed stream. The s2 writer is
+// closed even when the archive is left mid-entry, its writer goroutine
+// only exits on Close
 func (e *Encoder) Close() error {
-	if err := e.aw.Close(); err != nil {
-		return err
+	err := e.aw.Close()
+	if cerr := e.s2w.Close(); err == nil {
+		err = cerr
 	}
-	return e.s2w.Close()
+	return err
 }
 
 func (e *Encoder) writeEntry(name string, ts int64, data []byte) error {
@@ -106,4 +138,22 @@ func (e *Encoder) writeEntry(name string, ts int64, data []byte) error {
 	}
 	_, err := e.aw.Write(data)
 	return err
+}
+
+// encodeHeaders renders h as a stored NATS/1.0 header block with keys sorted
+// so the output is deterministic. An empty map yields nil
+func encodeHeaders(h nats.Header) []byte {
+	if len(h) == 0 {
+		return nil
+	}
+
+	var out bytes.Buffer
+	out.WriteString("NATS/1.0\r\n")
+	for _, key := range slices.Sorted(maps.Keys(h)) {
+		for _, val := range h[key] {
+			out.WriteString(key + ": " + val + "\r\n")
+		}
+	}
+	out.WriteString("\r\n")
+	return out.Bytes()
 }

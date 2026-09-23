@@ -660,3 +660,91 @@ func TestBackupEditObfuscateKVRestores(t *testing.T) {
 		}
 	})
 }
+
+func TestBackupRecorderRestores(t *testing.T) {
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
+		stream, err := mgr.NewStream("ORDERS", jsm.FileStorage(), jsm.Subjects("orders.>"))
+		checkErr(t, err, "create failed")
+		publishMsg(t, nc, "orders.new", "order 1")
+		publishMsg(t, nc, "orders.paid", "paid 1", "X-Batch", "7")
+		publishMsg(t, nc, "orders.new", "order 2")
+
+		deliver, err := nc.SubscribeSync("deliver.orders")
+		checkErr(t, err, "subscribe failed")
+		_, err = stream.NewConsumer(jsm.DeliverySubject("deliver.orders"), jsm.AcknowledgeNone(), jsm.DeliverAllAvailable())
+		checkErr(t, err, "consumer failed")
+
+		cfg := jsm.DefaultStream
+		cfg.Name = "CAP"
+		cfg.Subjects = []string{"orders.>"}
+		cfg.Storage = api.FileStorage
+		dir := filepath.Join(t.TempDir(), "cap")
+		rec, err := backup.NewRecorder(dir, cfg, backup.SourceInfo{Subjects: cfg.Subjects, Stream: "ORDERS"})
+		checkErr(t, err, "recorder failed")
+
+		var originals []*api.StoredMsg
+		for seq := uint64(1); seq <= 3; seq++ {
+			m, err := deliver.NextMsg(time.Second)
+			checkErr(t, err, "next failed")
+			checkErr(t, rec.Write(m), "write failed")
+			stored, err := stream.ReadMessage(seq)
+			checkErr(t, err, "read failed")
+			originals = append(originals, stored)
+		}
+		res, err := rec.Close(0)
+		checkErr(t, err, "close failed")
+		_, err = backup.Verify(dir)
+		checkErr(t, err, "capture does not verify")
+		checkErr(t, stream.Delete(), "delete failed")
+
+		_, st, err := mgr.RestoreSnapshotFromDirectory(context.Background(), "CAP", dir)
+		checkErr(t, err, "restore failed")
+		if st.Msgs != 3 || st.FirstSeq != 1 || st.LastSeq != 3 || st.Bytes != res.Bytes || st.Consumers != 0 {
+			t.Fatalf("restored state %+v disagrees with the result %+v", st, res)
+		}
+		restored, err := mgr.LoadStream("CAP")
+		checkErr(t, err, "load failed")
+		if restored.Storage() != api.FileStorage || !reflect.DeepEqual(restored.Subjects(), []string{"orders.>"}) {
+			t.Fatalf("unexpected restored config %+v", restored.Configuration())
+		}
+		for i, want := range originals {
+			got, err := restored.ReadMessage(uint64(i + 1))
+			checkErr(t, err, "read failed")
+			if got.Subject != want.Subject || !bytes.Equal(got.Data, want.Data) || !got.Time.Equal(want.Time) {
+				t.Fatalf("message %d restored as %+v, want %+v", i+1, got, want)
+			}
+			gotHdr, _ := nats.DecodeHeadersMsg(got.Header)
+			wantHdr, _ := nats.DecodeHeadersMsg(want.Header)
+			if !reflect.DeepEqual(gotHdr, wantHdr) {
+				t.Fatalf("message %d headers restored as %v, want %v", i+1, gotHdr, wantHdr)
+			}
+		}
+
+		edited := filepath.Join(t.TempDir(), "edited")
+		edit, err := backup.Edit(context.Background(), dir, edited, backup.Subjects("orders.new"))
+		checkErr(t, err, "edit failed")
+		info, err := backup.Info(edited)
+		checkErr(t, err, "info failed")
+		if info.Source == nil || info.Source.Stream != "ORDERS" {
+			t.Fatalf("edit dropped the source block: %+v", info.Source)
+		}
+		if info.Edit == nil || info.Messages != 2 {
+			t.Fatalf("unexpected edited info %+v", info)
+		}
+		checkErr(t, restored.Delete(), "delete failed")
+		_, st, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "CAP", edited)
+		checkErr(t, err, "restore of the edit failed")
+		if st.Msgs != edit.State.Msgs || st.FirstSeq != edit.State.FirstSeq || st.LastSeq != edit.State.LastSeq || st.LastSeq != 3 {
+			t.Fatalf("restored edit %+v disagrees with the meta file %+v", st, edit.State)
+		}
+
+		obfuscated := filepath.Join(t.TempDir(), "obfuscated")
+		_, err = backup.Edit(context.Background(), dir, obfuscated, backup.Obfuscate())
+		checkErr(t, err, "obfuscate failed")
+		info, err = backup.Info(obfuscated)
+		checkErr(t, err, "info failed")
+		if info.Source.Stream == "ORDERS" || info.Source.Stream == "" || reflect.DeepEqual(info.Source.Subjects, cfg.Subjects) || len(info.Source.Subjects) != 1 {
+			t.Fatalf("obfuscated edit kept the source names: %+v", info.Source)
+		}
+	})
+}

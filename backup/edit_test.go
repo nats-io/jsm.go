@@ -147,7 +147,7 @@ func TestEditIdentity(t *testing.T) {
 	if outState.Ts != inState.Ts {
 		t.Fatalf("state timestamp not copied")
 	}
-	want := api.StreamState{FirstSeq: 2, LastSeq: 14, Consumers: 2}
+	want := api.StreamState{Msgs: res.State.Msgs, Bytes: res.State.Bytes, FirstSeq: 2, LastSeq: 14, Consumers: 2}
 	if !reflect.DeepEqual(outState.State, want) {
 		t.Fatalf("archive state %+v, want %+v", outState.State, want)
 	}
@@ -402,7 +402,7 @@ func TestEditRenumber(t *testing.T) {
 
 	items := readItems(t, dst)
 	st := items[0].(*State).State
-	if !reflect.DeepEqual(st, api.StreamState{FirstSeq: 1, LastSeq: 0}) {
+	if !reflect.DeepEqual(st, api.StreamState{Msgs: res.State.Msgs, Bytes: res.State.Bytes, FirstSeq: 1, LastSeq: res.State.Msgs}) {
 		t.Fatalf("archive state %+v", st)
 	}
 	if len(consumersOf(items)) != 0 {

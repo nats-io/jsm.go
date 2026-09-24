@@ -210,6 +210,8 @@ type editor struct {
 	cfg      api.StreamConfig
 	now      time.Time
 	enc      *Encoder
+	out      *syncedFile
+	headTs   int64
 	obf      *obfuscator
 	srcState api.StreamState
 	firstOut uint64
@@ -239,18 +241,24 @@ func (e *editor) run(tgt *target) error {
 	if err != nil {
 		return err
 	}
-	e.enc = NewEncoder(out)
+	e.out = out
+	e.enc = newEntryEncoder(out)
 
-	if err := pass(); err != nil {
-		e.enc.Close()
-		out.Close()
-		return err
+	err = pass()
+	if cerr := e.enc.Close(); err == nil {
+		err = cerr
 	}
-	if err := e.enc.Close(); err != nil {
-		out.Close()
-		return err
+	if err == nil {
+		var head []byte
+		head, err = encodeStateHead(e.headTs, e.archiveState(&api.StreamState{Msgs: e.report.Kept, Bytes: e.bytes}))
+		if err == nil {
+			err = out.patch(head, 0)
+		}
 	}
-	return out.Close()
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	return err
 }
 
 func (e *editor) singlePass() error {
@@ -269,7 +277,7 @@ func (e *editor) singlePass() error {
 		switch it := item.(type) {
 		case *State:
 			e.srcState = it.State
-			if err := e.writeState(it.Ts, nil); err != nil {
+			if err := e.writeState(it.Ts); err != nil {
 				return err
 			}
 		case *Consumer:
@@ -292,9 +300,24 @@ func (e *editor) singlePass() error {
 	}
 }
 
-// writeState writes the leading state.json; exact carries the message and
-// byte totals when a pass already knows them, otherwise they are left at 0
-func (e *editor) writeState(ts int64, exact *api.StreamState) error {
+// writeState reserves the leading state.json, run overwrites it with the
+// totals written once the pass ends
+func (e *editor) writeState(ts int64) error {
+	if e.out == nil {
+		return nil
+	}
+	e.headTs = ts
+	head, err := encodeStateHead(ts, e.archiveState(nil))
+	if err != nil {
+		return err
+	}
+	_, err = e.out.Write(head)
+	return err
+}
+
+// archiveState is the state.json the output archive carries, exact holds the
+// message and byte totals once they are known
+func (e *editor) archiveState(exact *api.StreamState) api.StreamState {
 	st := api.StreamState{
 		FirstSeq:  e.srcState.FirstSeq,
 		LastSeq:   e.srcLastSeq(),
@@ -311,14 +334,8 @@ func (e *editor) writeState(ts int64, exact *api.StreamState) error {
 		if e.o.renumber {
 			st.LastSeq = exact.Msgs
 		}
-		if e.o.obfuscate {
-			st.Bytes = 0
-		}
 	}
-	if e.enc == nil {
-		return nil
-	}
-	return e.enc.WriteState(ts, st)
+	return st
 }
 
 func (e *editor) consumer(c *Consumer) error {
@@ -435,7 +452,7 @@ func (e *editor) twoPass() error {
 
 		switch it := item.(type) {
 		case *State:
-			if err := e.writeState(it.Ts, &api.StreamState{Msgs: res.msgs, Bytes: res.bytes}); err != nil {
+			if err := e.writeState(it.Ts); err != nil {
 				return err
 			}
 		case *Consumer:

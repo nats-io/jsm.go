@@ -109,7 +109,7 @@ func TestRecorderRoundTrip(t *testing.T) {
 
 	items := readItems(t, dir)
 	st := items[0].(*State)
-	if st.Ts != started.UnixNano() || !reflect.DeepEqual(st.State, api.StreamState{FirstSeq: 1, LastSeq: 0}) {
+	if st.Ts != started.UnixNano() || !reflect.DeepEqual(st.State, api.StreamState{Msgs: 4, Bytes: res.Bytes, FirstSeq: 1, LastSeq: 4}) {
 		t.Fatalf("unexpected state entry %+v", st)
 	}
 	msgs := messagesOf(items)
@@ -171,7 +171,7 @@ func TestRecorderRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Messages != 4 || info.Bytes != bytes || info.FirstSeq != 1 || info.LastSeq != 4 || !info.DeclaredCountsAdvisory {
+	if info.Messages != 4 || info.Bytes != bytes || info.FirstSeq != 1 || info.LastSeq != 4 || info.DeclaredCountsAdvisory {
 		t.Fatalf("unexpected info %+v", info)
 	}
 }

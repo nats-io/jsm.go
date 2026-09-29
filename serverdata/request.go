@@ -44,6 +44,7 @@ func DoReqAsync(ctx context.Context, req any, subj string, waitFor int, nc *nats
 	var (
 		mu       sync.Mutex
 		ctr      = 0
+		done     bool
 		finisher *time.Timer
 	)
 
@@ -70,13 +71,20 @@ func DoReqAsync(ctx context.Context, req any, subj string, waitFor int, nc *nats
 		mu.Lock()
 		defer mu.Unlock()
 
+		if done {
+			return
+		}
+
 		data := m.Data
 		compressed := false
 		if m.Header.Get("Content-Encoding") == "snappy" {
 			compressed = true
 			ud, err := io.ReadAll(s2.NewReader(bytes.NewBuffer(data)))
 			if err != nil {
-				errs <- err
+				select {
+				case errs <- err:
+				default:
+				}
 				return
 			}
 			data = ud
@@ -99,7 +107,10 @@ func DoReqAsync(ctx context.Context, req any, subj string, waitFor int, nc *nats
 		}
 
 		if m.Header.Get("Status") == "503" {
-			errs <- nats.ErrNoResponders
+			select {
+			case errs <- nats.ErrNoResponders:
+			default:
+			}
 			return
 		}
 
@@ -134,17 +145,19 @@ func DoReqAsync(ctx context.Context, req any, subj string, waitFor int, nc *nats
 
 	select {
 	case err = <-errs:
-		if err == nats.ErrNoResponders && strings.HasPrefix(subj, "$SYS") {
-			return fmt.Errorf("server request failed, ensure the account used has system privileges and appropriate permissions")
-		}
-
-		return err
 	case <-ctx.Done():
 	}
 
+	mu.Lock()
+	done = true
 	log.Debugf("=== Received %d responses", ctr)
+	mu.Unlock()
 
-	return nil
+	if err == nats.ErrNoResponders && strings.HasPrefix(subj, "$SYS") {
+		return fmt.Errorf("server request failed, ensure the account used has system privileges and appropriate permissions")
+	}
+
+	return err
 }
 
 // DoReq wraps DoReqAsync, collecting all responses into a byte slice array

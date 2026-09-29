@@ -39,7 +39,7 @@ func TestCheckMessage(t *testing.T) {
 				StreamName:      "TEST",
 				Subject:         "TEST",
 				AgeCritical:     5,
-				AgeWarning:      1,
+				AgeWarning:      2,
 				BodyAsTimestamp: true,
 			}
 			assertNoError(t, monitor.CheckStreamMessage(srv.ClientURL(), nil, nil, check, opts))
@@ -57,7 +57,7 @@ func TestCheckMessage(t *testing.T) {
 			assertListIsEmpty(t, check.Criticals)
 			assertListEquals(t, check.OKs, "Valid message on TEST > TEST")
 
-			now = time.Now().Add(-2 * time.Second).Unix()
+			now = time.Now().Add(-3 * time.Second).Unix()
 			_, err = nc.Request("TEST", []byte(strconv.Itoa(int(now))), time.Second)
 			checkErr(t, err, "publish failed: %v", err)
 

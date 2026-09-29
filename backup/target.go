@@ -17,7 +17,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -71,7 +70,7 @@ func newTarget(dir string) (*target, error) {
 }
 
 // archive opens the archive file in staging, buffered and synced on Close
-func (t *target) archive() (io.WriteCloser, error) {
+func (t *target) archive() (*syncedFile, error) {
 	f, err := os.OpenFile(filepath.Join(t.staging, DataFile), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return nil, err
@@ -94,6 +93,15 @@ func (s *syncedFile) Close() error {
 		return err
 	}
 	return s.f.Close()
+}
+
+// patch overwrites bytes already written
+func (s *syncedFile) patch(p []byte, off int64) error {
+	if err := s.Writer.Flush(); err != nil {
+		return err
+	}
+	_, err := s.f.WriteAt(p, off)
+	return err
 }
 
 // writeMeta writes the meta file into staging, synced

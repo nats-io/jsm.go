@@ -16,7 +16,6 @@ package backup
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -35,12 +34,11 @@ import (
 // concurrent use
 type Recorder struct {
 	tgt      *target
-	arc      io.WriteCloser
+	arc      *syncedFile
 	enc      *Encoder
 	cfg      api.StreamConfig
 	src      SourceInfo
 	preserve bool
-	started  bool
 	first    uint64
 	last     uint64
 	msgs     uint64
@@ -83,13 +81,23 @@ func NewRecorder(dir string, cfg api.StreamConfig, src SourceInfo) (*Recorder, e
 		src.Started = time.Now()
 	}
 
+	head, err := encodeStateHead(src.Started.UnixNano(), api.StreamState{FirstSeq: 1})
+	if err != nil {
+		tgt.discard()
+		return nil, err
+	}
 	arc, err := tgt.archive()
+	if err == nil {
+		if _, err = arc.Write(head); err != nil {
+			arc.Close()
+		}
+	}
 	if err != nil {
 		tgt.discard()
 		return nil, err
 	}
 
-	return &Recorder{tgt: tgt, arc: arc, enc: NewEncoder(arc), cfg: cfg, src: src, preserve: preserve}, nil
+	return &Recorder{tgt: tgt, arc: arc, enc: newEntryEncoder(arc), cfg: cfg, src: src, preserve: preserve}, nil
 }
 
 // Write appends m with its headers as received. Sequence and timestamp come
@@ -161,12 +169,6 @@ func (r *Recorder) write(subject string, seq uint64, ts time.Time, h nats.Header
 		return nil
 	}
 
-	if !r.started {
-		if err := r.writeState(seq); err != nil {
-			return err
-		}
-	}
-
 	hdr := encodeHeaders(h)
 	if err := r.enc.writeMessageBytes(subject, seq, ts.UnixNano(), hdr, data); err != nil {
 		r.err = err
@@ -183,18 +185,6 @@ func (r *Recorder) write(subject string, seq uint64, ts time.Time, h nats.Header
 	return nil
 }
 
-// writeState writes state.json at the first message because restore starts
-// the stream at its first_seq. last_seq one below is the empty range restore
-// accepts
-func (r *Recorder) writeState(first uint64) error {
-	r.started = true
-	if err := r.enc.WriteState(r.src.Started.UnixNano(), api.StreamState{FirstSeq: first, LastSeq: first - 1}); err != nil {
-		r.err = err
-		return err
-	}
-	return nil
-}
-
 // Close writes the sentinel and the meta file and commits the backup.
 // dropped is recorded in the source block. A failed Close discards the
 // staging directory. Zero messages restores as an empty stream
@@ -208,32 +198,15 @@ func (r *Recorder) Close(dropped uint64) (*RecorderResult, error) {
 		return nil, r.err
 	}
 
-	var err error
-	if !r.started {
-		err = r.writeState(1)
-	}
-	if err == nil {
-		err = r.enc.WriteEnd()
-	}
-	if err == nil {
-		err = r.enc.Close()
-	}
-	if err == nil {
-		err = r.arc.Close()
-		r.arc = nil
-	}
-	if err != nil {
+	state := api.StreamState{Msgs: r.msgs, Bytes: r.bytes, FirstSeq: max(r.first, 1), LastSeq: r.last}
+	if err := r.writeArchive(state); err != nil {
 		r.Discard()
 		return nil, err
 	}
 
 	r.src.Ended = time.Now()
 	r.src.Dropped = dropped
-	mf := &metaFile{
-		Config: r.cfg,
-		State:  api.StreamState{Msgs: r.msgs, Bytes: r.bytes, FirstSeq: max(r.first, 1), LastSeq: r.last},
-		Source: &r.src,
-	}
+	mf := &metaFile{Config: r.cfg, State: state, Source: &r.src}
 	if err := r.tgt.writeMeta(mf); err != nil {
 		r.Discard()
 		return nil, err
@@ -244,6 +217,27 @@ func (r *Recorder) Close(dropped uint64) (*RecorderResult, error) {
 	}
 
 	return &RecorderResult{Dir: r.tgt.final, Messages: r.msgs, Bytes: r.bytes}, nil
+}
+
+// writeArchive finishes the entries and overwrites the placeholder head with
+// the totals, restore reserves state.json's bytes before storing anything
+func (r *Recorder) writeArchive(state api.StreamState) error {
+	err := r.enc.WriteEnd()
+	if cerr := r.enc.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		var head []byte
+		head, err = encodeStateHead(r.src.Started.UnixNano(), state)
+		if err == nil {
+			err = r.arc.patch(head, 0)
+		}
+	}
+	if cerr := r.arc.Close(); err == nil {
+		err = cerr
+	}
+	r.arc = nil
+	return err
 }
 
 // Discard abandons the capture and removes the staging directory

@@ -328,8 +328,8 @@ func TestEditObfuscate(t *testing.T) {
 	if res.Report.Obfuscation.BodiesPadded != 4 || res.State.Bytes != bytesWritten || res.State.Msgs != 6 {
 		t.Fatalf("unexpected accounting: report %+v state %+v written %d", res.Report.Obfuscation, res.State, bytesWritten)
 	}
-	if st := items[0].(*State).State; st.Bytes != 0 || st.Consumers != 2 {
-		t.Fatalf("archive state must carry advisory bytes: %+v", st)
+	if st := items[0].(*State).State; st.Bytes != bytesWritten || st.Msgs != 6 || st.Consumers != 2 {
+		t.Fatalf("archive state must carry the written totals: %+v", st)
 	}
 
 	mapping := loadKeyFile(t, keyFile)

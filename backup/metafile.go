@@ -73,9 +73,6 @@ func readMetaFile(path string) (*metaFile, error) {
 	if !jsm.IsValidName(mf.Config.Name) {
 		return nil, fmt.Errorf("%s: invalid stream name %q", path, mf.Config.Name)
 	}
-	if mf.Config.Storage == api.MemoryStorage {
-		return nil, fmt.Errorf("%s: %w", path, jsm.ErrMemoryStreamNotSupported)
-	}
 
 	return &mf, nil
 }

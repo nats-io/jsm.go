@@ -58,7 +58,7 @@ const (
 	DescriptionHdr string = "Description"
 )
 
-// ErrMemoryStreamNotSupported is an error indicating a memory stream was being snapshotted which is not supported
+// ErrMemoryStreamNotSupported is returned when snapshotting or restoring a memory stream on a server older than 2.15
 var ErrMemoryStreamNotSupported error = errors.New("memory streams do not support snapshots")
 
 type SnapshotOption func(o *snapshotOptions)
@@ -356,7 +356,7 @@ func (s *Stream) createSnapshot(ctx context.Context, dataBuffer, metadataBuffer 
 	defer dataBuffer.Close()
 	defer metadataBuffer.Close()
 
-	if s.Storage() == api.MemoryStorage {
+	if s.Storage() == api.MemoryStorage && !versionIsAtLeast(s.mgr.nc.ConnectedServerVersion(), 2, 15, 0) {
 		return nil, ErrMemoryStreamNotSupported
 	}
 
@@ -659,7 +659,7 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 		return nil, nil, fmt.Errorf("stream name may not be changed during restore")
 	}
 
-	if req.Config.Storage == api.MemoryStorage {
+	if req.Config.Storage == api.MemoryStorage && !versionIsAtLeast(m.nc.ConnectedServerVersion(), 2, 15, 0) {
 		return nil, nil, ErrMemoryStreamNotSupported
 	}
 

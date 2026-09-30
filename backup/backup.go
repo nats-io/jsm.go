@@ -101,8 +101,13 @@ func (r EntryRef) String() string {
 	}
 }
 
-// storedMsgSize mirrors the server's unexported fileStoreMsgSizeRaw
-func storedMsgSize(slen int, hlen, mlen int64) uint64 {
+// storedMsgSize mirrors the server's unexported memStoreMsgSizeRaw and
+// fileStoreMsgSizeRaw, restore reserves the declared bytes against the limits
+// of the stream's storage type
+func storedMsgSize(storage api.StorageType, slen int, hlen, mlen int64) uint64 {
+	if storage == api.MemoryStorage {
+		return uint64(int64(slen) + hlen + mlen + 16)
+	}
 	if hlen == 0 {
 		return uint64(22 + int64(slen) + mlen + 8)
 	}

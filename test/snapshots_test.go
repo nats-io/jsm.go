@@ -22,9 +22,11 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/nats-io/jsm.go"
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats.go"
 	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
 )
@@ -42,15 +44,7 @@ func (f *failWriteCloser) Close() error                { return nil }
 
 func TestStream_Snapshot(t *testing.T) {
 	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
-		stream, err := mgr.NewStream("m1", jsm.MemoryStorage(), jsm.Subjects("memtest"))
-		checkErr(t, err, "create failed")
-
-		_, err = stream.SnapshotToDirectory(context.Background(), t.TempDir())
-		if !errors.Is(err, jsm.ErrMemoryStreamNotSupported) {
-			t.Fatalf("expected memory error, got %v", err)
-		}
-
-		stream, err = mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
+		stream, err := mgr.NewStream("q1", jsm.FileStorage(), jsm.Subjects("test"))
 		checkErr(t, err, "create failed")
 
 		_, err = stream.NewConsumer(jsm.DurableName("c"))
@@ -187,4 +181,40 @@ func RandomString(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func TestStream_SnapshotMemory(t *testing.T) {
+	withJSServer(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager, _ *ntfclient.Instance) {
+		stream, err := mgr.NewStream("m1", jsm.MemoryStorage(), jsm.Subjects("memtest"))
+		checkErr(t, err, "create failed")
+		_, err = stream.NewConsumer(jsm.DurableName("c"))
+		checkErr(t, err, "consumer failed")
+
+		for i := 0; i < 100; i++ {
+			_, err = nc.Request("memtest", []byte(RandomString(100)), time.Second)
+			checkErr(t, err, "publish failed")
+		}
+
+		preState, err := stream.State()
+		checkErr(t, err, "state failed")
+
+		td := t.TempDir()
+		_, err = stream.SnapshotToDirectory(context.Background(), td, jsm.SnapshotConsumers())
+		checkErr(t, err, "snapshot failed")
+		checkErr(t, stream.Delete(), "delete failed")
+
+		_, _, err = mgr.RestoreSnapshotFromDirectory(context.Background(), "m1", td)
+		checkErr(t, err, "restore failed")
+
+		stream, err = mgr.LoadStream("m1")
+		checkErr(t, err, "load failed")
+		if stream.Storage() != api.MemoryStorage {
+			t.Fatalf("expected memory storage, got %v", stream.Storage())
+		}
+		postState, err := stream.State()
+		checkErr(t, err, "state failed")
+		if postState.Msgs != preState.Msgs || postState.LastSeq != preState.LastSeq || postState.Consumers != 1 {
+			t.Fatalf("restored state %+v does not match %+v", postState, preState)
+		}
+	})
 }

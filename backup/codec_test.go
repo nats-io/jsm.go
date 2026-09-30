@@ -498,7 +498,7 @@ func TestVerifyAndInfo(t *testing.T) {
 	}
 	var wantBytes uint64
 	for _, m := range msgs {
-		wantBytes += storedMsgSize(len(m.subject), int64(len(m.hdr)), int64(len(m.body)))
+		wantBytes += storedMsgSize(api.FileStorage, len(m.subject), int64(len(m.hdr)), int64(len(m.body)))
 	}
 	if info.Config.Name != "ORDERS" || info.Messages != 3 || info.NumSubjects != 3 || info.Subjects != nil || info.Bytes != wantBytes || info.FirstSeq != 2 || info.LastSeq != 9 {
 		t.Fatalf("unexpected info: %+v", info)
@@ -547,8 +547,19 @@ func TestVerifyAndInfo(t *testing.T) {
 	}
 
 	writeBackupDir(t, dir, api.StreamConfig{Name: "MEM", Storage: api.MemoryStorage}, st, data)
-	if _, err := Verify(dir); !errors.Is(err, jsm.ErrMemoryStreamNotSupported) {
-		t.Fatalf("expected a memory storage error, got %v", err)
+	if _, err := Verify(dir); err != nil {
+		t.Fatalf("memory stream backup did not verify: %v", err)
+	}
+	memInfo, err := Info(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wantMemBytes uint64
+	for _, m := range msgs {
+		wantMemBytes += uint64(len(m.subject) + len(m.hdr) + len(m.body) + 16)
+	}
+	if memInfo.Bytes != wantMemBytes {
+		t.Fatalf("memory backup bytes %d, want %d", memInfo.Bytes, wantMemBytes)
 	}
 
 	writeBackupDir(t, dir, cfg, st, data)

@@ -61,9 +61,9 @@ var errRecorderClosed = errors.New("recorder is closed")
 var directGetEnvelope = []string{server.JSStream, server.JSSubject, server.JSSequence, server.JSTimeStamp, server.JSNumPending, server.JSLastSequence}
 
 // NewRecorder opens a capture into dir, which must not exist or must be
-// empty. cfg is the configuration the backup restores with. Storage is
-// forced to file, memory streams cannot be restored. A core capture clears
-// FirstSeq since its messages start at 1. A zero src.Started is set to now
+// empty. cfg is the configuration the backup restores with. A core capture
+// is stored as a file stream and clears FirstSeq since its messages start at
+// 1. A zero src.Started is set to now
 func NewRecorder(dir string, cfg api.StreamConfig, src SourceInfo) (*Recorder, error) {
 	if !jsm.IsValidName(cfg.Name) {
 		return nil, fmt.Errorf("invalid stream name %q", cfg.Name)
@@ -73,8 +73,8 @@ func NewRecorder(dir string, cfg api.StreamConfig, src SourceInfo) (*Recorder, e
 		return nil, err
 	}
 	preserve := src.Stream != ""
-	cfg.Storage = api.FileStorage
 	if !preserve {
+		cfg.Storage = api.FileStorage
 		cfg.FirstSeq = 0
 	}
 	if src.Started.IsZero() {
@@ -180,7 +180,7 @@ func (r *Recorder) write(subject string, seq uint64, ts time.Time, h nats.Header
 	}
 	r.last = seq
 	r.msgs++
-	r.bytes += storedMsgSize(len(subject), int64(len(hdr)), int64(len(data)))
+	r.bytes += storedMsgSize(r.cfg.Storage, len(subject), int64(len(hdr)), int64(len(data)))
 
 	return nil
 }

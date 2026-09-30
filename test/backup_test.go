@@ -132,23 +132,12 @@ func TestBackupSnapshotRefusesExistingBackup(t *testing.T) {
 		publishMsg(t, nc, "orders.new", "order 1")
 
 		dir := filepath.Join(t.TempDir(), "src")
-		memory, err := mgr.NewStream("MEMORY", jsm.MemoryStorage(), jsm.Subjects("memory.>"))
-		checkErr(t, err, "create failed")
-		if _, err = memory.SnapshotToDirectory(context.Background(), dir); !errors.Is(err, jsm.ErrMemoryStreamNotSupported) {
-			t.Fatalf("expected memory stream snapshot to fail, got %v", err)
-		}
-		entries, err := os.ReadDir(dir)
-		checkErr(t, err, "readdir failed")
-		if len(entries) != 0 {
-			t.Fatalf("failed snapshot left files behind: %v", entries)
-		}
-
 		canceled, cancel := context.WithCancel(context.Background())
 		cancel()
 		if _, err = stream.SnapshotToDirectory(canceled, dir); !errors.Is(err, context.Canceled) {
 			t.Fatalf("expected a canceled snapshot to fail, got %v", err)
 		}
-		entries, err = os.ReadDir(dir)
+		entries, err := os.ReadDir(dir)
 		checkErr(t, err, "readdir failed")
 		if len(entries) != 0 {
 			t.Fatalf("canceled snapshot left files behind: %v", entries)

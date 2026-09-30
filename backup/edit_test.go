@@ -189,7 +189,7 @@ func TestEditIdentity(t *testing.T) {
 	}
 	var wantBytes uint64
 	for _, m := range fixtureMsgs {
-		wantBytes += storedMsgSize(len(m.subject), int64(len(m.hdr)), int64(len(m.body)))
+		wantBytes += storedMsgSize(api.FileStorage, len(m.subject), int64(len(m.hdr)), int64(len(m.body)))
 	}
 	wantMeta := api.StreamState{Msgs: 7, Bytes: wantBytes, FirstSeq: 2, LastSeq: 14, Consumers: 2}
 	if !reflect.DeepEqual(sc.State, wantMeta) || !reflect.DeepEqual(res.State, wantMeta) {

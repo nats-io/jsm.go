@@ -323,7 +323,7 @@ func TestEditObfuscate(t *testing.T) {
 		if int64(len(payload)) != m.PayloadSize || strings.Trim(string(payload), "0") != "" || !tokenRE.MatchString(strings.Split(m.Subject, ".")[0]) {
 			t.Fatalf("body not zero padded to its length or subject not hashed: %+v", m)
 		}
-		bytesWritten += storedMsgSize(len(m.Subject), m.HdrSize, m.PayloadSize)
+		bytesWritten += storedMsgSize(api.FileStorage, len(m.Subject), m.HdrSize, m.PayloadSize)
 	}
 	if res.Report.Obfuscation.BodiesPadded != 4 || res.State.Bytes != bytesWritten || res.State.Msgs != 6 {
 		t.Fatalf("unexpected accounting: report %+v state %+v written %d", res.Report.Obfuscation, res.State, bytesWritten)

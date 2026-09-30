@@ -152,6 +152,8 @@ func isValidSubjectPrefix(s string) bool {
 
 // APISubject returns API subject with prefix applied.
 // subject must begin with "$JS.API"; if it does not the subject is returned unchanged.
+//
+// See StripAPISubject and registry.NormalizeAPISubject for the reverse.
 func APISubject(subject string, prefix string, domain string) string {
 	if domain != "" {
 		trimmed := strings.TrimPrefix(subject, "$JS.API")
@@ -172,6 +174,51 @@ func APISubject(subject string, prefix string, domain string) string {
 	}
 
 	return prefix + trimmed
+}
+
+// StripAPISubject is the reverse of APISubject, it removes a known domain or prefix from subject and returns the
+// equivalent "$JS.API" subject. When domain is set it takes precedence over prefix, as in APISubject.
+// If subject does not start with the domain or prefix it is returned unchanged.
+//
+// See registry.NormalizeAPISubject when the domain or prefix is not known.
+func StripAPISubject(subject string, prefix string, domain string) string {
+	if domain != "" {
+		rest, ok := strings.CutPrefix(subject, "$JS.")
+		if !ok {
+			return subject
+		}
+
+		rest, ok = strings.CutPrefix(rest, domain)
+		if !ok {
+			return subject
+		}
+
+		rest, ok = strings.CutPrefix(rest, ".API")
+		if !ok {
+			return subject
+		}
+
+		if rest != "" && rest[0] != '.' {
+			return subject
+		}
+
+		return "$JS.API" + rest
+	}
+
+	if prefix == "" {
+		return subject
+	}
+
+	rest, ok := strings.CutPrefix(subject, prefix)
+	if !ok {
+		return subject
+	}
+
+	if rest != "" && rest[0] != '.' {
+		return subject
+	}
+
+	return "$JS.API" + rest
 }
 
 // EventSubject returns Event subject with prefix applied.

@@ -164,6 +164,43 @@ func TestAPISubjectNonMatchingSubject(t *testing.T) {
 	}
 }
 
+func TestStripAPISubject(t *testing.T) {
+	cases := []struct {
+		subject string
+		prefix  string
+		domain  string
+		res     string
+	}{
+		{"$JS.API.FOO", "", "", "$JS.API.FOO"},
+		{"js.foreign.FOO", "js.foreign", "", "$JS.API.FOO"},
+		{"js.foreign", "js.foreign", "", "$JS.API"},
+		{"$JS.domain.API.FOO", "js.foreign", "domain", "$JS.API.FOO"},
+		{"$JS.domain.API.FOO", "", "domain", "$JS.API.FOO"},
+		{"$JS.domain.API", "", "domain", "$JS.API"},
+		{"js.foreignx.FOO", "js.foreign", "", "js.foreignx.FOO"},
+		{"other.FOO", "js.foreign", "", "other.FOO"},
+		{"$JS.domainx.API.FOO", "", "domain", "$JS.domainx.API.FOO"},
+		{"$JS.domain.APIx.FOO", "", "domain", "$JS.domain.APIx.FOO"},
+		{"$JS.other.API.FOO", "", "domain", "$JS.other.API.FOO"},
+		{"js.foreign.FOO", "js.foreign", "domain", "js.foreign.FOO"},
+	}
+
+	for _, tc := range cases {
+		res := jsm.StripAPISubject(tc.subject, tc.prefix, tc.domain)
+		if res != tc.res {
+			t.Fatalf("StripAPISubject(%q, %q, %q) expected %q got %q", tc.subject, tc.prefix, tc.domain, tc.res, res)
+		}
+	}
+
+	for _, pd := range [][2]string{{"", ""}, {"js.foreign", ""}, {"", "domain"}, {"js.foreign", "domain"}} {
+		subject := jsm.APISubject("$JS.API.STREAM.INFO.ORDERS", pd[0], pd[1])
+		res := jsm.StripAPISubject(subject, pd[0], pd[1])
+		if res != "$JS.API.STREAM.INFO.ORDERS" {
+			t.Fatalf("round trip with prefix %q domain %q gave %q", pd[0], pd[1], res)
+		}
+	}
+}
+
 func TestEventSubjectNonMatchingSubject(t *testing.T) {
 	// When subject does not start with "$JS.EVENT", it must be returned unchanged.
 	got := jsm.EventSubject("CUSTOM.SUBJECT", "myprefix")

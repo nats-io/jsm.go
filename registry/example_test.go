@@ -69,3 +69,16 @@ func Example() {
 	// Type Schema URL: https://nats.io/schemas/jetstream/advisory/v1/api_audit.json (nats.io)
 	// Parsed event with type "io.nats.jetstream.advisory.v1.api_audit" into *advisory.JetStreamAPIAuditV1
 }
+
+func ExampleNormalizeAPISubject() {
+	for _, subject := range []string{"$JS.API.STREAM.INFO.ORDERS", "$JS.hub.API.STREAM.INFO.ORDERS", "JS.acc.API.STREAM.INFO.ORDERS", "orders.new"} {
+		normalized, ok := NormalizeAPISubject(subject)
+		fmt.Printf("%s: %s %v\n", subject, normalized, ok)
+	}
+
+	// Output:
+	// $JS.API.STREAM.INFO.ORDERS: $JS.API.STREAM.INFO.ORDERS true
+	// $JS.hub.API.STREAM.INFO.ORDERS: $JS.API.STREAM.INFO.ORDERS true
+	// JS.acc.API.STREAM.INFO.ORDERS: $JS.API.STREAM.INFO.ORDERS true
+	// orders.new: orders.new false
+}

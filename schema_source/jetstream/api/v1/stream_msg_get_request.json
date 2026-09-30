@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://nats.io/schemas/jetstream/api/v1/stream_msg_get_request.json",
-  "description": "A request to the JetStream $JS.API.STREAM.MSG.GET API",
+  "description": "A request to the JetStream $JS.API.STREAM.MSG.GET and $JS.API.DIRECT.GET APIs",
   "title": "io.nats.jetstream.api.v1.stream_msg_get_request",
   "type": "object",
   "properties": {
@@ -43,6 +43,10 @@
     "up_to_time": {
       "description": "Only return messages up to a point in time",
       "$ref": "definitions.json#/definitions/golang_time"
+    },
+    "no_hdr": {
+      "description": "Only return the message payload, excluding headers if present",
+      "type": "boolean"
     }
   }
 }

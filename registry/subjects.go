@@ -31,15 +31,10 @@ const apiPrefix = "$JS.API."
 // starts a subject known to the registry, like STREAM or CONSUMER. Subjects in $JS that are not in
 // the $JS.<domain>.API form are not considered.
 //
-// The subject is not validated beyond that, for subjects that could not be normalized, or that hold
-// wildcards, empty tokens or whitespace, the input is returned unchanged with ok false.
+// The subject is not validated, a subject that could not be normalized is returned unchanged with ok false.
 //
 // This does not allocate when subject is already normalized or not recognized.
 func NormalizeAPISubject(subject string) (normalized string, ok bool) {
-	if !isLiteralSubject(subject) {
-		return subject, false
-	}
-
 	if strings.HasPrefix(subject, apiPrefix) {
 		return subject, true
 	}
@@ -79,27 +74,4 @@ func NormalizeAPISubject(subject string) (normalized string, ok bool) {
 	}
 
 	return subject, false
-}
-
-// isLiteralSubject checks subject has no empty tokens, wildcards or whitespace
-func isLiteralSubject(subject string) bool {
-	if subject == "" {
-		return false
-	}
-
-	prev := byte('.')
-	for i := 0; i < len(subject); i++ {
-		c := subject[i]
-		switch c {
-		case '.':
-			if prev == '.' {
-				return false
-			}
-		case '*', '>', ' ', '\t', '\r', '\n', '\x00':
-			return false
-		}
-		prev = c
-	}
-
-	return prev != '.'
 }

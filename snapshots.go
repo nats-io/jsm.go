@@ -671,12 +671,17 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 
 	var progress *snapshotProgress
 	var notifyInterval uint32
+	nc := m.nc
+	chunkSize := int(min(int64(sopts.chunkSz), nc.MaxPayload()))
+	if chunkSize <= 0 {
+		return nil, nil, fmt.Errorf("invalid server maximum payload: %d", nc.MaxPayload())
+	}
 
 	if sopts.progress {
 		progress = &snapshotProgress{
 			startTime:    time.Now(),
-			chunkSize:    sopts.chunkSz,
-			chunksToSend: 1 + int(sopts.dataFileSize)/sopts.chunkSz,
+			chunkSize:    chunkSize,
+			chunksToSend: 1 + int(sopts.dataFileSize)/chunkSize,
 			sending:      true,
 			rcb:          sopts.rcb,
 			scb:          sopts.scb,
@@ -702,8 +707,7 @@ func (m *Manager) restoreSnapshot(ctx context.Context, stream string, dataReader
 		log.Printf("Starting restore of %q from %s using %d chunks", req.Config.Name, sopts.dataFile, progress.chunksToSend)
 	}
 
-	nc := m.nc
-	var chunk [64 * 1024]byte
+	chunk := make([]byte, chunkSize)
 	var cresp *nats.Msg
 
 	for {

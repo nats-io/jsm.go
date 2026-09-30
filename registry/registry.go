@@ -2,6 +2,7 @@ package registry
 
 import (
 	"slices"
+	"strings"
 	"sync"
 )
 
@@ -14,6 +15,7 @@ var requestSubjectTypeRegistry = map[string]string{}
 
 var schemaTypes = []string{}
 var wildcardSubjectsSorted []string
+var apiVerbs = map[string]struct{}{}
 var mu sync.RWMutex
 
 func RegisterTypeFactory(kind string, factory func() any) {
@@ -33,6 +35,7 @@ func RegisterResponseSubjectType(subj string, schemaType string) {
 	defer mu.Unlock()
 
 	responseSubjectTypeRegistry[subj] = schemaType
+	registerAPIVerbLocked(subj)
 }
 
 func RegisterRequestSubjectType(subj string, schemaType string) {
@@ -40,6 +43,7 @@ func RegisterRequestSubjectType(subj string, schemaType string) {
 	defer mu.Unlock()
 
 	requestSubjectTypeRegistry[subj] = schemaType
+	registerAPIVerbLocked(subj)
 }
 
 func RegisterWildcardType(subj string, schemaType string) {
@@ -53,4 +57,17 @@ func RegisterWildcardType(subj string, schemaType string) {
 		i, _ := slices.BinarySearch(wildcardSubjectsSorted, subj)
 		wildcardSubjectsSorted = slices.Insert(wildcardSubjectsSorted, i, subj)
 	}
+
+	registerAPIVerbLocked(subj)
+}
+
+// records the first token following $JS.API. in subj, write lock must be held
+func registerAPIVerbLocked(subj string) {
+	rest, ok := strings.CutPrefix(subj, apiPrefix)
+	if !ok {
+		return
+	}
+
+	verb, _, _ := strings.Cut(rest, ".")
+	apiVerbs[verb] = struct{}{}
 }

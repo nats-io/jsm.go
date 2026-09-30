@@ -21,6 +21,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/nats-server/v2/server"
 )
 
@@ -37,6 +38,7 @@ func snapshotRegistry(t *testing.T) {
 	requests := maps.Clone(requestSubjectTypeRegistry)
 	types := slices.Clone(schemaTypes)
 	sorted := slices.Clone(wildcardSubjectsSorted)
+	verbs := maps.Clone(apiVerbs)
 
 	t.Cleanup(func() {
 		mu.Lock()
@@ -48,6 +50,7 @@ func snapshotRegistry(t *testing.T) {
 		requestSubjectTypeRegistry = requests
 		schemaTypes = types
 		wildcardSubjectsSorted = sorted
+		apiVerbs = verbs
 	})
 }
 
@@ -145,28 +148,39 @@ func TestWildcardSubjectRegistry(t *testing.T) {
 			continue
 		}
 
+		var concrete string
+
+		// types can be accepted on additional subjects, those are not the type's own pattern and format
+		// so we only check that they resolve back to the type
 		if pattern != subject {
-			t.Errorf("%s: ApiSubjectPattern() reports %q", subject, pattern)
+			tokens := strings.Split(subject, ".")
+			for i, token := range tokens {
+				if token == "*" || token == ">" {
+					tokens[i] = fmt.Sprintf("token%d", i)
+				}
+			}
+			concrete = strings.Join(tokens, ".")
+		} else {
+			format, err := instance.ApiSubjectFormat()
+			if err != nil {
+				t.Errorf("%s: %s", subject, err)
+				continue
+			}
+
+			tokens := wildcardTokens(subject)
+			if strings.Count(format, "%s") != tokens {
+				t.Errorf("%s: pattern has %d wildcard tokens but format %q has %d", subject, tokens, format, strings.Count(format, "%s"))
+				continue
+			}
+
+			args := make([]any, tokens)
+			for i := range args {
+				args[i] = fmt.Sprintf("token%d", i)
+			}
+
+			concrete = fmt.Sprintf(format, args...)
 		}
 
-		format, err := instance.ApiSubjectFormat()
-		if err != nil {
-			t.Errorf("%s: %s", subject, err)
-			continue
-		}
-
-		tokens := wildcardTokens(subject)
-		if strings.Count(format, "%s") != tokens {
-			t.Errorf("%s: pattern has %d wildcard tokens but format %q has %d", subject, tokens, format, strings.Count(format, "%s"))
-			continue
-		}
-
-		args := make([]any, tokens)
-		for i := range args {
-			args[i] = fmt.Sprintf("token%d", i)
-		}
-
-		concrete := fmt.Sprintf(format, args...)
 		matched, err := TypeForRequestSubject(concrete)
 		if err != nil {
 			t.Errorf("%s: %s does not resolve: %s", subject, concrete, err)
@@ -390,5 +404,31 @@ func TestTypeForRequestSubjectWithoutFactory(t *testing.T) {
 	_, err := TypeForRequestSubject("TEST.NOFACTORY.thing")
 	if err == nil {
 		t.Fatal("expected an error")
+	}
+}
+
+func TestConsumerCreateRequestSubjects(t *testing.T) {
+	for _, subj := range []string{"$JS.API.CONSUMER.CREATE.ORDERS", "$JS.API.CONSUMER.CREATE.ORDERS.C1", "$JS.API.CONSUMER.CREATE.ORDERS.C1.orders.new", "$JS.API.CONSUMER.DURABLE.CREATE.ORDERS.C1"} {
+		v, err := TypeForRequestSubject(subj)
+		if err != nil {
+			t.Fatalf("no type for %q: %s", subj, err)
+		}
+
+		if _, ok := v.(*api.JSApiConsumerCreateRequest); !ok {
+			t.Fatalf("expected *api.JSApiConsumerCreateRequest for %q got %T", subj, v)
+		}
+	}
+}
+
+func TestDirectGetRequestSubjects(t *testing.T) {
+	for _, subj := range []string{"$JS.API.DIRECT.GET.ORDERS", "$JS.API.DIRECT.GET.ORDERS.orders.new"} {
+		v, err := TypeForRequestSubject(subj)
+		if err != nil {
+			t.Fatalf("no type for %q: %s", subj, err)
+		}
+
+		if _, ok := v.(*api.JSApiMsgGetRequest); !ok {
+			t.Fatalf("expected *api.JSApiMsgGetRequest for %q got %T", subj, v)
+		}
 	}
 }

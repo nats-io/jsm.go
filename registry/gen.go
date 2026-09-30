@@ -19,14 +19,15 @@ import (
 )
 
 type schema struct {
-	T   string // type
-	S   string // schema
-	P   string // path
-	St  string // struct
-	Req string // request subject
-	Res string // response subject
-	W   string // wildcard subject
-	F   string // format subject
+	T   string   // type
+	S   string   // schema
+	P   string   // path
+	St  string   // struct
+	Req string   // request subject
+	Res string   // response subject
+	W   string   // wildcard subject
+	XW  []string // additional wildcard subjects the request is accepted on
+	F   string   // format subject
 }
 
 func (s schema) SchemaURL() string {
@@ -144,6 +145,10 @@ func init() {
 {{- end }}
 {{- if .W }}
     {{ RegistryPrefix $pkg }}RegisterWildcardType({{ StripPackageIfNotRegistry $pkg .W }}, "{{ .T }}")
+{{- end }}
+{{- $t := .T }}
+{{- range .XW }}
+    {{ RegistryPrefix $pkg }}RegisterWildcardType({{ StripPackageIfNotRegistry $pkg . }}, "{{ $t }}")
 {{- end }}
 {{- end }}
 }
@@ -301,7 +306,7 @@ func jsApiSchemas() schemas {
 		&schema{P: "jetstream/api/v1/account_info_response.json", St: "api.JSApiAccountInfoResponse", Res: "api.JSApiAccountInfoPrefix"},
 		&schema{P: "jetstream/api/v1/account_purge_response.json", St: "api.JSApiAccountPurgeResponse", Res: "api.JSApiAccountPurgePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_configuration.json", St: "api.ConsumerConfig"},
-		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "api.JSApiConsumerCreateRequest", Req: "api.JSApiConsumerCreateWithNamePrefix"},
+		&schema{P: "jetstream/api/v1/consumer_create_request.json", St: "api.JSApiConsumerCreateRequest", Req: "api.JSApiConsumerCreateWithNamePrefix", XW: []string{"api.JSApiConsumerCreate", "api.JSApiDurableCreate"}},
 		&schema{P: "jetstream/api/v1/consumer_create_response.json", St: "api.JSApiConsumerCreateResponse", Res: "api.JSApiConsumerCreatePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_delete_response.json", St: "api.JSApiConsumerDeleteResponse", Res: "api.JSApiConsumerDeletePrefix"},
 		&schema{P: "jetstream/api/v1/consumer_evacuate_peer_request.json", St: "api.JSApiConsumerEvacuatePeerRequest", Req: "api.JSApiConsumerEvacuatePeerPrefix"},
@@ -345,7 +350,7 @@ func jsApiSchemas() schemas {
 		&schema{P: "jetstream/api/v1/stream_list_response.json", St: "api.JSApiStreamListResponse", Res: "api.JSApiStreamListPrefix"},
 		&schema{P: "jetstream/api/v1/stream_msg_delete_request.json", St: "api.JSApiMsgDeleteRequest", Req: "api.JSApiMsgDeletePrefix"},
 		&schema{P: "jetstream/api/v1/stream_msg_delete_response.json", St: "api.JSApiMsgDeleteResponse", Res: "api.JSApiMsgDeletePrefix"},
-		&schema{P: "jetstream/api/v1/stream_msg_get_request.json", St: "api.JSApiMsgGetRequest", Req: "api.JSApiMsgGetPrefix"},
+		&schema{P: "jetstream/api/v1/stream_msg_get_request.json", St: "api.JSApiMsgGetRequest", Req: "api.JSApiMsgGetPrefix", XW: []string{"api.JSDirectMsgGet", "api.JSDirectGetLastBySubject"}},
 		&schema{P: "jetstream/api/v1/stream_msg_get_response.json", St: "api.JSApiMsgGetResponse", Res: "api.JSApiMsgGetPrefix"},
 		&schema{P: "jetstream/api/v1/stream_names_request.json", St: "api.JSApiStreamNamesRequest", Req: "api.JSApiStreamNamesPrefix"},
 		&schema{P: "jetstream/api/v1/stream_names_response.json", St: "api.JSApiStreamNamesResponse", Res: "api.JSApiStreamNamesPrefix"},

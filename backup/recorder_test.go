@@ -132,7 +132,7 @@ func TestRecorderRoundTrip(t *testing.T) {
 		if m.Seq != uint64(i+1) || m.Subject != want[i].subject || string(body) != want[i].hdr+want[i].body || m.HdrSize != int64(len(want[i].hdr)) {
 			t.Fatalf("message %d mismatch: %+v %q", i, m, body)
 		}
-		bytes += storedMsgSize(len(m.Subject), m.HdrSize, m.PayloadSize)
+		bytes += storedMsgSize(api.FileStorage, len(m.Subject), m.HdrSize, m.PayloadSize)
 	}
 	if msgs[1].Ts != ackTs.UnixNano() {
 		t.Fatalf("ack timestamp not used: %d", msgs[1].Ts)
@@ -246,6 +246,19 @@ func TestRecorderConfig(t *testing.T) {
 	mf := loadMetaFile(t, dir)
 	if mf.Config.Storage != api.FileStorage || mf.Config.FirstSeq != 0 {
 		t.Fatalf("storage or first sequence not normalised: %+v", mf.Config)
+	}
+
+	dir = captureDir(t)
+	rec, err = NewRecorder(dir, cfg, SourceInfo{Stream: "ORDERS"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rec.Close(0); err != nil {
+		t.Fatal(err)
+	}
+	mf = loadMetaFile(t, dir)
+	if mf.Config.Storage != api.MemoryStorage || mf.Config.FirstSeq != 50 {
+		t.Fatalf("stream capture did not keep storage and first sequence: %+v", mf.Config)
 	}
 
 	if _, err := NewRecorder(dir, captureConfig(), SourceInfo{}); err == nil {

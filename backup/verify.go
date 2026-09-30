@@ -172,7 +172,7 @@ func scan(dir string, o *scanOptions) (*InfoReport, *VerifyReport, error) {
 			if info.Subjects != nil {
 				info.Subjects[it.Subject]++
 			}
-			info.Bytes += storedMsgSize(len(it.Subject), it.HdrSize, it.PayloadSize)
+			info.Bytes += storedMsgSize(mf.Config.Storage, len(it.Subject), it.HdrSize, it.PayloadSize)
 			if info.FirstSeq == 0 {
 				info.FirstSeq = it.Seq
 				info.FirstTime = time.Unix(0, it.Ts).UTC()

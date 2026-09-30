@@ -408,7 +408,7 @@ func (e *editor) twoPass() error {
 				}
 				tomb = isTombstone(hdr)
 			}
-			state.Observe(it.Subject, it.Seq, storedMsgSize(len(it.Subject), it.HdrSize, it.PayloadSize), tomb)
+			state.Observe(it.Subject, it.Seq, storedMsgSize(e.cfg.Storage, len(it.Subject), it.HdrSize, it.PayloadSize), tomb)
 		case End:
 			if e.digest, err = e.src.finishDigest(); err != nil {
 				return err
@@ -575,7 +575,7 @@ func (e *editor) writeMessage(body *msgBody) error {
 	if e.report.Kept == 1 {
 		e.firstOut = out.Seq
 	}
-	e.bytes += storedMsgSize(len(out.Subject), out.HdrSize, out.PayloadSize)
+	e.bytes += storedMsgSize(e.cfg.Storage, len(out.Subject), out.HdrSize, out.PayloadSize)
 	if e.enc == nil {
 		return nil
 	}

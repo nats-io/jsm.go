@@ -85,7 +85,7 @@ func TestEditLastPerSubject(t *testing.T) {
 		for _, m := range fixtureMsgs {
 			for _, seq := range seqs {
 				if m.seq == seq {
-					total += storedMsgSize(len(m.subject), int64(len(m.hdr)), int64(len(m.body)))
+					total += storedMsgSize(api.FileStorage, len(m.subject), int64(len(m.hdr)), int64(len(m.body)))
 				}
 			}
 		}

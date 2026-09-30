@@ -3,67 +3,75 @@
   "$id": "https://nats.io/schemas/jetstream/api/v1/consumer_getnext_request.json",
   "description": "A request to the JetStream $JS.API.CONSUMER.MSG.NEXT API",
   "title": "io.nats.jetstream.api.v1.consumer_getnext_request",
-  "type": "object",
-  "properties": {
-    "expires": {
-      "description": "A duration from now when the pull should expire, stated in nanoseconds, 0 for no expiry",
-      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
-      "minimum": 0,
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "expires": {
+          "description": "A duration from now when the pull should expire, stated in nanoseconds, 0 for no expiry",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "minimum": 0,
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "batch": {
+          "description": "How many messages the server should deliver to the requestor",
+          "minimum": 0,
+          "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "max_bytes": {
+          "description": "Sends at most this many bytes to the requestor, limited by consumer configuration max_bytes",
+          "minimum": 0,
+          "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "no_wait": {
+          "type": "boolean",
+          "description": "When true a response with a 404 status header will be returned when no messages are available"
+        },
+        "idle_heartbeat": {
+          "description": "When not 0 idle heartbeats will be sent on this interval",
+          "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
+          "minimum": 0,
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "group": {
+          "type": "string",
+          "description": "The consumer group to pull from"
+        },
+        "min_pending": {
+          "description": "The minimum number of messages the server should have in the consumer's pending queue before serving this pull",
+          "minimum": 0,
+          "$comment": "signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "min_ack_pending": {
+          "description": "The minimum number of messages the server should have in the consumer's ack pending queue before serving this pull",
+          "minimum": 0,
+          "$comment": "signed 64 bit integer",
+          "type": "integer",
+          "maximum": 9223372036854775807
+        },
+        "id": {
+          "type": "string",
+          "description": "When pulling from a Pinned Client consumer this is the unique client ID"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "The priority of the pull request",
+          "minimum": 0,
+          "maximum": 9
+        }
+      }
+    },
+    {
       "type": "integer",
-      "maximum": 9223372036854775807
-    },
-    "batch": {
-      "description": "How many messages the server should deliver to the requestor",
-      "minimum": 0,
-      "maximum": 256,
-      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
-      "type": "integer"
-    },
-    "max_bytes": {
-      "description": "Sends at most this many bytes to the requestor, limited by consumer configuration max_bytes",
-      "minimum": 0,
-      "$comment": "integer with a dynamic bit size depending on the platform the cluster runs on, can be up to 64bit",
-      "type": "integer",
-      "maximum": 9223372036854775807
-    },
-    "no_wait": {
-      "type": "boolean",
-      "description": "When true a response with a 404 status header will be returned when no messages are available"
-    },
-    "idle_heartbeat": {
-      "description": "When not 0 idle heartbeats will be sent on this interval",
-      "$comment": "nanoseconds depicting a duration in time, signed 64 bit integer",
-      "minimum": 0,
-      "type": "integer",
-      "maximum": 9223372036854775807
-    },
-    "group": {
-      "type": "string",
-      "description": "The consumer group to pull from"
-    },
-    "min_pending": {
-      "description": "The minimum number of messages the server should have in the consumer's pending queue before serving this pull",
-      "minimum": 0,
-      "$comment": "signed 64 bit integer",
-      "type": "integer",
-      "maximum": 9223372036854775807
-    },
-    "min_ack_pending": {
-      "description": "The minimum number of messages the server should have in the consumer's ack pending queue before serving this pull",
-      "minimum": 0,
-      "$comment": "signed 64 bit integer",
-      "type": "integer",
-      "maximum": 9223372036854775807
-    },
-    "id": {
-      "type": "string",
-      "description": "When pulling from a Pinned Client consumer this is the unique client ID"
-    },
-    "priority": {
-      "type": "integer",
-      "description": "The priority of the pull request",
-      "minimum": 0,
-      "maximum": 9
+      "minimum": 0
     }
-  }
+  ]
 }

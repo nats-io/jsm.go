@@ -245,7 +245,7 @@ func (g *gather) start() error {
 
 	// Capture server endpoints
 	if g.cfg.Include.ServerEndpoints {
-		err := g.captureServerEndpoints(serverInfoMap, g.cfg.Detailed)
+		err := g.captureServerEndpoints(serverInfoMap)
 		if err != nil {
 			return fmt.Errorf("failed to capture server endpoints: %w", err)
 		}
@@ -651,8 +651,8 @@ func (g *gather) hasNextPage(endpoint string, decoded map[string]any, pageLimit 
 	return hasReachedPageLimit, nil
 }
 
-func buildServerOptions(apiSuffix string, offset, limit int, detail bool) any {
-	if !detail {
+func (g *gather) buildServerOptions(apiSuffix string, offset, limit int) any {
+	if !g.cfg.Detailed {
 		return nil
 	}
 
@@ -678,7 +678,7 @@ func buildServerOptions(apiSuffix string, offset, limit int, detail bool) any {
 		return server.JSzOptions{
 			Accounts:   true,
 			Streams:    true,
-			Consumer:   true,
+			Consumer:   g.cfg.Include.Consumers,
 			Config:     true,
 			RaftGroups: true,
 			Offset:     offset,
@@ -704,7 +704,7 @@ func buildServerOptions(apiSuffix string, offset, limit int, detail bool) any {
 	}
 }
 
-func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerInfo, detail bool) error {
+func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerInfo) error {
 	if g.aw == nil {
 		return fmt.Errorf("no archive writer supplied")
 	}
@@ -726,7 +726,7 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 			offset := 0
 
 			for {
-				opts := buildServerOptions(endpoint.ApiSuffix, offset, pageLimit, detail)
+				opts := g.buildServerOptions(endpoint.ApiSuffix, offset, pageLimit)
 
 				responses, err := serverdata.DoReq(context.TODO(), opts, subject, 1, g.nc, g.cfg.Timeout, g.log)
 				if err != nil {

@@ -175,7 +175,11 @@ func DoReq(ctx context.Context, req any, subj string, waitFor int, nc *nats.Conn
 }
 
 // CurrentActiveServers determines how many servers the connected server knows about
-func CurrentActiveServers(ctx context.Context, nc *nats.Conn, timeout time.Duration, log api.Logger) (int, error) {
+func CurrentActiveServers(ctx context.Context, nc *nats.Conn, domain string, timeout time.Duration, log api.Logger) (int, error) {
+	if domain != "" {
+		return activeServersInDomain(ctx, nc, domain, timeout, log)
+	}
+
 	var expect int
 	var unmarshalErr error
 
@@ -191,4 +195,52 @@ func CurrentActiveServers(ctx context.Context, nc *nats.Conn, timeout time.Durat
 		return 0, err
 	}
 	return expect, unmarshalErr
+}
+
+func activeServersInDomain(ctx context.Context, nc *nats.Conn, domain string, timeout time.Duration, log api.Logger) (int, error) {
+	var expect int
+	var cbErr error
+
+	req := server.JszEventOptions{EventFilterOptions: server.EventFilterOptions{Domain: domain}}
+	err := DoReqAsync(ctx, req, "$SYS.REQ.SERVER.PING.JSZ", 1, nc, timeout, log, func(msg []byte) {
+		var res server.ServerAPIJszResponse
+		if err := json.Unmarshal(msg, &res); err != nil {
+			cbErr = err
+			return
+		}
+		if res.Error != nil {
+			cbErr = fmt.Errorf("jsz request failed: %s", res.Error.Description)
+			return
+		}
+		expect = onlineMetaPeers(res.Data)
+	})
+	if err != nil {
+		return 0, err
+	}
+	if cbErr != nil {
+		return 0, cbErr
+	}
+	if expect == 0 {
+		return 0, fmt.Errorf("no servers responded in domain %q", domain)
+	}
+
+	return expect, nil
+}
+
+func onlineMetaPeers(jsi *server.JSInfo) int {
+	if jsi == nil {
+		return 0
+	}
+	if jsi.Meta == nil {
+		return 1
+	}
+
+	online := 1
+	for _, peer := range jsi.Meta.Replicas {
+		if !peer.Offline {
+			online++
+		}
+	}
+
+	return online
 }

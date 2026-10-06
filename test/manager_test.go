@@ -20,7 +20,6 @@ import (
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
-	natsd "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
 )
@@ -31,7 +30,7 @@ func streamPublish(t testing.TB, nc *nats.Conn, subj string, msg []byte) {
 }
 
 func TestIsStreamBytesRequired(t *testing.T) {
-	withNatsServerWithConfig(t, "testdata/bytes_required.cfg", func(t *testing.T, srv *natsd.Server) {
+	withJSServerWithAccounts(t, "testdata/bytes_required.cfg", func(instance *ntfclient.Instance) {
 		cases := []struct {
 			user     string
 			required bool
@@ -42,7 +41,7 @@ func TestIsStreamBytesRequired(t *testing.T) {
 
 		for _, tc := range cases {
 			t.Run(fmt.Sprintf("User_%s", tc.user), func(t *testing.T) {
-				nc, err := nats.Connect(srv.ClientURL(), nats.UserInfo(tc.user, "b"))
+				nc, err := nats.Connect(instance.Servers[0].URL, nats.UserInfo(tc.user, "b"))
 				if err != nil {
 					t.Fatalf("connection failed: %v", err)
 				}
@@ -360,7 +359,7 @@ func TestNewOptions(t *testing.T) {
 }
 
 func TestEvacuateServer(t *testing.T) {
-	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+	WithJSCluster(t, 3, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		stream, err := mgr.NewStream("TEST", jsm.Subjects("TEST.*"), jsm.MemoryStorage(), jsm.Replicas(1))
 		checkErr(t, err, "create failed")
 
@@ -398,7 +397,7 @@ func TestEvacuateServer(t *testing.T) {
 }
 
 func TestEvacuateStream(t *testing.T) {
-	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+	WithJSCluster(t, 3, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		stream, err := mgr.NewStream("TEST", jsm.Subjects("TEST.*"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 
@@ -445,7 +444,7 @@ func TestEvacuateStream(t *testing.T) {
 }
 
 func TestEvacuateConsumer(t *testing.T) {
-	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+	WithJSCluster(t, 3, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		// the consumer has to be narrower than the stream, the replacement peer is
 		// picked from the stream peers the consumer is not on yet
 		stream, err := mgr.NewStream("TEST", jsm.Subjects("TEST.*"), jsm.MemoryStorage(), jsm.Replicas(3))

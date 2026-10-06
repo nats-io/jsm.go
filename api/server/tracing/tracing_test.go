@@ -17,9 +17,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nats-io/jsm.go/test"
 	srv "github.com/nats-io/nats-server/v2/server"
-	"github.com/nats-io/nats-server/v2/test"
 	"github.com/nats-io/nats.go"
+	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
 )
 
 // Do not change the order of these since some test relies on it.
@@ -60,32 +61,37 @@ var traces = []string{
 //       ===================
 //
 
-func setupTest(t *testing.T) (*srv.Server, *nats.Conn, *nats.Subscription) {
+func TestMain(m *testing.M) {
+	test.RunWithNTF(m, 25000)
+}
+
+func setupTest(t *testing.T) (*nats.Conn, *nats.Subscription) {
 	t.Helper()
 	// We run a simple server and will mock trace returned as if they were
 	// coming from a complex super-cluster with leafnodes setup.
-	s := test.RunDefaultServer()
+	ntfc := ntfclient.New(t, test.NTFURL())
+	instance := ntfc.CreateServer(t, false)
+	t.Cleanup(func() {
+		instance.Destroy(t)
+		ntfc.Close(t)
+	})
 
-	nc, err := nats.Connect(s.ClientURL())
+	nc, err := nats.Connect(instance.Servers[0].URL)
 	if err != nil {
-		s.Shutdown()
 		t.Fatalf("Error on connect: %v", err)
 	}
+	t.Cleanup(nc.Close)
 
 	// Create a subscription on "trace.*" and we will get trace on "trace.id"
 	sub, err := nc.SubscribeSync("trace.*")
 	if err != nil {
-		nc.Close()
-		s.Shutdown()
 		t.Fatalf("Error on subscribe: %v", err)
 	}
-	return s, nc, sub
+	return nc, sub
 }
 
 func TestMsgTracingBasic(t *testing.T) {
-	s, nc, sub := setupTest(t)
-	defer s.Shutdown()
-	defer nc.Close()
+	nc, sub := setupTest(t)
 
 	// Produce the traces. The `traces` slice has them already in some random order.
 	for _, tr := range traces {
@@ -144,9 +150,7 @@ func TestMsgTracingBasic(t *testing.T) {
 }
 
 func TestMsgTracingMissingOrigin(t *testing.T) {
-	s, nc, sub := setupTest(t)
-	defer s.Shutdown()
-	defer nc.Close()
+	nc, sub := setupTest(t)
 
 	// Produce the traces, but skip the trace from the origin serve.
 	for i, tr := range traces {
@@ -180,9 +184,7 @@ func TestMsgTracingMissingOrigin(t *testing.T) {
 }
 
 func TestMsgTracingMissingIntermediate(t *testing.T) {
-	s, nc, sub := setupTest(t)
-	defer s.Shutdown()
-	defer nc.Close()
+	nc, sub := setupTest(t)
 
 	// Produce the traces, but skip the trace from the origin serve.
 	for i, tr := range traces {
@@ -238,9 +240,7 @@ func TestMsgTracingMissingIntermediate(t *testing.T) {
 }
 
 func TestMsgTracingMissingSeveralChainnedTraces(t *testing.T) {
-	s, nc, sub := setupTest(t)
-	defer s.Shutdown()
-	defer nc.Close()
+	nc, sub := setupTest(t)
 
 	// For this test, we will suppose that there is something like:
 	// S1 -> S2 -> S3 -> S4 -> S5, and will receive on S1 and S5.
@@ -372,9 +372,7 @@ func TestMsgTracingMissingSeveralChainnedTraces(t *testing.T) {
 }
 
 func TestMsgTracingTimeout(t *testing.T) {
-	s, nc, sub := setupTest(t)
-	defer s.Shutdown()
-	defer nc.Close()
+	nc, sub := setupTest(t)
 
 	// For this test, we will have S1 with 1 hop (S2), but get only trace from
 	// S1. We should get a timeout error, but still get the trace from S1.
@@ -393,9 +391,7 @@ func TestMsgTracingTimeout(t *testing.T) {
 }
 
 func TestMsgTracingGotThemAll(t *testing.T) {
-	s, nc, sub := setupTest(t)
-	defer s.Shutdown()
-	defer nc.Close()
+	nc, sub := setupTest(t)
 
 	// With this topology:
 	//
@@ -471,9 +467,7 @@ func TestMsgTracingGotThemAll(t *testing.T) {
 }
 
 func TestMsgTracingDuplicateServerNameWithSvcImport(t *testing.T) {
-	s, nc, sub := setupTest(t)
-	defer s.Shutdown()
-	defer nc.Close()
+	nc, sub := setupTest(t)
 
 	nc.Publish("trace.id", []byte(`{"server":{"name":"A","host":"0.0.0.0","id":"ID1","cluster":"local"},"request":{"header":{"Nats-Trace-Dest":["trace.id"]},"msgsize":121},"hops":2,"events":[{"type":"in","kind":0,"cid":23,"name":"cli","acc":"C","subj":"c.1"},{"type":"si","acc":"B","from":"c.1","to":"b.1"},{"type":"si","acc":"A","from":"b.1","to":"a.1"},{"type":"eg","kind":1,"cid":9,"name":"B","hop":"1"},{"type":"eg","kind":1,"cid":9,"name":"B","hop":"2"}]}`))
 	nc.Publish("trace.id", []byte(`{"server":{"name":"B","host":"0.0.0.0","id":"ID2","cluster":"local"},"request":{"header":{"Nats-Request-Info":["{\"acc\":\"C\",\"svc\":\"B\",\"rtt\":551583}"],"Nats-Trace-Dest":["_R_.7lA8cE.nnNF0Q"],"Nats-Trace-Hop":["1"]},"msgsize":174},"hops":2,"events":[{"type":"in","kind":1,"cid":9,"name":"A","acc":"A","subj":"a.1"},{"type":"eg","kind":4,"cid":12,"name":"C","hop":"1.1"},{"type":"eg","kind":4,"cid":14,"name":"D","hop":"1.2"}]}`))

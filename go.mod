@@ -8,16 +8,16 @@ require (
 	github.com/expr-lang/expr v1.17.8
 	github.com/google/go-cmp v0.7.0
 	github.com/jedib0t/go-pretty/v6 v6.8.3
-	github.com/klauspost/compress v1.20.0
+	github.com/klauspost/compress v1.20.1
 	github.com/nats-io/jwt/v2 v2.8.2
 	github.com/nats-io/nats-server/v2 v2.15.0
-	github.com/nats-io/nats.go v1.53.1
+	github.com/nats-io/nats.go v1.54.0
 	github.com/nats-io/nkeys v0.4.16
 	github.com/nats-io/nuid v1.0.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.71.0
-	github.com/synadia-io/orbit.go/ntf v0.0.1
-	github.com/synadia-io/orbit.go/ntf-client v0.0.3
+	github.com/synadia-io/orbit.go/ntf v0.0.2
+	github.com/synadia-io/orbit.go/ntf-client v0.0.4
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 	golang.org/x/net v0.59.0
 	golang.org/x/text v0.42.0

@@ -26,8 +26,6 @@ import (
 	"testing"
 	"time"
 
-	nserver "github.com/nats-io/nats-server/v2/server"
-	nstest "github.com/nats-io/nats-server/v2/test"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 
@@ -35,27 +33,31 @@ import (
 	"github.com/nats-io/jsm.go/natscontext/backendtest"
 	"github.com/nats-io/jsm.go/natscontext/svcbackend"
 	"github.com/nats-io/jsm.go/natscontext/svcbackend/internal/testserver"
+	"github.com/nats-io/jsm.go/test"
+	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
 )
 
-// startNATS brings up an in-process nats-server and returns a
-// connection plus the server handle. Cleanup closes the connection
-// and shuts the server down in the right order.
-func startNATS(t *testing.T) (*nats.Conn, *nserver.Server) {
+func TestMain(m *testing.M) {
+	test.RunWithNTF(m, 24000)
+}
+
+func startNATS(t *testing.T) *nats.Conn {
 	t.Helper()
 
-	srv := nstest.RunRandClientPortServer()
-	nc, err := nats.Connect(srv.ClientURL())
-	if err != nil {
-		srv.Shutdown()
-		t.Fatalf("connect: %v", err)
-	}
-
+	ntfc := ntfclient.New(t, test.NTFURL())
+	instance := ntfc.CreateServer(t, false)
 	t.Cleanup(func() {
-		nc.Close()
-		srv.Shutdown()
+		instance.Destroy(t)
+		ntfc.Close(t)
 	})
 
-	return nc, srv
+	nc, err := nats.Connect(instance.Servers[0].URL)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(nc.Close)
+
+	return nc
 }
 
 // startTestServer spins up a fresh nats-server, a MemoryBackend, and
@@ -64,7 +66,7 @@ func startNATS(t *testing.T) (*nats.Conn, *nserver.Server) {
 func startTestServer(t *testing.T, prefix string, backend natscontext.Backend) (*nats.Conn, *testserver.Server) {
 	t.Helper()
 
-	nc, _ := startNATS(t)
+	nc := startNATS(t)
 
 	ts, err := testserver.New(nc, backend, prefix)
 	if err != nil {
@@ -95,7 +97,7 @@ func TestClient_Contract(t *testing.T) {
 // Selection is composed at Registry time with a local selector;
 // see the Selection section of the package README.
 func TestClient_IsNotSelector(t *testing.T) {
-	nc, _ := startNATS(t)
+	nc := startNATS(t)
 	c, err := svcbackend.NewClient(nc, svcbackend.WithServerKey("XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
@@ -185,7 +187,7 @@ func TestClient_ValidateNameFastFail(t *testing.T) {
 	// A disconnected NATS connection guarantees any actual network
 	// call fails loudly. Getting ErrInvalidName back means the client
 	// rejected the name before touching the wire.
-	nc, _ := startNATS(t)
+	nc := startNATS(t)
 	nc.Close()
 
 	c, err := svcbackend.NewClient(nc,
@@ -375,7 +377,7 @@ func TestClient_SaveRotationTransparent(t *testing.T) {
 // sys.xkey responder) the client surfaces a dedicated error rather
 // than retrying forever or blaming "server xkey refresh".
 func TestClient_SaveStaleKeyShortCircuit(t *testing.T) {
-	nc, _ := startNATS(t)
+	nc := startNATS(t)
 
 	// Any real curve key works — it just needs to be a value the
 	// client will accept as a recipient pub. The raw ctx.save
@@ -443,7 +445,7 @@ func TestClient_Cancellation(t *testing.T) {
 	// Start the NATS server WITHOUT a svcbackend service so any
 	// request blocks forever. Cancel the context mid-flight and
 	// assert the client returns promptly.
-	nc, _ := startNATS(t)
+	nc := startNATS(t)
 
 	c, err := svcbackend.NewClient(nc,
 		svcbackend.WithServerKey("XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
@@ -478,7 +480,7 @@ func TestClient_TamperedCiphertext(t *testing.T) {
 	// Sealed field is garbage. The sys.xkey endpoint still needs
 	// to answer so WithServerKey is unused on purpose — we want
 	// to verify the decrypt-failure path, not cache behavior.
-	nc, _ := startNATS(t)
+	nc := startNATS(t)
 
 	backend := natscontext.NewMemoryBackend()
 
@@ -542,7 +544,7 @@ func TestClient_TamperedCiphertext(t *testing.T) {
 }
 
 func TestClient_CloseIdempotent(t *testing.T) {
-	nc, _ := startNATS(t)
+	nc := startNATS(t)
 
 	c, err := svcbackend.NewClient(nc, svcbackend.WithServerKey("XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
 	if err != nil {

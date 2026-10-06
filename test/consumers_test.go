@@ -1105,7 +1105,7 @@ func TestBackoffPolicy(t *testing.T) {
 }
 
 func TestConsumerEvacuatePeer(t *testing.T) {
-	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+	WithJSCluster(t, 3, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		// the consumer has to be narrower than the stream, the replacement peer is
 		// picked from the stream peers the consumer is not on yet
 		stream, err := mgr.NewStream("TEST", jsm.Subjects("TEST.*"), jsm.MemoryStorage(), jsm.Replicas(3))

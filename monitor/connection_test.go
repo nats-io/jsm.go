@@ -18,25 +18,19 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go/monitor"
-	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/jsm.go/test"
+	"github.com/nats-io/nats.go"
+	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
 )
 
-func withServer(t *testing.T, cb func(srv *server.Server)) {
+func withServer(t *testing.T, cb func(url string)) {
 	t.Helper()
 
-	srv, err := server.NewServer(&server.Options{Port: -1})
-	checkErr(t, err, "could not start server: %v", err)
-
-	go srv.Start()
-	if !srv.ReadyForConnections(10 * time.Second) {
-		t.Fatal("nats server did not start")
-	}
-	defer func() {
-		srv.Shutdown()
-		srv.WaitForShutdown()
-	}()
-
-	cb(srv)
+	ntfc := ntfclient.New(t, test.NTFURL())
+	defer ntfc.Close(t)
+	ntfc.WithServer(t, func(_ testing.TB, _ *nats.Conn, instance *ntfclient.Instance) {
+		cb(instance.Servers[0].URL)
+	})
 }
 
 func TestCheckConnection(t *testing.T) {
@@ -52,9 +46,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("zero thresholds do not trigger", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{})
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{})
 			assertNoError(t, err)
 			assertListIsEmpty(t, check.Criticals)
 			assertListIsEmpty(t, check.Warnings)
@@ -65,9 +59,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("connect time critical", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{
 				ConnectTimeCritical: 0.000001, // 1 µs — always exceeded
 				ConnectTimeWarning:  0.0000001,
 			})
@@ -79,9 +73,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("connect time warning not critical", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{
 				ConnectTimeCritical: 3600,     // 1 hour — never exceeded
 				ConnectTimeWarning:  0.000001, // 1 µs — always exceeded
 			})
@@ -94,9 +88,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("rtt critical", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{
 				ServerRttCritical: 0.000001, // 1 µs — always exceeded
 				ServerRttWarning:  0.0000001,
 			})
@@ -108,9 +102,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("rtt warning not critical", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{
 				ServerRttCritical: 3600,     // 1 hour — never exceeded
 				ServerRttWarning:  0.000001, // 1 µs — always exceeded
 			})
@@ -123,9 +117,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("request rtt critical", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{
 				RequestRttCritical: 0.000001, // 1 µs — always exceeded
 				RequestRttWarning:  0.0000001,
 			})
@@ -137,9 +131,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("request rtt warning not critical", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{
 				RequestRttCritical: 3600,     // 1 hour — never exceeded
 				RequestRttWarning:  0.000001, // 1 µs — always exceeded
 			})
@@ -152,9 +146,9 @@ func TestCheckConnection(t *testing.T) {
 	})
 
 	t.Run("all ok with large thresholds", func(t *testing.T) {
-		withServer(t, func(srv *server.Server) {
+		withServer(t, func(url string) {
 			check := &monitor.Result{}
-			err := monitor.CheckConnection(srv.ClientURL(), nil, 5*time.Second, check, monitor.CheckConnectionOptions{
+			err := monitor.CheckConnection(url, nil, 5*time.Second, check, monitor.CheckConnectionOptions{
 				ConnectTimeCritical: 3600,
 				ConnectTimeWarning:  3600,
 				ServerRttCritical:   3600,

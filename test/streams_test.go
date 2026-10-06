@@ -1529,7 +1529,7 @@ func TestNoMirrorDirect(t *testing.T) {
 }
 
 func TestStreamEvacuatePeer(t *testing.T) {
-	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+	WithJSCluster(t, 3, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		stream, err := mgr.NewStream("TEST", jsm.Subjects("TEST.*"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 

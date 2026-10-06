@@ -15,21 +15,22 @@ package connbalancer
 
 import (
 	"context"
-	"fmt"
-	"net/url"
-	"os"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/jsm.go/test"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
+	ntfclient "github.com/synadia-io/orbit.go/ntf-client"
+	ntfapi "github.com/synadia-io/orbit.go/ntf/api"
 )
 
 func TestSubjectInterest(t *testing.T) {
-	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+	withCluster(t, func(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) {
 		for i := 0; i < 5; i++ {
-			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			client, err := nats.Connect(srv[2].URL, nats.UserInfo("USER", "PASS"))
 			if err != nil {
 				t.Fatalf("could not create client")
 			}
@@ -40,7 +41,7 @@ func TestSubjectInterest(t *testing.T) {
 			}
 		}
 
-		client2, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+		client2, err := nats.Connect(srv[2].URL, nats.UserInfo("USER", "PASS"))
 		if err != nil {
 			t.Fatalf("could not create client")
 		}
@@ -59,16 +60,16 @@ func TestSubjectInterest(t *testing.T) {
 }
 
 func TestAccountLimit(t *testing.T) {
-	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+	withCluster(t, func(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) {
 		for i := 0; i < 5; i++ {
-			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			client, err := nats.Connect(srv[2].URL, nats.UserInfo("USER", "PASS"))
 			if err != nil {
 				t.Fatalf("could not create client")
 			}
 			defer client.Close()
 		}
 
-		client2, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("SYS", "PASS"))
+		client2, err := nats.Connect(srv[2].URL, nats.UserInfo("SYS", "PASS"))
 		if err != nil {
 			t.Fatalf("could not create client")
 		}
@@ -85,9 +86,9 @@ func TestAccountLimit(t *testing.T) {
 }
 
 func TestClientIdleLimit(t *testing.T) {
-	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+	withCluster(t, func(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) {
 		for i := 0; i < 5; i++ {
-			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			client, err := nats.Connect(srv[2].URL, nats.UserInfo("USER", "PASS"))
 			if err != nil {
 				t.Fatalf("could not create client")
 			}
@@ -105,16 +106,16 @@ func TestClientIdleLimit(t *testing.T) {
 }
 
 func TestServerNameLimit(t *testing.T) {
-	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+	withCluster(t, func(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) {
 		t.Run("Only ourselves on selected server", func(t *testing.T) {
 			checkBalancedInRange(t, nc, 0, 0, ConnectionSelector{
-				ServerName: srv[0].Name(),
+				ServerName: srv[0].Name,
 			})
 		})
 
 		t.Run("Connections on specific server", func(t *testing.T) {
 			for i := 0; i < 5; i++ {
-				client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+				client, err := nats.Connect(srv[2].URL, nats.UserInfo("USER", "PASS"))
 				if err != nil {
 					t.Fatalf("could not create client")
 				}
@@ -122,20 +123,20 @@ func TestServerNameLimit(t *testing.T) {
 			}
 
 			checkBalancedInRange(t, nc, 0, 0, ConnectionSelector{
-				ServerName: srv[2].Name(),
+				ServerName: srv[2].Name,
 			})
 		})
 	})
 }
 
 func TestSuccessiveBalanceRuns(t *testing.T) {
-	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+	withCluster(t, func(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) {
 		const clients = 10
 
-		monitorConns := clusterConnections(srv)
+		monitorConns := clusterConnections(t, srv, nc)
 
 		for i := range clients {
-			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			client, err := nats.Connect(srv[2].URL, nats.UserInfo("USER", "PASS"))
 			if err != nil {
 				t.Fatalf("could not create client %d: %v", i, err)
 			}
@@ -143,7 +144,7 @@ func TestSuccessiveBalanceRuns(t *testing.T) {
 		}
 
 		totalConns := monitorConns + clients
-		waitForConnections(t, srv, totalConns)
+		waitForConnections(t, srv, nc, totalConns)
 
 		checkBalancedInRange(t, nc, 5, 7, ConnectionSelector{})
 
@@ -155,7 +156,7 @@ func TestSuccessiveBalanceRuns(t *testing.T) {
 		deadline := time.Now().Add(10 * time.Second)
 
 		for {
-			waitForConnections(t, srv, totalConns)
+			waitForConnections(t, srv, nc, totalConns)
 
 			balanced, err := balancer.Balance(context.Background())
 			if err != nil {
@@ -173,9 +174,9 @@ func TestSuccessiveBalanceRuns(t *testing.T) {
 }
 
 func TestBalanceMultiNodeCluster(t *testing.T) {
-	withCluster(t, func(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+	withCluster(t, func(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) {
 		for range 15 {
-			client, err := nats.Connect(srv[2].ClientURL(), nats.UserInfo("USER", "PASS"))
+			client, err := nats.Connect(srv[2].URL, nats.UserInfo("USER", "PASS"))
 			if err != nil {
 				t.Fatalf("could not create client: %v", err)
 			}
@@ -183,7 +184,7 @@ func TestBalanceMultiNodeCluster(t *testing.T) {
 		}
 
 		for range 3 {
-			client, err := nats.Connect(srv[1].ClientURL(), nats.UserInfo("USER", "PASS"))
+			client, err := nats.Connect(srv[1].URL, nats.UserInfo("USER", "PASS"))
 			if err != nil {
 				t.Fatalf("could not create client: %v", err)
 			}
@@ -229,23 +230,38 @@ func checkBalancedInRange(t *testing.T, nc *nats.Conn, min, max int, s Connectio
 	}
 }
 
-func clusterConnections(srv []*server.Server) int {
-	var total int
+func clusterConnections(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) int {
+	t.Helper()
 
-	for _, s := range srv {
-		total += s.NumClients()
+	pinger := &balancer{nc: nc, log: api.NewDiscardLogger()}
+	res, err := pinger.reqMany(context.Background(), "$SYS.REQ.SERVER.PING", nil, len(srv))
+	if err != nil {
+		t.Fatalf("server ping failed: %v", err)
+	}
+	if len(res) != len(srv) {
+		t.Fatalf("expected %d servers to answer the ping but got %d", len(srv), len(res))
+	}
+
+	var total int
+	for _, msg := range res {
+		var stats server.ServerStatsMsg
+		err = json.Unmarshal(msg.Data, &stats)
+		if err != nil {
+			t.Fatalf("invalid ping response: %v", err)
+		}
+		total += stats.Stats.Connections
 	}
 
 	return total
 }
 
-func waitForConnections(t *testing.T, srv []*server.Server, expect int) {
+func waitForConnections(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn, expect int) {
 	t.Helper()
 
 	deadline := time.Now().Add(10 * time.Second)
 
 	for {
-		total := clusterConnections(srv)
+		total := clusterConnections(t, srv, nc)
 		if total == expect {
 			return
 		}
@@ -258,74 +274,7 @@ func waitForConnections(t *testing.T, srv []*server.Server, expect int) {
 	}
 }
 
-func withCluster(t *testing.T, cb func(t *testing.T, servers []*server.Server, nc *nats.Conn)) {
-	t.Helper()
-
-	d, err := os.MkdirTemp("", "jstest")
-	if err != nil {
-		t.Fatalf("temp dir could not be made: %s", err)
-	}
-	defer os.RemoveAll(d)
-
-	var servers []*server.Server
-	var routes []*url.URL
-
-	for i := 1; i <= 3; i++ {
-		sa := server.NewAccount("SYSTEM")
-		ua := server.NewAccount("USERS")
-
-		opts := &server.Options{
-			Port:       -1,
-			Host:       "localhost",
-			ServerName: fmt.Sprintf("s%d", i),
-			LogFile:    "/dev/null",
-			Cluster: server.ClusterOpts{
-				Name: "TEST",
-				Port: -1,
-			},
-			Routes:        routes,
-			Accounts:      []*server.Account{sa, ua},
-			SystemAccount: "SYSTEM",
-			Users: []*server.User{
-				{Account: sa, Username: "SYS", Password: "PASS"},
-				{Account: ua, Username: "USER", Password: "PASS"},
-			},
-		}
-
-		s, err := server.NewServer(opts)
-		if err != nil {
-			t.Fatalf("server %d start failed: %v", i, err)
-		}
-		s.ConfigureLogger()
-
-		go s.Start()
-		if !s.ReadyForConnections(10 * time.Second) {
-			t.Errorf("nats server %d did not start", i)
-		}
-		defer func() {
-			s.Shutdown()
-		}()
-
-		routes = append(routes, &url.URL{Host: fmt.Sprintf("localhost:%d", s.ClusterAddr().Port)})
-		servers = append(servers, s)
-	}
-
-	if len(servers) != 3 {
-		t.Fatalf("servers did not start")
-	}
-
-	nc, err := nats.Connect(servers[0].ClientURL(), nats.UserInfo("SYS", "PASS"))
-	if err != nil {
-		t.Fatalf("client start failed: %s", err)
-	}
-	defer nc.Close()
-
-	waitForClusterReady(t, servers, nc)
-
-	cb(t, servers, nc)
-}
-
-func waitForClusterReady(t *testing.T, srv []*server.Server, nc *nats.Conn) {
+func waitForClusterReady(t *testing.T, srv []*ntfapi.ManagedServer, nc *nats.Conn) {
 	t.Helper()
 
 	pinger := &balancer{nc: nc, log: api.NewDiscardLogger()}
@@ -343,4 +292,38 @@ func waitForClusterReady(t *testing.T, srv []*server.Server, nc *nats.Conn) {
 
 		time.Sleep(25 * time.Millisecond)
 	}
+}
+
+func TestMain(m *testing.M) {
+	test.RunWithNTF(m, 22000)
+}
+
+const clusterAccounts = `
+accounts {
+	SYSTEM { users = [ { user: "SYS", pass: "PASS" } ] }
+	USERS { users = [ { user: "USER", pass: "PASS" } ] }
+}
+`
+
+func withCluster(t *testing.T, cb func(t *testing.T, servers []*ntfapi.ManagedServer, nc *nats.Conn)) {
+	t.Helper()
+
+	ntfc := ntfclient.New(t, test.NTFURL())
+	defer ntfc.Close(t)
+
+	instance := ntfc.CreateCluster(t, 3, false,
+		ntfclient.WithAccounts(clusterAccounts),
+		ntfclient.WithSystemAccount(`system_account: "SYSTEM"`),
+		ntfclient.WithAuthorization("# no default user"))
+	defer instance.Destroy(t)
+
+	nc, err := nats.Connect(instance.Servers[0].URL, nats.UserInfo("SYS", "PASS"))
+	if err != nil {
+		t.Fatalf("client start failed: %s", err)
+	}
+	defer nc.Close()
+
+	waitForClusterReady(t, instance.Servers, nc)
+
+	cb(t, instance.Servers, nc)
 }

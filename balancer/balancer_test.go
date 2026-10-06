@@ -1,17 +1,13 @@
 package balancer
 
 import (
-	"context"
 	"fmt"
-	"net/url"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/api"
-	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/jsm.go/test"
 	"github.com/nats-io/nats.go"
 )
 
@@ -85,7 +81,7 @@ func getConsumerDistribution(mgr *jsm.Manager, streamName string, consumers []*j
 }
 
 func TestBalancer(t *testing.T) {
-	withJSCluster(t, 3, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
+	test.WithJSCluster(t, 3, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		streams := []*jsm.Stream{}
 		for i := 1; i <= 10; i++ {
 			streamName := fmt.Sprintf("tests%d", i)
@@ -100,22 +96,22 @@ func TestBalancer(t *testing.T) {
 
 		b, err := New(nc, api.NewDefaultLogger(api.DebugLevel))
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 
 		_, err = b.BalanceStreams(streams)
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 
 		time.Sleep(500 * time.Millisecond)
 
 		streamDist, err := getStreamDistribution(mgr, streams)
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 		if !isBalanced(streamDist, len(streams), len(streamDist), 3) {
-			return fmt.Errorf("streams are not balanced after BalanceStreams: %v", streamDist)
+			t.Fatalf("streams are not balanced after BalanceStreams: %v", streamDist)
 		}
 
 		consumers := []*jsm.Consumer{}
@@ -123,7 +119,7 @@ func TestBalancer(t *testing.T) {
 			consumerName := fmt.Sprintf("testc%d", i)
 			c, err := mgr.NewConsumer("tests1", jsm.DurableName(consumerName), jsm.ConsumerOverrideReplicas(3))
 			if err != nil {
-				return err
+				t.Fatal(err)
 			}
 			consumers = append(consumers, c)
 			defer c.Delete()
@@ -131,25 +127,23 @@ func TestBalancer(t *testing.T) {
 
 		_, err = b.BalanceConsumers(consumers)
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 
 		time.Sleep(500 * time.Millisecond)
 
 		consumerDist, err := getConsumerDistribution(mgr, "tests1", consumers)
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 		if !isBalanced(consumerDist, len(consumers), len(consumerDist), 3) {
-			return fmt.Errorf("consumers are not balanced after BalanceConsumers: %v", consumerDist)
+			t.Fatalf("consumers are not balanced after BalanceConsumers: %v", consumerDist)
 		}
-
-		return nil
 	})
 }
 
 func TestBalancer_FiveNodeCluster(t *testing.T) {
-	withJSCluster(t, 5, func(t *testing.T, servers []*server.Server, nc *nats.Conn, mgr *jsm.Manager) error {
+	test.WithJSCluster(t, 5, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		streams := []*jsm.Stream{}
 
 		for i := 1; i <= 5; i++ {
@@ -165,25 +159,23 @@ func TestBalancer_FiveNodeCluster(t *testing.T) {
 
 		b, err := New(nc, api.NewDefaultLogger(api.DebugLevel))
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 
 		_, err = b.BalanceStreams(streams)
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 
 		time.Sleep(500 * time.Millisecond)
 
 		streamDist, err := getStreamDistribution(mgr, streams)
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 		if !isBalanced(streamDist, len(streams), len(streamDist), 3) {
-			return fmt.Errorf("streams are not balanced after BalanceStreams: %v", streamDist)
+			t.Fatalf("streams are not balanced after BalanceStreams: %v", streamDist)
 		}
-
-		return nil
 	})
 }
 
@@ -538,91 +530,6 @@ func TestCreateClusterMappings_MultiCluster(t *testing.T) {
 	}
 }
 
-func withJSCluster(t *testing.T, clusterSize int, cb func(*testing.T, []*server.Server, *nats.Conn, *jsm.Manager) error) {
-	t.Helper()
-
-	d, err := os.MkdirTemp("", "jstest")
-	if err != nil {
-		t.Fatalf("temp dir could not be made: %s", err)
-	}
-	defer os.RemoveAll(d)
-
-	var (
-		servers []*server.Server
-	)
-	routes := []*url.URL{}
-	for j := 1; j <= clusterSize; j++ {
-		routes = append(routes, &url.URL{Host: fmt.Sprintf("localhost:%d", 12000+j)})
-	}
-
-	for i := 1; i <= clusterSize; i++ {
-		opts := &server.Options{
-			JetStream:  true,
-			StoreDir:   filepath.Join(d, fmt.Sprintf("s%d", i)),
-			Port:       -1,
-			Host:       "localhost",
-			ServerName: fmt.Sprintf("s%d", i),
-			LogFile:    "/dev/null",
-			Cluster: server.ClusterOpts{
-				Name: "TEST",
-				Port: 12000 + i,
-			},
-			Routes: routes,
-		}
-
-		s, err := server.NewServer(opts)
-		if err != nil {
-			t.Fatalf("server %d start failed: %v", i, err)
-		}
-		s.ConfigureLogger()
-		go s.Start()
-		if !s.ReadyForConnections(10 * time.Second) {
-			t.Errorf("nats server %d did not start", i)
-		}
-		defer func() {
-			s.Shutdown()
-		}()
-
-		servers = append(servers, s)
-	}
-
-	if len(servers) != clusterSize {
-		t.Fatalf("servers did not start")
-	}
-
-	nc, err := nats.Connect(servers[0].ClientURL(), nats.UseOldRequestStyle())
-	if err != nil {
-		t.Fatalf("client start failed: %s", err)
-	}
-	defer nc.Close()
-
-	mgr, err := jsm.New(nc, jsm.WithTimeout(5*time.Second))
-	if err != nil {
-		t.Fatalf("manager creation failed: %s", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	ticker := time.NewTicker(250 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			_, err := mgr.JetStreamAccountInfo()
-			if err != nil {
-				continue
-			}
-
-			err = cb(t, servers, nc, mgr)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			return
-		case <-ctx.Done():
-			t.Fatalf("jetstream did not become available")
-		}
-	}
+func TestMain(m *testing.M) {
+	test.RunWithNTF(m, 21000)
 }

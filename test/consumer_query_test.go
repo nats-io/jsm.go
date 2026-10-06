@@ -174,7 +174,7 @@ func TestConsumerQueryAckPending(t *testing.T) {
 }
 
 func TestConsumerApiLevel(t *testing.T) {
-	withJSCluster(t, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
+	WithJSCluster(t, 3, func(t testing.TB, nc *nats.Conn, mgr *jsm.Manager) {
 		s, err := mgr.NewStream("q1", jsm.Subjects("in.q1"), jsm.MemoryStorage(), jsm.Replicas(2))
 		checkErr(t, err, "create failed")
 

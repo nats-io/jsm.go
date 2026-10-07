@@ -108,6 +108,9 @@ func (m *Manager) createConsumer(req api.JSApiConsumerCreateRequest) (info *api.
 		return nil, fmt.Errorf("%q is not a valid consumer name", req.Config.Name)
 	}
 
+	req.Config.Direct = false
+	req.Config.Sourcing = false
+
 	var subj string
 	if req.Config.FilterSubject == "" {
 		subj = fmt.Sprintf(api.JSApiConsumerCreateWithNameT, req.Stream, req.Config.Name)

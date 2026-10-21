@@ -23,6 +23,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"time"
 
@@ -52,6 +53,7 @@ type EndpointCaptureConfig struct {
 type Configuration struct {
 	LogLevel               api.Level
 	Timeout                time.Duration
+	CPUProfileDuration     time.Duration
 	TargetPath             string
 	Include                EndpointSelection
 	ServerEndpointConfigs  []EndpointCaptureConfig
@@ -91,9 +93,10 @@ func NewCaptureConfiguration() *Configuration {
 	}
 
 	return &Configuration{
-		Version:  version,
-		LogLevel: api.InfoLevel,
-		Timeout:  5 * time.Second,
+		Version:            version,
+		LogLevel:           api.InfoLevel,
+		Timeout:            5 * time.Second,
+		CPUProfileDuration: 5 * time.Second,
 		ServerEndpointConfigs: []EndpointCaptureConfig{
 			{
 				ApiSuffix: "VARZ",
@@ -532,7 +535,6 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 	g.log.Infof("Capturing %d profiles on %d known servers...", len(g.cfg.ServerProfileNames), len(serverInfoMap))
 
 	capturedCount := 0
-	timeout := g.cfg.Timeout
 
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
@@ -550,8 +552,8 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 
 			reqTimeout := g.cfg.Timeout
 			if profile.name == "cpu" {
-				payload.Duration = timeout
-				reqTimeout = timeout + 2*time.Second
+				payload.Duration = g.cfg.CPUProfileDuration
+				reqTimeout = g.cfg.CPUProfileDuration + g.cfg.Timeout
 			}
 
 			responses, err := serverdata.DoReq(context.TODO(), payload, subject, 1, g.nc, reqTimeout, g.log)
@@ -903,6 +905,12 @@ func (g *gather) discoverServers() (map[string]*server.ServerInfo, error) {
 }
 
 func Gather(nc *nats.Conn, conf *Configuration) error {
+	// the server rejects cpu profiles outside this range
+	capturesCPU := conf.Include.ServerProfiles && slices.ContainsFunc(conf.ServerProfileNames, func(p profileConfiguration) bool { return p.name == "cpu" })
+	if capturesCPU && (conf.CPUProfileDuration <= 0 || conf.CPUProfileDuration > 15*time.Second) {
+		return fmt.Errorf("cpu profile duration must be more than 0s and at most 15s, got %s", conf.CPUProfileDuration)
+	}
+
 	var captureLogBuffer bytes.Buffer
 
 	g := &gather{

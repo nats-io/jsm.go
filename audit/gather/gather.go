@@ -58,7 +58,7 @@ type Configuration struct {
 	Include                EndpointSelection
 	ServerEndpointConfigs  []EndpointCaptureConfig
 	AccountEndpointConfigs []EndpointCaptureConfig
-	ServerProfileNames     []profileConfiguration
+	ServerProfileNames     []ServerProfile
 	Detailed               bool
 	Version                string
 	ClusterFilter          string
@@ -74,12 +74,20 @@ var endpointPagingInfo = map[string]string{
 	"JSZ":   "data.account_details",
 }
 
-type profileConfiguration struct {
-	name  string
-	debug int
-}
+type ServerProfile string
 
-func (p *profileConfiguration) Name() string { return p.name }
+const (
+	ProfileGoroutine1   ServerProfile = "goroutine_1"
+	ProfileGoroutine2   ServerProfile = "goroutine_2"
+	ProfileHeap         ServerProfile = "heap"
+	ProfileAllocs       ServerProfile = "allocs"
+	ProfileMutex        ServerProfile = "mutex"
+	ProfileThreadCreate ServerProfile = "threadcreate"
+	ProfileBlock        ServerProfile = "block"
+	ProfileCPU          ServerProfile = "cpu"
+)
+
+var ServerProfiles = []ServerProfile{ProfileGoroutine1, ProfileGoroutine2, ProfileHeap, ProfileAllocs, ProfileMutex, ProfileThreadCreate, ProfileBlock, ProfileCPU}
 
 func NewCaptureConfiguration() *Configuration {
 	version := ""
@@ -181,17 +189,8 @@ func NewCaptureConfiguration() *Configuration {
 				},
 			},
 		},
-		ServerProfileNames: []profileConfiguration{
-			{"goroutine", 1}, // includes aggregated goroutines with tags
-			{"goroutine", 2}, // includes full per-goroutine stacks
-			{"heap", 0},
-			{"allocs", 0},
-			{"mutex", 0},
-			{"threadcreate", 0},
-			{"block", 0},
-			{"cpu", 0},
-		},
-		Detailed: true,
+		ServerProfileNames: []ServerProfile{ProfileGoroutine1, ProfileHeap, ProfileAllocs, ProfileMutex, ProfileThreadCreate, ProfileBlock, ProfileCPU},
+		Detailed:           true,
 	}
 }
 
@@ -544,21 +543,22 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 		}
 
 		for _, profile := range g.cfg.ServerProfileNames {
+			name, debug := serverdata.SplitProfileName(string(profile))
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.PROFILEZ", serverId)
 			payload := server.ProfilezOptions{
-				Name:  profile.name,
-				Debug: profile.debug,
+				Name:  name,
+				Debug: debug,
 			}
 
 			reqTimeout := g.cfg.Timeout
-			if profile.name == "cpu" {
+			if profile == ProfileCPU {
 				payload.Duration = g.cfg.CPUProfileDuration
 				reqTimeout = g.cfg.CPUProfileDuration + g.cfg.Timeout
 			}
 
 			responses, err := serverdata.DoReq(context.TODO(), payload, subject, 1, g.nc, reqTimeout, g.log)
 			if err != nil {
-				g.log.Errorf("Failed to request %v (%d) profile from server %s: %s", profile, profile.debug, serverName, err)
+				g.log.Errorf("Failed to request %v (%d) profile from server %s: %s", profile, debug, serverName, err)
 				continue
 			}
 
@@ -594,21 +594,16 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 				continue
 			}
 
-			profileName := profile.name
-			if profile.debug > 0 {
-				profileName += fmt.Sprintf("_%d", profile.debug)
-			}
-
 			tags := []*archive.Tag{
 				archive.TagServer(serverName),
 				archive.TagServerProfile(),
-				archive.TagProfileName(profileName),
+				archive.TagProfileName(string(profile)),
 				clusterTag,
 			}
 
 			err = g.aw.AddRaw(bytes.NewReader(profileStatus.Profile), "prof", tags...)
 			if err != nil {
-				return fmt.Errorf("failed to add %s profile from to archive: %w", profile.name, err)
+				return fmt.Errorf("failed to add %s profile from to archive: %w", profile, err)
 			}
 
 			capturedCount += 1
@@ -905,8 +900,21 @@ func (g *gather) discoverServers() (map[string]*server.ServerInfo, error) {
 }
 
 func Gather(nc *nats.Conn, conf *Configuration) error {
+	if conf.Include.ServerProfiles {
+		var profiles []ServerProfile
+		for _, profile := range conf.ServerProfileNames {
+			if !slices.Contains(ServerProfiles, profile) {
+				return fmt.Errorf("unknown server profile %q, valid profiles are %v", profile, ServerProfiles)
+			}
+			if !slices.Contains(profiles, profile) {
+				profiles = append(profiles, profile)
+			}
+		}
+		conf.ServerProfileNames = profiles
+	}
+
 	// the server rejects cpu profiles outside this range
-	capturesCPU := conf.Include.ServerProfiles && slices.ContainsFunc(conf.ServerProfileNames, func(p profileConfiguration) bool { return p.name == "cpu" })
+	capturesCPU := conf.Include.ServerProfiles && slices.Contains(conf.ServerProfileNames, ProfileCPU)
 	if capturesCPU && (conf.CPUProfileDuration <= 0 || conf.CPUProfileDuration > 15*time.Second) {
 		return fmt.Errorf("cpu profile duration must be more than 0s and at most 15s, got %s", conf.CPUProfileDuration)
 	}

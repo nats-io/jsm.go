@@ -579,7 +579,7 @@ func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezRe
 
 	var results []*ProfilezResponse
 	err := forEachProfileArtifact(a.archivePath, func(cluster, srv, rawName string, readBytes func() ([]byte, error)) error {
-		name, debug := splitProfileName(rawName)
+		name, debug := SplitProfileName(rawName)
 		if opts.ProfilezOptions.Name != "" && opts.ProfilezOptions.Name != name {
 			return nil
 		}
@@ -699,8 +699,8 @@ func forEachProfileArtifact(archivePath string, cb func(cluster, server, name st
 	return nil
 }
 
-// splitProfileName reverses gather's "<name>[_<debug>]" encoding.
-func splitProfileName(tag string) (name string, debug int) {
+// SplitProfileName reverses gather's "<name>[_<debug>]" encoding.
+func SplitProfileName(tag string) (name string, debug int) {
 	if i := strings.LastIndex(tag, "_"); i > 0 {
 		if n, err := strconv.Atoi(tag[i+1:]); err == nil && n >= 0 {
 			return tag[:i], n

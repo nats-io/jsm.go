@@ -133,7 +133,7 @@ func DoReqAsync(ctx context.Context, req any, subj string, waitFor int, nc *nats
 
 	msg := nats.NewMsg(subj)
 	msg.Data = jreq
-	if subj != "$SYS.REQ.SERVER.PING" && !strings.HasPrefix(subj, "$SYS.REQ.ACCOUNT") {
+	if subj != "$SYS.REQ.SERVER.PING" && !(strings.HasPrefix(subj, "$SYS.REQ.ACCOUNT.") && strings.Contains(subj, ".CLAIMS.")) {
 		msg.Header.Set("Accept-Encoding", "snappy")
 	}
 	msg.Reply = sub.Subject

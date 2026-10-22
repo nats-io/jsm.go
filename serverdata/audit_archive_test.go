@@ -1400,9 +1400,9 @@ func TestSplitProfileName(t *testing.T) {
 		{"", "", 0},
 	}
 	for _, c := range cases {
-		name, debug := splitProfileName(c.in)
+		name, debug := SplitProfileName(c.in)
 		if name != c.name || debug != c.debug {
-			t.Errorf("splitProfileName(%q) = (%q,%d), want (%q,%d)", c.in, name, debug, c.name, c.debug)
+			t.Errorf("SplitProfileName(%q) = (%q,%d), want (%q,%d)", c.in, name, debug, c.name, c.debug)
 		}
 	}
 }

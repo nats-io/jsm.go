@@ -47,7 +47,7 @@ type EndpointCaptureConfig struct {
 	ApiSuffix      string
 	TypeTag        *archive.Tag
 	UseServerPing  bool
-	OptionsBuilder func(accountId string) any
+	OptionsBuilder func(accountId string, filter server.EventFilterOptions) any
 }
 
 type Configuration struct {
@@ -172,9 +172,10 @@ func NewCaptureConfiguration() *Configuration {
 				ApiSuffix:     "RAFTZ",
 				TypeTag:       archive.TagAccountRaftz(),
 				UseServerPing: true,
-				OptionsBuilder: func(accountId string) any {
-					return &server.RaftzOptions{
-						AccountFilter: accountId,
+				OptionsBuilder: func(accountId string, filter server.EventFilterOptions) any {
+					return &server.RaftzEventOptions{
+						RaftzOptions:       server.RaftzOptions{AccountFilter: accountId},
+						EventFilterOptions: filter,
 					}
 				},
 			},
@@ -182,9 +183,10 @@ func NewCaptureConfiguration() *Configuration {
 				ApiSuffix:     "IPQUEUESZ",
 				TypeTag:       archive.TagAccountIpqueuesz(),
 				UseServerPing: true,
-				OptionsBuilder: func(accountId string) any {
-					return &server.IpqueueszOptions{
-						Filter: accountId,
+				OptionsBuilder: func(accountId string, filter server.EventFilterOptions) any {
+					return &server.IpqueueszEventOptions{
+						IpqueueszOptions:   server.IpqueueszOptions{Filter: accountId},
+						EventFilterOptions: filter,
 					}
 				},
 			},
@@ -331,13 +333,16 @@ func (g *gather) captureMetadata() error {
 
 // Discover streams in given account, and capture info for each one
 func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerInfo, accountId string, numServers int) error {
-	jszOptions := server.JSzOptions{
-		Account:        accountId,
-		Streams:        true,
-		Consumer:       g.cfg.Include.Consumers,
-		Config:         true,
-		RaftGroups:     true,
-		DirectConsumer: true,
+	jszOptions := server.JszEventOptions{
+		JSzOptions: server.JSzOptions{
+			Account:        accountId,
+			Streams:        true,
+			Consumer:       g.cfg.Include.Consumers,
+			Config:         true,
+			RaftGroups:     true,
+			DirectConsumer: true,
+		},
+		EventFilterOptions: g.eventFilter(),
 	}
 
 	jsInfoResponses := make(map[string]*server.ServerAPIJszResponse, numServers)
@@ -400,7 +405,7 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			}
 
 			clusterTag := archive.TagNoCluster()
-			if streamInfo.Cluster != nil {
+			if streamInfo.Cluster != nil && streamInfo.Cluster.Name != "" {
 				clusterTag = archive.TagCluster(streamInfo.Cluster.Name)
 			}
 
@@ -444,11 +449,11 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 			if endpoint.UseServerPing {
 				subject = fmt.Sprintf("$SYS.REQ.SERVER.PING.%s", endpoint.ApiSuffix)
 				if endpoint.OptionsBuilder != nil {
-					opts = endpoint.OptionsBuilder(accountId)
+					opts = endpoint.OptionsBuilder(accountId, g.eventFilter())
 				}
 			} else {
 				subject = fmt.Sprintf("$SYS.REQ.ACCOUNT.%s.%s", accountId, endpoint.ApiSuffix)
-				opts = nil
+				opts = g.eventFilter()
 			}
 
 			endpointResponses := make(map[Responder]io.Reader, serversCount)
@@ -801,12 +806,18 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 // Discover accounts by broadcasting a PING and then collecting responses
 func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (map[string]int, string, error) {
+	if len(serverInfoMap) == 0 {
+		g.log.Infof("No servers discovered, skipping account discovery")
+		return map[string]int{}, "", nil
+	}
+
 	// Broadcast PING.ACCOUNTZ to discover (active) accounts
 	// N.B. Inactive accounts (no connections) cannot be discovered this way
 	g.log.Infof("Broadcasting PING to discover accounts... ")
 	var accountIdsToServersCountMap = make(map[string]int)
 	var systemAccount = ""
-	err := serverdata.DoReqAsync(context.TODO(), nil, "$SYS.REQ.SERVER.PING.ACCOUNTZ", len(serverInfoMap), g.nc, g.cfg.Timeout, g.log, func(b []byte) {
+	opts := server.AccountzEventOptions{EventFilterOptions: g.eventFilter()}
+	err := serverdata.DoReqAsync(context.TODO(), opts, "$SYS.REQ.SERVER.PING.ACCOUNTZ", len(serverInfoMap), g.nc, g.cfg.Timeout, g.log, func(b []byte) {
 		var apiResponse server.ServerAPIAccountzResponse
 		err := json.Unmarshal(b, &apiResponse)
 		if err != nil {
@@ -858,6 +869,10 @@ func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (
 	g.log.Infof("Discovered %d accounts over %d servers", len(accountIdsToServersCountMap), len(serverInfoMap))
 
 	return accountIdsToServersCountMap, systemAccount, nil
+}
+
+func (g *gather) eventFilter() server.EventFilterOptions {
+	return server.EventFilterOptions{Cluster: g.cfg.ClusterFilter, ExactMatch: true}
 }
 
 func (g *gather) discoverServers() (map[string]*server.ServerInfo, error) {

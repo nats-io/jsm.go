@@ -6,11 +6,12 @@ import (
 )
 
 type pager[T any] struct {
-	Target   string
-	Limit    int
-	Count    func(*T) int
-	ServerID func(*T) string
-	Opts     func(offset int) any
+	Target      string
+	Limit       int
+	StartOffset int
+	Count       func(*T) int
+	ServerID    func(*T) string
+	Opts        func(offset int) any
 }
 
 // pageAll walks every page of a paged system request across all servers,
@@ -30,17 +31,21 @@ func pageAll[T any](s *Live, p pager[T], handle func(resp *T) error) error {
 	offsets := map[string]int{}
 	subj := s.Subj("PING", p.Target)
 
-	resps, err := unmarshalResponses[T](s, p.Opts(0), subj)
+	resps, err := unmarshalResponses[T](s, p.Opts(p.StartOffset), subj)
 	if err != nil {
 		return err
 	}
 
 	for _, resp := range resps {
+		id := p.ServerID(resp)
+		count := p.Count(resp)
+
 		if err := handle(resp); err != nil {
 			return err
 		}
-		if id := p.ServerID(resp); id != "" && p.Count(resp) == p.Limit {
-			offsets[p.ServerID(resp)] = p.Limit
+
+		if id != "" && count == p.Limit {
+			offsets[id] = p.StartOffset + p.Limit
 		}
 	}
 
@@ -63,11 +68,13 @@ func pageAll[T any](s *Live, p pager[T], handle func(resp *T) error) error {
 				return fmt.Errorf("%s: unmarshal: %w", subj, err)
 			}
 
+			count := p.Count(r)
+
 			if err := handle(r); err != nil {
 				return fmt.Errorf("%s: %w", subj, err)
 			}
 
-			if p.Count(r) == p.Limit {
+			if count == p.Limit {
 				offsets[serverID] += p.Limit
 			} else {
 				delete(offsets, serverID)

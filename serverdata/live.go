@@ -84,17 +84,18 @@ func (s *Live) Subj(prefix string, target string) string {
 	return fmt.Sprintf("$SYS.REQ.SERVER.%s%s", prefix, target)
 }
 
-func (s *Live) CollectConnections(connz server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
+func (s *Live) CollectConnections(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
 	const defaultConnzLimit = 1024
-	pageLimit := connz.Limit
+	pageLimit := opts.Limit
 	if pageLimit <= 0 {
 		pageLimit = defaultConnzLimit
 	}
-	connz.Limit = pageLimit
+	opts.Limit = pageLimit
 
 	return pageAll(s, pager[server.ServerAPIConnzResponse]{
-		Target: "CONNZ",
-		Limit:  pageLimit,
+		Target:      "CONNZ",
+		Limit:       pageLimit,
+		StartOffset: opts.ConnzOptions.Offset,
 		Count: func(resp *server.ServerAPIConnzResponse) int {
 			if resp == nil || resp.Data == nil {
 				return 0
@@ -108,7 +109,7 @@ func (s *Live) CollectConnections(connz server.ConnzEventOptions, handle func(re
 			return resp.Server.ID
 		},
 		Opts: func(o int) any {
-			cp := connz
+			cp := opts
 			cp.ConnzOptions.Offset = o
 			return cp
 		},
@@ -146,8 +147,9 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 	}
 
 	err := pageAll(s, pager[server.ServerAPIJszResponse]{
-		Target: "JSZ",
-		Limit:  pageLimit,
+		Target:      "JSZ",
+		Limit:       pageLimit,
+		StartOffset: baseOpts.JSzOptions.Offset,
 		Count: func(resp *server.ServerAPIJszResponse) int {
 			if resp == nil || resp.Data == nil {
 				return 0

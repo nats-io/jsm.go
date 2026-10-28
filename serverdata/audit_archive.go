@@ -67,6 +67,29 @@ func unsupported(method string, fields ...string) error {
 
 // Connz builds and filters a Connz response from the archive
 func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPIConnzResponse, error) {
+	seen := map[string]*server.ServerAPIConnzResponse{}
+	var results []*server.ServerAPIConnzResponse
+
+	err := a.CollectConnections(opts, func(cz *server.ServerAPIConnzResponse) error {
+		key := cz.Server.ID
+		if base, ok := seen[key]; ok {
+			base.Data.Conns = append(base.Data.Conns, cz.Data.Conns...)
+			base.Data.NumConns = len(base.Data.Conns)
+			base.Data.Total += cz.Data.Total
+		} else {
+			seen[key] = cz
+			results = append(results, cz)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (a *AuditArchive) CollectConnections(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	var fields []string
 	if opts.Account != "" {
 		fields = append(fields, "account")
@@ -81,18 +104,16 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 		fields = append(fields, "state")
 	}
 	if len(fields) > 0 {
-		return nil, unsupported("connz", fields...)
+		return unsupported("connz", fields...)
 	}
-
-	seen := map[string]*server.ServerAPIConnzResponse{}
-	var results []*server.ServerAPIConnzResponse
 
 	for _, accountName := range a.reader.AccountNames() {
 		tags := []*archive.Tag{
 			archive.TagAccount(accountName),
 			archive.TagAccountConnections(),
 		}
-		err := archive.ForEachTaggedArtifact(a.reader, tags, func(cz *server.ServerAPIConnzResponse) error {
+
+		newHandle := func(cz *server.ServerAPIConnzResponse) error {
 			if !matchesFilter(cz.Server, &opts.EventFilterOptions) {
 				return nil
 			}
@@ -104,23 +125,15 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 					conn.Account = accountName
 				}
 			}
-			key := cz.Server.ID
-			if base, ok := seen[key]; ok {
-				base.Data.Conns = append(base.Data.Conns, cz.Data.Conns...)
-				base.Data.NumConns = len(base.Data.Conns)
-				base.Data.Total += cz.Data.Total
-			} else {
-				seen[key] = cz
-				results = append(results, cz)
-			}
-			return nil
-		})
+			return handle(cz)
+		}
+
+		err := archive.ForEachTaggedArtifact(a.reader, tags, newHandle)
 		if err != nil && err != archive.ErrNoMatches {
-			return nil, err
+			return err
 		}
 	}
-
-	return results, nil
+	return nil
 }
 
 // Routez builds and filters a Routez response from the archive

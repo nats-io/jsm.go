@@ -54,6 +54,7 @@ type Configuration struct {
 	LogLevel               api.Level
 	Timeout                time.Duration
 	CPUProfileDuration     time.Duration
+	SubszPageSize          int
 	TargetPath             string
 	Include                EndpointSelection
 	ServerEndpointConfigs  []EndpointCaptureConfig
@@ -105,6 +106,7 @@ func NewCaptureConfiguration() *Configuration {
 		LogLevel:           api.InfoLevel,
 		Timeout:            5 * time.Second,
 		CPUProfileDuration: 5 * time.Second,
+		SubszPageSize:      4096,
 		ServerEndpointConfigs: []EndpointCaptureConfig{
 			{
 				ApiSuffix: "VARZ",
@@ -708,7 +710,6 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 	g.log.Infof("Querying %d endpoints on %d known servers...", len(g.cfg.ServerEndpointConfigs), len(serverInfoMap))
 	capturedCount := 0
-	const pageLimit = 1024
 
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
@@ -721,6 +722,10 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", serverId, endpoint.ApiSuffix)
 			offset := 0
+			pageLimit := 1024
+			if endpoint.ApiSuffix == "SUBSZ" {
+				pageLimit = g.cfg.SubszPageSize
+			}
 
 			for {
 				opts := g.buildServerOptions(endpoint.ApiSuffix, offset, pageLimit)
@@ -917,6 +922,13 @@ func Gather(nc *nats.Conn, conf *Configuration) error {
 	capturesCPU := conf.Include.ServerProfiles && slices.Contains(conf.ServerProfileNames, ProfileCPU)
 	if capturesCPU && (conf.CPUProfileDuration <= 0 || conf.CPUProfileDuration > 15*time.Second) {
 		return fmt.Errorf("cpu profile duration must be more than 0s and at most 15s, got %s", conf.CPUProfileDuration)
+	}
+
+	capturesSubsz := conf.Include.ServerEndpoints && conf.Detailed && slices.ContainsFunc(conf.ServerEndpointConfigs, func(e EndpointCaptureConfig) bool {
+		return e.ApiSuffix == "SUBSZ"
+	})
+	if capturesSubsz && conf.SubszPageSize <= 0 {
+		return fmt.Errorf("subsz page size must be more than 0, got %d", conf.SubszPageSize)
 	}
 
 	var captureLogBuffer bytes.Buffer

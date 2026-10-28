@@ -26,62 +26,55 @@ func NewLive(nc *nats.Conn, reqFn RequestFunc, waitFor int) (*Live, error) {
 }
 
 func (s *Live) Varz(opts server.VarzEventOptions) ([]*server.ServerAPIVarzResponse, error) {
-	return unmarshalResponses[server.ServerAPIVarzResponse](s, opts, s.Subj("PING", "VARZ"))
+	return unmarshalResponses[server.ServerAPIVarzResponse](s, opts, "$SYS.REQ.SERVER.PING.VARZ")
 }
 
 func (s *Live) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPIConnzResponse, error) {
-	return unmarshalResponses[server.ServerAPIConnzResponse](s, opts, s.Subj("PING", "CONNZ"))
+	return unmarshalResponses[server.ServerAPIConnzResponse](s, opts, "$SYS.REQ.SERVER.PING.CONNZ")
 }
 
 func (s *Live) Routez(opts server.RoutezEventOptions) ([]*server.ServerAPIRoutezResponse, error) {
-	return unmarshalResponses[server.ServerAPIRoutezResponse](s, opts, s.Subj("PING", "ROUTEZ"))
+	return unmarshalResponses[server.ServerAPIRoutezResponse](s, opts, "$SYS.REQ.SERVER.PING.ROUTEZ")
 }
 
 func (s *Live) Gatewayz(opts server.GatewayzEventOptions) ([]*server.ServerAPIGatewayzResponse, error) {
-	return unmarshalResponses[server.ServerAPIGatewayzResponse](s, opts, s.Subj("PING", "GATEWAYZ"))
+	return unmarshalResponses[server.ServerAPIGatewayzResponse](s, opts, "$SYS.REQ.SERVER.PING.GATEWAYZ")
 }
 
 func (s *Live) Leafz(opts server.LeafzEventOptions) ([]*server.ServerAPILeafzResponse, error) {
-	return unmarshalResponses[server.ServerAPILeafzResponse](s, opts, s.Subj("PING", "LEAFZ"))
+	return unmarshalResponses[server.ServerAPILeafzResponse](s, opts, "$SYS.REQ.SERVER.PING.LEAFZ")
 }
 
 func (s *Live) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPISubszResponse, error) {
-	return unmarshalResponses[server.ServerAPISubszResponse](s, opts, s.Subj("PING", "SUBSZ"))
+	return unmarshalResponses[server.ServerAPISubszResponse](s, opts, "$SYS.REQ.SERVER.PING.SUBSZ")
 }
 
 func (s *Live) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszResponse, error) {
-	return unmarshalResponses[server.ServerAPIJszResponse](s, opts, s.Subj("PING", "JSZ"))
+	return unmarshalResponses[server.ServerAPIJszResponse](s, opts, "$SYS.REQ.SERVER.PING.JSZ")
 }
 
 func (s *Live) Healthz(opts server.HealthzEventOptions) ([]*server.ServerAPIHealthzResponse, error) {
-	return unmarshalResponses[server.ServerAPIHealthzResponse](s, opts, s.Subj("PING", "HEALTHZ"))
+	return unmarshalResponses[server.ServerAPIHealthzResponse](s, opts, "$SYS.REQ.SERVER.PING.HEALTHZ")
 }
 
 func (s *Live) Accountz(opts server.AccountzEventOptions) ([]*server.ServerAPIAccountzResponse, error) {
-	return unmarshalResponses[server.ServerAPIAccountzResponse](s, opts, s.Subj("PING", "ACCOUNTZ"))
+	return unmarshalResponses[server.ServerAPIAccountzResponse](s, opts, "$SYS.REQ.SERVER.PING.ACCOUNTZ")
 }
 
 func (s *Live) Statz(opts server.StatszEventOptions) ([]*server.ServerStatsMsg, error) {
-	return unmarshalResponses[server.ServerStatsMsg](s, opts, s.Subj("PING", ""))
+	return unmarshalResponses[server.ServerStatsMsg](s, opts, "$SYS.REQ.SERVER.PING")
 }
 
 func (s *Live) Ipqueuesz(opts server.IpqueueszEventOptions) ([]*server.ServerAPIpqueueszResponse, error) {
-	return unmarshalResponses[server.ServerAPIpqueueszResponse](s, opts, s.Subj("PING", "IPQUEUESZ"))
+	return unmarshalResponses[server.ServerAPIpqueueszResponse](s, opts, "$SYS.REQ.SERVER.PING.IPQUEUESZ")
 }
 
 func (s *Live) Raftz(opts server.RaftzEventOptions) ([]*server.ServerAPIRaftzResponse, error) {
-	return unmarshalResponses[server.ServerAPIRaftzResponse](s, opts, s.Subj("PING", "RAFTZ"))
+	return unmarshalResponses[server.ServerAPIRaftzResponse](s, opts, "$SYS.REQ.SERVER.PING.RAFTZ")
 }
 
 func (s *Live) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, error) {
-	return unmarshalResponses[ProfilezResponse](s, opts, s.Subj("PING", "PROFILEZ"))
-}
-
-func (s *Live) Subj(prefix string, target string) string {
-	if target != "" {
-		target = "." + target
-	}
-	return fmt.Sprintf("$SYS.REQ.SERVER.%s%s", prefix, target)
+	return unmarshalResponses[ProfilezResponse](s, opts, "$SYS.REQ.SERVER.PING.PROFILEZ")
 }
 
 func (s *Live) CollectConnections(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
@@ -200,7 +193,7 @@ func unmarshalResponses[T any](s *Live, opts any, subj string) ([]*T, error) {
 	for _, raw := range results {
 		resp := new(T)
 		if err := json.Unmarshal(raw, resp); err != nil {
-			return nil, fmt.Errorf("unmarshal response: %w", err)
+			return nil, fmt.Errorf("unmarshal %s response: %w", subj, err)
 		}
 		responses = append(responses, resp)
 	}

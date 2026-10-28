@@ -29,7 +29,7 @@ type pager[T any] struct {
 // by one page per server rather than by the size of the fleet.
 func pageAll[T any](s *Live, p pager[T], handle func(resp *T) error) error {
 	offsets := map[string]int{}
-	subj := s.Subj("PING", p.Target)
+	subj := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", "PING", p.Target)
 
 	resps, err := unmarshalResponses[T](s, p.Opts(p.StartOffset), subj)
 	if err != nil {
@@ -51,7 +51,7 @@ func pageAll[T any](s *Live, p pager[T], handle func(resp *T) error) error {
 
 	for len(offsets) > 0 {
 		for serverID, offset := range offsets {
-			subj = s.Subj(serverID, p.Target)
+			subj = fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", serverID, p.Target)
 
 			raw, err := s.reqFn(p.Opts(offset), subj, 1, s.nc)
 			if err != nil {

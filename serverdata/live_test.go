@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -479,7 +480,10 @@ func TestServerSubjects(t *testing.T) {
 		{"Leafz", func(ds Source) error { _, err := ds.Leafz(server.LeafzEventOptions{}); return err }, "$SYS.REQ.SERVER.PING.LEAFZ"},
 		{"Subsz", func(ds Source) error { _, err := ds.Subsz(server.SubszEventOptions{}); return err }, "$SYS.REQ.SERVER.PING.SUBSZ"},
 		{"Jsz", func(ds Source) error { _, err := ds.Jsz(server.JszEventOptions{}); return err }, "$SYS.REQ.SERVER.PING.JSZ"},
-		{"Healthz", func(ds Source) error { _, err := ds.Healthz(server.HealthzEventOptions{}); return err }, "$SYS.REQ.SERVER.PING.HEALTHZ"},
+		{"Healthz", func(ds Source) error {
+			_, err := ds.Healthz(zmonitor.HealthzOptionsV1{}, server.EventFilterOptions{})
+			return err
+		}, "$SYS.REQ.SERVER.PING.HEALTHZ"},
 		{"Accountz", func(ds Source) error { _, err := ds.Accountz(server.AccountzEventOptions{}); return err }, "$SYS.REQ.SERVER.PING.ACCOUNTZ"},
 		{"Statz", func(ds Source) error { _, err := ds.Statz(server.StatszEventOptions{}); return err }, "$SYS.REQ.SERVER.PING"},
 	}

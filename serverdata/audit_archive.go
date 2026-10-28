@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 )
@@ -25,7 +26,7 @@ import (
 // Endpoints whose live counterpart accepts options that the archive cannot
 // satisfy from captured data (e.g. ConnzOptions.FilterSubject, GatewayzOptions.Name,
 // LeafzOptions.Account, JszOptions.Account, AccountzOptions.Account when no per-account
-// snapshot was gathered, HealthzOptions.JSEnabledOnly/JSServerOnly/Account/Stream/Consumer)
+// snapshot was gathered, HealthzOptions.JSEnabledOnly/JSServerOnly/LeafRemotesConnected/Account/Stream/Consumer)
 // return ErrUnsupportedOption identifying the unsupported fields rather than
 // silently producing partial or incorrect results.
 type AuditArchive struct {
@@ -226,13 +227,16 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 }
 
 // Healthz builds and filters a Healthz response from the archive
-func (a *AuditArchive) Healthz(opts server.HealthzEventOptions) ([]*server.ServerAPIHealthzResponse, error) {
+func (a *AuditArchive) Healthz(opts zmonitor.HealthzOptionsV1, filter server.EventFilterOptions) ([]*server.ServerAPIHealthzResponse, error) {
 	var fields []string
 	if opts.JSEnabledOnly {
 		fields = append(fields, "js-enabled-only")
 	}
 	if opts.JSServerOnly {
 		fields = append(fields, "js-server-only")
+	}
+	if opts.LeafRemotesConnected {
+		fields = append(fields, "leaf-remotes-connected")
 	}
 	if opts.Account != "" {
 		fields = append(fields, "account")
@@ -249,7 +253,7 @@ func (a *AuditArchive) Healthz(opts server.HealthzEventOptions) ([]*server.Serve
 
 	var results []*server.ServerAPIHealthzResponse
 	_, err := a.reader.EachClusterServerHealthz(func(_ *archive.Tag, _ *archive.Tag, cbError error, hz *server.ServerAPIHealthzResponse) error {
-		if cbError != nil || !matchesFilter(hz.Server, &opts.EventFilterOptions) {
+		if cbError != nil || !matchesFilter(hz.Server, &filter) {
 			return nil
 		}
 		results = append(results, hz)

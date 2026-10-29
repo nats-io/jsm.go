@@ -37,6 +37,7 @@ type Source interface {
 	Raftz(opts server.RaftzEventOptions) ([]*server.ServerAPIRaftzResponse, error)
 	Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, error)
 	CollectConnections(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error
+	CollectSubscriptions(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error
 	CollectAccounts() ([]*server.AccountDetail, error)
 	Close() error
 }

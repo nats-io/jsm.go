@@ -89,6 +89,7 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 	return results, nil
 }
 
+// CollectConnections filters a Connz response from the archive and passes it to handle
 func (a *AuditArchive) CollectConnections(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	var fields []string
 	if opts.Account != "" {
@@ -208,6 +209,20 @@ func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPI
 			return nil
 		})
 	return results, err
+}
+
+func (a *AuditArchive) CollectSubscriptions(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
+	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerSubs(),
+		func(_ *archive.Tag, _ *archive.Tag, cbError error, sz *server.ServerAPISubszResponse) error {
+			if cbError != nil || !matchesFilter(sz.Server, &opts.EventFilterOptions) {
+				return nil
+			}
+			if sz.Data == nil {
+				return nil
+			}
+			return handle(sz)
+		})
+	return err
 }
 
 // Jsz builds and filters a Jsz response from the archive

@@ -77,6 +77,38 @@ func (s *Live) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, 
 	return unmarshalResponses[ProfilezResponse](s, opts, "$SYS.REQ.SERVER.PING.PROFILEZ")
 }
 
+func (s *Live) CollectSubscriptions(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error {
+	const defaultSubszLimit = 1024
+	pageLimit := opts.Limit
+	if pageLimit <= 0 {
+		pageLimit = defaultSubszLimit
+	}
+	opts.Limit = pageLimit
+
+	return pageAll(s, pager[server.ServerAPISubszResponse]{
+		Target:      "SUBSZ",
+		Limit:       pageLimit,
+		StartOffset: opts.SubszOptions.Offset,
+		Count: func(resp *server.ServerAPISubszResponse) int {
+			if resp == nil || resp.Data == nil {
+				return 0
+			}
+			return len(resp.Data.Subs)
+		},
+		ServerID: func(resp *server.ServerAPISubszResponse) string {
+			if resp == nil || resp.Server == nil {
+				return ""
+			}
+			return resp.Server.ID
+		},
+		Opts: func(o int) any {
+			cp := opts
+			cp.SubszOptions.Offset = o
+			return cp
+		},
+	}, handle)
+}
+
 func (s *Live) CollectConnections(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
 	const defaultConnzLimit = 1024
 	pageLimit := opts.Limit
@@ -161,7 +193,6 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 			return cp
 		},
 	}, mergeAccounts)
-
 	if err != nil {
 		return nil, err
 	}

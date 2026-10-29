@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -53,8 +54,13 @@ func (s *Live) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszResponse,
 	return unmarshalResponses[server.ServerAPIJszResponse](s, opts, "$SYS.REQ.SERVER.PING.JSZ")
 }
 
-func (s *Live) Healthz(opts server.HealthzEventOptions) ([]*server.ServerAPIHealthzResponse, error) {
-	return unmarshalResponses[server.ServerAPIHealthzResponse](s, opts, "$SYS.REQ.SERVER.PING.HEALTHZ")
+func (s *Live) Healthz(opts zmonitor.HealthzOptionsV1, filter server.EventFilterOptions) ([]*server.ServerAPIHealthzResponse, error) {
+	req := struct {
+		zmonitor.HealthzOptionsV1
+		server.EventFilterOptions
+	}{opts, filter}
+
+	return unmarshalResponses[server.ServerAPIHealthzResponse](s, req, "$SYS.REQ.SERVER.PING.HEALTHZ")
 }
 
 func (s *Live) Accountz(opts server.AccountzEventOptions) ([]*server.ServerAPIAccountzResponse, error) {

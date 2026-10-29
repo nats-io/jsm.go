@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 )
@@ -257,7 +258,7 @@ func TestArchiveHealthz(t *testing.T) {
 		w.Add(resp, archive.TagCluster("c1"), archive.TagServer("srv-1"), archive.TagServerHealth())
 	})
 
-	results, err := a.Healthz(server.HealthzEventOptions{})
+	results, err := a.Healthz(zmonitor.HealthzOptionsV1{}, server.EventFilterOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -555,7 +556,7 @@ func TestArchiveEmptyResults(t *testing.T) {
 		t.Errorf("expected 0 gatewayz results, got %d", len(gatewayz))
 	}
 
-	healthz, err := a.Healthz(server.HealthzEventOptions{})
+	healthz, err := a.Healthz(zmonitor.HealthzOptionsV1{}, server.EventFilterOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -801,17 +802,18 @@ func TestArchiveUnsupportedHealthzOptions(t *testing.T) {
 
 	tests := []struct {
 		name string
-		opts server.HealthzEventOptions
+		opts zmonitor.HealthzOptionsV1
 	}{
-		{"js-enabled", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{JSEnabledOnly: true}}},
-		{"js-server-only", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{JSServerOnly: true}}},
-		{"account", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{Account: "a"}}},
-		{"stream", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{Stream: "s"}}},
-		{"consumer", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{Consumer: "c"}}},
+		{"js-enabled", zmonitor.HealthzOptionsV1{JSEnabledOnly: true}},
+		{"js-server-only", zmonitor.HealthzOptionsV1{JSServerOnly: true}},
+		{"leaf-remotes-connected", zmonitor.HealthzOptionsV1{LeafRemotesConnected: true}},
+		{"account", zmonitor.HealthzOptionsV1{Account: "a"}},
+		{"stream", zmonitor.HealthzOptionsV1{Stream: "s"}},
+		{"consumer", zmonitor.HealthzOptionsV1{Consumer: "c"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := a.Healthz(tc.opts)
+			_, err := a.Healthz(tc.opts, server.EventFilterOptions{})
 			if !errors.Is(err, ErrUnsupportedOption) {
 				t.Errorf("expected ErrUnsupportedOption, got %v", err)
 			}
@@ -866,9 +868,7 @@ func TestArchiveUnsupportedConnzOptions(t *testing.T) {
 func TestArchiveUnsupportedMultipleFields(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {})
 
-	_, err := a.Healthz(server.HealthzEventOptions{
-		HealthzOptions: server.HealthzOptions{Account: "a", Stream: "s"},
-	})
+	_, err := a.Healthz(zmonitor.HealthzOptionsV1{Account: "a", Stream: "s"}, server.EventFilterOptions{})
 	if !errors.Is(err, ErrUnsupportedOption) {
 		t.Errorf("expected ErrUnsupportedOption, got %v", err)
 	}

@@ -77,6 +77,7 @@ func (s *Live) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, 
 	return unmarshalResponses[ProfilezResponse](s, opts, "$SYS.REQ.SERVER.PING.PROFILEZ")
 }
 
+// CollectSubscriptions pages through Subz responses from all servers and calls handle per page
 func (s *Live) CollectSubscriptions(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error {
 	const defaultSubszLimit = 1024
 	pageLimit := opts.Limit
@@ -109,6 +110,7 @@ func (s *Live) CollectSubscriptions(opts server.SubszEventOptions, handle func(r
 	}, handle)
 }
 
+// CollectConnections pages through Connz responses from all servers and calls handle per page
 func (s *Live) CollectConnections(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
 	const defaultConnzLimit = 1024
 	pageLimit := opts.Limit
@@ -141,40 +143,20 @@ func (s *Live) CollectConnections(opts server.ConnzEventOptions, handle func(res
 	}, handle)
 }
 
-// CollectAccounts gathers account-level JetStream metadata from all servers
-func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
-	const pageLimit = 1024
+// CollectJsz pages through Jsz responses from all servers and calls handle per page
+func (s *Live) CollectJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	const defaultJszPageSize = 32
 
-	baseOpts := server.JszEventOptions{
-		JSzOptions: server.JSzOptions{
-			Accounts: true,
-			Streams:  true,
-			Consumer: true,
-			Config:   true,
-			Limit:    pageLimit,
-		},
+	opts.JSzOptions.Accounts = true
+	if opts.JSzOptions.Limit <= 0 {
+		opts.JSzOptions.Limit = defaultJszPageSize
 	}
+	limit := opts.JSzOptions.Limit
 
-	accountMap := map[string]*server.AccountDetail{}
-	mergeAccounts := func(resp *server.ServerAPIJszResponse) error {
-		if resp.Data == nil {
-			return nil
-		}
-		for _, acct := range resp.Data.AccountDetails {
-			if existing, found := accountMap[acct.Name]; found {
-				existing.Streams = mergeStreams(existing.Streams, acct.Streams)
-			} else {
-				cp := *acct
-				accountMap[acct.Name] = &cp
-			}
-		}
-		return nil
-	}
-
-	err := pageAll(s, pager[server.ServerAPIJszResponse]{
+	return pageAll(s, pager[server.ServerAPIJszResponse]{
 		Target:      "JSZ",
-		Limit:       pageLimit,
-		StartOffset: baseOpts.JSzOptions.Offset,
+		Limit:       limit,
+		StartOffset: opts.JSzOptions.Offset,
 		Count: func(resp *server.ServerAPIJszResponse) int {
 			if resp == nil || resp.Data == nil {
 				return 0
@@ -188,11 +170,42 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 			return resp.Server.ID
 		},
 		Opts: func(o int) any {
-			cp := baseOpts
+			cp := opts
 			cp.JSzOptions.Offset = o
 			return cp
 		},
-	}, mergeAccounts)
+	}, handle)
+}
+
+// CollectAccounts gathers account-level JetStream metadata from all servers
+func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
+	const pageLimit = 1024
+
+	opts := server.JszEventOptions{
+		JSzOptions: server.JSzOptions{
+			Accounts: true,
+			Streams:  true,
+			Consumer: true,
+			Config:   true,
+			Limit:    pageLimit,
+		},
+	}
+
+	accountMap := map[string]*server.AccountDetail{}
+	err := s.CollectJsz(opts, func(resp *server.ServerAPIJszResponse) error {
+		if resp.Data == nil {
+			return nil
+		}
+		for _, acct := range resp.Data.AccountDetails {
+			if existing, found := accountMap[acct.Name]; found {
+				existing.Streams = mergeStreams(existing.Streams, acct.Streams)
+			} else {
+				cp := *acct
+				accountMap[acct.Name] = &cp
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +218,6 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 	for _, acct := range accounts {
 		sort.Slice(acct.Streams, func(i, j int) bool { return acct.Streams[i].Name < acct.Streams[j].Name })
 	}
-
 	return accounts, nil
 }
 

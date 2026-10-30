@@ -211,6 +211,7 @@ func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPI
 	return results, err
 }
 
+// CollectSubscriptions filters a Subsz response from the archive and passes it to handle
 func (a *AuditArchive) CollectSubscriptions(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
 	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerSubs(),
 		func(_ *archive.Tag, _ *archive.Tag, cbError error, sz *server.ServerAPISubszResponse) error {
@@ -251,6 +252,21 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 		return nil
 	})
 	return results, err
+}
+
+// CollectJsz filters a Jsz repsonse from the archive and passes it to handle
+func (a *AuditArchive) CollectJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	if opts.Account != "" {
+		return unsupported("jsz", "account")
+	}
+
+	_, err := a.reader.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, cbError error, jsz *server.ServerAPIJszResponse) error {
+		if cbError != nil || jsz == nil || jsz.Data == nil || !matchesFilter(jsz.Server, &opts.EventFilterOptions) {
+			return nil
+		}
+		return handle(jsz)
+	})
+	return err
 }
 
 // Healthz builds and filters a Healthz response from the archive

@@ -38,6 +38,7 @@ type Source interface {
 	Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, error)
 	CollectConnections(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error
 	CollectSubscriptions(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error
+	CollectJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error
 	CollectAccounts() ([]*server.AccountDetail, error)
 	Close() error
 }

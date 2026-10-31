@@ -132,7 +132,9 @@ func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Cont
 			}
 		}
 		if name == "" {
-			c.configureNewContext(opts...)
+			if err := c.configureNewContext(opts...); err != nil {
+				return nil, err
+			}
 			return c, nil
 		}
 	}
@@ -165,7 +167,9 @@ func (r *Registry) Load(ctx context.Context, name string, opts ...Option) (*Cont
 	if r.noExpand {
 		c.applyOpts(opts...)
 	} else {
-		c.configureNewContext(opts...)
+		if err := c.configureNewContext(opts...); err != nil {
+			return nil, err
+		}
 	}
 
 	return c, nil

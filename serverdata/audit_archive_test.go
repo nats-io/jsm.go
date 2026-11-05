@@ -928,16 +928,25 @@ func TestArchiveUnsupportedJszAccount(t *testing.T) {
 	}
 }
 
-func TestArchiveUnspportedCollectJszAccount(t *testing.T) {
+func TestArchiveUnsupportedCollectJszOptions(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {})
 
-	err := a.CollectJsz(server.JszEventOptions{
-		JSzOptions: server.JSzOptions{Account: "foo"},
-	}, func(_ *server.ServerAPIJszResponse) error {
-		return nil // no-op handler
-	})
-	if !errors.Is(err, ErrUnsupportedOption) {
-		t.Errorf("expected ErrUnsupportedOption, got %v", err)
+	tests := []struct {
+		name string
+		opts server.JszEventOptions
+	}{
+		{name: "offset", opts: server.JszEventOptions{JSzOptions: server.JSzOptions{Offset: 32}}},
+		{name: "account", opts: server.JszEventOptions{JSzOptions: server.JSzOptions{Account: "foo"}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := a.CollectJsz(tc.opts, func(*server.ServerAPIJszResponse) error {
+				return nil //no-op handler
+			})
+			if !errors.Is(err, ErrUnsupportedOption) {
+				t.Errorf("expected ErrUnsupportedOption, got %v", err)
+			}
+		})
 	}
 }
 
@@ -948,6 +957,7 @@ func TestArchiveUnsupportedConnzOptions(t *testing.T) {
 		name string
 		opts server.ConnzEventOptions
 	}{
+		{"offset", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Offset: 1024}}},
 		{"account", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Account: "a"}}},
 		{"filter_subject", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{FilterSubject: ">"}}},
 		{"user", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{User: "u"}}},
@@ -960,6 +970,18 @@ func TestArchiveUnsupportedConnzOptions(t *testing.T) {
 				t.Errorf("expected ErrUnsupportedOption, got %v", err)
 			}
 		})
+	}
+}
+
+func TestArchiveUnsupportedCollectSubscriptionsOffset(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+
+	err := a.CollectSubscriptions(server.SubszEventOptions{SubszOptions: server.SubszOptions{Offset: 1024}}, func(sz *server.ServerAPISubszResponse) error {
+		return nil // no-op handler
+	})
+
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Errorf("expected ErrUnsupportedOption, got %v", err)
 	}
 }
 

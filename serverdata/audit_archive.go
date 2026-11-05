@@ -92,6 +92,9 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 // CollectConnections filters a Connz response from the archive and passes it to handle
 func (a *AuditArchive) CollectConnections(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	var fields []string
+	if opts.Offset != 0 {
+		fields = append(fields, "offset")
+	}
 	if opts.Account != "" {
 		fields = append(fields, "account")
 	}
@@ -213,6 +216,10 @@ func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPI
 
 // CollectSubscriptions filters a Subsz response from the archive and passes it to handle
 func (a *AuditArchive) CollectSubscriptions(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
+	if opts.Offset != 0 {
+		return unsupported("subsz", "offset")
+	}
+
 	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerSubs(),
 		func(_ *archive.Tag, _ *archive.Tag, cbError error, sz *server.ServerAPISubszResponse) error {
 			if cbError != nil || !matchesFilter(sz.Server, &opts.EventFilterOptions) {
@@ -258,6 +265,9 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 func (a *AuditArchive) CollectJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
 	if opts.Account != "" {
 		return unsupported("jsz", "account")
+	}
+	if opts.Offset != 0 {
+		return unsupported("jsz", "offset")
 	}
 
 	_, err := a.reader.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, cbError error, jsz *server.ServerAPIJszResponse) error {

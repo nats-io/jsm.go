@@ -152,6 +152,7 @@ func jszPager(opts server.JszEventOptions) pager[server.ServerAPIJszResponse] {
 func subszPager(opts server.SubszEventOptions) pager[server.ServerAPISubszResponse] {
 	const defaultSubszLimit = 1024
 
+	opts.SubszOptions.Subscriptions = true
 	if opts.Limit <= 0 {
 		opts.Limit = defaultSubszLimit
 	}

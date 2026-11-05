@@ -37,7 +37,7 @@ func TestJszPager(t *testing.T) {
 		}
 	})
 
-	t.Run("Accounts opts should be true, incoming offset should be kept", func(t *testing.T) {
+	t.Run("Accounts option should be true, incoming offset should be kept", func(t *testing.T) {
 		p := jszPager(server.JszEventOptions{
 			JSzOptions: server.JSzOptions{
 				Accounts: false,
@@ -46,7 +46,7 @@ func TestJszPager(t *testing.T) {
 		want := 64
 		opts := p.Opts(want).(server.JszEventOptions)
 		if !opts.Accounts {
-			t.Fatalf("account should be overrided to true")
+			t.Fatalf("accounts option should be true")
 		}
 		if opts.Offset != want {
 			t.Fatalf("got offset %d want %d", opts.Offset, want)
@@ -66,6 +66,13 @@ func TestSubszPager(t *testing.T) {
 		p := subszPager(in)
 		if p.Limit != 10 || p.StartOffset != 5 {
 			t.Fatalf("limit=%d offset=%d", p.Limit, p.StartOffset)
+		}
+	})
+	t.Run("Subscriptions option should be true", func(t *testing.T) {
+		in := server.SubszEventOptions{}
+		got := subszPager(in).Opts(1025).(server.SubszEventOptions)
+		if !got.Subscriptions {
+			t.Fatal("subscriptions option should be true")
 		}
 	})
 

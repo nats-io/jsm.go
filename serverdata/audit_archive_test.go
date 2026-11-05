@@ -98,6 +98,41 @@ func TestArchiveConnz(t *testing.T) {
 	}
 }
 
+func TestArchiveCollectConnections(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		resp := &server.ServerAPIConnzResponse{
+			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
+			Data: &server.Connz{
+				NumConns: 2,
+				Conns: []*server.ConnInfo{
+					{Name: "conn-1", Account: "acct-A"},
+					{Name: "conn-2", Account: "acct-A"},
+				},
+			},
+		}
+		w.Add(resp,
+			archive.TagAccount("acct-A"),
+			archive.TagCluster("c1"),
+			archive.TagServer("srv-1"),
+			archive.TagAccountConnections())
+	})
+
+	results := make([]*server.ServerAPIConnzResponse, 0)
+	err := a.CollectConnections(server.ConnzEventOptions{}, func(cz *server.ServerAPIConnzResponse) error {
+		results = append(results, cz)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if len(results[0].Data.Conns) != 2 {
+		t.Errorf("expected 2 conns, got %d", len(results[0].Data.Conns))
+	}
+}
+
 func TestArchiveConnzMergesAccounts(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {
 		// Two accounts on the same server should be merged into one result
@@ -225,6 +260,31 @@ func TestArchiveSubsz(t *testing.T) {
 	}
 }
 
+func TestArchiveCollectSubscriptions(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		resp := &server.ServerAPISubszResponse{
+			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
+			Data:   &server.Subsz{Total: 10},
+		}
+		w.Add(resp, archive.TagCluster("c1"), archive.TagServer("srv-1"), archive.TagServerSubs())
+	})
+
+	results := make([]*server.ServerAPISubszResponse, 0)
+	err := a.CollectSubscriptions(server.SubszEventOptions{}, func(sz *server.ServerAPISubszResponse) error {
+		results = append(results, sz)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Data.Total != 10 {
+		t.Errorf("expected 10 subs, got %d", results[0].Data.Total)
+	}
+}
+
 func TestArchiveJsz(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {
 		resp := &server.ServerAPIJszResponse{
@@ -237,6 +297,33 @@ func TestArchiveJsz(t *testing.T) {
 	})
 
 	results, err := a.Jsz(server.JszEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Data.Memory != 1024 {
+		t.Errorf("expected Memory 1024, got %d", results[0].Data.Memory)
+	}
+}
+
+func TestArchiveCollectJsz(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		resp := &server.ServerAPIJszResponse{
+			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
+			Data: &server.JSInfo{
+				JetStreamStats: server.JetStreamStats{Memory: 1024},
+			},
+		}
+		w.Add(resp, archive.TagCluster("c1"), archive.TagServer("srv-1"), archive.TagServerJetStream())
+	})
+
+	results := make([]*server.ServerAPIJszResponse, 0)
+	err := a.CollectJsz(server.JszEventOptions{}, func(jsz *server.ServerAPIJszResponse) error {
+		results = append(results, jsz)
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -835,6 +922,19 @@ func TestArchiveUnsupportedJszAccount(t *testing.T) {
 
 	_, err := a.Jsz(server.JszEventOptions{
 		JSzOptions: server.JSzOptions{Account: "foo"},
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Errorf("expected ErrUnsupportedOption, got %v", err)
+	}
+}
+
+func TestArchiveUnspportedCollectJszAccount(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+
+	err := a.CollectJsz(server.JszEventOptions{
+		JSzOptions: server.JSzOptions{Account: "foo"},
+	}, func(_ *server.ServerAPIJszResponse) error {
+		return nil // no-op handler
 	})
 	if !errors.Is(err, ErrUnsupportedOption) {
 		t.Errorf("expected ErrUnsupportedOption, got %v", err)

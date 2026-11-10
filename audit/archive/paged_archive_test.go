@@ -388,13 +388,13 @@ func TestPagedReader(t *testing.T) {
 		expectedCount := len(ta.ExpectedNames)
 
 		count := 0
-		count, err := EachClusterServerArtifact(reader, TagStreamInfo(), func(clusterTag *Tag, serverTag *Tag, err error, artifact *api.StreamInfo) error {
+		count, err := EachClusterServerArtifact(reader, TagStreamInfo(), func(cluster ClusterRef, serverName string, err error, artifact *api.StreamInfo) error {
 			if err != nil {
-				t.Errorf("unexpected error for %s/%s: %v", clusterTag.Value, serverTag.Value, err)
+				t.Errorf("unexpected error for %s/%s: %v", cluster.Name, serverName, err)
 				return nil
 			}
-			if clusterTag.Value != expectedCluster || serverTag.Value != expectedServer {
-				t.Errorf("unexpected cluster/server: %s/%s", clusterTag.Value, serverTag.Value)
+			if cluster.Name != expectedCluster || serverName != expectedServer {
+				t.Errorf("unexpected cluster/server: %s/%s", cluster.Name, serverName)
 			}
 			count++
 			return nil

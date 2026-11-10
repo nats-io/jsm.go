@@ -37,7 +37,7 @@ type Source interface {
 	Ipqueuesz(opts server.IpqueueszEventOptions) ([]*server.ServerAPIpqueueszResponse, error)
 	Raftz(opts server.RaftzEventOptions) ([]*server.ServerAPIRaftzResponse, error)
 	Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, error)
-	CollectAccounts() ([]*server.AccountDetail, error)
+	CollectAccounts() ([]*AccountDetail, error)
 
 	Close() error
 }

@@ -20,7 +20,7 @@ func setupMetaCheck(t *testing.T, checkid string, artifacts map[string]any) Outc
 	}
 
 	for serverName, data := range artifacts {
-		err := writer.Add(data, archive.TagCluster("C1"), archive.TagServer(serverName), archive.TagServerJetStream())
+		err := writer.Add(data, append(artifactDomainTags(data), archive.TagCluster("C1"), archive.TagServer(serverName), archive.TagServerJetStream())...)
 		if err != nil {
 			t.Fatalf("failed to add artifact for %s: %v", serverName, err)
 		}
@@ -137,6 +137,18 @@ func TestMETA_002(t *testing.T) {
 		}
 	})
 
+	t.Run("Should pass when same-named clusters in different domains have their own leaders", func(t *testing.T) {
+		result := setupMetaCheck(t, "META_002", map[string]any{
+			"a1": jszInDomain("a", "a1"),
+			"a2": jszInDomain("a", "a1"),
+			"b1": jszInDomain("b", "b2"),
+			"b2": jszInDomain("b", "b2"),
+		})
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+
 	t.Run("Should pass when all servers agree on the meta leader", func(t *testing.T) {
 		result := setupMetaCheck(t, "META_002", map[string]any{
 			"s1": &server.ServerAPIJszResponse{
@@ -194,4 +206,8 @@ func TestMETA_002(t *testing.T) {
 			t.Errorf("expected result %v, got %v", Pass, result)
 		}
 	})
+}
+
+func jszInDomain(domain, leader string) *server.ServerAPIJszResponse {
+	return &server.ServerAPIJszResponse{Data: &server.JSInfo{Config: server.JetStreamConfig{Domain: domain}, Meta: &server.MetaClusterInfo{Leader: leader}}}
 }

@@ -75,16 +75,12 @@ func checkAccountLimits(check *Check, r *archive.Reader, examples *ExamplesColle
 	}
 
 	// Iterate over all clusters and their servers
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
+	for _, cluster := range r.Clusters() {
+		for _, serverName := range r.ClusterServerNames(cluster) {
 			for _, accountName := range r.AccountNames() {
 				accountTag := archive.TagAccount(accountName)
 
-				err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, accountTag, archive.TagAccountInfo()}, func(ai *server.AccountInfo) error {
+				err := archive.ForEachServerArtifact(r, cluster, serverName, []*archive.Tag{accountTag, archive.TagAccountInfo()}, func(ai *server.AccountInfo) error {
 					if ai.Claim == nil {
 						// Can't check limits without a claim
 						return nil

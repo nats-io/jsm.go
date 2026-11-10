@@ -50,7 +50,7 @@ func NewAuditArchive(archivePath string) (*AuditArchive, error) {
 // Varz builds and filters a Varz response from the archive
 func (a *AuditArchive) Varz(opts server.VarzEventOptions) ([]*server.ServerAPIVarzResponse, error) {
 	var results []*server.ServerAPIVarzResponse
-	_, err := a.reader.EachClusterServerVarz(func(_ *archive.Tag, _ *archive.Tag, cbError error, vz *server.ServerAPIVarzResponse) error {
+	_, err := a.reader.EachClusterServerVarz(func(_ archive.ClusterRef, _ string, cbError error, vz *server.ServerAPIVarzResponse) error {
 		if cbError != nil || !matchesFilter(vz.Server, &opts.EventFilterOptions) {
 			return nil
 		}
@@ -128,7 +128,7 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 func (a *AuditArchive) Routez(opts server.RoutezEventOptions) ([]*server.ServerAPIRoutezResponse, error) {
 	var results []*server.ServerAPIRoutezResponse
 	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerRoutes(),
-		func(_ *archive.Tag, _ *archive.Tag, cbError error, rz *server.ServerAPIRoutezResponse) error {
+		func(_ archive.ClusterRef, _ string, cbError error, rz *server.ServerAPIRoutezResponse) error {
 			if cbError != nil || !matchesFilter(rz.Server, &opts.EventFilterOptions) {
 				return nil
 			}
@@ -146,7 +146,7 @@ func (a *AuditArchive) Gatewayz(opts server.GatewayzEventOptions) ([]*server.Ser
 
 	var results []*server.ServerAPIGatewayzResponse
 	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerGateways(),
-		func(_ *archive.Tag, _ *archive.Tag, cbError error, gz *server.ServerAPIGatewayzResponse) error {
+		func(_ archive.ClusterRef, _ string, cbError error, gz *server.ServerAPIGatewayzResponse) error {
 			if cbError != nil || !matchesFilter(gz.Server, &opts.EventFilterOptions) {
 				return nil
 			}
@@ -163,7 +163,7 @@ func (a *AuditArchive) Leafz(opts server.LeafzEventOptions) ([]*server.ServerAPI
 	}
 
 	var results []*server.ServerAPILeafzResponse
-	_, err := a.reader.EachClusterServerLeafz(func(_ *archive.Tag, _ *archive.Tag, cbError error, lz *server.ServerAPILeafzResponse) error {
+	_, err := a.reader.EachClusterServerLeafz(func(_ archive.ClusterRef, _ string, cbError error, lz *server.ServerAPILeafzResponse) error {
 		if cbError != nil || !matchesFilter(lz.Server, &opts.EventFilterOptions) {
 			return nil
 		}
@@ -175,18 +175,18 @@ func (a *AuditArchive) Leafz(opts server.LeafzEventOptions) ([]*server.ServerAPI
 
 // Subsz builds and filters a Subsz response from the archive
 func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPISubszResponse, error) {
-	seen := map[string]*server.ServerAPISubszResponse{}
+	seen := map[clusterServer]*server.ServerAPISubszResponse{}
 	var results []*server.ServerAPISubszResponse
 
 	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerSubs(),
-		func(clusterTag *archive.Tag, serverTag *archive.Tag, cbError error, sz *server.ServerAPISubszResponse) error {
+		func(cluster archive.ClusterRef, serverName string, cbError error, sz *server.ServerAPISubszResponse) error {
 			if cbError != nil || !matchesFilter(sz.Server, &opts.EventFilterOptions) {
 				return nil
 			}
 			if sz.Data == nil {
 				return nil
 			}
-			key := serverKey(clusterTag, serverTag)
+			key := clusterServer{cluster, serverName}
 			if base, ok := seen[key]; ok {
 				base.Data.Subs = append(base.Data.Subs, sz.Data.Subs...)
 			} else {
@@ -204,17 +204,17 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 		return nil, unsupported("jsz", "account")
 	}
 
-	seen := map[string]*server.ServerAPIJszResponse{}
+	seen := map[clusterServer]*server.ServerAPIJszResponse{}
 	var results []*server.ServerAPIJszResponse
 
-	_, err := a.reader.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, cbError error, jsz *server.ServerAPIJszResponse) error {
+	_, err := a.reader.EachClusterServerJsz(func(cluster archive.ClusterRef, serverName string, cbError error, jsz *server.ServerAPIJszResponse) error {
 		if cbError != nil || !matchesFilter(jsz.Server, &opts.EventFilterOptions) {
 			return nil
 		}
 		if jsz.Data == nil {
 			return nil
 		}
-		key := serverKey(clusterTag, serverTag)
+		key := clusterServer{cluster, serverName}
 		if base, ok := seen[key]; ok {
 			base.Data.AccountDetails = append(base.Data.AccountDetails, jsz.Data.AccountDetails...)
 		} else {
@@ -252,7 +252,7 @@ func (a *AuditArchive) Healthz(opts zmonitor.HealthzOptionsV1, filter server.Eve
 	}
 
 	var results []*server.ServerAPIHealthzResponse
-	_, err := a.reader.EachClusterServerHealthz(func(_ *archive.Tag, _ *archive.Tag, cbError error, hz *server.ServerAPIHealthzResponse) error {
+	_, err := a.reader.EachClusterServerHealthz(func(_ archive.ClusterRef, _ string, cbError error, hz *server.ServerAPIHealthzResponse) error {
 		if cbError != nil || !matchesFilter(hz.Server, &filter) {
 			return nil
 		}
@@ -274,7 +274,7 @@ func (a *AuditArchive) Accountz(opts server.AccountzEventOptions) ([]*server.Ser
 	}
 
 	var results []*server.ServerAPIAccountzResponse
-	_, err := a.reader.EachClusterServerAccountz(func(_ *archive.Tag, _ *archive.Tag, cbError error, az *server.ServerAPIAccountzResponse) error {
+	_, err := a.reader.EachClusterServerAccountz(func(_ archive.ClusterRef, _ string, cbError error, az *server.ServerAPIAccountzResponse) error {
 		if cbError != nil || !matchesFilter(az.Server, &opts.EventFilterOptions) {
 			return nil
 		}
@@ -438,7 +438,7 @@ func (a *AuditArchive) Statz(opts server.StatszEventOptions) ([]*server.ServerSt
 }
 
 // CollectAccounts gathers account-level JetStream metadata from the archive
-func (a *AuditArchive) CollectAccounts() ([]*server.AccountDetail, error) {
+func (a *AuditArchive) CollectAccounts() ([]*AccountDetail, error) {
 	jszResponses, err := a.Jsz(server.JszEventOptions{
 		JSzOptions: server.JSzOptions{
 			Accounts: true,
@@ -451,31 +451,15 @@ func (a *AuditArchive) CollectAccounts() ([]*server.AccountDetail, error) {
 		return nil, err
 	}
 
-	accountMap := map[string]*server.AccountDetail{}
+	accounts := accountCollector{}
 	for _, jsz := range jszResponses {
 		if jsz.Data == nil {
 			continue
 		}
-		for _, acct := range jsz.Data.AccountDetails {
-			if existing, found := accountMap[acct.Name]; found {
-				existing.Streams = mergeStreams(existing.Streams, acct.Streams)
-			} else {
-				cp := *acct
-				accountMap[acct.Name] = &cp
-			}
-		}
+		accounts.add(jsz.Data.Config.Domain, jsz.Data.AccountDetails)
 	}
 
-	accounts := make([]*server.AccountDetail, 0, len(accountMap))
-	for _, acct := range accountMap {
-		accounts = append(accounts, acct)
-	}
-	sort.Slice(accounts, func(i, j int) bool { return accounts[i].Name < accounts[j].Name })
-	for _, acct := range accounts {
-		sort.Slice(acct.Streams, func(i, j int) bool { return acct.Streams[i].Name < acct.Streams[j].Name })
-	}
-
-	return accounts, nil
+	return accounts.sorted(), nil
 }
 
 // Ipqueuesz reads ipqueuesz data from the archive. The archive can only narrow
@@ -569,20 +553,16 @@ func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezRe
 		return nil, unsupported("profilez", fields...)
 	}
 
-	// Recover full ServerInfo from Varz when present. Archive tag values
-	// cannot contain "/" (enforced by audit/archive validatePathComponent),
-	// so it is safe as a key separator.
-	fullInfo := map[string]*server.ServerInfo{}
-	if vzs, vErr := a.Varz(server.VarzEventOptions{}); vErr == nil {
-		for _, vz := range vzs {
-			if vz.Server != nil {
-				fullInfo[vz.Server.Cluster+"/"+vz.Server.Name] = vz.Server
-			}
+	fullInfo := map[clusterServer]*server.ServerInfo{}
+	a.reader.EachClusterServerVarz(func(cluster archive.ClusterRef, serverName string, cbError error, vz *server.ServerAPIVarzResponse) error {
+		if cbError == nil && vz.Server != nil {
+			fullInfo[clusterServer{cluster, serverName}] = vz.Server
 		}
-	}
+		return nil
+	})
 
 	var results []*ProfilezResponse
-	err := forEachProfileArtifact(a.archivePath, func(cluster, srv, rawName string, readBytes func() ([]byte, error)) error {
+	err := forEachProfileArtifact(a.archivePath, func(domain, clusterTag, srv, rawName string, readBytes func() ([]byte, error)) error {
 		name, debug := SplitProfileName(rawName)
 		if opts.ProfilezOptions.Name != "" && opts.ProfilezOptions.Name != name {
 			return nil
@@ -591,9 +571,9 @@ func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezRe
 			return nil
 		}
 
-		info := fullInfo[cluster+"/"+srv]
+		info := fullInfo[clusterServer{archive.ClusterRef{Domain: domain, Name: clusterTag}, srv}]
 		if info == nil {
-			info = &server.ServerInfo{Name: srv, Cluster: cluster}
+			info = &server.ServerInfo{Name: srv, Cluster: profileClusterName(clusterTag), Domain: domain}
 		}
 		if !matchesFilter(info, &opts.EventFilterOptions) {
 			return nil
@@ -613,7 +593,7 @@ func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezRe
 	return results, err
 }
 
-func forEachProfileArtifact(archivePath string, cb func(cluster, server, name string, readBytes func() ([]byte, error)) error) error {
+func forEachProfileArtifact(archivePath string, cb func(domain, cluster, server, name string, readBytes func() ([]byte, error)) error) error {
 	zr, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return err
@@ -647,10 +627,10 @@ func forEachProfileArtifact(archivePath string, cb func(cluster, server, name st
 		fileMap[f.Name] = f
 	}
 
-	type entry struct{ cluster, server, name, fname string }
+	type entry struct{ domain, cluster, server, name, fname string }
 	var entries []entry
 	for fname, tags := range manifest {
-		var cluster, srv, profileName string
+		var domain, cluster, srv, profileName string
 		isProfile := false
 		for _, t := range tags {
 			switch string(t.Name) {
@@ -658,6 +638,8 @@ func forEachProfileArtifact(archivePath string, cb func(cluster, server, name st
 				if t.Value == "profile" {
 					isProfile = true
 				}
+			case "domain":
+				domain = t.Value
 			case "cluster":
 				cluster = t.Value
 			case "server":
@@ -669,17 +651,17 @@ func forEachProfileArtifact(archivePath string, cb func(cluster, server, name st
 		if !isProfile {
 			continue
 		}
-		if cluster == "unclustered" {
-			cluster = ""
-		}
 		if _, ok := fileMap[fname]; !ok {
 			continue
 		}
-		entries = append(entries, entry{cluster, srv, profileName, fname})
+		entries = append(entries, entry{domain, cluster, srv, profileName, fname})
 	}
 	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].cluster != entries[j].cluster {
-			return entries[i].cluster < entries[j].cluster
+		if entries[i].domain != entries[j].domain {
+			return entries[i].domain < entries[j].domain
+		}
+		if ci, cj := profileClusterName(entries[i].cluster), profileClusterName(entries[j].cluster); ci != cj {
+			return ci < cj
 		}
 		if entries[i].server != entries[j].server {
 			return entries[i].server < entries[j].server
@@ -696,11 +678,18 @@ func forEachProfileArtifact(archivePath string, cb func(cluster, server, name st
 			defer rc.Close()
 			return io.ReadAll(rc)
 		}
-		if err := cb(e.cluster, e.server, e.name, readBytes); err != nil {
+		if err := cb(e.domain, e.cluster, e.server, e.name, readBytes); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func profileClusterName(clusterTag string) string {
+	if clusterTag == "unclustered" {
+		return ""
+	}
+	return clusterTag
 }
 
 // SplitProfileName reverses gather's "<name>[_<debug>]" encoding.
@@ -717,8 +706,9 @@ func (a *AuditArchive) Close() error {
 	return a.reader.Close()
 }
 
-func serverKey(clusterTag, serverTag *archive.Tag) string {
-	return clusterTag.Value + "/" + serverTag.Value
+type clusterServer struct {
+	cluster archive.ClusterRef
+	server  string
 }
 
 // matchesFilter checks whether a server matches the given EventFilterOptions.

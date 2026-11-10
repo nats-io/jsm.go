@@ -76,14 +76,13 @@ func RegisterClusterChecks(collection *CheckCollection) error {
 // checkClusterMemoryUsageOutliers verifies the memory usage of any given node in a cluster is not significantly higher than its peers
 func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	outlierThreshold := check.Configuration["memory"].Value()
-	clustering := r.ClusterNames()
-	clustersWithIssuesMap := make(map[string]any, len(clustering))
+	clustering := r.Clusters()
+	clustersWithIssuesMap := make(map[archive.ClusterRef]any, len(clustering))
 
-	for _, clusterName := range clustering {
-		clusterTag := archive.TagCluster(clusterName)
+	for _, cluster := range clustering {
 		typeTag := archive.TagServerVars()
 
-		serverNames := r.ClusterServerNames(clusterName)
+		serverNames := r.ClusterServerNames(cluster)
 		var (
 			clusterMemoryUsageTotal float64
 			clusterMemoryUsageMap   = make(map[string]float64)
@@ -91,10 +90,7 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 		)
 
 		for _, serverName := range serverNames {
-			serverTag := archive.TagServer(serverName)
-
-			tags := []*archive.Tag{clusterTag, serverTag, typeTag}
-			err := archive.ForEachTaggedArtifact(r, tags, func(resp *server.ServerAPIVarzResponse) error {
+			err := archive.ForEachServerArtifact(r, cluster, serverName, []*archive.Tag{typeTag}, func(resp *server.ServerAPIVarzResponse) error {
 				if resp == nil || resp.Data == nil {
 					return nil
 				}
@@ -106,12 +102,12 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 			})
 
 			if err != nil {
-				return Skipped, fmt.Errorf("failed to read VARZ for server %s in cluster %s: %w", serverName, clusterName, err)
+				return Skipped, fmt.Errorf("failed to read VARZ for server %s in cluster %s: %w", serverName, cluster, err)
 			}
 		}
 
 		if numServers == 0 {
-			log.Warnf("No VARZ data found for cluster %s", clusterName)
+			log.Warnf("No VARZ data found for cluster %s", cluster)
 			continue
 		}
 
@@ -120,8 +116,8 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 
 		for serverName, mem := range clusterMemoryUsageMap {
 			if mem > threshold {
-				examples.Add("Cluster %s avg: %s, server %s: %s", clusterName, humanize.IBytes(uint64(mean)), serverName, humanize.IBytes(uint64(mem)))
-				clustersWithIssuesMap[clusterName] = nil
+				examples.Add("Cluster %s avg: %s, server %s: %s", cluster, humanize.IBytes(uint64(mean)), serverName, humanize.IBytes(uint64(mem)))
+				clustersWithIssuesMap[cluster] = nil
 			}
 		}
 	}
@@ -141,8 +137,7 @@ func checkClusterMemoryUsageOutliers(check *Check, r *archive.Reader, examples *
 
 // checkClusterUniformGatewayConfig verify that gateways configuration matches for all nodes in each cluster
 func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
+	for _, cluster := range r.Clusters() {
 		typeTag := archive.TagServerGateways()
 
 		// For each cluster, build a map where the key is a server name in the cluster
@@ -150,10 +145,8 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 		configuredOutboundGateways := make(map[string][]string)
 		configuredInboundGateways := make(map[string][]string)
 
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, typeTag}, func(resp *server.ServerAPIGatewayzResponse) error {
+		for _, serverName := range r.ClusterServerNames(cluster) {
+			err := archive.ForEachServerArtifact(r, cluster, serverName, []*archive.Tag{typeTag}, func(resp *server.ServerAPIGatewayzResponse) error {
 				if resp == nil || resp.Data == nil {
 					return nil
 				}
@@ -187,7 +180,7 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 			})
 
 			if err != nil {
-				return Skipped, fmt.Errorf("failed to read GATEWAYZ for server %s in cluster %s: %w", serverName, clusterName, err)
+				return Skipped, fmt.Errorf("failed to read GATEWAYZ for server %s in cluster %s: %w", serverName, cluster, err)
 			}
 		}
 
@@ -205,11 +198,11 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 
 			for serverName, targetClusterNames := range t.configuredGateways {
 				if previousTargetClusterNames != nil {
-					log.Debugf("Cluster %s - Comparing configured %s gateways of %s (%d) to %s (%d)", clusterName, t.gatewayType, serverName, len(targetClusterNames), previousServerName, len(previousTargetClusterNames))
+					log.Debugf("Cluster %s - Comparing configured %s gateways of %s (%d) to %s (%d)", cluster, t.gatewayType, serverName, len(targetClusterNames), previousServerName, len(previousTargetClusterNames))
 					if !reflect.DeepEqual(targetClusterNames, previousTargetClusterNames) {
 						examples.Add(
 							"Cluster %s, %s gateways server %s: %v != server %s: %v",
-							clusterName,
+							cluster,
 							t.gatewayType,
 							serverName,
 							targetClusterNames,
@@ -236,27 +229,24 @@ func checkClusterUniformGatewayConfig(_ *Check, r *archive.Reader, examples *Exa
 func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	haAssetsThreshold := check.Configuration["assets"].Value()
 
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
+	for _, cluster := range r.Clusters() {
 		typeTag := archive.TagServerJetStream()
 
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, typeTag}, func(jsz *server.ServerAPIJszResponse) error {
+		for _, serverName := range r.ClusterServerNames(cluster) {
+			err := archive.ForEachServerArtifact(r, cluster, serverName, []*archive.Tag{typeTag}, func(jsz *server.ServerAPIJszResponse) error {
 				if jsz == nil || jsz.Data == nil {
-					log.Warnf("Artifact 'JSZ' is missing or empty for server %s", serverTag)
+					log.Warnf("Artifact 'JSZ' is missing or empty for server %s", serverName)
 					return nil
 				}
 
 				if float64(jsz.Data.HAAssets) > haAssetsThreshold {
-					examples.Add("%s: %d HA assets", serverTag, jsz.Data.HAAssets)
+					examples.Add("%s: %d HA assets", serverName, jsz.Data.HAAssets)
 				}
 
 				return nil
 			})
 			if err != nil {
-				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverTag, err)
+				return Skipped, fmt.Errorf("failed to load JSZ for server %s: %w", serverName, err)
 			}
 		}
 	}
@@ -270,9 +260,9 @@ func checkClusterHighHAAssets(check *Check, r *archive.Reader, examples *Example
 }
 
 func checkClusterNamesForWhitespace(_ *Check, reader *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range reader.ClusterNames() {
-		if strings.ContainsAny(clusterName, " \n") {
-			examples.Add("Cluster: %s", clusterName)
+	for _, cluster := range reader.Clusters() {
+		if strings.ContainsAny(cluster.Name, " \n") {
+			examples.Add("Cluster: %s", cluster)
 		}
 	}
 

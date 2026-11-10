@@ -339,6 +339,36 @@ func TestServerCollectAccountsMergesAcrossServers(t *testing.T) {
 	}
 }
 
+func TestServerCollectAccountsKeepsDomainsApart(t *testing.T) {
+	var responses [][]byte
+	for _, r := range []struct{ server, domain, level string }{{"hub-1", "hub", "0"}, {"leaf-1", "leaf", "1"}, {"plain-1", "", "0"}} {
+		responses = append(responses, mustMarshal(t, &server.ServerAPIJszResponse{
+			Server: &server.ServerInfo{Name: r.server},
+			Data: &server.JSInfo{
+				Config: server.JetStreamConfig{Domain: r.domain},
+				AccountDetails: []*server.AccountDetail{
+					{Name: "acct-A", Streams: []server.StreamDetail{{Name: "s1", Config: &server.StreamConfig{Storage: server.FileStorage, Metadata: map[string]string{"_nats.req.level": r.level}}}}},
+				},
+			},
+		}))
+	}
+	reqFn, _ := mockReqFn(responses, nil)
+	src := newLiveT(t, nil, reqFn, 3)
+
+	accounts, err := src.CollectAccounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(accounts) != 3 {
+		t.Fatalf("expected 3 domain accounts, got %d", len(accounts))
+	}
+	for i, expected := range []struct{ domain, level string }{{"", "0"}, {"hub", "0"}, {"leaf", "1"}} {
+		if accounts[i].Domain != expected.domain || accounts[i].Streams[0].Config.Metadata["_nats.req.level"] != expected.level {
+			t.Fatalf("unexpected account at %d: domain %q streams %+v", i, accounts[i].Domain, accounts[i].Streams)
+		}
+	}
+}
+
 func TestServerCollectAccountsPaging(t *testing.T) {
 	// Build a response with exactly 1024 accounts to trigger paging
 	details := make([]*server.AccountDetail, 1024)

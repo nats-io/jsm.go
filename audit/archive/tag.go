@@ -49,6 +49,7 @@ const (
 	clusterTagLabel     TagLabel = "cluster"
 	accountTagLabel     TagLabel = "account"
 	streamTagLabel      TagLabel = "stream"
+	domainTagLabel      TagLabel = "domain"
 	typeTagLabel        TagLabel = "artifact_type"
 	profileNameTagLabel TagLabel = "profile_name"
 	specialTagLabel     TagLabel = "special"
@@ -97,6 +98,7 @@ var dimensionTagsNames = map[TagLabel]any{
 	clusterTagLabel:     nil,
 	serverTagLabel:      nil,
 	streamTagLabel:      nil,
+	domainTagLabel:      nil,
 	typeTagLabel:        nil,
 	profileNameTagLabel: nil,
 }
@@ -158,6 +160,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 	clusterTag, hasClusterTag := dimensionTagsMap[clusterTagLabel], dimensionTagsMap[clusterTagLabel] != nil
 	serverTag, hasServerTag := dimensionTagsMap[serverTagLabel], dimensionTagsMap[serverTagLabel] != nil
 	streamTag, hasStreamTag := dimensionTagsMap[streamTagLabel], dimensionTagsMap[streamTagLabel] != nil
+	domainTag, hasDomainTag := dimensionTagsMap[domainTagLabel], dimensionTagsMap[domainTagLabel] != nil
 	typeTag, hasTypeTag := dimensionTagsMap[typeTagLabel], dimensionTagsMap[typeTagLabel] != nil
 	profileNameTag, hasProfileNameTag := dimensionTagsMap[profileNameTagLabel], dimensionTagsMap[profileNameTagLabel] != nil
 
@@ -182,6 +185,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		{clusterTagLabel, clusterTag, hasClusterTag},
 		{serverTagLabel, serverTag, hasServerTag},
 		{streamTagLabel, streamTag, hasStreamTag},
+		{domainTagLabel, domainTag, hasDomainTag},
 		{typeTagLabel, typeTag, hasTypeTag},
 		{profileNameTagLabel, profileNameTag, hasProfileNameTag},
 	} {
@@ -197,12 +201,16 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		if !hasClusterTag || !hasAccountTag {
 			return "", fmt.Errorf("stream artifact is missing cluster or account tags")
 		}
+		streamDir := streamTag.Value
+		if hasDomainTag {
+			streamDir = domainTag.Value + separator + streamTag.Value
+		}
 		return path.Join(
 			rootDirectory,
 			"accounts",
 			accountTag.Value,
 			"streams",
-			streamTag.Value,
+			streamDir,
 			"replicas",
 			clusterTag.Value+separator+serverTag.Value,
 			typeTag.Value+"."+extension,
@@ -214,12 +222,16 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		if !hasClusterTag {
 			return "", fmt.Errorf("account artifact is missing cluster tag")
 		}
+		serverDir := clusterTag.Value + separator + serverTag.Value
+		if hasDomainTag {
+			serverDir = domainTag.Value + separator + serverDir
+		}
 		return path.Join(
 			rootDirectory,
 			"accounts",
 			accountTag.Value,
 			"servers",
-			clusterTag.Value+separator+serverTag.Value,
+			serverDir,
 			typeTag.Value+"."+extension,
 		), nil
 	}
@@ -229,6 +241,9 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		clusterName := noCluster
 		if hasClusterTag {
 			clusterName = clusterTag.Value
+		}
+		if hasDomainTag {
+			clusterName = domainTag.Value + separator + clusterName
 		}
 
 		// Handle certain types differently
@@ -383,6 +398,13 @@ func TagStream(streamName string) *Tag {
 	return &Tag{
 		Name:  streamTagLabel,
 		Value: streamName,
+	}
+}
+
+func TagDomain(domain string) *Tag {
+	return &Tag{
+		Name:  domainTagLabel,
+		Value: domain,
 	}
 }
 

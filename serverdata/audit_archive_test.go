@@ -683,6 +683,47 @@ func TestArchiveCollectAccountsMergesAcrossServers(t *testing.T) {
 	}
 }
 
+func TestArchiveCollectAccountsKeepsDomainsApart(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		for _, r := range []struct{ server, domain, level string }{{"n1", "hub", "0"}, {"n2", "hub", "0"}, {"n1", "leaf", "1"}} {
+			resp := &server.ServerAPIJszResponse{
+				Server: &server.ServerInfo{Name: r.server, ID: r.domain + r.server, Domain: r.domain},
+				Data: &server.JSInfo{
+					Config: server.JetStreamConfig{Domain: r.domain},
+					AccountDetails: []*server.AccountDetail{
+						{Name: "acct-A", Streams: []server.StreamDetail{{Name: "s1", Config: &server.StreamConfig{Storage: server.FileStorage, Metadata: map[string]string{"_nats.req.level": r.level}}}}},
+					},
+				},
+			}
+			w.Add(resp, archive.TagCluster("c1"), archive.TagServer(r.server), archive.TagDomain(r.domain), archive.TagServerJetStream())
+		}
+	})
+
+	jsz, err := a.Jsz(server.JszEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jsz) != 3 {
+		t.Fatalf("expected 3 jsz responses, got %d", len(jsz))
+	}
+
+	accounts, err := a.CollectAccounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(accounts) != 2 {
+		t.Fatalf("expected 2 domain accounts, got %d", len(accounts))
+	}
+	for i, expected := range []struct{ domain, level string }{{"hub", "0"}, {"leaf", "1"}} {
+		if accounts[i].Name != "acct-A" || accounts[i].Domain != expected.domain {
+			t.Fatalf("expected acct-A in domain %s at %d, got %s in %s", expected.domain, i, accounts[i].Name, accounts[i].Domain)
+		}
+		if len(accounts[i].Streams) != 1 || accounts[i].Streams[0].Config.Metadata["_nats.req.level"] != expected.level {
+			t.Fatalf("unexpected streams for domain %s: %+v", expected.domain, accounts[i].Streams)
+		}
+	}
+}
+
 func TestMatchesFilter_NilInputs(t *testing.T) {
 	info := &server.ServerInfo{Name: "srv"}
 	if !matchesFilter(nil, &server.EventFilterOptions{}) {
@@ -1156,6 +1197,37 @@ func TestArchiveProfilezRoundTrip(t *testing.T) {
 	}
 	if results[0].Server.Cluster != "c1" {
 		t.Errorf("expected Server.Cluster=c1, got %q", results[0].Server.Cluster)
+	}
+}
+
+func TestArchiveProfilezKeepsDomainsApart(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		for _, domain := range []string{"s1", "s2"} {
+			varz := &server.ServerAPIVarzResponse{
+				Server: &server.ServerInfo{Name: "n1", Cluster: "c1", ID: "id-" + domain, Domain: domain},
+				Data:   &server.Varz{},
+			}
+			if err := w.Add(varz, archive.TagCluster("c1"), archive.TagServer("n1"), archive.TagDomain(domain), archive.TagServerVars()); err != nil {
+				t.Fatal(err)
+			}
+			err := w.AddRaw(bytes.NewReader([]byte("heap-"+domain)), "prof", archive.TagCluster("c1"), archive.TagServer("n1"), archive.TagDomain(domain), archive.TagServerProfile(), archive.TagProfileName("heap"))
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	for i, domain := range []string{"s1", "s2"} {
+		if results[i].Server.ID != "id-"+domain || string(results[i].Data.Profile) != "heap-"+domain {
+			t.Fatalf("result %d: expected id-%s with heap-%s, got %s with %s", i, domain, domain, results[i].Server.ID, results[i].Data.Profile)
+		}
 	}
 }
 

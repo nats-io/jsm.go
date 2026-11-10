@@ -3,7 +3,10 @@ package serverdata
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	"github.com/nats-io/nats-server/v2/server"
@@ -84,7 +87,7 @@ func (s *Live) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, 
 }
 
 // CollectAccounts gathers account-level JetStream metadata from all servers
-func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
+func (s *Live) CollectAccounts() ([]*AccountDetail, error) {
 	const pageLimit = 1024
 
 	baseOpts := server.JszEventOptions{
@@ -102,17 +105,7 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 		return nil, err
 	}
 
-	accountMap := map[string]*server.AccountDetail{}
-	mergeAccounts := func(details []*server.AccountDetail) {
-		for _, acct := range details {
-			if existing, found := accountMap[acct.Name]; found {
-				existing.Streams = mergeStreams(existing.Streams, acct.Streams)
-			} else {
-				cp := *acct
-				accountMap[acct.Name] = &cp
-			}
-		}
-	}
+	accounts := accountCollector{}
 
 	// JSZ Limit/Offset is per-server pagination, so follow-ups must address one
 	// server at a time. Server IDs are globally unique; server names are not
@@ -124,7 +117,7 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 		if resp.Data == nil || resp.Server == nil {
 			continue
 		}
-		mergeAccounts(resp.Data.AccountDetails)
+		accounts.add(resp.Data.Config.Domain, resp.Data.AccountDetails)
 		if len(resp.Data.AccountDetails) == pageLimit && resp.Server.ID != "" {
 			offsets[resp.Server.ID] = pageLimit
 		}
@@ -155,7 +148,7 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 				continue
 			}
 
-			mergeAccounts(jsz.Data.AccountDetails)
+			accounts.add(jsz.Data.Config.Domain, jsz.Data.AccountDetails)
 
 			if len(jsz.Data.AccountDetails) == pageLimit {
 				offsets[serverID] += pageLimit
@@ -165,16 +158,7 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 		}
 	}
 
-	accounts := make([]*server.AccountDetail, 0, len(accountMap))
-	for _, acct := range accountMap {
-		accounts = append(accounts, acct)
-	}
-	sort.Slice(accounts, func(i, j int) bool { return accounts[i].Name < accounts[j].Name })
-	for _, acct := range accounts {
-		sort.Slice(acct.Streams, func(i, j int) bool { return acct.Streams[i].Name < acct.Streams[j].Name })
-	}
-
-	return accounts, nil
+	return accounts.sorted(), nil
 }
 
 // Close is a noop for connecting to live servers. The caller owns the connections
@@ -198,6 +182,45 @@ func unmarshalResponses[T any](s *Live, opts any, subj string) ([]*T, error) {
 	}
 
 	return responses, nil
+}
+
+// AccountDetail is the JetStream detail of an account within one JetStream domain. Domain is empty for servers
+// without a JetStream domain.
+type AccountDetail struct {
+	Domain string
+	*server.AccountDetail
+}
+
+type accountKey struct {
+	domain  string
+	account string
+}
+
+type accountCollector map[accountKey]*AccountDetail
+
+func (c accountCollector) add(domain string, details []*server.AccountDetail) {
+	for _, acct := range details {
+		key := accountKey{domain, acct.Name}
+		if existing, found := c[key]; found {
+			existing.Streams = mergeStreams(existing.Streams, acct.Streams)
+		} else {
+			cp := *acct
+			c[key] = &AccountDetail{Domain: domain, AccountDetail: &cp}
+		}
+	}
+}
+
+func (c accountCollector) sorted() []*AccountDetail {
+	accounts := slices.SortedFunc(maps.Values(c), func(a, b *AccountDetail) int {
+		if n := strings.Compare(a.Name, b.Name); n != 0 {
+			return n
+		}
+		return strings.Compare(a.Domain, b.Domain)
+	})
+	for _, acct := range accounts {
+		sort.Slice(acct.Streams, func(i, j int) bool { return acct.Streams[i].Name < acct.Streams[j].Name })
+	}
+	return accounts
 }
 
 func mergeStreams(a, b []server.StreamDetail) []server.StreamDetail {

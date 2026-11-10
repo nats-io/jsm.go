@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -36,20 +37,49 @@ type Reader struct {
 	archiveReader       *zip.ReadCloser
 	path                string
 	filesMap            map[string]*zip.File
-	accountTags         []Tag
-	clusterTags         []Tag
-	serverTags          []Tag
-	streamTags          []Tag
 	accountNames        []string
-	clusterNames        []string
-	clustersServerNames map[string][]string
-	accountStreamNames  map[string][]string
-	streamServerNames   map[string][]string
+	clusters            []ClusterRef
+	clustersServerNames map[ClusterRef][]string
+	accountStreams      map[string][]StreamRef
+	streamServerNames   map[accountStream][]string
+	domainFiles         map[string]struct{}
 	ts                  *time.Time
 	invertedIndex       map[Tag][]string
 	// Warnings holds non-fatal issues detected while opening the archive,
 	// such as files present in the ZIP but absent from the manifest.
 	Warnings []string
+}
+
+// StreamRef identifies a stream within an account. Domain is empty for streams captured from servers without a
+// JetStream domain.
+type StreamRef struct {
+	Domain string
+	Name   string
+}
+
+func (s StreamRef) String() string {
+	if s.Domain == "" {
+		return s.Name
+	}
+	return fmt.Sprintf("%s (domain %s)", s.Name, s.Domain)
+}
+
+// ClusterRef identifies a cluster. Domain is empty for clusters of servers without a JetStream domain.
+type ClusterRef struct {
+	Domain string
+	Name   string
+}
+
+func (c ClusterRef) String() string {
+	if c.Domain == "" {
+		return c.Name
+	}
+	return fmt.Sprintf("%s (domain %s)", c.Name, c.Domain)
+}
+
+type accountStream struct {
+	account string
+	stream  StreamRef
 }
 
 type AuditMetadata struct {
@@ -174,9 +204,13 @@ func NewReader(archivePath string) (*Reader, error) {
 
 	// Create inverted index for tag lookups
 	invertedIndex := make(map[Tag][]string)
+	domainFiles := make(map[string]struct{})
 	for fileName, tags := range manifestMap {
 		for _, tag := range tags {
 			invertedIndex[tag] = append(invertedIndex[tag], fileName)
+			if tag.Name == domainTagLabel {
+				domainFiles[fileName] = struct{}{}
+			}
 		}
 	}
 
@@ -202,12 +236,12 @@ func NewReader(archivePath string) (*Reader, error) {
 	}
 
 	// Map of cluster to set of server names
-	clustersServersMap := make(map[string]map[string]any)
-	accountsStreamsMap := make(map[string]map[string]map[string]any)
+	clustersServersMap := make(map[ClusterRef]map[string]any)
+	accountsStreamsMap := make(map[string]map[StreamRef]map[string]any)
 
 	for _, tags := range manifestMap {
 		// Take note of certain tags, if present
-		var cluster, server, account, stream string
+		var cluster, server, account, stream, domain string
 		for _, tag := range tags {
 			switch tag.Name {
 			case clusterTagLabel:
@@ -218,103 +252,67 @@ func NewReader(archivePath string) (*Reader, error) {
 				account = tag.Value
 			case streamTagLabel:
 				stream = tag.Value
+			case domainTagLabel:
+				domain = tag.Value
 			}
 		}
 
 		// If a cluster tag is set, create a record for it
 		if cluster != "" {
-			if _, knownCluster := clustersServersMap[cluster]; !knownCluster {
-				clustersServersMap[cluster] = make(map[string]any)
+			ref := ClusterRef{Domain: domain, Name: cluster}
+			if _, knownCluster := clustersServersMap[ref]; !knownCluster {
+				clustersServersMap[ref] = make(map[string]any)
 			}
 			// File has cluster and server tags, save server in set for this cluster
 			if server != "" {
-				clustersServersMap[cluster][server] = nil // Map used as set, value doesn't matter
+				clustersServersMap[ref][server] = nil // Map used as set, value doesn't matter
 			}
 		}
 
 		// If an account tag is set, create a record for it
 		if account != "" {
 			if _, knownAccount := accountsStreamsMap[account]; !knownAccount {
-				accountsStreamsMap[account] = make(map[string]map[string]any)
+				accountsStreamsMap[account] = make(map[StreamRef]map[string]any)
 			}
 			// If account and stream tags present, save stream in set for this account
 			if stream != "" {
-				if _, knownStream := accountsStreamsMap[account][stream]; !knownStream {
-					accountsStreamsMap[account][stream] = make(map[string]any)
+				ref := StreamRef{Domain: domain, Name: stream}
+				if _, knownStream := accountsStreamsMap[account][ref]; !knownStream {
+					accountsStreamsMap[account][ref] = make(map[string]any)
 				}
 				// If account and stream and server tags present, save server in set for this stream
 				if server != "" {
-					accountsStreamsMap[account][stream][server] = nil // Map used as set, value doesn't matter
+					accountsStreamsMap[account][ref][server] = nil // Map used as set, value doesn't matter
 				}
 			}
 		}
 	}
 
-	clusters, clusterServers := shrinkMapOfSets(clustersServersMap)
-	accounts, accountsStreams := shrinkMapOfSets(accountsStreamsMap)
-	streamsServers := make(map[string][]string, len(accounts))
-	for account, streamsMapServersSet := range accountsStreamsMap {
-		_, streamServers := shrinkMapOfSets(streamsMapServersSet)
-		for stream, serversList := range streamServers {
-			key := account + "/" + stream
-			streamsServers[key] = serversList
+	clusters := slices.SortedFunc(maps.Keys(clustersServersMap), compareClusterRefs)
+	clusterServers := make(map[ClusterRef][]string, len(clustersServersMap))
+	for ref, serversSet := range clustersServersMap {
+		clusterServers[ref] = slices.Sorted(maps.Keys(serversSet))
+	}
+	accounts := slices.Sorted(maps.Keys(accountsStreamsMap))
+	accountsStreams := make(map[string][]StreamRef, len(accountsStreamsMap))
+	streamsServers := make(map[accountStream][]string)
+	for account, streamsServersSet := range accountsStreamsMap {
+		accountsStreams[account] = slices.SortedFunc(maps.Keys(streamsServersSet), compareStreamRefs)
+		for ref, serversSet := range streamsServersSet {
+			streamsServers[accountStream{account, ref}] = slices.Sorted(maps.Keys(serversSet))
 		}
-	}
-
-	// Returns a deduplicated list of tags for the specific label present in the archive
-	// e.g. getUniqueTags(serverTagLabel) -> [Tag(server, s1), Tag(server, s2, Tag(server, s3)]
-	getUniqueTags := func(label TagLabel) ([]Tag, error) {
-		var tags []Tag
-		for tag := range invertedIndex {
-			if tag.Name == label {
-				tags = append(tags, tag)
-			}
-		}
-		var sortErr error
-		slices.SortFunc(tags, func(a, b Tag) int {
-			if a.Name != b.Name {
-				// Fallback to consistent ordering just in case
-				sortErr = fmt.Errorf("unexpected comparison between different tags")
-				return strings.Compare(string(a.Name), string(b.Name))
-			}
-			return strings.Compare(a.Value, b.Value)
-		})
-		return tags, sortErr
-	}
-
-	accountTags, err := getUniqueTags(accountTagLabel)
-	if err != nil {
-		return nil, err
-	}
-
-	clusterTags, err := getUniqueTags(clusterTagLabel)
-	if err != nil {
-		return nil, err
-	}
-
-	serverTags, err := getUniqueTags(serverTagLabel)
-	if err != nil {
-		return nil, err
-	}
-
-	streamTags, err := getUniqueTags(streamTagLabel)
-	if err != nil {
-		return nil, err
 	}
 
 	reader := &Reader{
 		path:                archivePath,
 		archiveReader:       archiveReader,
 		filesMap:            filesMap,
-		accountTags:         accountTags,
-		clusterTags:         clusterTags,
-		serverTags:          serverTags,
-		streamTags:          streamTags,
 		accountNames:        accounts,
-		clusterNames:        clusters,
+		clusters:            clusters,
 		clustersServerNames: clusterServers,
-		accountStreamNames:  accountsStreams,
+		accountStreams:      accountsStreams,
 		streamServerNames:   streamsServers,
+		domainFiles:         domainFiles,
 		ts:                  &manifestFile.Modified,
 		invertedIndex:       invertedIndex,
 		Warnings:            warnings,
@@ -329,26 +327,28 @@ func (r *Reader) AccountNames() []string {
 	return slices.Clone(r.accountNames)
 }
 
-// AccountStreamNames list the unique stream names found in the archive for the given account
-// The list of names is sorted alphabetically
-func (r *Reader) AccountStreamNames(accountName string) []string {
-	streams, present := r.accountStreamNames[accountName]
+// AccountStreams list the unique streams found in the archive for the given account
+// Streams with the same name in different JetStream domains are listed separately
+// The list is sorted by stream name, then domain
+func (r *Reader) AccountStreams(accountName string) []StreamRef {
+	streams, present := r.accountStreams[accountName]
 	if present {
 		return slices.Clone(streams)
 	}
-	return make([]string, 0)
+	return make([]StreamRef, 0)
 }
 
-// ClusterNames list the unique names of clusters found in the archive
-// The list of names is sorted alphabetically
-func (r *Reader) ClusterNames() []string {
-	return slices.Clone(r.clusterNames)
+// Clusters list the unique clusters found in the archive
+// Clusters with the same name in different JetStream domains are listed separately
+// The list is sorted by cluster name, then domain
+func (r *Reader) Clusters() []ClusterRef {
+	return slices.Clone(r.clusters)
 }
 
 // ClusterServerNames list the unique server names found in the archive for the given cluster
 // The list of names is sorted alphabetically
-func (r *Reader) ClusterServerNames(clusterName string) []string {
-	servers, present := r.clustersServerNames[clusterName]
+func (r *Reader) ClusterServerNames(cluster ClusterRef) []string {
+	servers, present := r.clustersServerNames[cluster]
 	if present {
 		return slices.Clone(servers)
 	}
@@ -357,30 +357,26 @@ func (r *Reader) ClusterServerNames(clusterName string) []string {
 
 // StreamServerNames list the unique server names found in the archive for the given stream in the given account
 // The list of names is sorted alphabetically
-func (r *Reader) StreamServerNames(accountName, streamName string) []string {
-	servers, present := r.streamServerNames[accountName+"/"+streamName]
+func (r *Reader) StreamServerNames(accountName string, stream StreamRef) []string {
+	servers, present := r.streamServerNames[accountStream{accountName, stream}]
 	if present {
 		return slices.Clone(servers)
 	}
 	return make([]string, 0)
 }
 
-// shrinkMapOfSets utility method, given a map[string] of sets (map[string]any), return:
-// The list of (unique) keys as string slice plus a shrunk map where sets are replaced with lists
-// The list of unique keys and each list in the map are sorted alphabetically.
-func shrinkMapOfSets[T any](m map[string]map[string]T) ([]string, map[string][]string) {
-	keysList := make([]string, 0, len(m))
-	newMap := make(map[string][]string, len(m))
-	for k, valuesMap := range m {
-		keysList = append(keysList, k)
-		newMap[k] = make([]string, 0, len(valuesMap))
-		for value := range valuesMap {
-			newMap[k] = append(newMap[k], value)
-		}
-		slices.Sort(newMap[k])
+func compareClusterRefs(a, b ClusterRef) int {
+	if c := strings.Compare(a.Name, b.Name); c != 0 {
+		return c
 	}
-	slices.Sort(keysList)
-	return keysList, newMap
+	return strings.Compare(a.Domain, b.Domain)
+}
+
+func compareStreamRefs(a, b StreamRef) int {
+	if c := strings.Compare(a.Name, b.Name); c != 0 {
+		return c
+	}
+	return strings.Compare(a.Domain, b.Domain)
 }
 
 // EachClusterServerVarz iterates over all servers ordered by cluster and calls the callback function with the loaded Varz response
@@ -389,9 +385,9 @@ func shrinkMapOfSets[T any](m map[string]map[string]T) ([]string, map[string][]s
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIVarzResponse) error) (int, error) {
-	return EachClusterServerArtifact(r, TagServerVars(), func(clusterTag *Tag, serverTag *Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		return cb(clusterTag, serverTag, err, vz)
+func (r *Reader) EachClusterServerVarz(cb func(cluster ClusterRef, serverName string, err error, vz *server.ServerAPIVarzResponse) error) (int, error) {
+	return EachClusterServerArtifact(r, TagServerVars(), func(cluster ClusterRef, serverName string, err error, vz *server.ServerAPIVarzResponse) error {
+		return cb(cluster, serverName, err, vz)
 	})
 }
 
@@ -401,9 +397,9 @@ func (r *Reader) EachClusterServerVarz(cb func(clusterTag *Tag, serverTag *Tag, 
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Tag, err error, hz *server.ServerAPIHealthzResponse) error) (int, error) {
-	return EachClusterServerArtifact(r, TagServerHealth(), func(clusterTag *Tag, serverTag *Tag, err error, hz *server.ServerAPIHealthzResponse) error {
-		return cb(clusterTag, serverTag, err, hz)
+func (r *Reader) EachClusterServerHealthz(cb func(cluster ClusterRef, serverName string, err error, hz *server.ServerAPIHealthzResponse) error) (int, error) {
+	return EachClusterServerArtifact(r, TagServerHealth(), func(cluster ClusterRef, serverName string, err error, hz *server.ServerAPIHealthzResponse) error {
+		return cb(cluster, serverName, err, hz)
 	})
 }
 
@@ -413,9 +409,9 @@ func (r *Reader) EachClusterServerHealthz(cb func(clusterTag *Tag, serverTag *Ta
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIJszResponse) error) (int, error) {
-	return EachClusterServerArtifact(r, TagServerJetStream(), func(clusterTag *Tag, serverTag *Tag, err error, jsz *server.ServerAPIJszResponse) error {
-		return cb(clusterTag, serverTag, err, jsz)
+func (r *Reader) EachClusterServerJsz(cb func(cluster ClusterRef, serverName string, err error, jsz *server.ServerAPIJszResponse) error) (int, error) {
+	return EachClusterServerArtifact(r, TagServerJetStream(), func(cluster ClusterRef, serverName string, err error, jsz *server.ServerAPIJszResponse) error {
+		return cb(cluster, serverName, err, jsz)
 	})
 }
 
@@ -425,9 +421,9 @@ func (r *Reader) EachClusterServerJsz(cb func(clusterTag *Tag, serverTag *Tag, e
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *Tag, err error, az *server.ServerAPIAccountzResponse) error) (int, error) {
-	return EachClusterServerArtifact(r, TagServerAccounts(), func(clusterTag *Tag, serverTag *Tag, err error, az *server.ServerAPIAccountzResponse) error {
-		return cb(clusterTag, serverTag, err, az)
+func (r *Reader) EachClusterServerAccountz(cb func(cluster ClusterRef, serverName string, err error, az *server.ServerAPIAccountzResponse) error) (int, error) {
+	return EachClusterServerArtifact(r, TagServerAccounts(), func(cluster ClusterRef, serverName string, err error, az *server.ServerAPIAccountzResponse) error {
+		return cb(cluster, serverName, err, az)
 	})
 }
 
@@ -437,36 +433,31 @@ func (r *Reader) EachClusterServerAccountz(cb func(clusterTag *Tag, serverTag *T
 // If the callback returns an error iteration is stopped and that error is returned
 //
 // Errors returned match those documented in Load() otherwise any other error that are encountered
-func (r *Reader) EachClusterServerLeafz(cb func(clusterTag *Tag, serverTag *Tag, err error, lz *server.ServerAPILeafzResponse) error) (int, error) {
-	return EachClusterServerArtifact(r, TagServerLeafs(), func(clusterTag *Tag, serverTag *Tag, err error, lz *server.ServerAPILeafzResponse) error {
-		return cb(clusterTag, serverTag, err, lz)
+func (r *Reader) EachClusterServerLeafz(cb func(cluster ClusterRef, serverName string, err error, lz *server.ServerAPILeafzResponse) error) (int, error) {
+	return EachClusterServerArtifact(r, TagServerLeafs(), func(cluster ClusterRef, serverName string, err error, lz *server.ServerAPILeafzResponse) error {
+		return cb(cluster, serverName, err, lz)
 	})
 }
 
 // EachClusterServerArtifact iterates over all paged JSON artifact files in the archive by looping
-// through every cluster and its servers. For each cluster, server pair, it constructs a tag slice
-// consisting of the cluster tag, server tag, and the provided artifact tag, and then calls ForEachTaggedArtifact
+// through every cluster and its servers. For each cluster, server pair, it calls ForEachServerArtifact
 // to load all artifacts of type T associated with that combination.
 //
-// The matching artifact files are obtained by intersecting the tag-specific file lists from the Reader’s inverted index,
-// and then filtered and sorted according to the paged artifact naming convention.
-// For each decoded artifact, the provided callback function is called with the cluster tag, the server tag,
+// For each decoded artifact, the provided callback function is called with the cluster, the server name,
 // and the loaded artifact (or an error if no matching artifact was found).
 //
 // The function returns the total count of processed artifacts and any error encountered during iteration.
-func EachClusterServerArtifact[T any](r *Reader, artifactTag *Tag, cb func(clusterTag *Tag, serverTag *Tag, err error, artifact *T) error) (int, error) {
+func EachClusterServerArtifact[T any](r *Reader, artifactTag *Tag, cb func(cluster ClusterRef, serverName string, err error, artifact *T) error) (int, error) {
 	count := 0
-	for _, cluster := range r.ClusterNames() {
-		clusterTag := TagCluster(cluster)
+	for _, cluster := range r.Clusters() {
 		for _, serverName := range r.ClusterServerNames(cluster) {
-			serverTag := TagServer(serverName)
-			err := ForEachTaggedArtifact(r, []*Tag{clusterTag, serverTag, artifactTag}, func(artifact *T) error {
+			err := ForEachServerArtifact(r, cluster, serverName, []*Tag{artifactTag}, func(artifact *T) error {
 				count++
-				return cb(clusterTag, serverTag, nil, artifact)
+				return cb(cluster, serverName, nil, artifact)
 			})
 			if errors.Is(err, ErrNoMatches) {
 				// if we found nothing then we call the cb once so that it can deal with the error
-				if cbErr := cb(clusterTag, serverTag, err, nil); cbErr != nil {
+				if cbErr := cb(cluster, serverName, err, nil); cbErr != nil {
 					return count, cbErr
 				}
 			} else if err != nil {
@@ -497,6 +488,45 @@ func ForEachTaggedArtifact[T any](r *Reader, tags []*Tag, cb func(*T) error) err
 		return err
 	}
 
+	return forEachPagedArtifact(r, matching, cb)
+}
+
+// ForEachStreamArtifact iterates over the paged JSON artifacts of type artifactTag captured for the stream from the
+// named server. Only artifacts in the stream's domain match, and a stream without a domain matches no artifact that
+// has one.
+func ForEachStreamArtifact[T any](r *Reader, accountName string, stream StreamRef, serverName string, artifactTag *Tag, cb func(*T) error) error {
+	return forEachDomainArtifact(r, stream.Domain, []*Tag{TagAccount(accountName), TagStream(stream.Name), TagServer(serverName), artifactTag}, cb)
+}
+
+// ForEachServerArtifact iterates over the paged JSON artifacts captured from the named server in the cluster that
+// match all the given tags. Only artifacts in the cluster's domain match, and a cluster without a domain matches no
+// artifact that has one.
+func ForEachServerArtifact[T any](r *Reader, cluster ClusterRef, serverName string, tags []*Tag, cb func(*T) error) error {
+	return forEachDomainArtifact(r, cluster.Domain, append([]*Tag{TagCluster(cluster.Name), TagServer(serverName)}, tags...), cb)
+}
+
+func forEachDomainArtifact[T any](r *Reader, domain string, tags []*Tag, cb func(*T) error) error {
+	if domain != "" {
+		tags = append(tags, TagDomain(domain))
+	}
+
+	matching, err := intersectFileSets(r.invertedIndex, tags)
+	if err != nil {
+		return err
+	}
+
+	if domain == "" {
+		for name := range matching {
+			if _, inDomain := r.domainFiles[name]; inDomain {
+				delete(matching, name)
+			}
+		}
+	}
+
+	return forEachPagedArtifact(r, matching, cb)
+}
+
+func forEachPagedArtifact[T any](r *Reader, matching map[string]struct{}, cb func(*T) error) error {
 	var files []*zip.File
 	for name := range matching {
 		base := filepath.Base(name)

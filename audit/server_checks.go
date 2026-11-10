@@ -122,31 +122,31 @@ func RegisterServerChecks(collection *CheckCollection) error {
 	)
 }
 
-func handleArchiveError(err error, artifactName string, serverTag *archive.Tag, log api.Logger) error {
+func handleArchiveError(err error, artifactName string, serverName string, log api.Logger) error {
 	if errors.Is(err, archive.ErrNoMatches) {
-		log.Warnf("Artifact '%s' is missing for server %s", artifactName, serverTag)
+		log.Warnf("Artifact '%s' is missing for server %s", artifactName, serverName)
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("failed to load %s for server %s: %w", artifactName, serverTag, err)
+		return fmt.Errorf("failed to load %s for server %s: %w", artifactName, serverName, err)
 	}
 	return nil
 }
 
 // checkServerHealth verify all known servers are reporting healthy
 func checkServerHealth(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	total, err := r.EachClusterServerHealthz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, hz *server.ServerAPIHealthzResponse) error {
-		if err := handleArchiveError(err, "Healthz", serverTag, log); err != nil {
+	total, err := r.EachClusterServerHealthz(func(cluster archive.ClusterRef, serverName string, err error, hz *server.ServerAPIHealthzResponse) error {
+		if err := handleArchiveError(err, "Healthz", serverName, log); err != nil {
 			return err
 		}
 
 		if hz == nil || hz.Data == nil {
-			log.Warnf("Empty healthz response for server %s", serverTag)
+			log.Warnf("Empty healthz response for server %s", serverName)
 			return nil
 		}
 
 		if hz.Data.Status != "ok" && hz.Data.Status != "" {
-			examples.Add("%s: %d - %s", serverTag, hz.Data.StatusCode, hz.Data.Status)
+			examples.Add("%s: %d - %s", serverName, hz.Data.StatusCode, hz.Data.Status)
 		}
 
 		return nil
@@ -170,13 +170,13 @@ func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 	seenVersions := make(map[string]struct{})
 	var lastVersionSeen string
 
-	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+	_, err := r.EachClusterServerVarz(func(cluster archive.ClusterRef, serverName string, err error, vz *server.ServerAPIVarzResponse) error {
+		if err := handleArchiveError(err, "VARZ", serverName, log); err != nil {
 			return err
 		}
 
 		if vz == nil || vz.Data == nil {
-			log.Warnf("Empty varz response for server %s", serverTag)
+			log.Warnf("Empty varz response for server %s", serverName)
 			return nil
 		}
 
@@ -184,7 +184,7 @@ func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 		_, exists := seenVersions[lastVersionSeen]
 		if !exists {
 			seenVersions[lastVersionSeen] = struct{}{}
-			examples.Add("%s - %s", serverTag, lastVersionSeen)
+			examples.Add("%s - %s", serverName, lastVersionSeen)
 		}
 
 		return nil
@@ -213,18 +213,18 @@ func checkServerVersion(_ *Check, r *archive.Reader, examples *ExamplesCollectio
 func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	cpuThreshold := check.Configuration["cpu"].Value()
 
-	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+	_, err := r.EachClusterServerVarz(func(cluster archive.ClusterRef, serverName string, err error, vz *server.ServerAPIVarzResponse) error {
+		if err := handleArchiveError(err, "VARZ", serverName, log); err != nil {
 			return err
 		}
 
 		if vz == nil || vz.Data == nil {
-			log.Warnf("Empty varz response for server %s", serverTag)
+			log.Warnf("Empty varz response for server %s", serverName)
 			return nil
 		}
 
 		if vz.Data.Cores == 0 {
-			log.Warnf("Server %s reports zero cores, skipping CPU check", serverTag)
+			log.Warnf("Server %s reports zero cores, skipping CPU check", serverName)
 			return nil
 		}
 
@@ -232,7 +232,7 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 		averageCpuUtilization := vz.Data.CPU / float64(vz.Data.Cores)
 
 		if averageCpuUtilization > cpuThreshold {
-			examples.Add("%s - %s: %.1f%%", clusterTag, serverTag, averageCpuUtilization)
+			examples.Add("%s - %s: %.1f%%", cluster, serverName, averageCpuUtilization)
 		}
 
 		return nil
@@ -251,18 +251,18 @@ func checkServerCPUUsage(check *Check, r *archive.Reader, examples *ExamplesColl
 
 // checkSlowConsumers verify that no server is reporting slow consumers
 func checkSlowConsumers(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+	_, err := r.EachClusterServerVarz(func(cluster archive.ClusterRef, serverName string, err error, vz *server.ServerAPIVarzResponse) error {
+		if err := handleArchiveError(err, "VARZ", serverName, log); err != nil {
 			return err
 		}
 
 		if vz == nil || vz.Data == nil {
-			log.Warnf("Empty varz response for server %s", serverTag)
+			log.Warnf("Empty varz response for server %s", serverName)
 			return nil
 		}
 
 		if slowConsumers := vz.Data.SlowConsumers; slowConsumers > 0 {
-			examples.Add("%s/%s: %d slow consumers", clusterTag, serverTag, slowConsumers)
+			examples.Add("%s/%s: %d slow consumers", cluster, serverName, slowConsumers)
 		}
 
 		return nil
@@ -286,27 +286,27 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 	memoryUsageThreshold := check.Configuration["memory"].Value()
 	storeUsageThreshold := check.Configuration["store"].Value()
 
-	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
-		if err := handleArchiveError(err, "JSZ", serverTag, log); err != nil {
+	_, err := r.EachClusterServerJsz(func(cluster archive.ClusterRef, serverName string, err error, jsz *server.ServerAPIJszResponse) error {
+		if err := handleArchiveError(err, "JSZ", serverName, log); err != nil {
 			return err
 		}
 
 		if jsz == nil || jsz.Data == nil {
-			log.Warnf("Empty jsz response for server %s", serverTag)
+			log.Warnf("Empty jsz response for server %s", serverName)
 			return nil
 		}
 
 		if jsz.Data.Config.MaxMemory > 0 {
 			threshold := uint64(float64(jsz.Data.Config.MaxMemory) * (memoryUsageThreshold / 100))
 			if jsz.Data.Memory > threshold {
-				examples.Add("%s memory usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Memory), humanize.IBytes(uint64(jsz.Data.Config.MaxMemory)))
+				examples.Add("%s memory usage: %s of %s", serverName, humanize.IBytes(jsz.Data.Memory), humanize.IBytes(uint64(jsz.Data.Config.MaxMemory)))
 			}
 		}
 
 		if jsz.Data.Config.MaxStore > 0 {
 			threshold := uint64(float64(jsz.Data.Config.MaxStore) * (storeUsageThreshold / 100))
 			if jsz.Data.Store > threshold {
-				examples.Add("%s store usage: %s of %s", serverTag, humanize.IBytes(jsz.Data.Store), humanize.IBytes(uint64(jsz.Data.Config.MaxStore)))
+				examples.Add("%s store usage: %s of %s", serverName, humanize.IBytes(jsz.Data.Store), humanize.IBytes(uint64(jsz.Data.Config.MaxStore)))
 			}
 		}
 
@@ -326,19 +326,19 @@ func checkServerResourceLimits(check *Check, r *archive.Reader, examples *Exampl
 
 // checkJetStreamDomainsForWhitespace verifies that no JetStream server is configured with whitespace in its domain
 func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	_, err := r.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, jsz *server.ServerAPIJszResponse) error {
-		if err := handleArchiveError(err, "JSZ", serverTag, log); err != nil {
+	_, err := r.EachClusterServerJsz(func(cluster archive.ClusterRef, serverName string, err error, jsz *server.ServerAPIJszResponse) error {
+		if err := handleArchiveError(err, "JSZ", serverName, log); err != nil {
 			return err
 		}
 
 		if jsz == nil || jsz.Data == nil {
-			log.Warnf("Empty jsz response for server %s", serverTag)
+			log.Warnf("Empty jsz response for server %s", serverName)
 			return nil
 		}
 
 		// check if jetstream domain contains whitespace
 		if strings.ContainsAny(jsz.Data.Config.Domain, " \t\r\n") {
-			examples.Add("Cluster %s Server %s Domain %s", clusterTag, serverTag, jsz.Data.Config.Domain)
+			examples.Add("Cluster %s Server %s Domain %s", cluster.Name, serverName, jsz.Data.Config.Domain)
 		}
 
 		return nil
@@ -357,18 +357,18 @@ func checkJetStreamDomainsForWhitespace(_ *Check, r *archive.Reader, examples *E
 
 // checkServerAuthRequired verifies that all servers require authentication.
 func checkServerAuthRequired(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	total, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+	total, err := r.EachClusterServerVarz(func(cluster archive.ClusterRef, serverName string, err error, vz *server.ServerAPIVarzResponse) error {
+		if err := handleArchiveError(err, "VARZ", serverName, log); err != nil {
 			return err
 		}
 
 		if vz == nil || vz.Data == nil {
-			log.Warnf("Empty varz response for server %s", serverTag)
+			log.Warnf("Empty varz response for server %s", serverName)
 			return nil
 		}
 
 		if !vz.Data.AuthRequired {
-			examples.Add("%s: authentication not required", serverTag)
+			examples.Add("%s: authentication not required", serverName)
 		}
 		return nil
 	})
@@ -395,13 +395,13 @@ func checkTLSCertificateExpiry(check *Check, r *archive.Reader, examples *Exampl
 	var criticalCount int
 	checked := 0
 
-	_, err := r.EachClusterServerVarz(func(clusterTag *archive.Tag, serverTag *archive.Tag, err error, vz *server.ServerAPIVarzResponse) error {
-		if err := handleArchiveError(err, "VARZ", serverTag, log); err != nil {
+	_, err := r.EachClusterServerVarz(func(cluster archive.ClusterRef, serverName string, err error, vz *server.ServerAPIVarzResponse) error {
+		if err := handleArchiveError(err, "VARZ", serverName, log); err != nil {
 			return err
 		}
 
 		if vz == nil || vz.Data == nil {
-			log.Warnf("Empty varz response for server %s", serverTag)
+			log.Warnf("Empty varz response for server %s", serverName)
 			return nil
 		}
 
@@ -418,15 +418,15 @@ func checkTLSCertificateExpiry(check *Check, r *archive.Reader, examples *Exampl
 			switch {
 			case untilExpiry <= 0:
 				criticalCount++
-				examples.Add("%s/%s %s TLS certificate expired (expired_at=%v)", clusterTag, serverTag, component, expiry)
+				examples.Add("%s/%s %s TLS certificate expired (expired_at=%v)", cluster, serverName, component, expiry)
 
 			case critThreshold > 0 && untilExpiry <= critThreshold:
 				criticalCount++
-				examples.Add("%s/%s %s TLS certificate expires in %v (expires_at=%v)", clusterTag, serverTag, component, untilExpiry.Truncate(time.Second), expiry)
+				examples.Add("%s/%s %s TLS certificate expires in %v (expires_at=%v)", cluster, serverName, component, untilExpiry.Truncate(time.Second), expiry)
 
 			case warnThreshold > 0 && untilExpiry <= warnThreshold:
 				warningCount++
-				examples.Add("%s/%s %s TLS certificate expires in %v (expires_at=%v)", clusterTag, serverTag, component, untilExpiry.Truncate(time.Second), expiry)
+				examples.Add("%s/%s %s TLS certificate expires in %v (expires_at=%v)", cluster, serverName, component, untilExpiry.Truncate(time.Second), expiry)
 			}
 		}
 

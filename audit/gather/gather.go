@@ -371,7 +371,7 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			return
 		}
 
-		if _, isDuplicateResponse := jsInfoResponses[serverName]; isDuplicateResponse {
+		if _, isDuplicateResponse := jsInfoResponses[serverId]; isDuplicateResponse {
 			g.log.Errorf("Ignoring duplicate JS info response for account %s from server %s", accountId, serverName)
 			return
 		}
@@ -385,25 +385,32 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			return
 		}
 
-		jsInfoResponses[serverName] = &apiResponse
+		jsInfoResponses[serverId] = &apiResponse
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve account %s streams: %w", accountId, err)
 	}
 
-	streamNamesSet := make(map[string]any)
+	streamsSet := make(map[archive.StreamRef]any)
 
 	// Capture stream info from each known replica
-	for serverName, jsInfo := range jsInfoResponses {
+	for _, jsInfo := range jsInfoResponses {
 		// Cases where len(jsInfo.AccountDetails) != 1 are filtered above
 		accountDetail := jsInfo.Data.AccountDetails[0]
+		serverName := jsInfo.Server.Name
+		domain := jsInfo.Data.Config.Domain
 
 		for _, streamInfo := range accountDetail.Streams {
 			streamName := streamInfo.Name
+			ref := archive.StreamRef{Domain: domain, Name: streamName}
 
-			_, streamKnown := streamNamesSet[streamName]
+			_, streamKnown := streamsSet[ref]
 			if !streamKnown {
-				g.log.Infof("Discovered stream %s in account %s", streamName, accountId)
+				if domain != "" {
+					g.log.Infof("Discovered stream %s in domain %s in account %s", streamName, domain, accountId)
+				} else {
+					g.log.Infof("Discovered stream %s in account %s", streamName, accountId)
+				}
 			}
 
 			clusterTag := archive.TagNoCluster()
@@ -418,28 +425,26 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 				archive.TagStream(streamName),
 				archive.TagStreamInfo(),
 			}
+			if domain != "" {
+				tags = append(tags, archive.TagDomain(domain))
+			}
 
 			err = g.aw.Add(streamInfo, tags...)
 			if err != nil {
 				return fmt.Errorf("failed to add stream %s info to archive: %w", streamName, err)
 			}
 
-			streamNamesSet[streamName] = nil
+			streamsSet[ref] = nil
 		}
 	}
 
-	g.log.Infof("Discovered %d streams in account %s", len(streamNamesSet), accountId)
+	g.log.Infof("Discovered %d streams in account %s", len(streamsSet), accountId)
 
 	return nil
 }
 
 // Capture configured endpoints for each known account
 func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.ServerInfo, accountIdsToServersCountMap map[string]int) error {
-	type Responder struct {
-		ClusterName string
-		ServerName  string
-	}
-
 	capturedCount := 0
 	g.log.Infof("Querying %d endpoints for %d known accounts...", len(g.cfg.AccountEndpointConfigs), len(accountIdsToServersCountMap))
 
@@ -458,7 +463,7 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 				opts = g.eventFilter()
 			}
 
-			endpointResponses := make(map[Responder]io.Reader, serversCount)
+			endpointResponses := make(map[string]io.Reader, serversCount)
 
 			err := serverdata.DoReqAsync(context.TODO(), opts, subject, serversCount, g.nc, g.cfg.Timeout, g.log, func(b []byte) {
 				var apiResponse server.ServerAPIResponse
@@ -490,17 +495,12 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 					return
 				}
 
-				responder := Responder{
-					ClusterName: apiResponse.Server.Cluster,
-					ServerName:  apiResponse.Server.Name,
-				}
-
-				if _, isDuplicateResponse := endpointResponses[responder]; isDuplicateResponse {
-					g.log.Errorf("Ignoring duplicate account %s response from server %s", endpoint.ApiSuffix, responder.ServerName)
+				if _, isDuplicateResponse := endpointResponses[serverId]; isDuplicateResponse {
+					g.log.Errorf("Ignoring duplicate account %s response from server %s", endpoint.ApiSuffix, apiResponse.Server.Name)
 					return
 				}
 
-				endpointResponses[responder] = buff
+				endpointResponses[serverId] = buff
 			})
 			if err != nil {
 				g.log.Errorf("Failed to request %s for account %s: %s", endpoint.ApiSuffix, accountId, err)
@@ -508,18 +508,8 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 			}
 
 			// Store all responses for this account endpoint
-			for responder, endpointResponse := range endpointResponses {
-				clusterTag := archive.TagNoCluster()
-				if responder.ClusterName != "" {
-					clusterTag = archive.TagCluster(responder.ClusterName)
-				}
-
-				tags := []*archive.Tag{
-					archive.TagAccount(accountId),
-					archive.TagServer(responder.ServerName),
-					clusterTag,
-					endpoint.TypeTag,
-				}
+			for serverId, endpointResponse := range endpointResponses {
+				tags := append(serverTags(serverInfoMap[serverId]), archive.TagAccount(accountId), endpoint.TypeTag)
 
 				err = g.aw.AddRaw(endpointResponse, "json", tags...)
 				if err != nil {
@@ -537,6 +527,17 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 }
 
 // Capture configured profiles for each known server
+func serverTags(info *server.ServerInfo) []*archive.Tag {
+	tags := []*archive.Tag{archive.TagServer(info.Name), archive.TagNoCluster()}
+	if info.Cluster != "" {
+		tags[1] = archive.TagCluster(info.Cluster)
+	}
+	if info.Domain != "" {
+		tags = append(tags, archive.TagDomain(info.Domain))
+	}
+	return tags
+}
+
 func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerInfo) error {
 	g.log.Infof("Capturing %d profiles on %d known servers...", len(g.cfg.ServerProfileNames), len(serverInfoMap))
 
@@ -544,10 +545,6 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
-		clusterTag := archive.TagNoCluster()
-		if serverInfo.Cluster != "" {
-			clusterTag = archive.TagCluster(serverInfo.Cluster)
-		}
 
 		for _, profile := range g.cfg.ServerProfileNames {
 			name, debug := serverdata.SplitProfileName(string(profile))
@@ -601,12 +598,7 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 				continue
 			}
 
-			tags := []*archive.Tag{
-				archive.TagServer(serverName),
-				archive.TagServerProfile(),
-				archive.TagProfileName(string(profile)),
-				clusterTag,
-			}
+			tags := append(serverTags(serverInfo), archive.TagServerProfile(), archive.TagProfileName(string(profile)))
 
 			err = g.aw.AddRaw(bytes.NewReader(profileStatus.Profile), "prof", tags...)
 			if err != nil {
@@ -770,15 +762,7 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				}
 
 				// Tags for this artifact
-				tags := []*archive.Tag{
-					archive.TagServer(serverName),
-					endpoint.TypeTag,
-				}
-				if serverInfo.Cluster != "" {
-					tags = append(tags, archive.TagCluster(serverInfo.Cluster))
-				} else {
-					tags = append(tags, archive.TagNoCluster())
-				}
+				tags := append(serverTags(serverInfo), endpoint.TypeTag)
 
 				if err := g.aw.AddRaw(buff, "json", tags...); err != nil {
 					return fmt.Errorf("failed to add endpoint %s response to archive: %w", subject, err)

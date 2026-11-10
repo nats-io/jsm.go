@@ -2,6 +2,7 @@ package audit
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/nats-io/jsm.go/api"
@@ -9,6 +10,11 @@ import (
 )
 
 func setupJetstreamCheck(t *testing.T, checkid string, streams map[string]any) Outcome {
+	result, _ := runJetstreamCheck(t, checkid, nil, streams)
+	return result
+}
+
+func runJetstreamCheck(t *testing.T, checkid string, domains map[string]string, streams map[string]any) (Outcome, *ExamplesCollection) {
 	tmp := t.TempDir()
 	archivePath := filepath.Join(tmp, "audit.zip")
 
@@ -18,14 +24,17 @@ func setupJetstreamCheck(t *testing.T, checkid string, streams map[string]any) O
 	}
 
 	for serverName, stream := range streams {
-		err := writer.Add(
-			stream,
+		tags := []*archive.Tag{
 			archive.TagAccount("A"),
 			archive.TagStream("S1"),
 			archive.TagServer(serverName),
 			archive.TagCluster("C1"),
 			archive.TagStreamInfo(),
-		)
+		}
+		if domain := domains[serverName]; domain != "" {
+			tags = append(tags, archive.TagDomain(domain))
+		}
+		err := writer.Add(stream, tags...)
 		if err != nil {
 			t.Fatalf("failed to add stream for %s: %v", serverName, err)
 		}
@@ -62,7 +71,7 @@ func setupJetstreamCheck(t *testing.T, checkid string, streams map[string]any) O
 		t.Fatalf("check handler failed: %v", err)
 	}
 
-	return result
+	return result, examples
 }
 
 func TestJETSTREAM_001(t *testing.T) {
@@ -96,6 +105,32 @@ func TestJETSTREAM_001(t *testing.T) {
 		}
 	})
 
+	t.Run("Should not compare replicas of same-named streams in different domains", func(t *testing.T) {
+		result, _ := runJetstreamCheck(t, "JETSTREAM_001", map[string]string{"N1": "hub", "N2": "hub", "L1": "leaf"}, map[string]any{
+			"N1": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{LastSeq: 100}, Cluster: &api.ClusterInfo{Leader: "N1"}},
+			"N2": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{LastSeq: 100}, Cluster: &api.ClusterInfo{Leader: "N1"}},
+			"L1": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{LastSeq: 1}, Cluster: &api.ClusterInfo{Leader: "L1"}},
+		})
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
+		}
+	})
+
+	t.Run("Should name the domain of a lagging replica", func(t *testing.T) {
+		result, examples := runJetstreamCheck(t, "JETSTREAM_001", map[string]string{"N1": "hub", "N2": "hub", "L1": "leaf"}, map[string]any{
+			"N1": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{LastSeq: 100}, Cluster: &api.ClusterInfo{Leader: "N1"}},
+			"N2": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{LastSeq: 50}, Cluster: &api.ClusterInfo{Leader: "N1"}},
+			"L1": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{LastSeq: 1}, Cluster: &api.ClusterInfo{Leader: "L1"}},
+		})
+		if result != Fail {
+			t.Errorf("expected result %v, got %v", Fail, result)
+		}
+		expected := []string{"A/S1 (domain hub) server N2 lastSequence: 50 is behind highest lastSequence: 100 on server: N1"}
+		if !slices.Equal(examples.Examples, expected) {
+			t.Errorf("expected examples %v, got %v", expected, examples.Examples)
+		}
+	})
+
 	t.Run("Should pass for a single-replica stream", func(t *testing.T) {
 		result := setupJetstreamCheck(t, "JETSTREAM_001", map[string]any{
 			"N1": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{LastSeq: 500}, Cluster: &api.ClusterInfo{Leader: "N1"}},
@@ -113,6 +148,20 @@ func TestJETSTREAM_002(t *testing.T) {
 		})
 		if result != PassWithIssues {
 			t.Errorf("expected result %v, got %v", PassWithIssues, result)
+		}
+	})
+
+	t.Run("Should name the domain of a stream with too many subjects", func(t *testing.T) {
+		result, examples := runJetstreamCheck(t, "JETSTREAM_002", map[string]string{"L1": "leaf"}, map[string]any{
+			"N1": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{NumSubjects: 1_500_000}, Cluster: &api.ClusterInfo{Leader: "N1"}},
+			"L1": &api.StreamInfo{Config: api.StreamConfig{Name: "S1"}, State: api.StreamState{NumSubjects: 2_000_000}, Cluster: &api.ClusterInfo{Leader: "L1"}},
+		})
+		if result != PassWithIssues {
+			t.Errorf("expected result %v, got %v", PassWithIssues, result)
+		}
+		expected := []string{"A/S1: 1500000 subjects", "A/S1 (domain leaf): 2000000 subjects"}
+		if !slices.Equal(examples.Examples, expected) {
+			t.Errorf("expected examples %v, got %v", expected, examples.Examples)
 		}
 	})
 

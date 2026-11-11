@@ -37,15 +37,11 @@ func RegisterLeafnodeChecks(collection *CheckCollection) error {
 
 // checkLeafnodeServerNamesForWhitespace verifies that no leafnode connection has whitespace in its name
 func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
+	for _, cluster := range r.Clusters() {
 		leafnodesWithWhitespace := map[string]struct{}{}
 
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, archive.TagServerLeafs()}, func(resp *server.ServerAPILeafzResponse) error {
+		for _, serverName := range r.ClusterServerNames(cluster) {
+			err := archive.ForEachServerArtifact(r, cluster, serverName, []*archive.Tag{archive.TagServerLeafs()}, func(resp *server.ServerAPILeafzResponse) error {
 				if resp == nil || resp.Data == nil {
 					log.Warnf("Leafz data missing for server %s", serverName)
 					return nil
@@ -67,7 +63,7 @@ func checkLeafnodeServerNamesForWhitespace(_ *Check, r *archive.Reader, examples
 		}
 
 		if len(leafnodesWithWhitespace) > 0 {
-			examples.Add("Cluster %s: %v", clusterName, maps.Keys(leafnodesWithWhitespace))
+			examples.Add("Cluster %s: %v", cluster, maps.Keys(leafnodesWithWhitespace))
 		}
 	}
 

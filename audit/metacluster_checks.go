@@ -44,21 +44,18 @@ func RegisterMetaChecks(collection *CheckCollection) error {
 func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	jsTag := archive.TagServerJetStream()
 
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
+	for _, cluster := range r.Clusters() {
 		leaderFollowers := make(map[string][]string)
 
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, jsTag}, func(resp *server.ServerAPIJszResponse) error {
+		for _, serverName := range r.ClusterServerNames(cluster) {
+			err := archive.ForEachServerArtifact(r, cluster, serverName, []*archive.Tag{jsTag}, func(resp *server.ServerAPIJszResponse) error {
 				js := resp.Data
 				if js.Disabled {
 					return nil
 				}
 
 				if js.Meta == nil {
-					log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
+					log.Warnf("%s / %s does not have meta group info", cluster, serverName)
 					return nil
 				}
 
@@ -72,14 +69,14 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 			})
 
 			if err != nil {
-				return Skipped, fmt.Errorf("error reading JSZ for %s/%s: %w", clusterName, serverName, err)
+				return Skipped, fmt.Errorf("error reading JSZ for %s/%s: %w", cluster, serverName, err)
 			}
 		}
 
 		if _, noLeader := leaderFollowers["NO_LEADER"]; noLeader {
-			examples.Add("Members of %s have no meta leader", clusterName)
+			examples.Add("Members of %s have no meta leader", cluster)
 		} else if len(leaderFollowers) > 1 {
-			examples.Add("Members of %s disagree on meta leader (%v)", clusterName, leaderFollowers)
+			examples.Add("Members of %s disagree on meta leader (%v)", cluster, leaderFollowers)
 		}
 	}
 
@@ -95,25 +92,21 @@ func checkMetaClusterLeader(_ *Check, r *archive.Reader, examples *ExamplesColle
 func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *ExamplesCollection, log api.Logger) (Outcome, error) {
 	jszTag := archive.TagServerJetStream()
 
-	for _, clusterName := range r.ClusterNames() {
-		clusterTag := archive.TagCluster(clusterName)
-
-		for _, serverName := range r.ClusterServerNames(clusterName) {
-			serverTag := archive.TagServer(serverName)
-
-			err := archive.ForEachTaggedArtifact(r, []*archive.Tag{clusterTag, serverTag, jszTag}, func(resp *server.ServerAPIJszResponse) error {
+	for _, cluster := range r.Clusters() {
+		for _, serverName := range r.ClusterServerNames(cluster) {
+			err := archive.ForEachServerArtifact(r, cluster, serverName, []*archive.Tag{jszTag}, func(resp *server.ServerAPIJszResponse) error {
 				if resp.Data.Disabled {
 					return nil
 				}
 
 				if resp.Data.Meta == nil {
-					log.Warnf("%s / %s does not have meta group info", clusterName, serverName)
+					log.Warnf("%s / %s does not have meta group info", cluster, serverName)
 					return nil
 				}
 
 				for _, peerInfo := range resp.Data.Meta.Replicas {
 					if peerInfo.Offline {
-						examples.Add("%s - %s reports peer %s as offline", clusterName, serverName, peerInfo.Name)
+						examples.Add("%s - %s reports peer %s as offline", cluster, serverName, peerInfo.Name)
 					}
 				}
 
@@ -121,7 +114,7 @@ func checkMetaClusterOfflineReplicas(_ *Check, r *archive.Reader, examples *Exam
 			})
 
 			if err != nil {
-				return Skipped, fmt.Errorf("error reading JSZ for %s/%s: %w", clusterName, serverName, err)
+				return Skipped, fmt.Errorf("error reading JSZ for %s/%s: %w", cluster, serverName, err)
 			}
 		}
 	}

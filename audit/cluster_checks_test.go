@@ -19,7 +19,7 @@ func setupClusterCheck(t *testing.T, checkid string, artifacts map[string]any, t
 	}
 
 	for serverName, data := range artifacts {
-		err := writer.Add(data, archive.TagCluster(clusterName), archive.TagServer(serverName), tag)
+		err := writer.Add(data, append(artifactDomainTags(data), archive.TagCluster(clusterName), archive.TagServer(serverName), tag)...)
 		if err != nil {
 			t.Fatalf("failed to add artifact for %s: %v", serverName, err)
 		}
@@ -115,6 +115,28 @@ func setupMultiClusterCheck(t *testing.T, checkid string, clusters map[string]ma
 	return outcome
 }
 
+func varzInDomain(domain string, mem int64) *server.ServerAPIVarzResponse {
+	return &server.ServerAPIVarzResponse{Data: &server.Varz{Mem: mem, JetStream: server.JetStreamVarz{Config: &server.JetStreamConfig{Domain: domain}}}}
+}
+
+func artifactDomainTags(data any) []*archive.Tag {
+	var domain string
+	switch d := data.(type) {
+	case *server.ServerAPIVarzResponse:
+		if d.Data != nil && d.Data.JetStream.Config != nil {
+			domain = d.Data.JetStream.Config.Domain
+		}
+	case *server.ServerAPIJszResponse:
+		if d.Data != nil {
+			domain = d.Data.Config.Domain
+		}
+	}
+	if domain == "" {
+		return nil
+	}
+	return []*archive.Tag{archive.TagDomain(domain)}
+}
+
 func TestCLUSTER_001(t *testing.T) {
 	t.Run("Should warn if memory usage has an outlier", func(t *testing.T) {
 		result := setupClusterCheck(t, "CLUSTER_001", map[string]any{
@@ -125,6 +147,19 @@ func TestCLUSTER_001(t *testing.T) {
 
 		if result != PassWithIssues {
 			t.Errorf("expected result %v, got %v", PassWithIssues, result)
+		}
+	})
+
+	t.Run("Should not compare memory across domains in a same-named cluster", func(t *testing.T) {
+		result := setupClusterCheck(t, "CLUSTER_001", map[string]any{
+			"a1": varzInDomain("a", 100_000_000),
+			"a2": varzInDomain("a", 100_000_000),
+			"b1": varzInDomain("b", 400_000_000),
+			"b2": varzInDomain("b", 400_000_000),
+		}, archive.TagServerVars(), "T1")
+
+		if result != Pass {
+			t.Errorf("expected result %v, got %v", Pass, result)
 		}
 	})
 

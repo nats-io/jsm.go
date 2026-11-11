@@ -59,9 +59,17 @@ capture/
               <artifact_type>/
                 0001.json
                 ...
+      domains/
+        <domain>/
+          servers/           (as accounts/<account>/servers/)
+          streams/           (as accounts/<account>/streams/)
   profiles/
     <cluster>/
       <server>__<profile_name>.<ext>
+  domains/
+    <domain>/
+      clusters/              (as clusters/)
+      profiles/              (as profiles/)
   misc/
     manifest.json
     <name>.<ext>
@@ -75,8 +83,8 @@ If a server has no cluster, the literal string `unclustered` is used in place of
 
 ### Path Component Constraints
 
-Every value placed into a path (server name, cluster name, account name, stream name, artifact
-type, profile name, file extension, and special file name) **must** satisfy all of the following:
+Every value placed into a path (server name, cluster name, account name, stream name, domain,
+artifact type, profile name, file extension, and special file name) **must** satisfy all of the following:
 
 1. Must pass `filepath.IsLocal` — i.e., must not be empty, must not be absolute, and must not
    contain or resolve to a `..` traversal.
@@ -147,6 +155,7 @@ artifact.
 | `cluster` | `clusterTagLabel` | Name of the cluster the server belongs to |
 | `account` | `accountTagLabel` | NATS account identifier |
 | `stream` | `streamTagLabel` | JetStream stream name |
+| `domain` | `domainTagLabel` | JetStream domain of the server the artifact was captured from |
 | `artifact_type` | `typeTagLabel` | Artifact type name (see below) |
 | `profile_name` | `profileNameTagLabel` | Identifies which profile (e.g., `heap`, `cpu`) |
 
@@ -164,10 +173,10 @@ error to combine `special` with any other tag.
 
 | Family | Required tags | Optional tags |
 |---|---|---|
-| Server artifact | `server`, `cluster`, `artifact_type` | — |
-| Server profile | `server`, `cluster`, `artifact_type` (= `profile`), `profile_name` | — |
-| Account artifact | `server`, `cluster`, `account`, `artifact_type` | — |
-| Stream artifact | `server`, `cluster`, `account`, `stream`, `artifact_type` | — |
+| Server artifact | `server`, `cluster`, `artifact_type` | `domain` |
+| Server profile | `server`, `cluster`, `artifact_type` (= `profile`), `profile_name` | `domain` |
+| Account artifact | `server`, `cluster`, `account`, `artifact_type` | `domain` |
+| Stream artifact | `server`, `cluster`, `account`, `stream`, `artifact_type` | `domain` |
 | Special file | `special` | — |
 
 ---
@@ -177,6 +186,7 @@ error to combine `special` with any other tag.
 ### Server artifacts
 
 Captured per server.  Path: `capture/clusters/<cluster>/<server>/<type>/NNNN.json`.
+When the artifact has a `domain` tag the path is `capture/domains/<domain>/clusters/<cluster>/<server>/<type>/NNNN.json`.
 
 | Type value | Source endpoint | Tag constructor |
 |---|---|---|
@@ -195,6 +205,8 @@ Captured per server.  Path: `capture/clusters/<cluster>/<server>/<type>/NNNN.jso
 
 Captured per account per server.  Path:
 `capture/accounts/<account>/servers/<cluster>__<server>/<type>/NNNN.json`.
+When the artifact has a `domain` tag the path is
+`capture/accounts/<account>/domains/<domain>/servers/<cluster>__<server>/<type>/NNNN.json`.
 
 | Type value | Source endpoint | Tag constructor |
 |---|---|---|
@@ -210,6 +222,8 @@ Captured per account per server.  Path:
 
 Captured per stream replica.  Path:
 `capture/accounts/<account>/streams/<stream>/replicas/<cluster>__<server>/<type>/NNNN.json`.
+When the artifact has a `domain` tag the path is
+`capture/accounts/<account>/domains/<domain>/streams/<stream>/replicas/<cluster>__<server>/<type>/NNNN.json`.
 
 | Type value | Description | Tag constructor |
 |---|---|---|
@@ -219,6 +233,7 @@ Captured per stream replica.  Path:
 
 Captured per server per profile type.
 Path: `capture/profiles/<cluster>/<server>__<profile_name>.<ext>`.
+When the artifact has a `domain` tag the path is `capture/domains/<domain>/profiles/<cluster>/<server>__<profile_name>.<ext>`.
 
 The `artifact_type` tag value is always `profile`.  The `profile_name` tag distinguishes
 individual profiles.  The file extension is typically `prof` (pprof binary format).
@@ -300,17 +315,20 @@ When `NewReader` opens an archive it performs two checks:
 
 ## Reader Index
 
-`NewReader` builds three in-memory indices from the manifest at open time:
+`NewReader` builds these in-memory indices from the manifest at open time:
 
 | Index | Key | Value |
 |---|---|---|
 | Inverted index | `Tag` | sorted list of ZIP paths that carry that tag |
-| Cluster → servers | cluster name | sorted list of server names in that cluster |
-| Account → streams | account name | sorted list of stream names in that account |
-| Account/stream → servers | `account/stream` | sorted list of server names holding replicas |
+| Clusters | — | list of `ClusterRef` (domain and cluster name), sorted by name then domain |
+| Cluster → servers | `ClusterRef` | sorted list of server names in that cluster |
+| Account → streams | account name | list of `StreamRef` (domain and stream name) in that account, sorted by name then domain |
+| Account/stream → servers | account and `StreamRef` | sorted list of server names holding replicas |
 
-All lists are sorted alphabetically.  The indices are used by `Load`, `ForEachTaggedArtifact`,
-and `EachClusterServerArtifact` to answer queries without scanning the ZIP directory.
+Clusters and streams with the same name in different JetStream domains are separate entries. A
+cluster or stream without a `domain` tag has an empty domain. All other lists are sorted alphabetically. The indices are used by `Load`,
+`ForEachTaggedArtifact`, `ForEachStreamArtifact`, `ForEachServerArtifact` and
+`EachClusterServerArtifact` to answer queries without scanning the ZIP directory.
 
 ### Querying
 
@@ -318,8 +336,15 @@ and `EachClusterServerArtifact` to answer queries without scanning the ZIP direc
   `ErrMultipleMatches` if the tag intersection contains zero or more than one file respectively.
 - **`ForEachTaggedArtifact[T](r, tags, cb)`** — iterates all paged files matching the given tags,
   decoding each page into a `T` and calling `cb`. Files are visited in ascending page-number order.
-  Returns `ErrNoMatches` if no pages exist for the tag combination.
+  Returns `ErrNoMatches` if no pages exist for the tag combination. A stream tag without a domain tag
+  matches that stream's artifacts in every domain.
+- **`ForEachStreamArtifact[T](r, account, stream, server, artifactTag, cb)`** — iterates the paged
+  files of one stream replica. Only artifacts in the `StreamRef` domain match, and a `StreamRef`
+  without a domain matches no artifact that has a `domain` tag. Returns `ErrNoMatches` if nothing matches.
+- **`ForEachServerArtifact[T](r, cluster, server, tags, cb)`** — iterates the paged files of one
+  server in a `ClusterRef` that match the given tags. Only artifacts in the cluster's domain match,
+  and a `ClusterRef` without a domain matches no artifact that has a `domain` tag.
 - **`EachClusterServerArtifact[T](r, artifactTag, cb)`** — iterates every (cluster, server) pair
-  known to the archive and calls `ForEachTaggedArtifact` for each, passing the combined tags.
+  known to the archive and calls `ForEachServerArtifact` for each.
   If a server has no matching artifact, `cb` is called once with a nil artifact and
   `ErrNoMatches` so the caller can record the gap.

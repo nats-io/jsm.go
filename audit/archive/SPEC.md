@@ -81,6 +81,13 @@ Where `<cluster>__<server>` is the cluster name and server name joined by a doub
 
 If a server has no cluster, the literal string `unclustered` is used in place of the cluster name.
 
+When clusters that are not routed to each other share a cluster name and domain, gather numbers
+them from 0 and every path uses `<cluster>__<index>` in place of `<cluster>`, for example
+`capture/clusters/SITE__1/n1/variables/0001.json` and
+`capture/accounts/A/servers/SITE__1__n1/...`. Clusters whose name and domain are unique keep the
+plain `<cluster>` segment. A standalone server with leafnode remotes reports its server name as its
+cluster name, so standalone sites that share a server name are numbered the same way.
+
 ### Path Component Constraints
 
 Every value placed into a path (server name, cluster name, account name, stream name, domain,
@@ -156,6 +163,7 @@ artifact.
 | `account` | `accountTagLabel` | NATS account identifier |
 | `stream` | `streamTagLabel` | JetStream stream name |
 | `domain` | `domainTagLabel` | JetStream domain of the server the artifact was captured from |
+| `cluster_index` | `clusterIndexTagLabel` | Number gather assigned to the server's cluster when unrouted clusters share its name and domain |
 | `artifact_type` | `typeTagLabel` | Artifact type name (see below) |
 | `profile_name` | `profileNameTagLabel` | Identifies which profile (e.g., `heap`, `cpu`) |
 
@@ -173,10 +181,10 @@ error to combine `special` with any other tag.
 
 | Family | Required tags | Optional tags |
 |---|---|---|
-| Server artifact | `server`, `cluster`, `artifact_type` | `domain` |
-| Server profile | `server`, `cluster`, `artifact_type` (= `profile`), `profile_name` | `domain` |
-| Account artifact | `server`, `cluster`, `account`, `artifact_type` | `domain` |
-| Stream artifact | `server`, `cluster`, `account`, `stream`, `artifact_type` | `domain` |
+| Server artifact | `server`, `cluster`, `artifact_type` | `domain`, `cluster_index` |
+| Server profile | `server`, `cluster`, `artifact_type` (= `profile`), `profile_name` | `domain`, `cluster_index` |
+| Account artifact | `server`, `cluster`, `account`, `artifact_type` | `domain`, `cluster_index` |
+| Stream artifact | `server`, `cluster`, `account`, `stream`, `artifact_type` | `domain`, `cluster_index` |
 | Special file | `special` | — |
 
 ---
@@ -320,13 +328,14 @@ When `NewReader` opens an archive it performs two checks:
 | Index | Key | Value |
 |---|---|---|
 | Inverted index | `Tag` | sorted list of ZIP paths that carry that tag |
-| Clusters | — | list of `ClusterRef` (domain and cluster name), sorted by name then domain |
+| Clusters | — | list of `ClusterRef` (domain, cluster name and number), sorted by name, then domain, then number |
 | Cluster → servers | `ClusterRef` | sorted list of server names in that cluster |
-| Account → streams | account name | list of `StreamRef` (domain and stream name) in that account, sorted by name then domain |
+| Account → streams | account name | list of `StreamRef` (domain, stream name and numbered cluster) in that account, sorted by name, then domain, then cluster |
 | Account/stream → servers | account and `StreamRef` | sorted list of server names holding replicas |
 
 Clusters and streams with the same name in different JetStream domains are separate entries. A
-cluster or stream without a `domain` tag has an empty domain. All other lists are sorted alphabetically. The indices are used by `Load`,
+cluster or stream without a `domain` tag has an empty domain. Numbered clusters are separate
+entries, and so are streams in numbered clusters: `StreamRef.Cluster` is set only for those. All other lists are sorted alphabetically. The indices are used by `Load`,
 `ForEachTaggedArtifact`, `ForEachStreamArtifact`, `ForEachServerArtifact` and
 `EachClusterServerArtifact` to answer queries without scanning the ZIP directory.
 
@@ -339,11 +348,13 @@ cluster or stream without a `domain` tag has an empty domain. All other lists ar
   Returns `ErrNoMatches` if no pages exist for the tag combination. A stream tag without a domain tag
   matches that stream's artifacts in every domain.
 - **`ForEachStreamArtifact[T](r, account, stream, server, artifactTag, cb)`** — iterates the paged
-  files of one stream replica. Only artifacts in the `StreamRef` domain match, and a `StreamRef`
-  without a domain matches no artifact that has a `domain` tag. Returns `ErrNoMatches` if nothing matches.
+  files of one stream replica. Only artifacts in the `StreamRef` domain and numbered cluster match,
+  and a `StreamRef` without a domain or number matches no artifact that has a `domain` or
+  `cluster_index` tag. Returns `ErrNoMatches` if nothing matches.
 - **`ForEachServerArtifact[T](r, cluster, server, tags, cb)`** — iterates the paged files of one
-  server in a `ClusterRef` that match the given tags. Only artifacts in the cluster's domain match,
-  and a `ClusterRef` without a domain matches no artifact that has a `domain` tag.
+  server in a `ClusterRef` that match the given tags. Only artifacts in the cluster's domain and
+  number match, and a `ClusterRef` without a domain or number matches no artifact that has a
+  `domain` or `cluster_index` tag.
 - **`EachClusterServerArtifact[T](r, artifactTag, cb)`** — iterates every (cluster, server) pair
   known to the archive and calls `ForEachServerArtifact` for each.
   If a server has no matching artifact, `cb` is called once with a nil artifact and

@@ -42,6 +42,8 @@ n.b. Do not rely on path parsing and path conventions, query using the manifest 
 
 n.b.: If a server does not belong to a cluster, then `cluster_name` is `unclustered` for all the paths below.
 
+n.b.: If clusters that are not routed to each other share a cluster name and domain, gather numbers them and `cluster_name` is `${cluster_name}__${index}` for all the paths below, for example `SITE__0` and `SITE__1`.
+
 ### Note on paging
 
 Some artifacts (e.g., stream info, health, varz) are stored in **paged format**, split across multiple JSON files (e.g., `0001.json`, `0002.json`, ...), each containing one or more JSON objects.

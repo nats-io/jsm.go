@@ -24,18 +24,75 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go/audit/archive"
+	"github.com/nats-io/nats-server/v2/server"
 	"golang.org/x/exp/maps"
 )
 
 // Analysis represents the result of an entire analysis
 type Analysis struct {
-	Type          string                `json:"type"`
-	Timestamp     time.Time             `json:"time"`
-	Metadata      archive.AuditMetadata `json:"metadata"`
-	SkippedChecks []string              `json:"skipped_checks"`
-	SkippedSuites []string              `json:"skipped_suites"`
-	Results       []CheckResult         `json:"checks"`
-	Outcomes      map[string]int        `json:"outcomes"`
+	Type             string                `json:"type"`
+	Timestamp        time.Time             `json:"time"`
+	Metadata         archive.AuditMetadata `json:"metadata"`
+	SkippedChecks    []string              `json:"skipped_checks"`
+	SkippedSuites    []string              `json:"skipped_suites"`
+	Results          []CheckResult         `json:"checks"`
+	Outcomes         map[string]int        `json:"outcomes"`
+	NumberedClusters []SharedClusterName   `json:"numbered_clusters,omitempty"`
+}
+
+// SharedClusterName is a cluster name and domain used by clusters that are not routed to each other
+type SharedClusterName struct {
+	Domain   string            `json:"domain,omitempty"`
+	Name     string            `json:"name"`
+	Clusters []NumberedCluster `json:"clusters"`
+}
+
+// NumberedCluster is one of the clusters sharing a name, labeled with the number the archive assigned to it
+type NumberedCluster struct {
+	Label   string   `json:"label"`
+	Servers []string `json:"servers"`
+}
+
+func (s SharedClusterName) Description() string {
+	labels := make([]string, len(s.Clusters))
+	for i, cluster := range s.Clusters {
+		labels[i] = cluster.Label
+	}
+	name := s.Name
+	if s.Domain != "" {
+		name = fmt.Sprintf("%s in domain %s", s.Name, s.Domain)
+	}
+	return fmt.Sprintf("Cluster name %s is used by %d clusters that are not routed to each other. This report numbers them %s. The numbers are not cluster names.",
+		name, len(s.Clusters), strings.Join(labels, ", "))
+}
+
+func sharedClusterNames(ar *archive.Reader) []SharedClusterName {
+	var shared []SharedClusterName
+	for _, cluster := range ar.Clusters() {
+		if cluster.Index == "" {
+			continue
+		}
+
+		if len(shared) == 0 || shared[len(shared)-1].Name != cluster.Name || shared[len(shared)-1].Domain != cluster.Domain {
+			shared = append(shared, SharedClusterName{Domain: cluster.Domain, Name: cluster.Name})
+		}
+
+		numbered := NumberedCluster{Label: cluster.NumberedName()}
+		for _, serverName := range ar.ClusterServerNames(cluster) {
+			var id string
+			archive.ForEachServerArtifact(ar, cluster, serverName, []*archive.Tag{archive.TagServerVars()}, func(vz *server.ServerAPIVarzResponse) error {
+				if vz.Server != nil {
+					id = vz.Server.ID
+				}
+				return nil
+			})
+			numbered.Servers = append(numbered.Servers, archive.ServerLabel(serverName, id))
+		}
+
+		last := &shared[len(shared)-1]
+		last.Clusters = append(last.Clusters, numbered)
+	}
+	return shared
 }
 
 const MarkdownFormatTemplate = `# NATS Audit Report produced {{ .Timestamp | ft}}
@@ -43,6 +100,17 @@ const MarkdownFormatTemplate = `# NATS Audit Report produced {{ .Timestamp | ft}
 ## Connection Details
 
 Report generated using archive from **{{.Metadata.ConnectURL}}** by **{{.Metadata.UserName}}** created **{{.Metadata.Timestamp | ft}}**
+
+{{- if .NumberedClusters }}
+
+## Clusters Sharing a Name
+{{   range .NumberedClusters }}
+{{ .Description }}
+{{     range .Clusters }}
+* **{{ .Label }}**: {{ join .Servers ", " }}
+{{-    end }}
+{{   end }}
+{{- end }}
 
 ## Report Summary
 
@@ -110,6 +178,7 @@ func (a *Analysis) ToMarkdown(templ string, limitExamples uint) ([]byte, error) 
 		"bySuite":        resultsBySuite,
 		"suiteNames":     suiteNames,
 		"add1":           func(i int) int { return i + 1 },
+		"join":           strings.Join,
 		"escapeMarkdown": func(s string) string { return strings.ReplaceAll(s, "|", `\|`) },
 		"limitStrings": func(a []string) []string {
 			if limitExamples == 0 || uint(len(a)) < limitExamples {

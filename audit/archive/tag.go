@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -45,14 +46,15 @@ type Tag struct {
 func (t *Tag) String() string { return t.Value }
 
 const (
-	serverTagLabel      TagLabel = "server"
-	clusterTagLabel     TagLabel = "cluster"
-	accountTagLabel     TagLabel = "account"
-	streamTagLabel      TagLabel = "stream"
-	domainTagLabel      TagLabel = "domain"
-	typeTagLabel        TagLabel = "artifact_type"
-	profileNameTagLabel TagLabel = "profile_name"
-	specialTagLabel     TagLabel = "special"
+	serverTagLabel       TagLabel = "server"
+	clusterTagLabel      TagLabel = "cluster"
+	accountTagLabel      TagLabel = "account"
+	streamTagLabel       TagLabel = "stream"
+	domainTagLabel       TagLabel = "domain"
+	clusterIndexTagLabel TagLabel = "cluster_index"
+	typeTagLabel         TagLabel = "artifact_type"
+	profileNameTagLabel  TagLabel = "profile_name"
+	specialTagLabel      TagLabel = "special"
 )
 
 const (
@@ -95,13 +97,14 @@ const (
 
 // Special tags that get composed and combined in the filename
 var dimensionTagsNames = map[TagLabel]any{
-	accountTagLabel:     nil,
-	clusterTagLabel:     nil,
-	serverTagLabel:      nil,
-	streamTagLabel:      nil,
-	domainTagLabel:      nil,
-	typeTagLabel:        nil,
-	profileNameTagLabel: nil,
+	accountTagLabel:      nil,
+	clusterTagLabel:      nil,
+	serverTagLabel:       nil,
+	streamTagLabel:       nil,
+	domainTagLabel:       nil,
+	clusterIndexTagLabel: nil,
+	typeTagLabel:         nil,
+	profileNameTagLabel:  nil,
 }
 
 func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
@@ -164,6 +167,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 	domainTag, hasDomainTag := dimensionTagsMap[domainTagLabel], dimensionTagsMap[domainTagLabel] != nil
 	typeTag, hasTypeTag := dimensionTagsMap[typeTagLabel], dimensionTagsMap[typeTagLabel] != nil
 	profileNameTag, hasProfileNameTag := dimensionTagsMap[profileNameTagLabel], dimensionTagsMap[profileNameTagLabel] != nil
+	clusterIndexTag, hasClusterIndexTag := dimensionTagsMap[clusterIndexTagLabel], dimensionTagsMap[clusterIndexTagLabel] != nil
 
 	// All artifacts must have a type, source server and source cluster (or "un-clustered")
 	for requiredTagName, hasRequiredTag := range map[string]bool{
@@ -189,12 +193,18 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		{domainTagLabel, domainTag, hasDomainTag},
 		{typeTagLabel, typeTag, hasTypeTag},
 		{profileNameTagLabel, profileNameTag, hasProfileNameTag},
+		{clusterIndexTagLabel, clusterIndexTag, hasClusterIndexTag},
 	} {
 		if check.present {
 			if err := validatePathComponent(string(check.label), check.tag.Value); err != nil {
 				return "", err
 			}
 		}
+	}
+
+	clusterSegment := clusterTag.Value
+	if hasClusterIndexTag {
+		clusterSegment += separator + clusterIndexTag.Value
 	}
 
 	if hasStreamTag {
@@ -210,7 +220,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 			"streams",
 			streamTag.Value,
 			"replicas",
-			clusterTag.Value+separator+serverTag.Value,
+			clusterSegment+separator+serverTag.Value,
 			typeTag.Value+"."+extension,
 		), nil
 	}
@@ -226,18 +236,13 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 			accountTag.Value,
 			domainDirectory(domainTag),
 			"servers",
-			clusterTag.Value+separator+serverTag.Value,
+			clusterSegment+separator+serverTag.Value,
 			typeTag.Value+"."+extension,
 		), nil
 	}
 
 	if hasServerTag {
 		// Server artifact
-		clusterName := noCluster
-		if hasClusterTag {
-			clusterName = clusterTag.Value
-		}
-
 		// Handle certain types differently
 		switch typeTag.Value {
 		case profileArtifactType:
@@ -248,7 +253,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 				rootDirectory,
 				domainDirectory(domainTag),
 				"profiles",
-				clusterName,
+				clusterSegment,
 				serverTag.Value+separator+profileNameTag.Value+"."+extension,
 			), nil
 
@@ -257,7 +262,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 				rootDirectory,
 				domainDirectory(domainTag),
 				"clusters",
-				clusterName,
+				clusterSegment,
 				serverTag.Value,
 				typeTag.Value+"."+extension,
 			), nil
@@ -406,6 +411,14 @@ func TagDomain(domain string) *Tag {
 	return &Tag{
 		Name:  domainTagLabel,
 		Value: domain,
+	}
+}
+
+// TagClusterIndex numbers a cluster when several clusters that are not routed to each other share its name and domain
+func TagClusterIndex(index int) *Tag {
+	return &Tag{
+		Name:  clusterIndexTagLabel,
+		Value: strconv.Itoa(index),
 	}
 }
 

@@ -48,6 +48,7 @@ type Reader struct {
 	accountStreams      map[string][]StreamRef
 	streamServerNames   map[accountStream][]string
 	domainFiles         map[string]struct{}
+	clusterIndexFiles   map[string]struct{}
 	ts                  *time.Time
 	invertedIndex       map[Tag][]string
 	// Warnings holds non-fatal issues detected while opening the archive,
@@ -56,24 +57,51 @@ type Reader struct {
 }
 
 // StreamRef identifies a stream within an account. Domain is empty for streams captured from servers without a
-// JetStream domain.
+// JetStream domain. Cluster is set only when the stream's cluster is numbered, see ClusterRef.
 type StreamRef struct {
-	Domain string
-	Name   string
+	Domain  string
+	Name    string
+	Cluster ClusterRef
 }
 
 func (s StreamRef) String() string {
-	return domainLabel(s.Name, s.Domain)
+	label := domainLabel(s.Name, s.Domain)
+	if s.Cluster.Index != "" {
+		label += " in cluster " + s.Cluster.NumberedName()
+	}
+	return label
 }
 
-// ClusterRef identifies a cluster. Domain is empty for clusters of servers without a JetStream domain.
+// ClusterRef identifies a cluster. Domain is empty for clusters of servers without a JetStream domain. Index is set
+// only when clusters that are not routed to each other share the name and domain, and numbers them from 0 in the
+// order gather assigned. The number is the archive's own and is not a cluster name.
 type ClusterRef struct {
 	Domain string
 	Name   string
+	Index  string
 }
 
 func (c ClusterRef) String() string {
-	return domainLabel(c.Name, c.Domain)
+	return domainLabel(c.NumberedName(), c.Domain)
+}
+
+// NumberedName is the cluster name followed by its number when the cluster is numbered
+func (c ClusterRef) NumberedName() string {
+	if c.Index == "" {
+		return c.Name
+	}
+	return c.Name + " #" + c.Index
+}
+
+// ServerLabel is the server name followed by its ID shortened to the first and last 8 characters
+func ServerLabel(name, id string) string {
+	switch {
+	case id == "":
+		return name
+	case len(id) > 19:
+		id = id[:8] + "..." + id[len(id)-8:]
+	}
+	return fmt.Sprintf("%s (%s)", name, id)
 }
 
 func domainLabel(name, domain string) string {
@@ -211,11 +239,15 @@ func NewReader(archivePath string) (*Reader, error) {
 	// Create inverted index for tag lookups
 	invertedIndex := make(map[Tag][]string)
 	domainFiles := make(map[string]struct{})
+	clusterIndexFiles := make(map[string]struct{})
 	for fileName, tags := range manifestMap {
 		for _, tag := range tags {
 			invertedIndex[tag] = append(invertedIndex[tag], fileName)
-			if tag.Name == domainTagLabel {
+			switch tag.Name {
+			case domainTagLabel:
 				domainFiles[fileName] = struct{}{}
+			case clusterIndexTagLabel:
+				clusterIndexFiles[fileName] = struct{}{}
 			}
 		}
 	}
@@ -247,7 +279,7 @@ func NewReader(archivePath string) (*Reader, error) {
 
 	for _, tags := range manifestMap {
 		// Take note of certain tags, if present
-		var cluster, server, account, stream, domain string
+		var cluster, server, account, stream, domain, clusterIndex string
 		for _, tag := range tags {
 			switch tag.Name {
 			case clusterTagLabel:
@@ -260,12 +292,16 @@ func NewReader(archivePath string) (*Reader, error) {
 				stream = tag.Value
 			case domainTagLabel:
 				domain = tag.Value
+			case clusterIndexTagLabel:
+				clusterIndex = tag.Value
 			}
 		}
 
+		clusterRef := ClusterRef{Domain: domain, Name: cluster, Index: clusterIndex}
+
 		// If a cluster tag is set, create a record for it
 		if cluster != "" {
-			ref := ClusterRef{Domain: domain, Name: cluster}
+			ref := clusterRef
 			if _, knownCluster := clustersServersMap[ref]; !knownCluster {
 				clustersServersMap[ref] = make(map[string]any)
 			}
@@ -283,6 +319,9 @@ func NewReader(archivePath string) (*Reader, error) {
 			// If account and stream tags present, save stream in set for this account
 			if stream != "" {
 				ref := StreamRef{Domain: domain, Name: stream}
+				if clusterIndex != "" {
+					ref.Cluster = clusterRef
+				}
 				if _, knownStream := accountsStreamsMap[account][ref]; !knownStream {
 					accountsStreamsMap[account][ref] = make(map[string]any)
 				}
@@ -364,6 +403,7 @@ func NewReader(archivePath string) (*Reader, error) {
 		accountStreams:      accountsStreams,
 		streamServerNames:   streamsServers,
 		domainFiles:         domainFiles,
+		clusterIndexFiles:   clusterIndexFiles,
 		ts:                  &manifestFile.Modified,
 		invertedIndex:       invertedIndex,
 		Warnings:            warnings,
@@ -390,8 +430,8 @@ func (r *Reader) AccountStreams(accountName string) []StreamRef {
 }
 
 // Clusters list the unique clusters found in the archive
-// Clusters with the same name in different JetStream domains are listed separately
-// The list is sorted by cluster name, then domain
+// Clusters with the same name in different JetStream domains, and numbered clusters, are listed separately
+// The list is sorted by cluster name, then domain, then number
 func (r *Reader) Clusters() []ClusterRef {
 	return slices.Clone(r.clusters)
 }
@@ -417,11 +457,16 @@ func (r *Reader) StreamServerNames(accountName string, stream StreamRef) []strin
 }
 
 func compareClusterRefs(a, b ClusterRef) int {
-	return cmp.Or(strings.Compare(a.Name, b.Name), strings.Compare(a.Domain, b.Domain))
+	return cmp.Or(strings.Compare(a.Name, b.Name), strings.Compare(a.Domain, b.Domain), CompareClusterIndexes(a.Index, b.Index))
+}
+
+// CompareClusterIndexes orders cluster numbers numerically, with an unnumbered cluster first
+func CompareClusterIndexes(a, b string) int {
+	return cmp.Or(cmp.Compare(len(a), len(b)), strings.Compare(a, b))
 }
 
 func compareStreamRefs(a, b StreamRef) int {
-	return cmp.Or(strings.Compare(a.Name, b.Name), strings.Compare(a.Domain, b.Domain))
+	return cmp.Or(strings.Compare(a.Name, b.Name), strings.Compare(a.Domain, b.Domain), compareClusterRefs(a.Cluster, b.Cluster))
 }
 
 // EachClusterServerVarz iterates over all servers ordered by cluster and calls the callback function with the loaded Varz response
@@ -527,22 +572,25 @@ func ForEachTaggedArtifact[T any](r *Reader, tags []*Tag, cb func(*T) error) err
 }
 
 // ForEachStreamArtifact iterates over the paged JSON artifacts of type artifactTag captured for the stream from the
-// named server. Only artifacts in the stream's domain match, and a stream without a domain matches no artifact that
-// has one.
+// named server. Only artifacts in the stream's domain and numbered cluster match, and an empty domain or number
+// matches no artifact that has one.
 func ForEachStreamArtifact[T any](r *Reader, accountName string, stream StreamRef, serverName string, artifactTag *Tag, cb func(*T) error) error {
-	return forEachDomainArtifact(r, stream.Domain, []*Tag{TagAccount(accountName), TagStream(stream.Name), TagServer(serverName), artifactTag}, cb)
+	return forEachScopedArtifact(r, stream.Domain, stream.Cluster.Index, []*Tag{TagAccount(accountName), TagStream(stream.Name), TagServer(serverName), artifactTag}, cb)
 }
 
 // ForEachServerArtifact iterates over the paged JSON artifacts captured from the named server in the cluster that
-// match all the given tags. Only artifacts in the cluster's domain match, and a cluster without a domain matches no
-// artifact that has one.
+// match all the given tags. Only artifacts in the cluster's domain and number match, and an empty domain or number
+// matches no artifact that has one.
 func ForEachServerArtifact[T any](r *Reader, cluster ClusterRef, serverName string, tags []*Tag, cb func(*T) error) error {
-	return forEachDomainArtifact(r, cluster.Domain, append([]*Tag{TagCluster(cluster.Name), TagServer(serverName)}, tags...), cb)
+	return forEachScopedArtifact(r, cluster.Domain, cluster.Index, append([]*Tag{TagCluster(cluster.Name), TagServer(serverName)}, tags...), cb)
 }
 
-func forEachDomainArtifact[T any](r *Reader, domain string, tags []*Tag, cb func(*T) error) error {
+func forEachScopedArtifact[T any](r *Reader, domain, clusterIndex string, tags []*Tag, cb func(*T) error) error {
 	if domain != "" {
 		tags = append(tags, TagDomain(domain))
+	}
+	if clusterIndex != "" {
+		tags = append(tags, &Tag{Name: clusterIndexTagLabel, Value: clusterIndex})
 	}
 
 	matching, err := intersectFileSets(r.invertedIndex, tags)
@@ -550,11 +598,11 @@ func forEachDomainArtifact[T any](r *Reader, domain string, tags []*Tag, cb func
 		return err
 	}
 
-	if domain == "" {
-		for name := range matching {
-			if _, inDomain := r.domainFiles[name]; inDomain {
-				delete(matching, name)
-			}
+	for name := range matching {
+		_, inDomain := r.domainFiles[name]
+		_, numbered := r.clusterIndexFiles[name]
+		if (domain == "" && inDomain) || (clusterIndex == "" && numbered) {
+			delete(matching, name)
 		}
 	}
 

@@ -15,10 +15,12 @@ package gather
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -204,6 +206,8 @@ type gather struct {
 	nc      *nats.Conn
 	capture *bytes.Buffer
 	log     api.Logger
+
+	clusterIndexes map[string]int
 }
 
 func (g *gather) start() error {
@@ -242,6 +246,12 @@ func (g *gather) start() error {
 	if err != nil {
 		return fmt.Errorf("failed to discover servers: %w", err)
 	}
+
+	routes, err := g.discoverRoutes(serverInfoMap)
+	if err != nil {
+		return fmt.Errorf("failed to discover routes: %w", err)
+	}
+	g.clusterIndexes = clusterIndexes(serverInfoMap, routes, g.log)
 
 	// Discover accounts, create map with count of server for each account
 	accountIdsToServersCountMap, systemAccount, err := g.discoverAccounts(serverInfoMap)
@@ -399,6 +409,7 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 		accountDetail := jsInfo.Data.AccountDetails[0]
 		serverName := jsInfo.Server.Name
 		domain := jsInfo.Data.Config.Domain
+		reportingServer := serverInfoMap[jsInfo.Server.ID]
 
 		for _, streamInfo := range accountDetail.Streams {
 			streamName := streamInfo.Name
@@ -423,6 +434,9 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			}
 			if domain != "" {
 				tags = append(tags, archive.TagDomain(domain))
+			}
+			if index, numbered := g.clusterIndexes[reportingServer.ID]; numbered && clusterTag.Value == reportingServer.Cluster {
+				tags = append(tags, archive.TagClusterIndex(index))
 			}
 
 			err = g.aw.Add(streamInfo, tags...)
@@ -505,7 +519,7 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 
 			// Store all responses for this account endpoint
 			for serverId, endpointResponse := range endpointResponses {
-				tags := append(serverTags(serverInfoMap[serverId]), archive.TagAccount(accountId), endpoint.TypeTag)
+				tags := append(g.serverTags(serverInfoMap[serverId]), archive.TagAccount(accountId), endpoint.TypeTag)
 
 				err = g.aw.AddRaw(endpointResponse, "json", tags...)
 				if err != nil {
@@ -522,13 +536,16 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 	return nil
 }
 
-func serverTags(info *server.ServerInfo) []*archive.Tag {
+func (g *gather) serverTags(info *server.ServerInfo) []*archive.Tag {
 	tags := []*archive.Tag{archive.TagServer(info.Name), archive.TagNoCluster()}
 	if info.Cluster != "" {
 		tags[1] = archive.TagCluster(info.Cluster)
 	}
 	if info.Domain != "" {
 		tags = append(tags, archive.TagDomain(info.Domain))
+	}
+	if index, numbered := g.clusterIndexes[info.ID]; numbered {
+		tags = append(tags, archive.TagClusterIndex(index))
 	}
 	return tags
 }
@@ -594,7 +611,7 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 				continue
 			}
 
-			tags := append(serverTags(serverInfo), archive.TagServerProfile(), archive.TagProfileName(string(profile)))
+			tags := append(g.serverTags(serverInfo), archive.TagServerProfile(), archive.TagProfileName(string(profile)))
 
 			err = g.aw.AddRaw(bytes.NewReader(profileStatus.Profile), "prof", tags...)
 			if err != nil {
@@ -758,7 +775,7 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				}
 
 				// Tags for this artifact
-				tags := append(serverTags(serverInfo), endpoint.TypeTag)
+				tags := append(g.serverTags(serverInfo), endpoint.TypeTag)
 
 				if err := g.aw.AddRaw(buff, "json", tags...); err != nil {
 					return fmt.Errorf("failed to add endpoint %s response to archive: %w", subject, err)
@@ -897,6 +914,127 @@ func (g *gather) discoverServers() (map[string]*server.ServerInfo, error) {
 	}
 	g.log.Infof("Discovered %d servers", len(serverInfoMap))
 	return serverInfoMap, nil
+}
+
+// discoverRoutes maps each server ID to the IDs of the servers it has routes to
+func (g *gather) discoverRoutes(serverInfoMap map[string]*server.ServerInfo) (map[string][]string, error) {
+	routes := make(map[string][]string, len(serverInfoMap))
+	opts := server.RoutezEventOptions{EventFilterOptions: g.eventFilter()}
+
+	err := serverdata.DoReqAsync(context.TODO(), opts, "$SYS.REQ.SERVER.PING.ROUTEZ", len(serverInfoMap), g.nc, g.cfg.Timeout, g.log, func(b []byte) {
+		var apiResponse server.ServerAPIRoutezResponse
+		if err := json.Unmarshal(b, &apiResponse); err != nil {
+			g.log.Errorf("Failed to deserialize ROUTEZ response: %s", err)
+			return
+		}
+		if apiResponse.Error != nil {
+			g.log.Errorf("Received an error from server %s: (%d) %s", apiResponse.Server.Name, apiResponse.Error.ErrCode, apiResponse.Error.Description)
+			return
+		}
+		if apiResponse.Data == nil {
+			return
+		}
+		for _, route := range apiResponse.Data.Routes {
+			routes[apiResponse.Server.ID] = append(routes[apiResponse.Server.ID], route.RemoteID)
+		}
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to gather routes: %w", err)
+	}
+
+	return routes, nil
+}
+
+// clusterIndexes numbers, per server ID, the clusters that share a domain and cluster name.
+//
+// The servers of one cluster route to each other, so a domain and cluster name that covers more than one connected
+// group of servers is several clusters, which get numbered. A standalone server with leafnode remotes takes its
+// server name as its cluster name, so standalone sites that share a server name are numbered the same way. Server
+// names are unique within one cluster because servers refuse routes between duplicate names.
+func clusterIndexes(serverInfoMap map[string]*server.ServerInfo, routes map[string][]string, log api.Logger) map[string]int {
+	indexes := make(map[string]int)
+
+	parent := make(map[string]string, len(serverInfoMap))
+	var find func(string) string
+	find = func(id string) string {
+		if parent[id] == id {
+			return id
+		}
+		parent[id] = find(parent[id])
+		return parent[id]
+	}
+	for id := range serverInfoMap {
+		parent[id] = id
+	}
+	for id, remotes := range routes {
+		if _, known := parent[id]; !known {
+			continue
+		}
+		for _, remote := range remotes {
+			if _, known := parent[remote]; !known {
+				continue
+			}
+			parent[find(remote)] = find(id)
+		}
+	}
+
+	clusters := make(map[archive.ClusterRef]map[string][]*server.ServerInfo)
+	for id, info := range serverInfoMap {
+		if info.Cluster == "" {
+			continue
+		}
+		key := archive.ClusterRef{Domain: info.Domain, Name: info.Cluster}
+		if clusters[key] == nil {
+			clusters[key] = make(map[string][]*server.ServerInfo)
+		}
+		root := find(id)
+		clusters[key][root] = append(clusters[key][root], info)
+	}
+
+	for key, components := range clusters {
+		if len(components) < 2 {
+			continue
+		}
+
+		for _, members := range components {
+			slices.SortFunc(members, compareMembers)
+		}
+		ordered := slices.SortedFunc(maps.Values(components), compareComponents)
+		log.Warnf("Cluster name %s is used by %d clusters that are not routed to each other, numbering them in the archive", key, len(ordered))
+		for i, members := range ordered {
+			log.Warnf("  %s #%d: %s", key.Name, i, strings.Join(memberLabels(members), ", "))
+			for _, info := range members {
+				indexes[info.ID] = i
+			}
+		}
+	}
+
+	return indexes
+}
+
+func compareMembers(a, b *server.ServerInfo) int {
+	return cmp.Or(strings.Compare(a.Name, b.Name), strings.Compare(a.ID, b.ID))
+}
+
+func compareComponents(a, b []*server.ServerInfo) int {
+	byName := slices.CompareFunc(a, b, func(x, y *server.ServerInfo) int { return strings.Compare(x.Name, y.Name) })
+	return cmp.Or(byName, strings.Compare(lowestID(a), lowestID(b)))
+}
+
+func lowestID(members []*server.ServerInfo) string {
+	lowest := members[0].ID
+	for _, info := range members[1:] {
+		lowest = min(lowest, info.ID)
+	}
+	return lowest
+}
+
+func memberLabels(members []*server.ServerInfo) []string {
+	labels := make([]string, len(members))
+	for i, info := range members {
+		labels[i] = archive.ServerLabel(info.Name, info.ID)
+	}
+	return labels
 }
 
 func Gather(nc *nats.Conn, conf *Configuration) error {

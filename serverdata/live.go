@@ -77,18 +77,27 @@ func (s *Live) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, 
 	return unmarshalResponses[ProfilezResponse](s, opts, "$SYS.REQ.SERVER.PING.PROFILEZ")
 }
 
-// CollectSubscriptions pages through Subz responses from all servers and calls handle per page
-func (s *Live) CollectSubscriptions(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error {
+// EachSubsz pages through Subz responses from all servers and calls handle per page
+func (s *Live) EachSubsz(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error {
+	if opts.SubszOptions.Offset != 0 {
+		return unsupported("eachsubsz", "offset")
+	}
 	return pageAll(s, subszPager(opts), handle)
 }
 
-// CollectConnections pages through Connz responses from all servers and calls handle per page
-func (s *Live) CollectConnections(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
+// EachConnz pages through Connz responses from all servers and calls handle per page
+func (s *Live) EachConnz(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
+	if opts.ConnzOptions.Offset != 0 {
+		return unsupported("eachconnz", "offset")
+	}
 	return pageAll(s, connzPager(opts), handle)
 }
 
-// CollectJsz pages through Jsz responses from all servers and calls handle per page
-func (s *Live) CollectJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+// EachJsz pages through Jsz responses from all servers and calls handle per page
+func (s *Live) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	if opts.JSzOptions.Offset != 0 {
+		return unsupported("eachjsz", "offset")
+	}
 	return pageAll(s, jszPager(opts), handle)
 }
 
@@ -107,7 +116,7 @@ func (s *Live) CollectAccounts() ([]*server.AccountDetail, error) {
 	}
 
 	accountMap := map[string]*server.AccountDetail{}
-	err := s.CollectJsz(opts, func(resp *server.ServerAPIJszResponse) error {
+	err := s.EachJsz(opts, func(resp *server.ServerAPIJszResponse) error {
 		if resp.Data == nil {
 			return nil
 		}

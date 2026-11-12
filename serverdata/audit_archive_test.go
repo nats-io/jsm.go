@@ -98,7 +98,7 @@ func TestArchiveConnz(t *testing.T) {
 	}
 }
 
-func TestArchiveCollectConnections(t *testing.T) {
+func TestArchiveEachConnz(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {
 		resp := &server.ServerAPIConnzResponse{
 			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
@@ -118,7 +118,7 @@ func TestArchiveCollectConnections(t *testing.T) {
 	})
 
 	results := make([]*server.ServerAPIConnzResponse, 0)
-	err := a.CollectConnections(server.ConnzEventOptions{}, func(cz *server.ServerAPIConnzResponse) error {
+	err := a.EachConnz(server.ConnzEventOptions{}, func(cz *server.ServerAPIConnzResponse) error {
 		results = append(results, cz)
 		return nil
 	})
@@ -260,7 +260,7 @@ func TestArchiveSubsz(t *testing.T) {
 	}
 }
 
-func TestArchiveCollectSubscriptions(t *testing.T) {
+func TestArchiveEachSubsz(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {
 		resp := &server.ServerAPISubszResponse{
 			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
@@ -270,7 +270,7 @@ func TestArchiveCollectSubscriptions(t *testing.T) {
 	})
 
 	results := make([]*server.ServerAPISubszResponse, 0)
-	err := a.CollectSubscriptions(server.SubszEventOptions{}, func(sz *server.ServerAPISubszResponse) error {
+	err := a.EachSubsz(server.SubszEventOptions{}, func(sz *server.ServerAPISubszResponse) error {
 		results = append(results, sz)
 		return nil
 	})
@@ -308,7 +308,7 @@ func TestArchiveJsz(t *testing.T) {
 	}
 }
 
-func TestArchiveCollectJsz(t *testing.T) {
+func TestArchiveEachJsz(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {
 		resp := &server.ServerAPIJszResponse{
 			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
@@ -320,7 +320,7 @@ func TestArchiveCollectJsz(t *testing.T) {
 	})
 
 	results := make([]*server.ServerAPIJszResponse, 0)
-	err := a.CollectJsz(server.JszEventOptions{}, func(jsz *server.ServerAPIJszResponse) error {
+	err := a.EachJsz(server.JszEventOptions{}, func(jsz *server.ServerAPIJszResponse) error {
 		results = append(results, jsz)
 		return nil
 	})
@@ -928,7 +928,7 @@ func TestArchiveUnsupportedJszAccount(t *testing.T) {
 	}
 }
 
-func TestArchiveUnsupportedCollectJszOptions(t *testing.T) {
+func TestArchiveUnsupportedEachJszOptions(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {})
 
 	tests := []struct {
@@ -940,7 +940,7 @@ func TestArchiveUnsupportedCollectJszOptions(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := a.CollectJsz(tc.opts, func(*server.ServerAPIJszResponse) error {
+			err := a.EachJsz(tc.opts, func(*server.ServerAPIJszResponse) error {
 				return nil //no-op handler
 			})
 			if !errors.Is(err, ErrUnsupportedOption) {
@@ -957,7 +957,6 @@ func TestArchiveUnsupportedConnzOptions(t *testing.T) {
 		name string
 		opts server.ConnzEventOptions
 	}{
-		{"offset", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Offset: 1024}}},
 		{"account", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Account: "a"}}},
 		{"filter_subject", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{FilterSubject: ">"}}},
 		{"user", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{User: "u"}}},
@@ -973,10 +972,35 @@ func TestArchiveUnsupportedConnzOptions(t *testing.T) {
 	}
 }
 
-func TestArchiveUnsupportedCollectSubscriptionsOffset(t *testing.T) {
+func TestArchiveUnsupportedEachConnzOptions(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {})
 
-	err := a.CollectSubscriptions(server.SubszEventOptions{SubszOptions: server.SubszOptions{Offset: 1024}}, func(sz *server.ServerAPISubszResponse) error {
+	tests := []struct {
+		name string
+		opts server.ConnzEventOptions
+	}{
+		{"offset", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Offset: 1024}}},
+		{"account", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Account: "a"}}},
+		{"filter_subject", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{FilterSubject: ">"}}},
+		{"user", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{User: "u"}}},
+		{"state", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{State: server.ConnClosed}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := a.EachConnz(tc.opts, func(_ *server.ServerAPIConnzResponse) error {
+				return nil //no-op handler
+			})
+			if !errors.Is(err, ErrUnsupportedOption) {
+				t.Errorf("expected ErrUnsupportedOption, got %v", err)
+			}
+		})
+	}
+}
+
+func TestArchiveUnsupportedEachSubszOffset(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+
+	err := a.EachSubsz(server.SubszEventOptions{SubszOptions: server.SubszOptions{Offset: 1024}}, func(sz *server.ServerAPISubszResponse) error {
 		return nil // no-op handler
 	})
 

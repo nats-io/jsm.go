@@ -2,6 +2,7 @@ package serverdata
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -383,7 +384,7 @@ func TestServerCollectAccountsPaging(t *testing.T) {
 	}
 }
 
-func TestServerCollectJszPaging(t *testing.T) {
+func TestServerEachJszPaging(t *testing.T) {
 	details := make([]*server.AccountDetail, 32)
 
 	for i := range details {
@@ -409,7 +410,7 @@ func TestServerCollectJszPaging(t *testing.T) {
 	})
 	src := newLiveT(t, nil, seq, 1)
 
-	err := src.CollectJsz(server.JszEventOptions{}, func(resp *server.ServerAPIJszResponse) error {
+	err := src.EachJsz(server.JszEventOptions{}, func(resp *server.ServerAPIJszResponse) error {
 		if len(*calls) == 1 && len(resp.Data.AccountDetails) != 32 {
 			t.Fatalf("expected 32 account details got %d", len(resp.Data.AccountDetails))
 		}
@@ -545,5 +546,53 @@ func TestServerSubjects(t *testing.T) {
 				t.Errorf("expected subject %s, got %s", tc.expect, (*calls)[0].subj)
 			}
 		})
+	}
+}
+
+func TestServerEachJszUnsupportedOffset(t *testing.T) {
+	reqFn, _ := mockReqFn([][]byte{}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+	opts := server.JszEventOptions{
+		JSzOptions: server.JSzOptions{
+			Offset: 32,
+		},
+	}
+	err := src.EachJsz(opts, func(_ *server.ServerAPIJszResponse) error {
+		return nil //no-op handler
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupported option %v", err)
+	}
+}
+
+func TestServerEachConnzUnsupportedOffset(t *testing.T) {
+	reqFn, _ := mockReqFn([][]byte{}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+	opts := server.ConnzEventOptions{
+		ConnzOptions: server.ConnzOptions{
+			Offset: 1024,
+		},
+	}
+	err := src.EachConnz(opts, func(_ *server.ServerAPIConnzResponse) error {
+		return nil //no-op handler
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupported option %v", err)
+	}
+}
+
+func TestServerEachSubszUnsupportedOffset(t *testing.T) {
+	reqFn, _ := mockReqFn([][]byte{}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+	opts := server.SubszEventOptions{
+		SubszOptions: server.SubszOptions{
+			Offset: 1024,
+		},
+	}
+	err := src.EachSubsz(opts, func(_ *server.ServerAPISubszResponse) error {
+		return nil //no-op handler
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupported option %v", err)
 	}
 }

@@ -67,10 +67,27 @@ func unsupported(method string, fields ...string) error {
 
 // Connz builds and filters a Connz response from the archive
 func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPIConnzResponse, error) {
+	var fields []string
+	if opts.Account != "" {
+		fields = append(fields, "account")
+	}
+	if opts.FilterSubject != "" {
+		fields = append(fields, "filter_subject")
+	}
+	if opts.User != "" {
+		fields = append(fields, "user")
+	}
+	if opts.State != 0 {
+		fields = append(fields, "state")
+	}
+	if len(fields) > 0 {
+		return nil, unsupported("connz", fields...)
+	}
+
 	seen := map[string]*server.ServerAPIConnzResponse{}
 	var results []*server.ServerAPIConnzResponse
 
-	err := a.CollectConnections(opts, func(cz *server.ServerAPIConnzResponse) error {
+	err := a.walkConnz(opts, func(cz *server.ServerAPIConnzResponse) error {
 		key := cz.Server.ID
 		if base, ok := seen[key]; ok {
 			base.Data.Conns = append(base.Data.Conns, cz.Data.Conns...)
@@ -89,8 +106,8 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 	return results, nil
 }
 
-// CollectConnections filters a Connz response from the archive and passes it to handle
-func (a *AuditArchive) CollectConnections(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
+// EachConnz filters a Connz response from the archive and passes it to handle
+func (a *AuditArchive) EachConnz(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	var fields []string
 	if opts.Offset != 0 {
 		fields = append(fields, "offset")
@@ -108,9 +125,13 @@ func (a *AuditArchive) CollectConnections(opts server.ConnzEventOptions, handle 
 		fields = append(fields, "state")
 	}
 	if len(fields) > 0 {
-		return unsupported("connz", fields...)
+		return unsupported("eachconnz", fields...)
 	}
 
+	return a.walkConnz(opts, handle)
+}
+
+func (a *AuditArchive) walkConnz(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	for _, accountName := range a.reader.AccountNames() {
 		tags := []*archive.Tag{
 			archive.TagAccount(accountName),
@@ -214,8 +235,8 @@ func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPI
 	return results, err
 }
 
-// CollectSubscriptions filters a Subsz response from the archive and passes it to handle
-func (a *AuditArchive) CollectSubscriptions(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
+// EachSubsz filters a Subsz response from the archive and passes it to handle
+func (a *AuditArchive) EachSubsz(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
 	if opts.Offset != 0 {
 		return unsupported("subsz", "offset")
 	}
@@ -229,7 +250,8 @@ func (a *AuditArchive) CollectSubscriptions(opts server.SubszEventOptions, handl
 				return nil
 			}
 			return handle(sz)
-		})
+		},
+	)
 	return err
 }
 
@@ -261,13 +283,13 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 	return results, err
 }
 
-// CollectJsz filters a Jsz repsonse from the archive and passes it to handle
-func (a *AuditArchive) CollectJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+// EachJsz filters a Jsz repsonse from the archive and passes it to handle
+func (a *AuditArchive) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
 	if opts.Account != "" {
-		return unsupported("jsz", "account")
+		return unsupported("eachjsz", "account")
 	}
 	if opts.Offset != 0 {
-		return unsupported("jsz", "offset")
+		return unsupported("eachjsz", "offset")
 	}
 
 	_, err := a.reader.EachClusterServerJsz(func(clusterTag *archive.Tag, serverTag *archive.Tag, cbError error, jsz *server.ServerAPIJszResponse) error {

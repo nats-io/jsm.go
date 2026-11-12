@@ -55,17 +55,16 @@ func TestJszPager(t *testing.T) {
 }
 
 func TestSubszPager(t *testing.T) {
-	t.Run("overrides default limit and offset", func(t *testing.T) {
+	t.Run("overrides default limit", func(t *testing.T) {
 		if p := subszPager(server.SubszEventOptions{}); p.Limit != 1024 {
 			t.Fatalf("limit = %d, want 1024", p.Limit)
 		}
 
 		in := server.SubszEventOptions{}
 		in.SubszOptions.Limit = 10
-		in.SubszOptions.Offset = 5
 		p := subszPager(in)
-		if p.Limit != 10 || p.StartOffset != 5 {
-			t.Fatalf("limit=%d offset=%d", p.Limit, p.StartOffset)
+		if p.Limit != 10 {
+			t.Fatalf("limit=%d, want=%d", p.Limit, 10)
 		}
 	})
 	t.Run("Subscriptions option should be true", func(t *testing.T) {
@@ -89,17 +88,16 @@ func TestSubszPager(t *testing.T) {
 }
 
 func TestConnzPager(t *testing.T) {
-	t.Run("overrides default limit and offset", func(t *testing.T) {
+	t.Run("overrides default limit", func(t *testing.T) {
 		if p := connzPager(server.ConnzEventOptions{}); p.Limit != 1024 {
-			t.Fatalf("limit = %d, want 1024", p.Limit)
+			t.Fatalf("limit=%d, want=%d", p.Limit, 1024)
 		}
 
 		in := server.ConnzEventOptions{}
 		in.ConnzOptions.Limit = 10
-		in.ConnzOptions.Offset = 5
 		p := connzPager(in)
-		if p.Limit != 10 || p.StartOffset != 5 {
-			t.Fatalf("limit=%d offset=%d", p.Limit, p.StartOffset)
+		if p.Limit != 10 {
+			t.Fatalf("limit=%d, want=%d", p.Limit, 10)
 		}
 	})
 

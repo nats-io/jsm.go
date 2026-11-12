@@ -8,12 +8,11 @@ import (
 )
 
 type pager[T any] struct {
-	Target      string
-	Limit       int
-	StartOffset int
-	Count       func(*T) int
-	ServerID    func(*T) string
-	Opts        func(offset int) any
+	Target   string
+	Limit    int
+	Count    func(*T) int
+	ServerID func(*T) string
+	Opts     func(offset int) any
 }
 
 // pageAll walks every page of a paged system request across all servers,
@@ -33,7 +32,7 @@ func pageAll[T any](s *Live, p pager[T], handle func(resp *T) error) error {
 	offsets := map[string]int{}
 	subj := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", "PING", p.Target)
 
-	resps, err := unmarshalResponses[T](s, p.Opts(p.StartOffset), subj)
+	resps, err := unmarshalResponses[T](s, p.Opts(0), subj)
 	if err != nil {
 		return err
 	}
@@ -47,7 +46,7 @@ func pageAll[T any](s *Live, p pager[T], handle func(resp *T) error) error {
 		}
 
 		if id != "" && count == p.Limit {
-			offsets[id] = p.StartOffset + p.Limit
+			offsets[id] = 0 + p.Limit
 		}
 	}
 
@@ -94,9 +93,8 @@ func connzPager(opts server.ConnzEventOptions) pager[server.ServerAPIConnzRespon
 	}
 
 	return pager[server.ServerAPIConnzResponse]{
-		Target:      "CONNZ",
-		Limit:       opts.Limit,
-		StartOffset: opts.ConnzOptions.Offset,
+		Target: "CONNZ",
+		Limit:  opts.Limit,
 		Count: func(resp *server.ServerAPIConnzResponse) int {
 			if resp == nil || resp.Data == nil {
 				return 0
@@ -126,9 +124,8 @@ func jszPager(opts server.JszEventOptions) pager[server.ServerAPIJszResponse] {
 	}
 
 	return pager[server.ServerAPIJszResponse]{
-		Target:      "JSZ",
-		Limit:       opts.JSzOptions.Limit,
-		StartOffset: opts.JSzOptions.Offset,
+		Target: "JSZ",
+		Limit:  opts.JSzOptions.Limit,
 		Count: func(resp *server.ServerAPIJszResponse) int {
 			if resp == nil || resp.Data == nil {
 				return 0
@@ -158,9 +155,8 @@ func subszPager(opts server.SubszEventOptions) pager[server.ServerAPISubszRespon
 	}
 
 	return pager[server.ServerAPISubszResponse]{
-		Target:      "SUBSZ",
-		Limit:       opts.Limit,
-		StartOffset: opts.SubszOptions.Offset,
+		Target: "SUBSZ",
+		Limit:  opts.Limit,
 		Count: func(resp *server.ServerAPISubszResponse) int {
 			if resp == nil || resp.Data == nil {
 				return 0

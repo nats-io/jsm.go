@@ -37,6 +37,9 @@ type Source interface {
 	Ipqueuesz(opts server.IpqueueszEventOptions) ([]*server.ServerAPIpqueueszResponse, error)
 	Raftz(opts server.RaftzEventOptions) ([]*server.ServerAPIRaftzResponse, error)
 	Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, error)
+	EachConnz(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error
+	EachSubsz(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error
+	EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error
 	CollectAccounts() ([]*AccountDetail, error)
 
 	Close() error

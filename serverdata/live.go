@@ -87,11 +87,35 @@ func (s *Live) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezResponse, 
 	return unmarshalResponses[ProfilezResponse](s, opts, "$SYS.REQ.SERVER.PING.PROFILEZ")
 }
 
+// EachSubsz pages through Subz responses from all servers and calls handle per page
+func (s *Live) EachSubsz(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error {
+	if opts.SubszOptions.Offset != 0 {
+		return unsupported("eachsubsz", "offset")
+	}
+	return pageAll(s, subszPager(opts), handle)
+}
+
+// EachConnz pages through Connz responses from all servers and calls handle per page
+func (s *Live) EachConnz(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error {
+	if opts.ConnzOptions.Offset != 0 {
+		return unsupported("eachconnz", "offset")
+	}
+	return pageAll(s, connzPager(opts), handle)
+}
+
+// EachJsz pages through Jsz responses from all servers and calls handle per page
+func (s *Live) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	if opts.JSzOptions.Offset != 0 {
+		return unsupported("eachjsz", "offset")
+	}
+	return pageAll(s, jszPager(opts), handle)
+}
+
 // CollectAccounts gathers account-level JetStream metadata from all servers
 func (s *Live) CollectAccounts() ([]*AccountDetail, error) {
 	const pageLimit = 1024
 
-	baseOpts := server.JszEventOptions{
+	opts := server.JszEventOptions{
 		JSzOptions: server.JSzOptions{
 			Accounts: true,
 			Streams:  true,
@@ -101,62 +125,22 @@ func (s *Live) CollectAccounts() ([]*AccountDetail, error) {
 		},
 	}
 
-	initialResponses, err := s.Jsz(baseOpts)
-	if err != nil && len(initialResponses) == 0 {
-		return nil, err
-	}
-
 	accounts := accountCollector{}
-
 	// JSZ Limit/Offset is per-server pagination, so follow-ups must address one
 	// server at a time. Server IDs are globally unique; server names are not
 	// (super-clusters, leaf nodes, and JetStream domains can repeat names).
 	// Keying by ID and using $SYS.REQ.SERVER.<ID>.JSZ avoids losing accounts
 	// from servers that share a name with another server in the deployment.
-	offsets := map[string]int{}
-	for _, resp := range initialResponses {
+	err := s.EachJsz(opts, func(resp *server.ServerAPIJszResponse) error {
 		if resp.Data == nil || resp.Server == nil {
-			continue
+			return nil
 		}
+
 		accounts.add(resp.Data.Config.Domain, resp.Data.AccountDetails)
-		if len(resp.Data.AccountDetails) == pageLimit && resp.Server.ID != "" {
-			offsets[resp.Server.ID] = pageLimit
-		}
-	}
-
-	for len(offsets) > 0 {
-		for serverID, offset := range offsets {
-			opts := baseOpts
-			opts.Offset = offset
-
-			subj := fmt.Sprintf("$SYS.REQ.SERVER.%s.JSZ", serverID)
-			raw, err := s.reqFn(opts, subj, 1, s.nc)
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", subj, err)
-			}
-
-			if len(raw) == 0 {
-				delete(offsets, serverID)
-				continue
-			}
-
-			jsz := &server.ServerAPIJszResponse{}
-			if err := json.Unmarshal(raw[0], jsz); err != nil {
-				return nil, fmt.Errorf("unmarshal %s response: %w", subj, err)
-			}
-			if jsz.Data == nil {
-				delete(offsets, serverID)
-				continue
-			}
-
-			accounts.add(jsz.Data.Config.Domain, jsz.Data.AccountDetails)
-
-			if len(jsz.Data.AccountDetails) == pageLimit {
-				offsets[serverID] += pageLimit
-			} else {
-				delete(offsets, serverID)
-			}
-		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return accounts.sorted(), nil

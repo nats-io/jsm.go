@@ -88,12 +88,58 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 	seen := map[string]*server.ServerAPIConnzResponse{}
 	var results []*server.ServerAPIConnzResponse
 
+	err := a.walkConnz(opts, func(cz *server.ServerAPIConnzResponse) error {
+		key := cz.Server.ID
+		if base, ok := seen[key]; ok {
+			base.Data.Conns = append(base.Data.Conns, cz.Data.Conns...)
+			base.Data.NumConns = len(base.Data.Conns)
+			base.Data.Total += cz.Data.Total
+		} else {
+			seen[key] = cz
+			results = append(results, cz)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+// EachConnz filters a Connz response from the archive and passes it to handle
+func (a *AuditArchive) EachConnz(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
+	var fields []string
+	if opts.Offset != 0 {
+		fields = append(fields, "offset")
+	}
+	if opts.Account != "" {
+		fields = append(fields, "account")
+	}
+	if opts.FilterSubject != "" {
+		fields = append(fields, "filter_subject")
+	}
+	if opts.User != "" {
+		fields = append(fields, "user")
+	}
+	if opts.State != 0 {
+		fields = append(fields, "state")
+	}
+	if len(fields) > 0 {
+		return unsupported("eachconnz", fields...)
+	}
+
+	return a.walkConnz(opts, handle)
+}
+
+func (a *AuditArchive) walkConnz(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	for _, accountName := range a.reader.AccountNames() {
 		tags := []*archive.Tag{
 			archive.TagAccount(accountName),
 			archive.TagAccountConnections(),
 		}
-		err := archive.ForEachTaggedArtifact(a.reader, tags, func(cz *server.ServerAPIConnzResponse) error {
+
+		newHandle := func(cz *server.ServerAPIConnzResponse) error {
 			if !matchesFilter(cz.Server, &opts.EventFilterOptions) {
 				return nil
 			}
@@ -105,23 +151,15 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 					conn.Account = accountName
 				}
 			}
-			key := cz.Server.ID
-			if base, ok := seen[key]; ok {
-				base.Data.Conns = append(base.Data.Conns, cz.Data.Conns...)
-				base.Data.NumConns = len(base.Data.Conns)
-				base.Data.Total += cz.Data.Total
-			} else {
-				seen[key] = cz
-				results = append(results, cz)
-			}
-			return nil
-		})
+			return handle(cz)
+		}
+
+		err := archive.ForEachTaggedArtifact(a.reader, tags, newHandle)
 		if err != nil && err != archive.ErrNoMatches {
-			return nil, err
+			return err
 		}
 	}
-
-	return results, nil
+	return nil
 }
 
 // Routez builds and filters a Routez response from the archive
@@ -198,6 +236,26 @@ func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPI
 	return results, err
 }
 
+// EachSubsz filters a Subsz response from the archive and passes it to handle
+func (a *AuditArchive) EachSubsz(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
+	if opts.Offset != 0 {
+		return unsupported("subsz", "offset")
+	}
+
+	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerSubs(),
+		func(cluster archive.ClusterRef, serverName string, cbError error, sz *server.ServerAPISubszResponse) error {
+			if cbError != nil || !matchesFilter(sz.Server, &opts.EventFilterOptions) {
+				return nil
+			}
+			if sz.Data == nil {
+				return nil
+			}
+			return handle(sz)
+		},
+	)
+	return err
+}
+
 // Jsz builds and filters a Jsz response from the archive
 func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszResponse, error) {
 	if opts.Account != "" {
@@ -224,6 +282,27 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 		return nil
 	})
 	return results, err
+}
+
+// EachJsz filters a Jsz repsonse from the archive and passes it to handle
+func (a *AuditArchive) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	if opts.Account != "" {
+		return unsupported("eachjsz", "account")
+	}
+	if opts.Offset != 0 {
+		return unsupported("eachjsz", "offset")
+	}
+
+	_, err := a.reader.EachClusterServerJsz(func(cluster archive.ClusterRef, serverName string, cbError error, jsz *server.ServerAPIJszResponse) error {
+		if cbError != nil || !matchesFilter(jsz.Server, &opts.EventFilterOptions) {
+			return nil
+		}
+		if jsz.Data == nil {
+			return nil
+		}
+		return handle(jsz)
+	})
+	return err
 }
 
 // Healthz builds and filters a Healthz response from the archive

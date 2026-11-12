@@ -99,6 +99,7 @@ type Context struct {
 	config    *settings
 	path      string
 	resolvers map[string]CredentialResolver
+	proxyPath string
 }
 
 // String returns a redacted summary of the context so %s, %v, and %+v
@@ -192,7 +193,9 @@ func (s *settings) GoString() string {
 func New(name string, load bool, opts ...Option) (*Context, error) {
 	if !load {
 		c := &Context{Name: name, config: &settings{}}
-		c.configureNewContext(opts...)
+		if err := c.configureNewContext(opts...); err != nil {
+			return nil, err
+		}
 		return c, nil
 	}
 
@@ -229,7 +232,9 @@ func NewFromBytes(data []byte, opts ...Option) (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.configureNewContext(opts...)
+	if err := c.configureNewContext(opts...); err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -293,12 +298,22 @@ func (c *Context) expand() error {
 	return nil
 }
 
-func (c *Context) configureNewContext(opts ...Option) {
+func (c *Context) configureNewContext(opts ...Option) error {
 	c.applyOpts(opts...)
 
 	if c.config.NSCLookup == "" && c.config.URL == "" && c.config.nscUrl == "" {
 		c.config.URL = nats.DefaultURL
 	}
+
+	cleaned, pp, err := ExtractWSProxyPath(c.ServerURL())
+	if err != nil {
+		return err
+	}
+	c.proxyPath = pp
+	if pp != "" {
+		c.config.URL = cleaned
+	}
+	return nil
 }
 
 // applyOpts runs the supplied options against c.config without the
@@ -493,6 +508,10 @@ func (c *Context) NATSOptions(opts ...nats.Option) ([]nats.Option, error) {
 
 	if c.TLSHandshakeFirst() {
 		nopts = append(nopts, nats.TLSHandshakeFirst())
+	}
+
+	if c.proxyPath != "" {
+		nopts = append(nopts, nats.ProxyPath(c.proxyPath))
 	}
 
 	csOpts, err := c.certStoreNatsOptions()
@@ -846,6 +865,50 @@ func (c *Context) ServerURL() string {
 	default:
 		return nats.DefaultURL
 	}
+}
+
+// ExtractWSProxyPath extracts a WebSocket proxy path from servers.
+func ExtractWSProxyPath(servers string) (cleaned string, proxyPath string, err error) {
+	var pp string
+	var updated []string
+	var hasDefaultPathWS bool
+
+	for s := range strings.SplitSeq(servers, ",") {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		u, uerr := url.Parse(s)
+		if uerr != nil {
+			updated = append(updated, s)
+			continue
+		}
+		isWS := u.Scheme == "ws" || u.Scheme == "wss"
+		if isWS && u.Path != "" && u.Path != "/" {
+			reqURI := u.RequestURI()
+			if pp == "" {
+				pp = reqURI
+			} else if pp != reqURI {
+				return "", "", fmt.Errorf("websocket servers with different paths are not supported: %q, %q", pp, reqURI)
+			}
+			u.Path = ""
+			u.RawPath = ""
+			u.RawQuery = ""
+			u.ForceQuery = false
+			updated = append(updated, u.String())
+		} else {
+			if isWS {
+				hasDefaultPathWS = true
+			}
+			updated = append(updated, s)
+		}
+	}
+
+	if pp != "" && hasDefaultPathWS {
+		return "", "", fmt.Errorf("mixing websocket servers with and without a proxy path is not supported")
+	}
+
+	return strings.Join(updated, ","), pp, nil
 }
 
 // WithUser sets the username

@@ -16,11 +16,13 @@ package archive
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -765,7 +767,7 @@ func Test_SameClusterAndServerNamesAcrossDomains(t *testing.T) {
 	}
 	defer ar.Close()
 
-	expectedClusters := []ClusterRef{{"", "C1"}, {"d1", "C1"}, {"", "SITE"}, {"s1", "SITE"}, {"s2", "SITE"}}
+	expectedClusters := []ClusterRef{{Name: "C1"}, {Domain: "d1", Name: "C1"}, {Name: "SITE"}, {Domain: "s1", Name: "SITE"}, {Domain: "s2", Name: "SITE"}}
 	if clusters := ar.Clusters(); !slices.Equal(expectedClusters, clusters) {
 		t.Fatalf("Expected clusters: %v, got: %v", expectedClusters, clusters)
 	}
@@ -774,11 +776,11 @@ func Test_SameClusterAndServerNamesAcrossDomains(t *testing.T) {
 		cluster ClusterRef
 		records []Record
 	}{
-		{ClusterRef{"", "C1"}, []Record{{"", "x"}}},
-		{ClusterRef{"d1", "C1"}, []Record{{"d1", "a1"}}},
-		{ClusterRef{"", "SITE"}, []Record{{"", "n1"}}},
-		{ClusterRef{"s1", "SITE"}, []Record{{"s1", "n1"}, {"s1", "n2"}}},
-		{ClusterRef{"s2", "SITE"}, []Record{{"s2", "n1"}}},
+		{ClusterRef{Name: "C1"}, []Record{{"", "x"}}},
+		{ClusterRef{Domain: "d1", Name: "C1"}, []Record{{"d1", "a1"}}},
+		{ClusterRef{Name: "SITE"}, []Record{{"", "n1"}}},
+		{ClusterRef{Domain: "s1", Name: "SITE"}, []Record{{"s1", "n1"}, {"s1", "n2"}}},
+		{ClusterRef{Domain: "s2", Name: "SITE"}, []Record{{"s2", "n1"}}},
 	} {
 		var got []Record
 		for _, serverName := range ar.ClusterServerNames(tc.cluster) {
@@ -795,4 +797,149 @@ func Test_SameClusterAndServerNamesAcrossDomains(t *testing.T) {
 		}
 	}
 
+}
+
+func Test_NumberedClustersWithSameName(t *testing.T) {
+	type Record struct {
+		Cluster string
+		Index   string
+		Server  string
+	}
+
+	archivePath := filepath.Join(t.TempDir(), "archive.zip")
+	aw, err := NewWriter(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to create archive: %s", err)
+	}
+
+	for _, r := range []struct {
+		cluster string
+		index   int
+		server  string
+	}{
+		{"EAST", 0, "n1"},
+		{"SITE", 0, "n1"},
+		{"SITE", 1, "n1"},
+		{"SITE", 1, "n2"},
+		{"SITE", 10, "n1"},
+	} {
+		base := []*Tag{TagCluster(r.cluster), TagClusterIndex(r.index), TagServer(r.server)}
+		record := Record{r.cluster, strconv.Itoa(r.index), r.server}
+		if err = aw.Add(record, append(base, TagServerVars())...); err != nil {
+			t.Fatalf("Failed to add varz for %d/%s: %s", r.index, r.server, err)
+		}
+		if err = aw.Add(record, append(base, TagAccount("A"), TagStream("ORDERS"), TagStreamInfo())...); err != nil {
+			t.Fatalf("Failed to add stream info for %d/%s: %s", r.index, r.server, err)
+		}
+		if err = aw.AddRaw(strings.NewReader(fmt.Sprintf("%s #%d", r.cluster, r.index)), "prof", append(base, TagServerProfile(), TagProfileName("heap"))...); err != nil {
+			t.Fatalf("Failed to add profile for %d/%s: %s", r.index, r.server, err)
+		}
+	}
+	if err = aw.Add(Record{"SITE__0", "", "n1"}, TagCluster("SITE__0"), TagServer("n1"), TagServerVars()); err != nil {
+		t.Fatalf("Failed to add varz for SITE__0/n1: %s", err)
+	}
+	if err = aw.AddRaw(strings.NewReader("SITE__0"), "prof", TagCluster("SITE__0"), TagServer("n1"), TagServerProfile(), TagProfileName("heap")); err != nil {
+		t.Fatalf("Failed to add profile for SITE__0/n1: %s", err)
+	}
+	if err = aw.Close(); err != nil {
+		t.Fatalf("Failed to close archive: %s", err)
+	}
+
+	ar, err := NewReader(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to open archive: %s", err)
+	}
+	defer ar.Close()
+
+	expectedClusters := []ClusterRef{{Name: "EAST", Index: "0"}, {Name: "SITE", Index: "0"}, {Name: "SITE", Index: "1"}, {Name: "SITE", Index: "10"}, {Name: "SITE__0"}}
+	if clusters := ar.Clusters(); !slices.Equal(expectedClusters, clusters) {
+		t.Fatalf("Expected clusters: %v, got: %v", expectedClusters, clusters)
+	}
+
+	for _, tc := range []struct {
+		cluster ClusterRef
+		records []Record
+	}{
+		{ClusterRef{Name: "EAST", Index: "0"}, []Record{{"EAST", "0", "n1"}}},
+		{ClusterRef{Name: "SITE", Index: "0"}, []Record{{"SITE", "0", "n1"}}},
+		{ClusterRef{Name: "SITE", Index: "1"}, []Record{{"SITE", "1", "n1"}, {"SITE", "1", "n2"}}},
+		{ClusterRef{Name: "SITE", Index: "10"}, []Record{{"SITE", "10", "n1"}}},
+		{ClusterRef{Name: "SITE__0"}, []Record{{"SITE__0", "", "n1"}}},
+	} {
+		var got []Record
+		for _, serverName := range ar.ClusterServerNames(tc.cluster) {
+			err = ForEachServerArtifact(ar, tc.cluster, serverName, []*Tag{TagServerVars()}, func(r *Record) error {
+				got = append(got, *r)
+				return nil
+			})
+			if err != nil {
+				t.Fatalf("Cluster %s server %s: %s", tc.cluster, serverName, err)
+			}
+		}
+		if !slices.Equal(tc.records, got) {
+			t.Fatalf("Cluster %s: expected records %v, got: %v", tc.cluster, tc.records, got)
+		}
+	}
+
+	err = ForEachServerArtifact(ar, ClusterRef{Name: "SITE"}, "n1", []*Tag{TagServerVars()}, func(*Record) error { return nil })
+	if !errors.Is(err, ErrNoMatches) {
+		t.Fatalf("Expected error '%s', but got: '%v'", ErrNoMatches, err)
+	}
+
+	expectedStreams := []StreamRef{
+		{Name: "ORDERS", Cluster: ClusterRef{Name: "EAST", Index: "0"}},
+		{Name: "ORDERS", Cluster: ClusterRef{Name: "SITE", Index: "0"}},
+		{Name: "ORDERS", Cluster: ClusterRef{Name: "SITE", Index: "1"}},
+		{Name: "ORDERS", Cluster: ClusterRef{Name: "SITE", Index: "10"}},
+	}
+	if streams := ar.AccountStreams("A"); !slices.Equal(expectedStreams, streams) {
+		t.Fatalf("Expected streams: %v, got: %v", expectedStreams, streams)
+	}
+
+	for _, ref := range expectedStreams {
+		var got []Record
+		for _, serverName := range ar.StreamServerNames("A", ref) {
+			err = ForEachStreamArtifact(ar, "A", ref, serverName, TagStreamInfo(), func(r *Record) error {
+				got = append(got, *r)
+				return nil
+			})
+			if err != nil {
+				t.Fatalf("Stream %s server %s: %s", ref, serverName, err)
+			}
+		}
+		for _, r := range got {
+			if r.Cluster != ref.Cluster.Name || r.Index != ref.Cluster.Index {
+				t.Fatalf("Stream %s: got record from cluster %s #%s", ref, r.Cluster, r.Index)
+			}
+		}
+	}
+
+	if got := (StreamRef{Name: "ORDERS", Cluster: ClusterRef{Name: "SITE", Index: "1"}}).String(); got != "ORDERS in cluster SITE #1" {
+		t.Fatalf("Unexpected stream label: %s", got)
+	}
+
+	for profile, content := range map[string]string{
+		"capture/profiles/EAST #0/n1__heap.prof":  "EAST #0",
+		"capture/profiles/SITE #0/n1__heap.prof":  "SITE #0",
+		"capture/profiles/SITE #1/n1__heap.prof":  "SITE #1",
+		"capture/profiles/SITE #1/n2__heap.prof":  "SITE #1",
+		"capture/profiles/SITE #10/n1__heap.prof": "SITE #10",
+		"capture/profiles/SITE__0/n1__heap.prof":  "SITE__0",
+	} {
+		rc, _, err := ar.getFileReader(profile)
+		if err != nil {
+			t.Fatalf("Expected profile %s in archive: %s", profile, err)
+		}
+		got, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			t.Fatalf("Failed to read profile %s: %s", profile, err)
+		}
+		if string(got) != content {
+			t.Fatalf("Profile %s: expected content %q, got %q", profile, content, got)
+		}
+	}
+	if count := ar.rawFilesCount(); count != len(ar.filesMap) {
+		t.Fatalf("Expected no duplicate archive entries, got %d entries for %d paths", count, len(ar.filesMap))
+	}
 }

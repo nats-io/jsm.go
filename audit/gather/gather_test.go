@@ -15,7 +15,9 @@ package gather
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -25,6 +27,7 @@ import (
 	"github.com/nats-io/jsm.go/api"
 	"github.com/nats-io/jsm.go/audit"
 	"github.com/nats-io/jsm.go/audit/archive"
+	"github.com/nats-io/jsm.go/serverdata"
 	"github.com/nats-io/jsm.go/test"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -85,6 +88,86 @@ func TestHasNextPage(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("hasNextPage() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestClusterIndexes(t *testing.T) {
+	type srv struct{ id, name, cluster, domain string }
+
+	for _, tc := range []struct {
+		name     string
+		servers  []srv
+		routes   map[string][]string
+		expected map[string]int
+	}{
+		{
+			name:     "one routed cluster",
+			servers:  []srv{{"A", "n1", "SITE", ""}, {"B", "n2", "SITE", ""}, {"C", "n3", "SITE", ""}},
+			routes:   map[string][]string{"A": {"B", "C"}, "B": {"A", "C"}, "C": {"A", "B"}},
+			expected: map[string]int{},
+		},
+		{
+			name:     "partial mesh is one cluster",
+			servers:  []srv{{"A", "n1", "SITE", ""}, {"B", "n2", "SITE", ""}, {"C", "n3", "SITE", ""}},
+			routes:   map[string][]string{"A": {"B"}, "B": {"C"}},
+			expected: map[string]int{},
+		},
+		{
+			name:     "route reported by one side only",
+			servers:  []srv{{"A", "n1", "SITE", ""}, {"B", "n2", "SITE", ""}},
+			routes:   map[string][]string{"B": {"A"}},
+			expected: map[string]int{},
+		},
+		{
+			name: "same names ordered by lowest server id",
+			servers: []srv{
+				{"NB1", "n1", "SITE", ""}, {"NB2", "n2", "SITE", ""},
+				{"NA2", "n1", "SITE", ""}, {"NC1", "n2", "SITE", ""},
+			},
+			routes:   map[string][]string{"NB1": {"NB2"}, "NA2": {"NC1"}},
+			expected: map[string]int{"NA2": 0, "NC1": 0, "NB1": 1, "NB2": 1},
+		},
+		{
+			name: "member names order before server id",
+			servers: []srv{
+				{"NA1", "b1", "SITE", ""},
+				{"NZ1", "a1", "SITE", ""}, {"NZ2", "a2", "SITE", ""},
+			},
+			routes:   map[string][]string{"NZ1": {"NZ2"}},
+			expected: map[string]int{"NZ1": 0, "NZ2": 0, "NA1": 1},
+		},
+		{
+			name:     "standalone leaf sites with the same name",
+			servers:  []srv{{"NB", "nats-0", "nats-0", ""}, {"NA", "nats-0", "nats-0", ""}},
+			expected: map[string]int{"NA": 0, "NB": 1},
+		},
+		{
+			name:     "same cluster name in different domains",
+			servers:  []srv{{"A", "n1", "SITE", "x"}, {"B", "n1", "SITE", "y"}},
+			expected: map[string]int{},
+		},
+		{
+			name:     "different cluster names",
+			servers:  []srv{{"A", "n1", "SITEA", ""}, {"B", "n1", "SITEB", ""}},
+			expected: map[string]int{},
+		},
+		{
+			name:     "no cluster name",
+			servers:  []srv{{"A", "n1", "", ""}, {"B", "n1", "", ""}},
+			expected: map[string]int{},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			infos := make(map[string]*server.ServerInfo)
+			for _, s := range tc.servers {
+				infos[s.id] = &server.ServerInfo{ID: s.id, Name: s.name, Cluster: s.cluster, Domain: s.domain}
+			}
+
+			got := clusterIndexes(infos, tc.routes, api.NewDiscardLogger())
+			if !maps.Equal(tc.expected, got) {
+				t.Fatalf("expected %v, got %v", tc.expected, got)
 			}
 		})
 	}
@@ -153,6 +236,286 @@ func TestGatherSameStreamNameInDifferentDomains(t *testing.T) {
 	checkErr(t, err, "open archive failed")
 	defer reader.Close()
 
+	_, res := runJetStream001(t, reader)
+	if res.Outcome != audit.Pass {
+		t.Fatalf("expected JETSTREAM_001 to pass, got %s: %s (streams in USERS1: %v)", res.Outcome, res.Examples.String(), reader.AccountStreams("USERS1"))
+	}
+}
+
+func TestGatherSameClusterNameInDifferentSites(t *testing.T) {
+	ntfc := ntfclient.New(t, test.NTFURL())
+	t.Cleanup(func() { ntfc.Close(t) })
+
+	sysURL, leafRemotes := createHubAndRelay(t, ntfc)
+
+	var sites []*ntfclient.Instance
+	for _, leafRemote := range leafRemotes {
+		sites = append(sites, createSite(t, ntfc, "SITE", "", 3, true, leafRemote))
+	}
+	for i, msgs := range []int{5, 9} {
+		createStream(t, ntfc, sites[i].Servers[0].URL, 3, msgs)
+	}
+	for _, leafRemote := range leafRemotes {
+		createSite(t, ntfc, "", "nats-0", 1, false, leafRemote)
+	}
+
+	sysNC, err := nats.Connect(sysURL, nats.UserInfo("system", "password"))
+	checkErr(t, err, "system connect failed")
+	defer sysNC.Close()
+
+	waitForServers(t, sysNC, 10)
+
+	archivePath := filepath.Join(t.TempDir(), "audit.zip")
+	cfg := NewCaptureConfiguration()
+	cfg.TargetPath = archivePath
+	cfg.LogLevel = api.WarnLevel
+	cfg.Include.Streams = true
+	cfg.Include.ServerEndpoints = true
+	checkErr(t, Gather(sysNC, cfg), "gather failed")
+
+	reader, err := archive.NewReader(archivePath)
+	checkErr(t, err, "open archive failed")
+	defer reader.Close()
+
+	for _, tc := range []struct {
+		cluster string
+		servers []string
+	}{
+		{"SITE", []string{"n1", "n2", "n3"}},
+		{"nats-0", []string{"nats-0"}},
+	} {
+		for _, index := range []string{"0", "1"} {
+			ref := archive.ClusterRef{Name: tc.cluster, Index: index}
+			if servers := reader.ClusterServerNames(ref); !slices.Equal(tc.servers, servers) {
+				t.Fatalf("cluster %s: expected servers %v, got %v (clusters: %v)", ref, tc.servers, servers, reader.Clusters())
+			}
+		}
+	}
+
+	expectedStreams := []archive.StreamRef{
+		{Name: "ORDERS", Cluster: archive.ClusterRef{Name: "SITE", Index: "0"}},
+		{Name: "ORDERS", Cluster: archive.ClusterRef{Name: "SITE", Index: "1"}},
+	}
+	if streams := reader.AccountStreams("USERS1"); !slices.Equal(expectedStreams, streams) {
+		t.Fatalf("expected streams %v, got %v", expectedStreams, streams)
+	}
+
+	analysis, res := runJetStream001(t, reader)
+	if res.Outcome != audit.Pass {
+		t.Fatalf("expected JETSTREAM_001 to pass, got %s: %s", res.Outcome, res.Examples.String())
+	}
+
+	var shared []string
+	for _, s := range analysis.NumberedClusters {
+		shared = append(shared, fmt.Sprintf("%s:%d", s.Name, len(s.Clusters)))
+	}
+	if expected := []string{"SITE:2", "nats-0:2"}; !slices.Equal(expected, shared) {
+		t.Fatalf("expected numbered clusters %v, got %v", expected, shared)
+	}
+}
+
+func TestGatherNumberedClustersSharingServerNames(t *testing.T) {
+	ntfc := ntfclient.New(t, test.NTFURL())
+	t.Cleanup(func() { ntfc.Close(t) })
+
+	sysURL, leafRemotes := createHubAndRelay(t, ntfc)
+
+	var clustered []*ntfclient.Instance
+	for _, leafRemote := range leafRemotes {
+		clustered = append(clustered, createSite(t, ntfc, "EAST", "", 3, true, leafRemote))
+	}
+	for i, msgs := range []int{5, 9} {
+		createStream(t, ntfc, clustered[i].Servers[0].URL, 3, msgs)
+	}
+	for i, msgs := range []int{2, 4} {
+		standalone := createSite(t, ntfc, "", "n1", 1, true, leafRemotes[i])
+		createStream(t, ntfc, standalone.Servers[0].URL, 1, msgs)
+	}
+
+	sysNC, err := nats.Connect(sysURL, nats.UserInfo("system", "password"))
+	checkErr(t, err, "system connect failed")
+	defer sysNC.Close()
+
+	waitForServers(t, sysNC, 10)
+
+	archivePath := filepath.Join(t.TempDir(), "audit.zip")
+	cfg := NewCaptureConfiguration()
+	cfg.TargetPath = archivePath
+	cfg.LogLevel = api.WarnLevel
+	cfg.Include.Streams = true
+	cfg.Include.ServerEndpoints = true
+	cfg.Include.AccountEndpoints = true
+	cfg.Include.ServerProfiles = true
+	cfg.ServerProfileNames = []ServerProfile{ProfileHeap}
+	checkErr(t, Gather(sysNC, cfg), "gather failed")
+
+	reader, err := archive.NewReader(archivePath)
+	checkErr(t, err, "open archive failed")
+	defer reader.Close()
+
+	expectedStreams := []archive.StreamRef{
+		{Name: "ORDERS", Cluster: archive.ClusterRef{Name: "EAST", Index: "0"}},
+		{Name: "ORDERS", Cluster: archive.ClusterRef{Name: "EAST", Index: "1"}},
+		{Name: "ORDERS", Cluster: archive.ClusterRef{Name: "n1", Index: "0"}},
+		{Name: "ORDERS", Cluster: archive.ClusterRef{Name: "n1", Index: "1"}},
+	}
+	if streams := reader.AccountStreams("USERS1"); !slices.Equal(expectedStreams, streams) {
+		t.Fatalf("expected streams %v, got %v", expectedStreams, streams)
+	}
+
+	_, res := runJetStream001(t, reader)
+	if res.Outcome != audit.Pass {
+		t.Fatalf("expected JETSTREAM_001 to pass, got %s: %s", res.Outcome, res.Examples.String())
+	}
+
+	accountServers := map[string]bool{}
+	for _, cluster := range reader.Clusters() {
+		if cluster.Index == "" {
+			continue
+		}
+		for _, serverName := range reader.ClusterServerNames(cluster) {
+			var varzID string
+			err = archive.ForEachServerArtifact(reader, cluster, serverName, []*archive.Tag{archive.TagServerVars()}, func(vz *server.ServerAPIVarzResponse) error {
+				varzID = vz.Server.ID
+				return nil
+			})
+			checkErr(t, err, fmt.Sprintf("varz for %s/%s", cluster, serverName))
+
+			err = archive.ForEachServerArtifact(reader, cluster, serverName, []*archive.Tag{archive.TagAccount("USERS1"), archive.TagAccountInfo()}, func(resp *server.ServerAPIResponse) error {
+				if resp.Server.ID != varzID {
+					t.Fatalf("account info for %s/%s is from %s, varz is from %s", cluster, serverName, resp.Server.ID, varzID)
+				}
+				accountServers[varzID] = true
+				return nil
+			})
+			checkErr(t, err, fmt.Sprintf("account info for %s/%s", cluster, serverName))
+		}
+	}
+	if len(accountServers) != 8 {
+		t.Fatalf("expected account info from 8 site servers, got %d", len(accountServers))
+	}
+
+	auditArchive, err := serverdata.NewAuditArchive(archivePath)
+	checkErr(t, err, "open audit archive failed")
+	defer auditArchive.Close()
+
+	profiles, err := auditArchive.Profilez(server.ProfilezEventOptions{ProfilezOptions: server.ProfilezOptions{Name: string(ProfileHeap)}})
+	checkErr(t, err, "profilez failed")
+	profileServers := map[string]bool{}
+	for _, profile := range profiles {
+		if len(profile.Data.Profile) == 0 {
+			t.Fatalf("empty profile from %s", profile.Server.Name)
+		}
+		profileServers[profile.Server.ID] = true
+	}
+	if len(profiles) != 10 || len(profileServers) != 10 {
+		t.Fatalf("expected heap profiles from 10 servers, got %d profiles from %d servers", len(profiles), len(profileServers))
+	}
+}
+
+const siteAccounts = `accounts {
+  USERS1 { jetstream: enabled, users: [{ user: user1, password: password }] }
+  "$SYS" { users: [{ user: system, password: password }] }
+}
+system_account: "$SYS"
+no_auth_user: user1`
+
+func createHubAndRelay(t *testing.T, ntfc *ntfclient.Client) (string, []string) {
+	t.Helper()
+
+	hub := ntfc.CreateServer(t, true,
+		ntfclient.WithJetStream("domain: hub"),
+		ntfclient.WithLeafNode("leafnodes { port: {{ .Ports.leafnode }} }"),
+	)
+	t.Cleanup(func() { hub.Destroy(t) })
+
+	relay := ntfc.CreateServer(t, true,
+		ntfclient.WithJetStream("domain: relay"),
+		ntfclient.WithLeafNode(fmt.Sprintf(`leafnodes {
+	port: {{ .Ports.leafnode }}
+	remotes: [ { url: "nats://system:password@localhost:%d", account: "$SYS" } ]
+}`, hub.Servers[0].Ports["leafnode"])),
+	)
+	t.Cleanup(func() { relay.Destroy(t) })
+
+	leafRemotes := make([]string, 2)
+	for i, srv := range []*ntfclient.Instance{hub, relay} {
+		leafRemotes[i] = fmt.Sprintf(`leafnodes { remotes: [ { url: "nats://system:password@localhost:%d", account: "$SYS" } ] }`, srv.Servers[0].Ports["leafnode"])
+	}
+
+	return hub.Servers[0].URL, leafRemotes
+}
+
+func createSite(t *testing.T, ntfc *ntfclient.Client, cluster string, serverName string, size int, js bool, leafRemote string) *ntfclient.Instance {
+	t.Helper()
+
+	jetstream := ""
+	if js {
+		jetstream = `jetstream { store_dir: "{{ .StoreDir }}" }`
+	}
+
+	var site *ntfclient.Instance
+	if cluster == "" {
+		site = ntfc.CreateServer(t, js, ntfclient.WithTemplate(fmt.Sprintf(`server_name: %s
+listen: "{{ .Host }}:{{ .ClientPort }}"
+%s
+%s
+%s
+`, serverName, jetstream, leafRemote, siteAccounts)))
+	} else {
+		site = ntfc.CreateCluster(t, size, js, ntfclient.WithTemplate(fmt.Sprintf(`server_name: n{{ .ServerIndex }}
+listen: "{{ .Host }}:{{ .ClientPort }}"
+%s
+cluster {
+  name: %s
+  listen: "{{ .Host }}:{{ .ClusterPort }}"
+  routes: [{{ range $i, $route := .Routes }}{{ if $i }}, {{ end }}"nats://{{ $route }}"{{ end }}]
+}
+%s
+%s
+`, jetstream, cluster, leafRemote, siteAccounts)))
+	}
+	t.Cleanup(func() { site.Destroy(t) })
+
+	return site
+}
+
+func createStream(t *testing.T, ntfc *ntfclient.Client, url string, replicas int, msgs int) {
+	t.Helper()
+
+	nc, err := nats.Connect(url, nats.UseOldRequestStyle())
+	checkErr(t, err, "connect failed")
+	defer nc.Close()
+	ntfc.WaitForJetStream(t, nc)
+
+	mgr, err := jsm.New(nc, jsm.WithTimeout(5*time.Second))
+	checkErr(t, err, "manager failed")
+
+	deadline := time.Now().Add(20 * time.Second)
+	for {
+		_, err = mgr.NewStream("ORDERS", jsm.Subjects("orders"), jsm.MemoryStorage(), jsm.Replicas(replicas))
+		if err == nil || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	checkErr(t, err, "create stream failed")
+
+	for i := 0; i < msgs; i++ {
+		for {
+			_, err = nc.Request("orders", []byte("x"), time.Second)
+			if !errors.Is(err, nats.ErrNoResponders) || time.Now().After(deadline) {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		checkErr(t, err, "publish failed")
+	}
+}
+
+func runJetStream001(t *testing.T, reader *archive.Reader) (*audit.Analysis, audit.CheckResult) {
+	t.Helper()
+
 	cc, err := audit.NewDefaultCheckCollection()
 	checkErr(t, err, "check collection failed")
 	var skip []string
@@ -168,11 +531,7 @@ func TestGatherSameStreamNameInDifferentDomains(t *testing.T) {
 	if idx == -1 {
 		t.Fatal("JETSTREAM_001 result not found")
 	}
-
-	res := analysis.Results[idx]
-	if res.Outcome != audit.Pass {
-		t.Fatalf("expected JETSTREAM_001 to pass, got %s: %s (streams in USERS1: %v)", res.Outcome, res.Examples.String(), reader.AccountStreams("USERS1"))
-	}
+	return analysis, analysis.Results[idx]
 }
 
 func waitForServers(t *testing.T, nc *nats.Conn, want int) {

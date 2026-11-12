@@ -49,6 +49,7 @@ const (
 	clusterTagLabel     TagLabel = "cluster"
 	accountTagLabel     TagLabel = "account"
 	streamTagLabel      TagLabel = "stream"
+	domainTagLabel      TagLabel = "domain"
 	typeTagLabel        TagLabel = "artifact_type"
 	profileNameTagLabel TagLabel = "profile_name"
 	specialTagLabel     TagLabel = "special"
@@ -87,6 +88,7 @@ const (
 	rootDirectory = "capture"
 	// Directory where special artifacts are filed under
 	specialFilesDirectory = "misc"
+	domainsDirectory      = "domains"
 	// Used to join dimensions in a path, for example cluster name and server name
 	separator = "__"
 )
@@ -97,6 +99,7 @@ var dimensionTagsNames = map[TagLabel]any{
 	clusterTagLabel:     nil,
 	serverTagLabel:      nil,
 	streamTagLabel:      nil,
+	domainTagLabel:      nil,
 	typeTagLabel:        nil,
 	profileNameTagLabel: nil,
 }
@@ -158,6 +161,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 	clusterTag, hasClusterTag := dimensionTagsMap[clusterTagLabel], dimensionTagsMap[clusterTagLabel] != nil
 	serverTag, hasServerTag := dimensionTagsMap[serverTagLabel], dimensionTagsMap[serverTagLabel] != nil
 	streamTag, hasStreamTag := dimensionTagsMap[streamTagLabel], dimensionTagsMap[streamTagLabel] != nil
+	domainTag, hasDomainTag := dimensionTagsMap[domainTagLabel], dimensionTagsMap[domainTagLabel] != nil
 	typeTag, hasTypeTag := dimensionTagsMap[typeTagLabel], dimensionTagsMap[typeTagLabel] != nil
 	profileNameTag, hasProfileNameTag := dimensionTagsMap[profileNameTagLabel], dimensionTagsMap[profileNameTagLabel] != nil
 
@@ -182,6 +186,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		{clusterTagLabel, clusterTag, hasClusterTag},
 		{serverTagLabel, serverTag, hasServerTag},
 		{streamTagLabel, streamTag, hasStreamTag},
+		{domainTagLabel, domainTag, hasDomainTag},
 		{typeTagLabel, typeTag, hasTypeTag},
 		{profileNameTagLabel, profileNameTag, hasProfileNameTag},
 	} {
@@ -201,6 +206,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 			rootDirectory,
 			"accounts",
 			accountTag.Value,
+			domainDirectory(domainTag),
 			"streams",
 			streamTag.Value,
 			"replicas",
@@ -218,6 +224,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 			rootDirectory,
 			"accounts",
 			accountTag.Value,
+			domainDirectory(domainTag),
 			"servers",
 			clusterTag.Value+separator+serverTag.Value,
 			typeTag.Value+"."+extension,
@@ -239,6 +246,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 			}
 			return path.Join(
 				rootDirectory,
+				domainDirectory(domainTag),
 				"profiles",
 				clusterName,
 				serverTag.Value+separator+profileNameTag.Value+"."+extension,
@@ -247,6 +255,7 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 		default:
 			return path.Join(
 				rootDirectory,
+				domainDirectory(domainTag),
 				"clusters",
 				clusterName,
 				serverTag.Value,
@@ -257,6 +266,13 @@ func createFilenameFromTags(extension string, tags []*Tag) (string, error) {
 
 	// May add more cases later, for now bomb if none of the above applies
 	return "", fmt.Errorf("unhandled tags combination: %+v", dimensionTagsMap)
+}
+
+func domainDirectory(domainTag *Tag) string {
+	if domainTag == nil {
+		return ""
+	}
+	return path.Join(domainsDirectory, domainTag.Value)
 }
 
 func dirNameFromTags(tags []*Tag) (string, error) {
@@ -383,6 +399,13 @@ func TagStream(streamName string) *Tag {
 	return &Tag{
 		Name:  streamTagLabel,
 		Value: streamName,
+	}
+}
+
+func TagDomain(domain string) *Tag {
+	return &Tag{
+		Name:  domainTagLabel,
+		Value: domain,
 	}
 }
 

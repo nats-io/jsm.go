@@ -54,6 +54,8 @@ Other artifacts (e.g., profiles and special files) are stored as **non-paged sin
 
 `${prefix}/clusters/${cluster_name}/${server_name}/${artifact_type}/0001.json`
 
+Servers in a JetStream domain are stored under `${prefix}/domains/${domain}/clusters/...`.
+
 Example: snapshot of health endpoint
 
 ## Account artifacts
@@ -62,13 +64,17 @@ Each account artifact can appear multiple times as it is captured through differ
 
 `${prefix}/accounts/${account_name}/servers/${cluster_name}__${server_name}/${artifact_type}/0001.json"`
 
+Servers in a JetStream domain are stored under `${prefix}/accounts/${account_name}/domains/${domain}/servers/...`.
+
 Example: account connections
 
 ## Stream artifacts
 
 Each stream artifact can appear multiple times as it is captured through different replicas.
 
-`${prefix}/accounts/${account_name}/streams/${stream_name}/replicas/${server_name}/${artifact_type}/0001.json`
+`${prefix}/accounts/${account_name}/streams/${stream_name}/replicas/${cluster_name}__${server_name}/${artifact_type}/0001.json`
+
+Streams in a JetStream domain are stored under `${prefix}/accounts/${account_name}/domains/${domain}/streams/...`.
 
 Example: stream details
 
@@ -77,6 +83,8 @@ Example: stream details
 Profiles are stored as non-paged files:
 
 `${prefix}/profiles/${cluster_name}/${server_name}__${profile_name}.prof`
+
+Servers in a JetStream domain are stored under `${prefix}/domains/${domain}/profiles/...`.
 
 Example: memory profile
 

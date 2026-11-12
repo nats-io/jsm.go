@@ -14,6 +14,8 @@
 package zmonitor
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -255,4 +257,88 @@ type JetStreamAPIStatsV1 struct {
 	Total    uint64 `json:"total"`              // Total is the total API requests received since start
 	Errors   uint64 `json:"errors"`             // Errors is the total API requests that resulted in error responses
 	Inflight uint64 `json:"inflight,omitempty"` // Inflight are the number of API requests currently being served
+}
+
+// HealthzOptionsV1 are the options for a health check
+type HealthzOptionsV1 struct {
+	JSEnabledOnly        bool   `json:"js-enabled-only,omitempty"`
+	JSServerOnly         bool   `json:"js-server-only,omitempty"` // JSServerOnly skips the stream and consumer checks
+	JSMetaOnly           bool   `json:"js-meta-only,omitempty"`
+	LeafRemotesConnected bool   `json:"leaf-remotes-connected,omitempty"`
+	Account              string `json:"account,omitempty"`
+	Stream               string `json:"stream,omitempty"`
+	Consumer             string `json:"consumer,omitempty"`
+	Details              bool   `json:"details,omitempty"` // Details reports every problem found rather than the first
+}
+
+// HealthStatusV1 is the result of a health check
+type HealthStatusV1 struct {
+	Status     string           `json:"status"`
+	StatusCode int              `json:"status_code,omitempty"`
+	Error      string           `json:"error,omitempty"`  // Error is the first problem found when details were not requested
+	Errors     []HealthzErrorV1 `json:"errors,omitempty"` // Errors are all the problems found when details were requested
+}
+
+// HealthzErrorV1 is a single problem found by a health check
+type HealthzErrorV1 struct {
+	Type     HealthZErrorTypeV1 `json:"type"`
+	Account  string             `json:"account,omitempty"`
+	Stream   string             `json:"stream,omitempty"`
+	Consumer string             `json:"consumer,omitempty"`
+	Error    string             `json:"error,omitempty"`
+}
+
+// HealthZErrorTypeV1 is the area a health check problem was found in
+type HealthZErrorTypeV1 int
+
+const (
+	HealthzErrorConnV1 HealthZErrorTypeV1 = iota
+	HealthzErrorBadRequestV1
+	HealthzErrorJetStreamV1
+	HealthzErrorAccountV1
+	HealthzErrorStreamV1
+	HealthzErrorConsumerV1
+)
+
+func (t HealthZErrorTypeV1) String() string {
+	switch t {
+	case HealthzErrorConnV1:
+		return "CONNECTION"
+	case HealthzErrorBadRequestV1:
+		return "BAD_REQUEST"
+	case HealthzErrorJetStreamV1:
+		return "JETSTREAM"
+	case HealthzErrorAccountV1:
+		return "ACCOUNT"
+	case HealthzErrorStreamV1:
+		return "STREAM"
+	case HealthzErrorConsumerV1:
+		return "CONSUMER"
+	default:
+		return "unknown"
+	}
+}
+
+func (t HealthZErrorTypeV1) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+func (t *HealthZErrorTypeV1) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case `"CONNECTION"`:
+		*t = HealthzErrorConnV1
+	case `"BAD_REQUEST"`:
+		*t = HealthzErrorBadRequestV1
+	case `"JETSTREAM"`:
+		*t = HealthzErrorJetStreamV1
+	case `"ACCOUNT"`:
+		*t = HealthzErrorAccountV1
+	case `"STREAM"`:
+		*t = HealthzErrorStreamV1
+	case `"CONSUMER"`:
+		*t = HealthzErrorConsumerV1
+	default:
+		return fmt.Errorf("unknown healthz error type %q", data)
+	}
+	return nil
 }

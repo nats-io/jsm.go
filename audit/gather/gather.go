@@ -47,13 +47,14 @@ type EndpointCaptureConfig struct {
 	ApiSuffix      string
 	TypeTag        *archive.Tag
 	UseServerPing  bool
-	OptionsBuilder func(accountId string) any
+	OptionsBuilder func(accountId string, filter server.EventFilterOptions) any
 }
 
 type Configuration struct {
 	LogLevel               api.Level
 	Timeout                time.Duration
 	CPUProfileDuration     time.Duration
+	SubszPageSize          int
 	TargetPath             string
 	Include                EndpointSelection
 	ServerEndpointConfigs  []EndpointCaptureConfig
@@ -105,6 +106,7 @@ func NewCaptureConfiguration() *Configuration {
 		LogLevel:           api.InfoLevel,
 		Timeout:            5 * time.Second,
 		CPUProfileDuration: 5 * time.Second,
+		SubszPageSize:      4096,
 		ServerEndpointConfigs: []EndpointCaptureConfig{
 			{
 				ApiSuffix: "VARZ",
@@ -172,9 +174,10 @@ func NewCaptureConfiguration() *Configuration {
 				ApiSuffix:     "RAFTZ",
 				TypeTag:       archive.TagAccountRaftz(),
 				UseServerPing: true,
-				OptionsBuilder: func(accountId string) any {
-					return &server.RaftzOptions{
-						AccountFilter: accountId,
+				OptionsBuilder: func(accountId string, filter server.EventFilterOptions) any {
+					return &server.RaftzEventOptions{
+						RaftzOptions:       server.RaftzOptions{AccountFilter: accountId},
+						EventFilterOptions: filter,
 					}
 				},
 			},
@@ -182,9 +185,10 @@ func NewCaptureConfiguration() *Configuration {
 				ApiSuffix:     "IPQUEUESZ",
 				TypeTag:       archive.TagAccountIpqueuesz(),
 				UseServerPing: true,
-				OptionsBuilder: func(accountId string) any {
-					return &server.IpqueueszOptions{
-						Filter: accountId,
+				OptionsBuilder: func(accountId string, filter server.EventFilterOptions) any {
+					return &server.IpqueueszEventOptions{
+						IpqueueszOptions:   server.IpqueueszOptions{Filter: accountId},
+						EventFilterOptions: filter,
 					}
 				},
 			},
@@ -331,13 +335,16 @@ func (g *gather) captureMetadata() error {
 
 // Discover streams in given account, and capture info for each one
 func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerInfo, accountId string, numServers int) error {
-	jszOptions := server.JSzOptions{
-		Account:        accountId,
-		Streams:        true,
-		Consumer:       g.cfg.Include.Consumers,
-		Config:         true,
-		RaftGroups:     true,
-		DirectConsumer: true,
+	jszOptions := server.JszEventOptions{
+		JSzOptions: server.JSzOptions{
+			Account:        accountId,
+			Streams:        true,
+			Consumer:       g.cfg.Include.Consumers,
+			Config:         true,
+			RaftGroups:     true,
+			DirectConsumer: true,
+		},
+		EventFilterOptions: g.eventFilter(),
 	}
 
 	jsInfoResponses := make(map[string]*server.ServerAPIJszResponse, numServers)
@@ -364,7 +371,7 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			return
 		}
 
-		if _, isDuplicateResponse := jsInfoResponses[serverName]; isDuplicateResponse {
+		if _, isDuplicateResponse := jsInfoResponses[serverId]; isDuplicateResponse {
 			g.log.Errorf("Ignoring duplicate JS info response for account %s from server %s", accountId, serverName)
 			return
 		}
@@ -378,29 +385,32 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 			return
 		}
 
-		jsInfoResponses[serverName] = &apiResponse
+		jsInfoResponses[serverId] = &apiResponse
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve account %s streams: %w", accountId, err)
 	}
 
-	streamNamesSet := make(map[string]any)
+	streamsSet := make(map[archive.StreamRef]any)
 
 	// Capture stream info from each known replica
-	for serverName, jsInfo := range jsInfoResponses {
+	for _, jsInfo := range jsInfoResponses {
 		// Cases where len(jsInfo.AccountDetails) != 1 are filtered above
 		accountDetail := jsInfo.Data.AccountDetails[0]
+		serverName := jsInfo.Server.Name
+		domain := jsInfo.Data.Config.Domain
 
 		for _, streamInfo := range accountDetail.Streams {
 			streamName := streamInfo.Name
+			ref := archive.StreamRef{Domain: domain, Name: streamName}
 
-			_, streamKnown := streamNamesSet[streamName]
+			_, streamKnown := streamsSet[ref]
 			if !streamKnown {
-				g.log.Infof("Discovered stream %s in account %s", streamName, accountId)
+				g.log.Infof("Discovered stream %s in account %s", ref, accountId)
 			}
 
 			clusterTag := archive.TagNoCluster()
-			if streamInfo.Cluster != nil {
+			if streamInfo.Cluster != nil && streamInfo.Cluster.Name != "" {
 				clusterTag = archive.TagCluster(streamInfo.Cluster.Name)
 			}
 
@@ -411,28 +421,26 @@ func (g *gather) captureAccountStreams(serverInfoMap map[string]*server.ServerIn
 				archive.TagStream(streamName),
 				archive.TagStreamInfo(),
 			}
+			if domain != "" {
+				tags = append(tags, archive.TagDomain(domain))
+			}
 
 			err = g.aw.Add(streamInfo, tags...)
 			if err != nil {
 				return fmt.Errorf("failed to add stream %s info to archive: %w", streamName, err)
 			}
 
-			streamNamesSet[streamName] = nil
+			streamsSet[ref] = nil
 		}
 	}
 
-	g.log.Infof("Discovered %d streams in account %s", len(streamNamesSet), accountId)
+	g.log.Infof("Discovered %d streams in account %s", len(streamsSet), accountId)
 
 	return nil
 }
 
 // Capture configured endpoints for each known account
 func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.ServerInfo, accountIdsToServersCountMap map[string]int) error {
-	type Responder struct {
-		ClusterName string
-		ServerName  string
-	}
-
 	capturedCount := 0
 	g.log.Infof("Querying %d endpoints for %d known accounts...", len(g.cfg.AccountEndpointConfigs), len(accountIdsToServersCountMap))
 
@@ -444,14 +452,14 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 			if endpoint.UseServerPing {
 				subject = fmt.Sprintf("$SYS.REQ.SERVER.PING.%s", endpoint.ApiSuffix)
 				if endpoint.OptionsBuilder != nil {
-					opts = endpoint.OptionsBuilder(accountId)
+					opts = endpoint.OptionsBuilder(accountId, g.eventFilter())
 				}
 			} else {
 				subject = fmt.Sprintf("$SYS.REQ.ACCOUNT.%s.%s", accountId, endpoint.ApiSuffix)
-				opts = nil
+				opts = g.eventFilter()
 			}
 
-			endpointResponses := make(map[Responder]io.Reader, serversCount)
+			endpointResponses := make(map[string]io.Reader, serversCount)
 
 			err := serverdata.DoReqAsync(context.TODO(), opts, subject, serversCount, g.nc, g.cfg.Timeout, g.log, func(b []byte) {
 				var apiResponse server.ServerAPIResponse
@@ -483,17 +491,12 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 					return
 				}
 
-				responder := Responder{
-					ClusterName: apiResponse.Server.Cluster,
-					ServerName:  apiResponse.Server.Name,
-				}
-
-				if _, isDuplicateResponse := endpointResponses[responder]; isDuplicateResponse {
-					g.log.Errorf("Ignoring duplicate account %s response from server %s", endpoint.ApiSuffix, responder.ServerName)
+				if _, isDuplicateResponse := endpointResponses[serverId]; isDuplicateResponse {
+					g.log.Errorf("Ignoring duplicate account %s response from server %s", endpoint.ApiSuffix, apiResponse.Server.Name)
 					return
 				}
 
-				endpointResponses[responder] = buff
+				endpointResponses[serverId] = buff
 			})
 			if err != nil {
 				g.log.Errorf("Failed to request %s for account %s: %s", endpoint.ApiSuffix, accountId, err)
@@ -501,18 +504,8 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 			}
 
 			// Store all responses for this account endpoint
-			for responder, endpointResponse := range endpointResponses {
-				clusterTag := archive.TagNoCluster()
-				if responder.ClusterName != "" {
-					clusterTag = archive.TagCluster(responder.ClusterName)
-				}
-
-				tags := []*archive.Tag{
-					archive.TagAccount(accountId),
-					archive.TagServer(responder.ServerName),
-					clusterTag,
-					endpoint.TypeTag,
-				}
+			for serverId, endpointResponse := range endpointResponses {
+				tags := append(serverTags(serverInfoMap[serverId]), archive.TagAccount(accountId), endpoint.TypeTag)
 
 				err = g.aw.AddRaw(endpointResponse, "json", tags...)
 				if err != nil {
@@ -529,6 +522,17 @@ func (g *gather) captureAccountEndpoints(serverInfoMap map[string]*server.Server
 	return nil
 }
 
+func serverTags(info *server.ServerInfo) []*archive.Tag {
+	tags := []*archive.Tag{archive.TagServer(info.Name), archive.TagNoCluster()}
+	if info.Cluster != "" {
+		tags[1] = archive.TagCluster(info.Cluster)
+	}
+	if info.Domain != "" {
+		tags = append(tags, archive.TagDomain(info.Domain))
+	}
+	return tags
+}
+
 // Capture configured profiles for each known server
 func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerInfo) error {
 	g.log.Infof("Capturing %d profiles on %d known servers...", len(g.cfg.ServerProfileNames), len(serverInfoMap))
@@ -537,10 +541,6 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
-		clusterTag := archive.TagNoCluster()
-		if serverInfo.Cluster != "" {
-			clusterTag = archive.TagCluster(serverInfo.Cluster)
-		}
 
 		for _, profile := range g.cfg.ServerProfileNames {
 			name, debug := serverdata.SplitProfileName(string(profile))
@@ -594,12 +594,7 @@ func (g *gather) captureServerProfiles(serverInfoMap map[string]*server.ServerIn
 				continue
 			}
 
-			tags := []*archive.Tag{
-				archive.TagServer(serverName),
-				archive.TagServerProfile(),
-				archive.TagProfileName(string(profile)),
-				clusterTag,
-			}
+			tags := append(serverTags(serverInfo), archive.TagServerProfile(), archive.TagProfileName(string(profile)))
 
 			err = g.aw.AddRaw(bytes.NewReader(profileStatus.Profile), "prof", tags...)
 			if err != nil {
@@ -708,7 +703,6 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 	g.log.Infof("Querying %d endpoints on %d known servers...", len(g.cfg.ServerEndpointConfigs), len(serverInfoMap))
 	capturedCount := 0
-	const pageLimit = 1024
 
 	for serverId, serverInfo := range serverInfoMap {
 		serverName := serverInfo.Name
@@ -721,6 +715,10 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 			subject := fmt.Sprintf("$SYS.REQ.SERVER.%s.%s", serverId, endpoint.ApiSuffix)
 			offset := 0
+			pageLimit := 1024
+			if endpoint.ApiSuffix == "SUBSZ" {
+				pageLimit = g.cfg.SubszPageSize
+			}
 
 			for {
 				opts := g.buildServerOptions(endpoint.ApiSuffix, offset, pageLimit)
@@ -760,15 +758,7 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 				}
 
 				// Tags for this artifact
-				tags := []*archive.Tag{
-					archive.TagServer(serverName),
-					endpoint.TypeTag,
-				}
-				if serverInfo.Cluster != "" {
-					tags = append(tags, archive.TagCluster(serverInfo.Cluster))
-				} else {
-					tags = append(tags, archive.TagNoCluster())
-				}
+				tags := append(serverTags(serverInfo), endpoint.TypeTag)
 
 				if err := g.aw.AddRaw(buff, "json", tags...); err != nil {
 					return fmt.Errorf("failed to add endpoint %s response to archive: %w", subject, err)
@@ -801,12 +791,18 @@ func (g *gather) captureServerEndpoints(serverInfoMap map[string]*server.ServerI
 
 // Discover accounts by broadcasting a PING and then collecting responses
 func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (map[string]int, string, error) {
+	if len(serverInfoMap) == 0 {
+		g.log.Infof("No servers discovered, skipping account discovery")
+		return map[string]int{}, "", nil
+	}
+
 	// Broadcast PING.ACCOUNTZ to discover (active) accounts
 	// N.B. Inactive accounts (no connections) cannot be discovered this way
 	g.log.Infof("Broadcasting PING to discover accounts... ")
 	var accountIdsToServersCountMap = make(map[string]int)
 	var systemAccount = ""
-	err := serverdata.DoReqAsync(context.TODO(), nil, "$SYS.REQ.SERVER.PING.ACCOUNTZ", len(serverInfoMap), g.nc, g.cfg.Timeout, g.log, func(b []byte) {
+	opts := server.AccountzEventOptions{EventFilterOptions: g.eventFilter()}
+	err := serverdata.DoReqAsync(context.TODO(), opts, "$SYS.REQ.SERVER.PING.ACCOUNTZ", len(serverInfoMap), g.nc, g.cfg.Timeout, g.log, func(b []byte) {
 		var apiResponse server.ServerAPIAccountzResponse
 		err := json.Unmarshal(b, &apiResponse)
 		if err != nil {
@@ -858,6 +854,10 @@ func (g *gather) discoverAccounts(serverInfoMap map[string]*server.ServerInfo) (
 	g.log.Infof("Discovered %d accounts over %d servers", len(accountIdsToServersCountMap), len(serverInfoMap))
 
 	return accountIdsToServersCountMap, systemAccount, nil
+}
+
+func (g *gather) eventFilter() server.EventFilterOptions {
+	return server.EventFilterOptions{Cluster: g.cfg.ClusterFilter, ExactMatch: true}
 }
 
 func (g *gather) discoverServers() (map[string]*server.ServerInfo, error) {
@@ -917,6 +917,13 @@ func Gather(nc *nats.Conn, conf *Configuration) error {
 	capturesCPU := conf.Include.ServerProfiles && slices.Contains(conf.ServerProfileNames, ProfileCPU)
 	if capturesCPU && (conf.CPUProfileDuration <= 0 || conf.CPUProfileDuration > 15*time.Second) {
 		return fmt.Errorf("cpu profile duration must be more than 0s and at most 15s, got %s", conf.CPUProfileDuration)
+	}
+
+	capturesSubsz := conf.Include.ServerEndpoints && conf.Detailed && slices.ContainsFunc(conf.ServerEndpointConfigs, func(e EndpointCaptureConfig) bool {
+		return e.ApiSuffix == "SUBSZ"
+	})
+	if capturesSubsz && conf.SubszPageSize <= 0 {
+		return fmt.Errorf("subsz page size must be more than 0, got %d", conf.SubszPageSize)
 	}
 
 	var captureLogBuffer bytes.Buffer

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	"github.com/nats-io/jsm.go/audit/archive"
 	"github.com/nats-io/nats-server/v2/server"
 )
@@ -344,7 +345,7 @@ func TestArchiveHealthz(t *testing.T) {
 		w.Add(resp, archive.TagCluster("c1"), archive.TagServer("srv-1"), archive.TagServerHealth())
 	})
 
-	results, err := a.Healthz(server.HealthzEventOptions{})
+	results, err := a.Healthz(zmonitor.HealthzOptionsV1{}, server.EventFilterOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -642,7 +643,7 @@ func TestArchiveEmptyResults(t *testing.T) {
 		t.Errorf("expected 0 gatewayz results, got %d", len(gatewayz))
 	}
 
-	healthz, err := a.Healthz(server.HealthzEventOptions{})
+	healthz, err := a.Healthz(zmonitor.HealthzOptionsV1{}, server.EventFilterOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -769,6 +770,47 @@ func TestArchiveCollectAccountsMergesAcrossServers(t *testing.T) {
 	}
 }
 
+func TestArchiveCollectAccountsKeepsDomainsApart(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		for _, r := range []struct{ server, domain, level string }{{"n1", "hub", "0"}, {"n2", "hub", "0"}, {"n1", "leaf", "1"}} {
+			resp := &server.ServerAPIJszResponse{
+				Server: &server.ServerInfo{Name: r.server, ID: r.domain + r.server, Domain: r.domain},
+				Data: &server.JSInfo{
+					Config: server.JetStreamConfig{Domain: r.domain},
+					AccountDetails: []*server.AccountDetail{
+						{Name: "acct-A", Streams: []server.StreamDetail{{Name: "s1", Config: &server.StreamConfig{Storage: server.FileStorage, Metadata: map[string]string{"_nats.req.level": r.level}}}}},
+					},
+				},
+			}
+			w.Add(resp, archive.TagCluster("c1"), archive.TagServer(r.server), archive.TagDomain(r.domain), archive.TagServerJetStream())
+		}
+	})
+
+	jsz, err := a.Jsz(server.JszEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jsz) != 3 {
+		t.Fatalf("expected 3 jsz responses, got %d", len(jsz))
+	}
+
+	accounts, err := a.CollectAccounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(accounts) != 2 {
+		t.Fatalf("expected 2 domain accounts, got %d", len(accounts))
+	}
+	for i, expected := range []struct{ domain, level string }{{"hub", "0"}, {"leaf", "1"}} {
+		if accounts[i].Name != "acct-A" || accounts[i].Domain != expected.domain {
+			t.Fatalf("expected acct-A in domain %s at %d, got %s in %s", expected.domain, i, accounts[i].Name, accounts[i].Domain)
+		}
+		if len(accounts[i].Streams) != 1 || accounts[i].Streams[0].Config.Metadata["_nats.req.level"] != expected.level {
+			t.Fatalf("unexpected streams for domain %s: %+v", expected.domain, accounts[i].Streams)
+		}
+	}
+}
+
 func TestMatchesFilter_NilInputs(t *testing.T) {
 	info := &server.ServerInfo{Name: "srv"}
 	if !matchesFilter(nil, &server.EventFilterOptions{}) {
@@ -888,17 +930,18 @@ func TestArchiveUnsupportedHealthzOptions(t *testing.T) {
 
 	tests := []struct {
 		name string
-		opts server.HealthzEventOptions
+		opts zmonitor.HealthzOptionsV1
 	}{
-		{"js-enabled", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{JSEnabledOnly: true}}},
-		{"js-server-only", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{JSServerOnly: true}}},
-		{"account", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{Account: "a"}}},
-		{"stream", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{Stream: "s"}}},
-		{"consumer", server.HealthzEventOptions{HealthzOptions: server.HealthzOptions{Consumer: "c"}}},
+		{"js-enabled", zmonitor.HealthzOptionsV1{JSEnabledOnly: true}},
+		{"js-server-only", zmonitor.HealthzOptionsV1{JSServerOnly: true}},
+		{"leaf-remotes-connected", zmonitor.HealthzOptionsV1{LeafRemotesConnected: true}},
+		{"account", zmonitor.HealthzOptionsV1{Account: "a"}},
+		{"stream", zmonitor.HealthzOptionsV1{Stream: "s"}},
+		{"consumer", zmonitor.HealthzOptionsV1{Consumer: "c"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := a.Healthz(tc.opts)
+			_, err := a.Healthz(tc.opts, server.EventFilterOptions{})
 			if !errors.Is(err, ErrUnsupportedOption) {
 				t.Errorf("expected ErrUnsupportedOption, got %v", err)
 			}
@@ -1012,9 +1055,7 @@ func TestArchiveUnsupportedEachSubszOffset(t *testing.T) {
 func TestArchiveUnsupportedMultipleFields(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {})
 
-	_, err := a.Healthz(server.HealthzEventOptions{
-		HealthzOptions: server.HealthzOptions{Account: "a", Stream: "s"},
-	})
+	_, err := a.Healthz(zmonitor.HealthzOptionsV1{Account: "a", Stream: "s"}, server.EventFilterOptions{})
 	if !errors.Is(err, ErrUnsupportedOption) {
 		t.Errorf("expected ErrUnsupportedOption, got %v", err)
 	}
@@ -1302,6 +1343,43 @@ func TestArchiveProfilezRoundTrip(t *testing.T) {
 	}
 	if results[0].Server.Cluster != "c1" {
 		t.Errorf("expected Server.Cluster=c1, got %q", results[0].Server.Cluster)
+	}
+}
+
+func TestArchiveProfilezKeepsDomainsApart(t *testing.T) {
+	servers := []struct{ domain, cluster string }{{"", "s1__c1"}, {"s1", "c1"}, {"s2", "c1"}}
+	a := newTestArchive(t, func(w *archive.Writer) {
+		for _, s := range servers {
+			tags := []*archive.Tag{archive.TagCluster(s.cluster), archive.TagServer("n1")}
+			if s.domain != "" {
+				tags = append(tags, archive.TagDomain(s.domain))
+			}
+			varz := &server.ServerAPIVarzResponse{
+				Server: &server.ServerInfo{Name: "n1", Cluster: s.cluster, ID: "id-" + s.domain + "-" + s.cluster, Domain: s.domain},
+				Data:   &server.Varz{},
+			}
+			if err := w.Add(varz, append(tags, archive.TagServerVars())...); err != nil {
+				t.Fatal(err)
+			}
+			err := w.AddRaw(bytes.NewReader([]byte("heap-"+s.domain+"-"+s.cluster)), "prof", append(tags, archive.TagServerProfile(), archive.TagProfileName("heap"))...)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
+	results, err := a.Profilez(server.ProfilezEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != len(servers) {
+		t.Fatalf("expected %d results, got %d", len(servers), len(results))
+	}
+	for i, s := range servers {
+		id, profile := "id-"+s.domain+"-"+s.cluster, "heap-"+s.domain+"-"+s.cluster
+		if results[i].Server.ID != id || string(results[i].Data.Profile) != profile {
+			t.Fatalf("result %d: expected %s with %s, got %s with %s", i, id, profile, results[i].Server.ID, results[i].Data.Profile)
+		}
 	}
 }
 

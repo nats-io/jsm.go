@@ -3,6 +3,7 @@ package serverdata
 import (
 	"errors"
 
+	"github.com/nats-io/jsm.go/api/server/zmonitor"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -30,7 +31,7 @@ type Source interface {
 	Leafz(opts server.LeafzEventOptions) ([]*server.ServerAPILeafzResponse, error)
 	Subsz(opts server.SubszEventOptions) ([]*server.ServerAPISubszResponse, error)
 	Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszResponse, error)
-	Healthz(opts server.HealthzEventOptions) ([]*server.ServerAPIHealthzResponse, error)
+	Healthz(opts zmonitor.HealthzOptionsV1, filter server.EventFilterOptions) ([]*server.ServerAPIHealthzResponse, error)
 	Accountz(opts server.AccountzEventOptions) ([]*server.ServerAPIAccountzResponse, error)
 	Statz(opts server.StatszEventOptions) ([]*server.ServerStatsMsg, error)
 	Ipqueuesz(opts server.IpqueueszEventOptions) ([]*server.ServerAPIpqueueszResponse, error)
@@ -39,6 +40,7 @@ type Source interface {
 	EachConnz(opts server.ConnzEventOptions, handle func(resp *server.ServerAPIConnzResponse) error) error
 	EachSubsz(opts server.SubszEventOptions, handle func(resp *server.ServerAPISubszResponse) error) error
 	EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error
-	CollectAccounts() ([]*server.AccountDetail, error)
+	CollectAccounts() ([]*AccountDetail, error)
+
 	Close() error
 }

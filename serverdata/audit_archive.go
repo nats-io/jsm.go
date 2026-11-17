@@ -284,7 +284,7 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 	return results, err
 }
 
-// EachJsz filters a Jsz repsonse from the archive and passes it to handle
+// EachJsz filters a Jsz response from the archive and passes it to handle
 func (a *AuditArchive) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
 	if opts.Account != "" {
 		return unsupported("eachjsz", "account")

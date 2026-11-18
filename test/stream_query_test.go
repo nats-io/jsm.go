@@ -188,8 +188,8 @@ func TestStreamQueryCluster(t *testing.T) {
 		})
 
 		t.(*testing.T).Run("Regex match the clusteR", func(t *testing.T) {
-			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryClusterName("C_.+"))
-			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryClusterName("C_.+"), jsm.StreamQueryInvert())
+			checkStreamQueryMatched(t, mgr, 1, jsm.StreamQueryClusterName("c\\d+"))
+			checkStreamQueryMatched(t, mgr, 0, jsm.StreamQueryClusterName("c\\d+"), jsm.StreamQueryInvert())
 		})
 
 		t.(*testing.T).Run("Combining matchers, 1 excluding all results", func(t *testing.T) {

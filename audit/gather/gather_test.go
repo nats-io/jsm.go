@@ -178,6 +178,7 @@ func TestGatherSameStreamNameInDifferentDomains(t *testing.T) {
 	defer ntfc.Close(t)
 
 	hub := ntfc.CreateServer(t, true,
+		ntfclient.WithName("hub"),
 		ntfclient.WithJetStream("domain: hub"),
 		ntfclient.WithLeafNode("leafnodes { port: {{ .Ports.leafnode }} }"),
 	)
@@ -424,12 +425,14 @@ func createHubAndRelay(t *testing.T, ntfc *ntfclient.Client) (string, []string) 
 	t.Helper()
 
 	hub := ntfc.CreateServer(t, true,
+		ntfclient.WithName("hub"),
 		ntfclient.WithJetStream("domain: hub"),
 		ntfclient.WithLeafNode("leafnodes { port: {{ .Ports.leafnode }} }"),
 	)
 	t.Cleanup(func() { hub.Destroy(t) })
 
 	relay := ntfc.CreateServer(t, true,
+		ntfclient.WithName("relay"),
 		ntfclient.WithJetStream("domain: relay"),
 		ntfclient.WithLeafNode(fmt.Sprintf(`leafnodes {
 	port: {{ .Ports.leafnode }}

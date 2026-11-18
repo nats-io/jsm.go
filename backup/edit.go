@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go"
 )
 
 // Result describes a finished edit: the configuration and state written to
@@ -116,26 +117,11 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 	if o.perSubject() && (!o.dryRun || o.obfuscate) {
 		passes = 2
 	}
-	prog := newProgress(o.notify, passes)
-	src, err := openSource(srcDir, prog)
+	ed, err := newEditor(ctx, srcDir, o, passes)
 	if err != nil {
 		return nil, err
 	}
-	defer src.close()
-
-	if o.kvCompact && !src.isKVBucket() {
-		return nil, fmt.Errorf("KVCompact requires a KV bucket backup: stream %q with subjects %v is not one", src.metaFile.Config.Name, src.metaFile.Config.Subjects)
-	}
-
-	ed := &editor{ctx: ctx, o: o, src: src, cfg: src.metaFile.Config, now: time.Now(), srcSubjects: newSubjectCounter()}
-	if !o.perSubject() {
-		ed.keptSubjects = newSubjectCounter()
-	}
-	if o.obfuscate {
-		if ed.obf, err = newObfuscator(o.keyFile); err != nil {
-			return nil, err
-		}
-	}
+	defer ed.src.close()
 
 	var tgt *target
 	if !o.dryRun {
@@ -153,7 +139,7 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 	if err := ed.run(tgt); err != nil {
 		return nil, err
 	}
-	prog.finish()
+	ed.src.prog.finish()
 
 	result, err := ed.result()
 	if err != nil {
@@ -203,6 +189,31 @@ func Edit(ctx context.Context, srcDir string, dstDir string, opts ...EditOption)
 	return result, nil
 }
 
+func newEditor(ctx context.Context, srcDir string, o *editOptions, passes int) (*editor, error) {
+	src, err := openSource(srcDir, newProgress(o.notify, passes))
+	if err != nil {
+		return nil, err
+	}
+
+	if o.kvCompact && !src.isKVBucket() {
+		src.close()
+		return nil, fmt.Errorf("KVCompact requires a KV bucket backup: stream %q with subjects %v is not one", src.metaFile.Config.Name, src.metaFile.Config.Subjects)
+	}
+
+	ed := &editor{ctx: ctx, o: o, src: src, cfg: src.metaFile.Config, now: time.Now(), srcSubjects: newSubjectCounter()}
+	if !o.perSubject() {
+		ed.keptSubjects = newSubjectCounter()
+	}
+	if o.obfuscate {
+		if ed.obf, err = newObfuscator(o.keyFile); err != nil {
+			src.close()
+			return nil, err
+		}
+	}
+
+	return ed, nil
+}
+
 type editor struct {
 	ctx      context.Context
 	o        *editOptions
@@ -213,6 +224,7 @@ type editor struct {
 	out      *syncedFile
 	headTs   int64
 	obf      *obfuscator
+	sink     func(seq uint64, msg *nats.Msg) error
 	srcState api.StreamState
 	firstOut uint64
 	bytes    uint64
@@ -426,7 +438,7 @@ func (e *editor) twoPass() error {
 	}
 	e.report.SubjectStateKeys, e.report.SubjectStateBytes = state.Stats()
 
-	if e.enc == nil && e.obf == nil {
+	if e.enc == nil && e.obf == nil && e.sink == nil {
 		e.report.Kept, e.bytes, e.firstOut = res.msgs, res.bytes, res.firstSeq
 		return nil
 	}
@@ -576,6 +588,9 @@ func (e *editor) writeMessage(body *msgBody) error {
 		e.firstOut = out.Seq
 	}
 	e.bytes += storedMsgSize(e.cfg.Storage, len(out.Subject), out.HdrSize, out.PayloadSize)
+	if e.sink != nil {
+		return e.extract(body)
+	}
 	if e.enc == nil {
 		return nil
 	}

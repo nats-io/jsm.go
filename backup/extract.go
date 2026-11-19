@@ -16,16 +16,17 @@ package backup
 import (
 	"context"
 	"errors"
+	"time"
 
-	"github.com/nats-io/nats.go"
+	"github.com/nats-io/jsm.go/api"
 )
 
 // Extract reads the backup in srcDir and calls fn with every message the
-// filter options keep, in stream order. A message whose header block cannot
-// be decoded fails the extract. An error returned by fn stops the extract and
-// is returned unchanged. Renumber, Obfuscate and DryRun are rejected since
-// they describe an edited backup
-func Extract(ctx context.Context, srcDir string, fn func(seq uint64, msg *nats.Msg) error, opts ...EditOption) error {
+// filter options keep, in stream order, with the header block exactly as
+// stored. An error returned by fn stops the extract and is returned
+// unchanged. Renumber, Obfuscate and DryRun are rejected since they describe
+// an edited backup
+func Extract(ctx context.Context, srcDir string, fn func(msg *api.StoredMsg) error, opts ...EditOption) error {
 	if fn == nil {
 		return errors.New("Extract requires a message function")
 	}
@@ -60,17 +61,21 @@ func Extract(ctx context.Context, srcDir string, fn func(seq uint64, msg *nats.M
 }
 
 func (e *editor) extract(body *msgBody) error {
-	hdr, err := body.headers()
+	buf, err := body.prefix(body.m.HdrSize + body.m.PayloadSize)
 	if err != nil {
 		return err
 	}
-	payload, err := body.payload()
-	if err != nil {
-		return err
+	headers, data := buf[:body.m.HdrSize:body.m.HdrSize], buf[body.m.HdrSize:]
+
+	msg := &api.StoredMsg{
+		Subject:  body.m.Subject,
+		Sequence: body.m.Seq,
+		Data:     data,
+		Time:     time.Unix(0, body.m.Ts).UTC(),
 	}
-	if payload == nil {
-		payload = []byte{}
+	if len(headers) > 0 {
+		msg.Header = headers
 	}
 
-	return e.sink(body.m.Seq, &nats.Msg{Subject: body.m.Subject, Header: hdr, Data: payload})
+	return e.sink(msg)
 }

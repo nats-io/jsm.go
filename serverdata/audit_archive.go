@@ -125,6 +125,9 @@ func (a *AuditArchive) EachConnz(opts server.ConnzEventOptions, handle func(cz *
 	if opts.State != 0 {
 		fields = append(fields, "state")
 	}
+	if opts.Limit != 0 {
+		fields = append(fields, "limit")
+	}
 	if len(fields) > 0 {
 		return unsupported("eachconnz", fields...)
 	}

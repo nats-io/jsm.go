@@ -160,6 +160,7 @@ func (a *AuditArchive) walkConnz(opts server.ConnzEventOptions, handle func(cz *
 			if opts.CID != 0 {
 				cz.Data.Conns = filtered
 				cz.Data.NumConns = len(filtered)
+				cz.Data.Total = len(filtered)
 			}
 
 			return handle(cz)

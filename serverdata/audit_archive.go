@@ -143,6 +143,14 @@ func (a *AuditArchive) walkConnz(opts server.ConnzEventOptions, handle func(cz *
 		}
 
 		newHandle := func(cz *server.ServerAPIConnzResponse) error {
+			cid, err := strconv.ParseUint(cz.Data.ID, 10, 64)
+			if err != nil {
+				return fmt.Errorf("error parsing connection id %d to uint64", cid)
+			}
+			if opts.CID > 0 && opts.CID != cid {
+				return nil
+			}
+
 			if !matchesFilter(cz.Server, &opts.EventFilterOptions) {
 				return nil
 			}

@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go/api"
-	"github.com/nats-io/nats.go"
 )
 
 // Result describes a finished edit: the configuration and state written to
@@ -224,7 +223,7 @@ type editor struct {
 	out      *syncedFile
 	headTs   int64
 	obf      *obfuscator
-	sink     func(seq uint64, msg *nats.Msg) error
+	sink     func(msg *api.StoredMsg) error
 	srcState api.StreamState
 	firstOut uint64
 	bytes    uint64

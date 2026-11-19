@@ -306,6 +306,8 @@ func (c *CheckCollection) Run(ar *archive.Reader, limit uint, log api.Logger) *A
 		log.Warnf("Could not load audit metadata: %v", err)
 	}
 
+	result.NumberedClusters = sharedClusterNames(ar)
+
 	for _, outcome := range Outcomes {
 		result.Outcomes[outcome.String()] = 0
 	}

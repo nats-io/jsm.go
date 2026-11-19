@@ -644,7 +644,7 @@ func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezRe
 	})
 
 	var results []*ProfilezResponse
-	err := forEachProfileArtifact(a.archivePath, func(domain, clusterTag, srv, rawName string, readBytes func() ([]byte, error)) error {
+	err := forEachProfileArtifact(a.archivePath, func(domain, clusterTag, clusterIndex, srv, rawName string, readBytes func() ([]byte, error)) error {
 		name, debug := SplitProfileName(rawName)
 		if opts.ProfilezOptions.Name != "" && opts.ProfilezOptions.Name != name {
 			return nil
@@ -653,7 +653,7 @@ func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezRe
 			return nil
 		}
 
-		info := fullInfo[clusterServer{archive.ClusterRef{Domain: domain, Name: clusterTag}, srv}]
+		info := fullInfo[clusterServer{archive.ClusterRef{Domain: domain, Name: clusterTag, Index: clusterIndex}, srv}]
 		if info == nil {
 			info = &server.ServerInfo{Name: srv, Cluster: profileClusterName(clusterTag), Domain: domain}
 		}
@@ -675,7 +675,7 @@ func (a *AuditArchive) Profilez(opts server.ProfilezEventOptions) ([]*ProfilezRe
 	return results, err
 }
 
-func forEachProfileArtifact(archivePath string, cb func(domain, cluster, server, name string, readBytes func() ([]byte, error)) error) error {
+func forEachProfileArtifact(archivePath string, cb func(domain, cluster, clusterIndex, server, name string, readBytes func() ([]byte, error)) error) error {
 	zr, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return err
@@ -709,10 +709,10 @@ func forEachProfileArtifact(archivePath string, cb func(domain, cluster, server,
 		fileMap[f.Name] = f
 	}
 
-	type entry struct{ domain, cluster, server, name, fname string }
+	type entry struct{ domain, cluster, clusterIndex, server, name, fname string }
 	var entries []entry
 	for fname, tags := range manifest {
-		var domain, cluster, srv, profileName string
+		var domain, cluster, clusterIndex, srv, profileName string
 		isProfile := false
 		for _, t := range tags {
 			switch string(t.Name) {
@@ -724,6 +724,8 @@ func forEachProfileArtifact(archivePath string, cb func(domain, cluster, server,
 				domain = t.Value
 			case "cluster":
 				cluster = t.Value
+			case "cluster_index":
+				clusterIndex = t.Value
 			case "server":
 				srv = t.Value
 			case "profile_name":
@@ -736,7 +738,7 @@ func forEachProfileArtifact(archivePath string, cb func(domain, cluster, server,
 		if _, ok := fileMap[fname]; !ok {
 			continue
 		}
-		entries = append(entries, entry{domain, cluster, srv, profileName, fname})
+		entries = append(entries, entry{domain, cluster, clusterIndex, srv, profileName, fname})
 	}
 	sort.Slice(entries, func(i, j int) bool {
 		if entries[i].domain != entries[j].domain {
@@ -744,6 +746,9 @@ func forEachProfileArtifact(archivePath string, cb func(domain, cluster, server,
 		}
 		if ci, cj := profileClusterName(entries[i].cluster), profileClusterName(entries[j].cluster); ci != cj {
 			return ci < cj
+		}
+		if c := archive.CompareClusterIndexes(entries[i].clusterIndex, entries[j].clusterIndex); c != 0 {
+			return c < 0
 		}
 		if entries[i].server != entries[j].server {
 			return entries[i].server < entries[j].server
@@ -760,7 +765,7 @@ func forEachProfileArtifact(archivePath string, cb func(domain, cluster, server,
 			defer rc.Close()
 			return io.ReadAll(rc)
 		}
-		if err := cb(e.domain, e.cluster, e.server, e.name, readBytes); err != nil {
+		if err := cb(e.domain, e.cluster, e.clusterIndex, e.server, e.name, readBytes); err != nil {
 			return err
 		}
 	}

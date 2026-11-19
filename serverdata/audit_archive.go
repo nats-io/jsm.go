@@ -125,9 +125,6 @@ func (a *AuditArchive) EachConnz(opts server.ConnzEventOptions, handle func(cz *
 	if opts.State != 0 {
 		fields = append(fields, "state")
 	}
-	if opts.Limit != 0 {
-		fields = append(fields, "limit")
-	}
 	if len(fields) > 0 {
 		return unsupported("eachconnz", fields...)
 	}
@@ -143,21 +140,21 @@ func (a *AuditArchive) walkConnz(opts server.ConnzEventOptions, handle func(cz *
 		}
 
 		newHandle := func(cz *server.ServerAPIConnzResponse) error {
-			cid, err := strconv.ParseUint(cz.Data.ID, 10, 64)
-			if err != nil {
-				return fmt.Errorf("error parsing connection id %d to uint64", cid)
-			}
-			if opts.CID > 0 && opts.CID != cid {
-				return nil
-			}
-
 			if !matchesFilter(cz.Server, &opts.EventFilterOptions) {
 				return nil
 			}
 			if cz.Server == nil || cz.Data == nil {
 				return nil
 			}
+
 			for _, conn := range cz.Data.Conns {
+				if opts.CID != 0 {
+					if conn.Cid == opts.CID {
+						cz.Data.Conns = []*server.ConnInfo{conn}
+						cz.Data.NumConns = 1
+					}
+				}
+
 				if conn.Account == "" {
 					conn.Account = accountName
 				}

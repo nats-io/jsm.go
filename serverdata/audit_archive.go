@@ -147,18 +147,21 @@ func (a *AuditArchive) walkConnz(opts server.ConnzEventOptions, handle func(cz *
 				return nil
 			}
 
+			var filtered []*server.ConnInfo
 			for _, conn := range cz.Data.Conns {
-				if opts.CID != 0 {
-					if conn.Cid == opts.CID {
-						cz.Data.Conns = []*server.ConnInfo{conn}
-						cz.Data.NumConns = 1
-					}
+				if opts.CID != 0 && conn.Cid == opts.CID {
+					filtered = append(filtered, conn)
 				}
 
 				if conn.Account == "" {
 					conn.Account = accountName
 				}
 			}
+			if opts.CID != 0 {
+				cz.Data.Conns = filtered
+				cz.Data.NumConns = len(filtered)
+			}
+
 			return handle(cz)
 		}
 

@@ -110,6 +110,12 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 // EachConnz filters a Connz response from the archive and passes it to handle
 func (a *AuditArchive) EachConnz(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	var fields []string
+	if opts.ConnzOptions.Subscriptions {
+		fields = append(fields, "subscription")
+	}
+	if opts.ConnzOptions.SubscriptionsDetail {
+		fields = append(fields, "subscriptionsdetail")
+	}
 	if opts.Offset != 0 {
 		fields = append(fields, "offset")
 	}
@@ -250,8 +256,11 @@ func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPI
 
 // EachSubsz filters a Subsz response from the archive and passes it to handle
 func (a *AuditArchive) EachSubsz(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
+	if opts.Subscriptions {
+		return unsupported("eachsubsz", "subscriptions")
+	}
 	if opts.Offset != 0 {
-		return unsupported("subsz", "offset")
+		return unsupported("eachsubsz", "offset")
 	}
 
 	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerSubs(),
@@ -298,6 +307,12 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 
 // EachJsz filters a Jsz response from the archive and passes it to handle
 func (a *AuditArchive) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	if opts.Consumer {
+		return unsupported("eachjsz", "consumer")
+	}
+	if opts.DirectConsumer {
+		return unsupported("eachjsz", "directconsumer")
+	}
 	if opts.Account != "" {
 		return unsupported("eachjsz", "account")
 	}

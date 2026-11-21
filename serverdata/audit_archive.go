@@ -110,6 +110,9 @@ func (a *AuditArchive) Connz(opts server.ConnzEventOptions) ([]*server.ServerAPI
 // EachConnz filters a Connz response from the archive and passes it to handle
 func (a *AuditArchive) EachConnz(opts server.ConnzEventOptions, handle func(cz *server.ServerAPIConnzResponse) error) error {
 	var fields []string
+	if opts.ConnzOptions.MQTTClient != "" {
+		fields = append(fields, "mqttclient")
+	}
 	if opts.ConnzOptions.Subscriptions {
 		fields = append(fields, "subscription")
 	}
@@ -307,6 +310,9 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 
 // EachJsz filters a Jsz response from the archive and passes it to handle
 func (a *AuditArchive) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	if opts.Accounts {
+		return unsupported("eachjsz", "accounts")
+	}
 	if opts.Consumer {
 		return unsupported("eachjsz", "consumer")
 	}

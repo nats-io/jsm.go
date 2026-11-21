@@ -262,14 +262,18 @@ func (a *AuditArchive) Subsz(opts server.SubszEventOptions) ([]*server.ServerAPI
 
 // EachSubsz filters a Subsz response from the archive and passes it to handle
 func (a *AuditArchive) EachSubsz(opts server.SubszEventOptions, handle func(sz *server.ServerAPISubszResponse) error) error {
+	var fields []string
 	if opts.SubszOptions.Test != "" {
-		return unsupported("eachsubsz", "test")
+		fields = append(fields, "test")
 	}
 	if opts.Subscriptions {
-		return unsupported("eachsubsz", "subscriptions")
+		fields = append(fields, "subscriptions")
 	}
 	if opts.Offset != 0 {
-		return unsupported("eachsubsz", "offset")
+		fields = append(fields, "offset")
+	}
+	if len(fields) > 0 {
+		return unsupported("eachsubsz", fields...)
 	}
 
 	_, err := archive.EachClusterServerArtifact(a.reader, archive.TagServerSubs(),
@@ -316,26 +320,30 @@ func (a *AuditArchive) Jsz(opts server.JszEventOptions) ([]*server.ServerAPIJszR
 
 // EachJsz filters a Jsz response from the archive and passes it to handle
 func (a *AuditArchive) EachJsz(opts server.JszEventOptions, handle func(*server.ServerAPIJszResponse) error) error {
+	var fields []string
 	if opts.JSzOptions.RaftGroups {
-		return unsupported("eachjsz", "raftgroups")
+		fields = append(fields, "raftgroups")
 	}
 	if opts.LeaderOnly {
-		return unsupported("eachjsz", "leaderonly")
+		fields = append(fields, "leaderonly")
 	}
 	if opts.Accounts {
-		return unsupported("eachjsz", "accounts")
+		fields = append(fields, "accounts")
 	}
 	if opts.Consumer {
-		return unsupported("eachjsz", "consumer")
+		fields = append(fields, "consumer")
 	}
 	if opts.DirectConsumer {
-		return unsupported("eachjsz", "directconsumer")
+		fields = append(fields, "directconsumer")
 	}
 	if opts.Account != "" {
-		return unsupported("eachjsz", "account")
+		fields = append(fields, "account")
 	}
 	if opts.Offset != 0 {
-		return unsupported("eachjsz", "offset")
+		fields = append(fields, "offset")
+	}
+	if len(fields) > 0 {
+		return unsupported("eachjsz", fields...)
 	}
 
 	_, err := a.reader.EachClusterServerJsz(func(cluster archive.ClusterRef, serverName string, cbError error, jsz *server.ServerAPIJszResponse) error {

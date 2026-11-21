@@ -99,6 +99,41 @@ func TestArchiveConnz(t *testing.T) {
 	}
 }
 
+func TestArchiveEachConnz(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		resp := &server.ServerAPIConnzResponse{
+			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
+			Data: &server.Connz{
+				NumConns: 2,
+				Conns: []*server.ConnInfo{
+					{Name: "conn-1", Account: "acct-A"},
+					{Name: "conn-2", Account: "acct-A"},
+				},
+			},
+		}
+		w.Add(resp,
+			archive.TagAccount("acct-A"),
+			archive.TagCluster("c1"),
+			archive.TagServer("srv-1"),
+			archive.TagAccountConnections())
+	})
+
+	results := make([]*server.ServerAPIConnzResponse, 0)
+	err := a.EachConnz(server.ConnzEventOptions{}, func(cz *server.ServerAPIConnzResponse) error {
+		results = append(results, cz)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if len(results[0].Data.Conns) != 2 {
+		t.Errorf("expected 2 conns, got %d", len(results[0].Data.Conns))
+	}
+}
+
 func TestArchiveConnzMergesAccounts(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {
 		// Two accounts on the same server should be merged into one result
@@ -226,6 +261,31 @@ func TestArchiveSubsz(t *testing.T) {
 	}
 }
 
+func TestArchiveEachSubsz(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		resp := &server.ServerAPISubszResponse{
+			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
+			Data:   &server.Subsz{Total: 10},
+		}
+		w.Add(resp, archive.TagCluster("c1"), archive.TagServer("srv-1"), archive.TagServerSubs())
+	})
+
+	results := make([]*server.ServerAPISubszResponse, 0)
+	err := a.EachSubsz(server.SubszEventOptions{}, func(sz *server.ServerAPISubszResponse) error {
+		results = append(results, sz)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Data.Total != 10 {
+		t.Errorf("expected 10 subs, got %d", results[0].Data.Total)
+	}
+}
+
 func TestArchiveJsz(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {
 		resp := &server.ServerAPIJszResponse{
@@ -238,6 +298,33 @@ func TestArchiveJsz(t *testing.T) {
 	})
 
 	results, err := a.Jsz(server.JszEventOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Data.Memory != 1024 {
+		t.Errorf("expected Memory 1024, got %d", results[0].Data.Memory)
+	}
+}
+
+func TestArchiveEachJsz(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {
+		resp := &server.ServerAPIJszResponse{
+			Server: &server.ServerInfo{Name: "srv-1", ID: "id-1"},
+			Data: &server.JSInfo{
+				JetStreamStats: server.JetStreamStats{Memory: 1024},
+			},
+		}
+		w.Add(resp, archive.TagCluster("c1"), archive.TagServer("srv-1"), archive.TagServerJetStream())
+	})
+
+	results := make([]*server.ServerAPIJszResponse, 0)
+	err := a.EachJsz(server.JszEventOptions{}, func(jsz *server.ServerAPIJszResponse) error {
+		results = append(results, jsz)
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -884,6 +971,28 @@ func TestArchiveUnsupportedJszAccount(t *testing.T) {
 	}
 }
 
+func TestArchiveUnsupportedEachJszOptions(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+
+	tests := []struct {
+		name string
+		opts server.JszEventOptions
+	}{
+		{name: "offset", opts: server.JszEventOptions{JSzOptions: server.JSzOptions{Offset: 32}}},
+		{name: "account", opts: server.JszEventOptions{JSzOptions: server.JSzOptions{Account: "foo"}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := a.EachJsz(tc.opts, func(*server.ServerAPIJszResponse) error {
+				return nil //no-op handler
+			})
+			if !errors.Is(err, ErrUnsupportedOption) {
+				t.Errorf("expected ErrUnsupportedOption, got %v", err)
+			}
+		})
+	}
+}
+
 func TestArchiveUnsupportedConnzOptions(t *testing.T) {
 	a := newTestArchive(t, func(w *archive.Writer) {})
 
@@ -903,6 +1012,43 @@ func TestArchiveUnsupportedConnzOptions(t *testing.T) {
 				t.Errorf("expected ErrUnsupportedOption, got %v", err)
 			}
 		})
+	}
+}
+
+func TestArchiveUnsupportedEachConnzOptions(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+
+	tests := []struct {
+		name string
+		opts server.ConnzEventOptions
+	}{
+		{"offset", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Offset: 1024}}},
+		{"account", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{Account: "a"}}},
+		{"filter_subject", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{FilterSubject: ">"}}},
+		{"user", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{User: "u"}}},
+		{"state", server.ConnzEventOptions{ConnzOptions: server.ConnzOptions{State: server.ConnClosed}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := a.EachConnz(tc.opts, func(_ *server.ServerAPIConnzResponse) error {
+				return nil //no-op handler
+			})
+			if !errors.Is(err, ErrUnsupportedOption) {
+				t.Errorf("expected ErrUnsupportedOption, got %v", err)
+			}
+		})
+	}
+}
+
+func TestArchiveUnsupportedEachSubszOffset(t *testing.T) {
+	a := newTestArchive(t, func(w *archive.Writer) {})
+
+	err := a.EachSubsz(server.SubszEventOptions{SubszOptions: server.SubszOptions{Offset: 1024}}, func(sz *server.ServerAPISubszResponse) error {
+		return nil // no-op handler
+	})
+
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Errorf("expected ErrUnsupportedOption, got %v", err)
 	}
 }
 

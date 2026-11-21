@@ -2,6 +2,7 @@ package serverdata
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -384,6 +385,52 @@ func TestServerCollectAccountsPaging(t *testing.T) {
 	}
 }
 
+func TestServerEachJszPaging(t *testing.T) {
+	details := make([]*server.AccountDetail, 32)
+
+	for i := range details {
+		details[i] = &server.AccountDetail{Name: fmt.Sprintf("acct-%04d", i)}
+	}
+	initialResp := &server.ServerAPIJszResponse{
+		Server: &server.ServerInfo{Name: "srv-1", ID: "NABC"},
+		Data:   &server.JSInfo{AccountDetails: details},
+	}
+
+	page2 := &server.ServerAPIJszResponse{
+		Server: &server.ServerInfo{Name: "srv-1", ID: "NABC"},
+		Data: &server.JSInfo{
+			AccountDetails: []*server.AccountDetail{
+				{Name: "acct-extra"},
+			},
+		},
+	}
+
+	seq, calls := mockReqFnSequenceWithCalls([]mockResponse{
+		{data: [][]byte{mustMarshal(t, initialResp)}},
+		{data: [][]byte{mustMarshal(t, page2)}},
+	})
+	src := newLiveT(t, nil, seq, 1)
+
+	err := src.EachJsz(server.JszEventOptions{}, func(resp *server.ServerAPIJszResponse) error {
+		if len(*calls) == 1 && len(resp.Data.AccountDetails) != 32 {
+			t.Fatalf("expected 32 account details got %d", len(resp.Data.AccountDetails))
+		}
+		if len(*calls) == 2 && len(resp.Data.AccountDetails) != 1 {
+			t.Fatalf("expected 1 account details got %d", len(resp.Data.AccountDetails))
+		}
+		if len(*calls) == 2 && (*calls)[1].subj != "$SYS.REQ.SERVER.NABC.JSZ" {
+			t.Errorf("expected paging via direct ID subject, got %s", (*calls)[1].subj)
+		}
+		if len(*calls) == 2 && (*calls)[1].waitFor != 1 {
+			t.Errorf("expected waitFor=1 for paging request, got %d", (*calls)[1].waitFor)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestServerCollectAccountsNameCollision verifies that two servers sharing a
 // name but with distinct IDs are paged independently and their accounts merged.
 func TestServerCollectAccountsNameCollision(t *testing.T) {
@@ -503,5 +550,53 @@ func TestServerSubjects(t *testing.T) {
 				t.Errorf("expected subject %s, got %s", tc.expect, (*calls)[0].subj)
 			}
 		})
+	}
+}
+
+func TestServerEachJszUnsupportedOffset(t *testing.T) {
+	reqFn, _ := mockReqFn([][]byte{}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+	opts := server.JszEventOptions{
+		JSzOptions: server.JSzOptions{
+			Offset: 32,
+		},
+	}
+	err := src.EachJsz(opts, func(_ *server.ServerAPIJszResponse) error {
+		return nil //no-op handler
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupported option %v", err)
+	}
+}
+
+func TestServerEachConnzUnsupportedOffset(t *testing.T) {
+	reqFn, _ := mockReqFn([][]byte{}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+	opts := server.ConnzEventOptions{
+		ConnzOptions: server.ConnzOptions{
+			Offset: 1024,
+		},
+	}
+	err := src.EachConnz(opts, func(_ *server.ServerAPIConnzResponse) error {
+		return nil //no-op handler
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupported option %v", err)
+	}
+}
+
+func TestServerEachSubszUnsupportedOffset(t *testing.T) {
+	reqFn, _ := mockReqFn([][]byte{}, nil)
+	src := newLiveT(t, nil, reqFn, 1)
+	opts := server.SubszEventOptions{
+		SubszOptions: server.SubszOptions{
+			Offset: 1024,
+		},
+	}
+	err := src.EachSubsz(opts, func(_ *server.ServerAPISubszResponse) error {
+		return nil //no-op handler
+	})
+	if !errors.Is(err, ErrUnsupportedOption) {
+		t.Fatalf("expected ErrUnsupported option %v", err)
 	}
 }
